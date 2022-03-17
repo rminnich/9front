@@ -1040,6 +1040,7 @@ Xrdcmds(void)
 			p->lex = 0;
 		} else
 			--p->pc;	/* re-execute Xrdcmds after codebuf runs */
+		ntrap = 0;	/* avoid double-interrupts during blocked writes */
 		start(codebuf, 2, p->local, p->redir);
 	}
 	lex = 0;
