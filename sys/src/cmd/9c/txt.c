@@ -26,6 +26,7 @@ ginit(void)
 	tfield = types[TLONG];
 
 	typeword = typechlvp;
+	typeswitch = typechlv;
 	typecmplx = typesu;
 	/* TO DO */
 	memmove(typechlpv, typechlp, sizeof(typechlpv));
