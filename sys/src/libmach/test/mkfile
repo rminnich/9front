@@ -1,0 +1,6 @@
+</$objtype/mkfile
+
+TEST=\
+	q\
+
+</sys/src/cmd/mktest

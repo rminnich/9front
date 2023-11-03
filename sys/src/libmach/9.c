@@ -109,7 +109,7 @@ Mach mpower64 =
 	"LR",			/* name of link register */
 	"setSB",		/* static base register name */
 	0,			/* value */
-	0x100000,		/* page size (TODO, too many choices) */
+	0x1000,		/* page size (TODO, too many choices) */
 	0xffffffff80000000ull,	/* kernel base (TODO, likely incorrect) */
 	0xf000000000000000ull,	/* kernel text mask (TODO, likely incorrect) */
 	0x00007ffffff00000ull,	/* user stack top (TODO, likely incorrect) */
