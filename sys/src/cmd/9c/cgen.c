@@ -618,7 +618,7 @@ bcgen(Node *n, int true)
 void
 boolgen(Node *n, int true, Node *nn)
 {
-	int o;
+	int o, uns;
 	Prog *p1, *p2;
 	Node *l, *r, nod, nod1;
 	long curs;
@@ -627,6 +627,7 @@ boolgen(Node *n, int true, Node *nn)
 		prtree(nn, "boolgen lhs");
 		prtree(n, "boolgen");
 	}
+	uns = 0;
 	curs = cursafe;
 	l = n->left;
 	r = n->right;
@@ -711,16 +712,18 @@ boolgen(Node *n, int true, Node *nn)
 		patch(p2, pc);
 		goto com;
 
+	case OHI:
+	case OHS:
+	case OLO:
+	case OLS:
+		uns = 1;
+		/* fall through */
 	case OEQ:
 	case ONE:
 	case OLE:
 	case OLT:
 	case OGE:
 	case OGT:
-	case OHI:
-	case OHS:
-	case OLO:
-	case OLS:
 		o = n->op;
 		if(true)
 			o = comrel[relindex(o)];
@@ -735,7 +738,7 @@ boolgen(Node *n, int true, Node *nn)
 			boolgen(&nod, true, nn);
 			break;
 		}
-		if(sconst(r)) {
+		if(!uns && sconst(r)) {
 			regalloc(&nod, l, nn);
 			cgen(l, &nod);
 			gopcode(o, &nod, Z, r);
