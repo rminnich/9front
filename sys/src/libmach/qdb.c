@@ -137,9 +137,6 @@ typedef struct {
 	uchar	ra;		/* bits 11-15 */
 	uchar	rb;		/* bits 16-20 */
 	uchar	rc;		/* bit 31 */
-	uchar	vra;		/* bit 11-15 */
-	uchar	vrb;		/* bit 16-20 */
-	uchar	vrd;		/* bit 6-10 */
 	union {
 		uchar	rs;	/* bits 6-10 */
 		uchar	rd;
@@ -220,9 +217,6 @@ decode(uvlong pc, Instr *i)
 	i->rb = IBF(w, 16, 20);
 	i->rc = IB(w, 31);
 	i->rs = IBF(w, 6, 10);	/* also rd */
-	i->vra = IBF(w, 11, 15);
-	i->vrb = IBF(w, 16, 20);
-	i->vrd = IBF(w, 6, 10);
 	i->sh = IBF(w, 16, 20);
 	i->xsh = (IB(w, 30)<<5) | i->sh;
 	i->spr = IBF(w, 11, 20);
@@ -507,6 +501,28 @@ fstx(Opcode *o, Instr *i)
 		format(o->mnemonic, i, "F%d,(R%b)");
 	else
 		format(o->mnemonic, i, "F%d,(R%b+R%a)");
+	if(i->rc)
+		bprint(i, " [illegal Rc]");
+}
+
+static void
+vldx(Opcode *o, Instr *i)
+{
+	if(i->ra == 0)
+		format(o->mnemonic, i, "(R%b),V%d");
+	else
+		format(o->mnemonic, i, "(R%b+R%a),V%d");
+	if(i->rc)
+		bprint(i, " [illegal Rc]");
+}
+
+static void
+vstx(Opcode *o, Instr *i)
+{
+	if(i->ra == 0)
+		format(o->mnemonic, i, "V%d,(R%b)");
+	else
+		format(o->mnemonic, i, "V%d,(R%b+R%a)");
 	if(i->rc)
 		bprint(i, " [illegal Rc]");
 }
@@ -807,10 +823,10 @@ vra2s(Opcode *o, Instr *i)
 	} else switch(o->xo){
 	case 1538: p = vcz; n = nelem(vcz); break;
 	case 1602:
-		if((i->vra & (12<<1)) == (12<<1))
-			i->vra &= ~1;
-		if((i->vra & (13<<1)) == (13<<1))
-			i->vra &= ~1;
+		if((i->ra & (12<<1)) == (12<<1))
+			i->ra &= ~1;
+		if((i->ra & (13<<1)) == (13<<1))
+			i->ra &= ~1;
 		p = exp; n = nelem(exp); break;
 	case 836: p = xscv; n = nelem(xscv); break;
 	case 804: p = xsab; n = nelem(xsab); break;
@@ -823,10 +839,10 @@ vra2s(Opcode *o, Instr *i)
 	default: p = nil; n = 0; break;
 	}
 		
-	if(p == nil || i->vra > n || p[i->vra] == nil)
+	if(p == nil || i->ra > n || p[i->ra] == nil)
 		format(o->mnemonic, i, o->ken);
 	else
-		format(p[i->vra], i, o->ken);
+		format(p[i->ra], i, o->ken);
 }
 
 static void
@@ -878,8 +894,8 @@ static	char	rldc[] = "R%b,R%s,$%E,R%a";
 static	char	rlim[] = "R%b,R%s,$%z,R%a";
 static	char	rlimi[] = "$%k,R%s,$%z,R%a";
 static	char	rldi[] = "$%e,R%s,$%E,R%a";
-static	char	vr2[] = "V%あ,V%う";
-static	char	vr3[] = "V%い,V%あ,V%う";
+static	char	vr2[] = "V%a,V%d";
+static	char	vr3[] = "V%b,V%a,V%d";
 
 #define	OEM	IBF(~0,22,30)
 #define	FP4	IBF(~0,26,30)
@@ -1185,6 +1201,53 @@ static Opcode opcodes[] = {
 	{31,	210,	ALL,	"MOVW",		gen,	"R%s,SEG(%a)"},
 	{31,	242,	ALL,	"MOVW",		gen,	"R%s,SEG(R%b)"},
 
+	{31,	7,	ALL,	"MOVBE",	vldx,	0},
+	{31,	39,	ALL,	"MOVHE",	vldx,	0},
+	{31,	71,	ALL,	"MOVWE",	vldx,	0},
+	{31,	103,	ALL,	"MOV",		vldx,	0},
+	{31,	359,	ALL,	"MOV",		vldx,	0},	/* lvxl */
+
+	{4,	525,	VXM,	"MOVBZ",	0,	"$%a,V%b,V%d"},
+	{4,	589,	VXM,	"MOVHZ",	0,	"$%a,V%b,V%d"},
+	{4,	653,	VXM,	"MOVWZ",	0,	"$%a,V%b,V%d"},
+	{4,	717,	VXM,	"MOVDZ",	0,	"$%a,V%b,V%d"},
+
+	{4,	1549,	VXM,	"MOVBZ",	0,	"R%a,V%b,R%d"},
+	{4,	1805,	VXM,	"MOVBZ",	0,	"15-R%a,V%b,R%d"},
+	{4,	1613,	VXM,	"MOVHZ",	0,	"R%a,V%b,R%d"},
+	{4,	1869,	VXM,	"MOVHZ",	0,	"15-R%a,V%b,R%d"},
+	{4,	1677,	VXM,	"MOVDZ",	0,	"R%a,V%b,R%d"},
+	{4,	1933,	VXM,	"MOVDZ",	0,	"15-R%a,V%b,R%d"},
+	{4,	781,	VXM,	"MOVB",		0,	"$%a,V%b,V%d"},
+	{4,	845,	VXM,	"MOVH",		0,	"$%a,V%b,V%d"},
+	{4,	909,	VXM,	"MOVW",		0,	"$%a,V%b,V%d"},
+	{4,	973,	VXM,	"MOVD",		0,	"$%a,V%b,V%d"},
+
+	{31,	6,	ALL,	"MOVSIL",	vldx,	0},
+	{31,	38,	ALL,	"MOVSIR",	vldx,	0},
+
+	{4,	782,	VXM,	"PACKP",	0,	vr3},
+	{4,	398,	VXM,	"PACKHS",	0,	vr3},
+	{4,	270,	VXM,	"PACKHSU",	0,	vr3},
+	{4,	462,	VXM,	"PACKWS",	0,	vr3},
+	{4,	334,	VXM,	"PACKWSU",	0,	vr3},
+	{4,	1486,	VXM,	"PACKDS",	0,	vr3},
+	{4,	1358,	VXM,	"PACKDSU",	0,	vr3},
+	{4,	14,	VXM,	"PACKHUMU",	0,	vr3},
+	{4,	142,	VXM,	"PACKHUSU",	0,	vr3},
+	{4,	78,	VXM,	"PACKWUMU",	0,	vr3},
+	{4,	206,	VXM,	"PACKWUSU",	0,	vr3},
+	{4,	1102,	VXM,	"PACKDUMU",	0,	vr3},
+	{4,	1230,	VXM,	"PACKDUSU",	0,	vr3},
+	{4,	526,	VXM,	"UPACKB",	0,	vr2},
+	{4,	654,	VXM,	"UPACKBL",	0,	vr2},
+	{4,	590,	VXM,	"UPACKH",	0,	vr2},
+	{4,	718,	VXM,	"UPACKHL",	0,	vr2},
+	{4,	1614,	VXM,	"UPACKW",	0,	vr2},
+	{4,	1742,	VXM,	"UPACKWL",	0,	vr2},
+	{4,	846,	VXM,	"UPACKP",	0,	vr2},
+	{4,	974,	VXM,	"UPACKPL",	0,	vr2},
+
 	{31,	73,	ALL,	"MULHD%C",	gencc,	ir3},
 	{31,	9,	ALL,	"MULHDU%C",	gencc,	ir3},
 	{31,	233,	OEM,	"MULLD%V%C",	gencc,	ir3},
@@ -1262,6 +1325,12 @@ static Opcode opcodes[] = {
 	{62,	0,	0,	"MOVD%U",	store,	stop},	/* 64 */
 	{31,	149,	ALL,	"MOVD",		stx,	0,},	/* 64 */
 	{31,	181,	ALL,	"MOVDU",	stx,	0},	/* 64 */
+
+	{31,	135,	ALL,	"MOVBE",	vstx,	0},
+	{31,	167,	ALL,	"MOVHE",	vstx,	0},
+	{31,	199,	ALL,	"MOVWE",	vstx,	0},
+	{31,	231,	ALL,	"MOV",		vstx,	0},
+	{31,	487,	ALL,	"MOV",		vstx,	0},	/* stvxl */
 
 	{31,	498,	ALL,	"SLBIA",	gen,	0},	/* 64 */
 	{31,	434,	ALL,	"SLBIE",	gen,	"R%b"},	/* 64 */
@@ -1585,44 +1654,10 @@ static Opcode opcodes[] = {
 	{4,	13,	VCM,	"vstrihr[.]",	vra2s,	vr2},
 	{4,	397,	VXM,	"vclrlb",	0,	vr3},
 	{4,	461,	VXM,	"vclrrb",	0,	vr3},
-	{4,	525,	VXM,	"vextractub",	0,	vr3},
-	{4,	589,	VXM,	"vextractuh",	0,	vr3},
-	{4,	653,	VXM,	"vextractuw",	0,	vr3},
-	{4,	717,	VXM,	"vextractd",	0,	vr3},
-	{4,	781,	VXM,	"vinsertb",	0,	vr3},
-	{4,	845,	VXM,	"vinserth",	0,	vr3},
-	{4,	909,	VXM,	"vinsertw",	0,	vr3},
-	{4,	973,	VXM,	"vinsertd",	0,	vr3},
 	{4,	1357,	VXM,	"vcfuged",	0,	vr3},
 	{4,	1421,	VXM,	"vpextd",	0,	vr3},
 	{4,	1485,	VXM,	"vpdepd",	0,	vr3},
-	{4,	1549,	VXM,	"vextublx",	0,	vr3},
-	{4,	1613,	VXM,	"vextuhlx",	0,	vr3},
-	{4,	1677,	VXM,	"vextuwlx",	0,	vr3},
-	{4,	1805,	VXM,	"vextubrx",	0,	vr3},
-	{4,	1869,	VXM,	"vextuhrx",	0,	vr3},
-	{4,	1933,	VXM,	"vextuwrx",	0,	vr3},
-	{4,	14,	VXM,	"vpkuhum",	0,	vr3},
-	{4,	78,	VXM,	"vpkuwum",	0,	vr3},
-	{4,	142,	VXM,	"vpkuhus",	0,	vr3},
-	{4,	206,	VXM,	"vpkuwus",	0,	vr3},
-	{4,	270,	VXM,	"vpkshus",	0,	vr3},
-	{4,	334,	VXM,	"vpkswus",	0,	vr3},
-	{4,	398,	VXM,	"vpkshss",	0,	vr3},
-	{4,	462,	VXM,	"vpkswss",	0,	vr3},
-	{4,	526,	VXM,	"vupkhsb",	0,	vr3},
-	{4,	590,	VXM,	"vupkhsh",	0,	vr3},
-	{4,	654,	VXM,	"vupklsb",	0,	vr3},
-	{4,	718,	VXM,	"vupklsh",	0,	vr3},
-	{4,	782,	VXM,	"vpkpx",	0,	vr3},
-	{4,	846,	VXM,	"vupkhpx",	0,	vr3},
-	{4,	974,	VXM,	"vupklpx",	0,	vr3},
-	{4,	1102,	VXM,	"vpkudum",	0,	vr3},
-	{4,	1230,	VXM,	"vpkudus",	0,	vr3},
-	{4,	1358,	VXM,	"vpksdus",	0,	vr3},
-	{4,	1486,	VXM,	"vpksdss",	0,	vr3},
-	{4,	1614,	VXM,	"vupkhsw",	0,	vr3},
-	{4,	1742,	VXM,	"vupklsw",	0,	vr3},
+
 	{4,	15,	VXM,	"vinsbvlx",	0,	vr3},
 	{4,	79,	VXM,	"vinshvlx",	0,	vr3},
 	{4,	143,	VXM,	"vinswvlx",	0,	vr3},
@@ -1685,8 +1720,6 @@ static Opcode opcodes[] = {
 	{31,	448,	ALL,	"setnbc",	0,	0},
 	{31,	480,	ALL,	"setnbcr",	0,	0},
 	{31,	576,	ALL,	"mcrxrx",	0,	0},
-	{31,	6,	ALL,	"lvsl",	0,	0},
-	{31,	38,	ALL,	"lvsr",	0,	0},
 	{31,	582,	ALL,	"lwat",	0,	0},
 	{31,	614,	ALL,	"ldat",	0,	0},
 	{31,	710,	ALL,	"stwat",	0,	0},
@@ -1694,16 +1727,6 @@ static Opcode opcodes[] = {
 	{31,	774,	ALL,	"copy",	0,	0},
 	{31,	838,	ALL,	"cpabort",	0,	0},
 	{31,	902,	ALL,	"paste[.]",	0,	0},
-	{31,	7,	ALL,	"lvebx",	0,	0},
-	{31,	39,	ALL,	"lvehx",	0,	0},
-	{31,	71,	ALL,	"lvewx",	0,	0},
-	{31,	103,	ALL,	"lvx",	0,	0},
-	{31,	135,	ALL,	"stvebx",	0,	0},
-	{31,	167,	ALL,	"stvehx",	0,	0},
-	{31,	199,	ALL,	"stvewx",	0,	0},
-	{31,	231,	ALL,	"stvx",	0,	0},
-	{31,	359,	ALL,	"lvxl",	0,	0},
-	{31,	487,	ALL,	"stvxl",	0,	0},
 	{31,	265,	ALL,	"modud",	0,	0},
 	{31,	393,	ALL,	"divdeu[.]",	0,	0},
 	{31,	425,	ALL,	"divde[.]",	0,	0},
@@ -2253,7 +2276,6 @@ format(char *mnemonic, Instr *i, char *f)
 	int n, s;
 	ulong mask;
 	uvlong vmask;
-	Rune r;
 
 	if (mnemonic)
 		format(0, i, mnemonic);
@@ -2261,28 +2283,12 @@ format(char *mnemonic, Instr *i, char *f)
 		return;
 	if (mnemonic)
 		bprint(i, "\t");
-	for (;;){
-		f += chartorune(&r, f);
-		if(r == 0)
-			break;
-		if (r != '%') {
-			bprint(i, "%C", r);
+	for ( ; *f; f++) {
+		if (*f != '%') {
+			bprint(i, "%c", *f);
 			continue;
 		}
-		f += chartorune(&r, f);
-		switch (r) {
-		case L'あ':
-			bprint(i, "%d", i->vra);
-			break;
-
-		case L'い':
-			bprint(i, "%d", i->vrb);
-			break;
-
-		case L'う':
-			bprint(i, "%d", i->vrd);
-			break;
-
+		switch (*++f) {
 		case 'a':
 			bprint(i, "%d", i->ra);
 			break;
