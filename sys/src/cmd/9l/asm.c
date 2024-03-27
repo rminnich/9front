@@ -93,6 +93,7 @@ asmb(void)
 	case 1:
 	case 2:
 	case 5:
+	case 6:
 		seek(cout, HEADR+textsize, 0);
 		break;
 	case 3:
@@ -125,6 +126,7 @@ asmb(void)
 		case 1:
 		case 2:
 		case 5:
+		case 6:
 			seek(cout, HEADR+textsize+datsize, 0);
 			break;
 		case 3:
@@ -194,6 +196,7 @@ asmb(void)
 	case 3:
 		break;
 	case 5:
+	case 6:
 		strnput("\177ELF", 4);		/* e_ident */
 		CPUT(2);			/* class = 64 bit */
 		CPUT(2);			/* data = MSB */
@@ -210,32 +213,49 @@ asmb(void)
 			lput((0x40L<<16)|0x38L);	/* Ehdr & Phdr sizes*/
 			lput((3L<<16)|0x40L);	/* # Phdrs & Shdr size */
 			lput((3L<<16)|2L);	/* # Shdrs & shdr string size */
-		}
-		else{
-			llput(0L);
-			lput(0L);		/* flags = PPC */
+		} else {
+			llput(0L);			/* offset to first shdr */
+			lput(0L);			/* flags = PPC */
 			lput((0x40L<<16)|0x38L);	/* Ehdr & Phdr sizes*/
-			lput((3L<<16)|0L);	/* # Phdrs & Shdr size */
-			lput((3L<<16)|0L);	/* # Shdrs & shdr string size */
+			if(HEADTYPE == 5)
+				lput((3L<<16)|0L);	/* # Phdrs & Shdr size */
+			else
+				lput((2L<<16)|0L);	/* # Phdrs & Shdr size */
+			lput((0L<<16)|0L);		/* # Shdrs & shdr string size */
 		}
 
-		lput(1L);			/* text - type = PT_LOAD */
-		lput(0x05L);			/* protections = RX */
-		llput(HEADR);			/* file offset */
-		llput(INITTEXT);	/* vaddr */
-		llput(INITTEXT);			/* paddr */
-		llput(textsize);			/* file size */
-		llput(textsize);			/* memory size */
-		llput(0x10000L);			/* alignment */
-
-		lput(1L);			/* data - type = PT_LOAD */
-		lput(0x07L);			/* protections = RWX */
-		llput(HEADR+textsize);		/* file offset */
-		llput(INITDAT);		/* vaddr */
-		llput(INITDAT);			/* paddr */
-		llput(datsize);			/* file size */
-		llput(datsize);			/* memory size */
-		llput(0x10000L);			/* alignment */
+		if(HEADTYPE == 5){
+			lput(1L);			/* text - type = PT_LOAD */
+			lput(0x05L);			/* protections = RX */
+			llput(HEADR);			/* file offset */
+			llput(INITTEXT);	/* vaddr */
+			llput(INITTEXT);			/* paddr */
+			llput(textsize);			/* file size */
+			llput(textsize);			/* memory size */
+			llput(0x10000L);			/* alignment */
+	
+			lput(1L);			/* data - type = PT_LOAD */
+			lput(0x07L);			/* protections = RWX */
+			llput(HEADR+textsize);		/* file offset */
+			llput(INITDAT);		/* vaddr */
+			llput(INITDAT);			/* paddr */
+			llput(datsize);			/* file size */
+			llput(datsize);			/* memory size */
+			llput(0x10000L);			/* alignment */
+		} else {
+			lput(1L);			/* text + data - type = PT_LOAD */
+			lput(0x07L);			/* protections = RWX */
+			llput(HEADR);			/* file offset */
+			/*
+			 * linux kexec shits the bed with high physical segments.
+			 * These are not actually used, so we just grumble and comply.
+			 * /
+			llput(INITTEXT&0xFFFFFFFF);	/* vaddr */
+			llput(INITTEXT&0xFFFFFFFF);	/* paddr */
+			llput(textsize+datsize);	/* file size */
+			llput(textsize+datsize);	/* memory size */
+			llput(0x100000L);		/* alignment */
+		}
 
 		lput(0L);			/* data - type = PT_NULL */
 		lput(0x04L);			/* protections = R */
