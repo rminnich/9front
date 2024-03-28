@@ -285,7 +285,7 @@ amd64trace(uvlong pc, uvlong sp, uvlong link)
 		symoff(buf, sizeof buf, pc, CANY);
 		fmt(buf, pc);
 
-		if(strcmp(s.name, "_intrr") == 0)
+		if(strcmp(s.name, "noteret") == 0)
 			isintrr = 1;
 		else
 			isintrr = 0;
