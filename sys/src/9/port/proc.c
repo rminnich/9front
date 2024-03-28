@@ -1155,50 +1155,43 @@ postnotepg(ulong noteid, char *msg, int flag)
 	freenote(n);
 }
 
-/*
- * weird thing: keep at most NBROKEN around
- */
-#define	NBROKEN 4
-struct
-{
-	QLock;
+/* keep some broken processes around */
+static struct {
+	Lock;
 	int	n;
-	Proc	*p[NBROKEN];
-}broken;
+	Proc	*p[4];
+} broken;
 
 static void
 addbroken(void)
 {
-	qlock(&broken);
-	if(broken.n == NBROKEN) {
+	lock(&broken);
+	if(broken.n == nelem(broken.p)) {
 		ready(broken.p[0]);
-		memmove(&broken.p[0], &broken.p[1], sizeof(Proc*)*(NBROKEN-1));
-		--broken.n;
+		memmove(&broken.p[0], &broken.p[1], sizeof(Proc*)*(--broken.n));
 	}
 	broken.p[broken.n++] = up;
-	qunlock(&broken);
-
-	edfstop(up);
 	up->state = Broken;
 	up->psstate = nil;
+	unlock(&broken);
 	sched();
 }
 
 void
 unbreak(Proc *p)
 {
-	int b;
+	int i;
 
-	qlock(&broken);
-	for(b=0; b < broken.n; b++)
-		if(broken.p[b] == p) {
-			broken.n--;
-			memmove(&broken.p[b], &broken.p[b+1],
-					sizeof(Proc*)*(NBROKEN-(b+1)));
+	lock(&broken);
+	for(i=0; i < broken.n; i++){
+		if(broken.p[i] == p) {
+			memmove(&broken.p[i], &broken.p[i+1], sizeof(Proc*)*(broken.n-(i+1)));
+			broken.p[--broken.n] = nil;
 			ready(p);
 			break;
 		}
-	qunlock(&broken);
+	}
+	unlock(&broken);
 }
 
 int
@@ -1206,14 +1199,15 @@ freebroken(void)
 {
 	int i, n;
 
-	qlock(&broken);
+	lock(&broken);
 	n = broken.n;
-	for(i=0; i<n; i++) {
-		ready(broken.p[i]);
-		broken.p[i] = nil;
-	}
 	broken.n = 0;
-	qunlock(&broken);
+	for(i=0; i<n; i++){
+		Proc *p = broken.p[i];
+		broken.p[i] = nil;
+		ready(p);
+	}
+	unlock(&broken);
 	return n;
 }
 
@@ -1327,8 +1321,10 @@ pexit(char *exitstr, int freemem)
 			free(wq);
 	}
 
-	if(!freemem)
+	if(!freemem){
+		edfstop(up);
 		addbroken();
+	}
 
 	qlock(&up->debug);
 
