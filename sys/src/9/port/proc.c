@@ -458,6 +458,8 @@ ready(Proc *p)
 		splx(s);
 		return;
 	case 0:
+		if(up != p && (p->wired == nil || p->wired == MACHP(m->machno)))
+			m->readied = p;	/* group scheduling */
 		pri = reprioritize(p);
 		break;
 	case 1:
