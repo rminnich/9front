@@ -50,7 +50,7 @@ struct Hiddev
 	 * use odd size as some devices ignore the high byte of
 	 * wLength in control transfer reads.
 	 */
-	uchar	rep[512-1];
+	uchar	rep[1024-1];
 };
 
 typedef struct Hidreport Hidreport;
