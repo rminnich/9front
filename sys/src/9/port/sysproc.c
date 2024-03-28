@@ -607,6 +607,7 @@ sysexec(va_list list)
 	up->lastnote = nil;
 	up->notify = nil;
 	up->notified = 0;
+	up->ureg = nil;
 	up->privatemem = 0;
 	up->noswap = 0;
 	up->pcycles = -up->kentry;

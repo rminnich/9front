@@ -1348,6 +1348,8 @@ pexit(char *exitstr, int freemem)
 	freenote(up->lastnote);
 	up->lastnote = nil;
 	up->notified = 0;
+	up->ureg = nil;
+	up->dbgreg = nil;
 
 	/* release debuggers */
 	if(up->pdbg != nil) {
