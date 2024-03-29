@@ -115,8 +115,10 @@ for(ours in $dirtypaths){
 }
 
 for(d in $deleted){
-	rm -f $d
-	echo R NOQID 0 $d >> .git/INDEX9
+	if(! test -d $d){
+		rm -f $d
+		echo R NOQID 0 $d >> .git/INDEX9
+	}
 }
 
 echo ref: $new > .git/HEAD
