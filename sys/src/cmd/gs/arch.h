@@ -7,7 +7,9 @@
 #elif Tspim
 #include "spim.h"
 #elif Tpower
-#include "mips.h"
+#include "power.h"
+#elif Tpower64
+#include "power64.h"
 #elif Tarm
 #include "arm.h"
 #elif Tarm64

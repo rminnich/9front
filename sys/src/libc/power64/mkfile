@@ -1,0 +1,29 @@
+objtype=power64
+</$objtype/mkfile
+
+LIB=/$objtype/lib/libc.a
+SFILES=\
+	argv0.s\
+	cycles.s\
+	getcallerpc.s\
+	getfcr.s\
+	main9.s\
+	atom.s\
+	main9p.s\
+	setjmp.s\
+	tas.s\
+
+CFILES=\
+	_seek.c\
+	notejmp.c\
+
+HFILES=/sys/include/libc.h
+
+OFILES=${CFILES:%.c=%.$O} ${SFILES:%.s=%.$O}
+
+UPDATE=mkfile\
+	$HFILES\
+	$CFILES\
+	$SFILES\
+
+</sys/src/cmd/mksyslib

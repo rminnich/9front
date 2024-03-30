@@ -2,8 +2,8 @@
 # common mkfile parameters shared by all architectures
 #
 
-OS=05678qvt
-CPUS=spim arm arm64 amd64 386 power mips
+OS=056789qvt
+CPUS=spim arm arm64 amd64 386 power power64 mips
 CFLAGS=-FTVw
 LEX=lex
 YACC=yacc
