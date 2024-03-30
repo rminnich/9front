@@ -1183,7 +1183,7 @@ qdiscard(Queue *q, int len)
 		}
 		q->dlen -= n;
 	}
-	iunlock_reader(q);
+	iunlock_consumer(q);
 
 	freeblist(tofree);
 
@@ -1203,7 +1203,7 @@ qflush(Queue *q)
 	q->bfirst = nil;
 	q->rp = q->wp;
 	q->dlen = 0;
-	iunlock_reader(q);
+	iunlock_consumer(q);
 
 	freeblist(tofree);
 }
