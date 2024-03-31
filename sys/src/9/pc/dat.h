@@ -208,7 +208,7 @@ struct Mach
 	int	lastintr;
 
 	int	loopconst;
-	int	aalcycles;
+	int	delaylcycles;
 	int	cpumhz;
 	uvlong	cpuhz;
 

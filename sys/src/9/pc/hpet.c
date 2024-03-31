@@ -63,7 +63,7 @@ hpetcpufreq(void)
 	for(loops = 1000;;loops += 1000){
 		cycles(&a);
 		x = hpet.mmio[Ctrlo];
-		aamloop(loops);
+		delayloop(loops);
 		cycles(&b);
 		y = hpet.mmio[Ctrlo] - x;
 		if(y >= hpet.freq/HZ || loops >= 1000000)
@@ -74,10 +74,10 @@ hpetcpufreq(void)
 	if(m->havetsc && b > a){
 		b -= a;
 		m->cyclefreq = b * hpet.freq / y;
-		m->aalcycles = (b + loops-1) / loops;
+		m->delaylcycles = (b + loops-1) / loops;
 		return m->cyclefreq;
 	}
-	return (vlong)loops*m->aalcycles * hpet.freq / y;
+	return (vlong)loops*m->delaylcycles * hpet.freq / y;
 }
 
 void
@@ -99,7 +99,7 @@ hpetinit(void)
 	/* measure loopconst for delay() and tsc frequencies */
 	cpufreq = hpetcpufreq();
 
-	m->loopconst = (cpufreq/1000)/m->aalcycles;	/* AAM+LOOP's for 1 ms */
+	m->loopconst = (cpufreq/1000)/m->delaylcycles;	/* delayloop()'s for 1 ms */
 	m->cpuhz = cpufreq;
 
 	/* round to the nearest megahz */

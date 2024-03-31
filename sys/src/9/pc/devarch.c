@@ -546,7 +546,16 @@ cpuidentify(void)
 		|| (t->family == -1))
 			break;
 
-	m->aalcycles = t->aalcycles;
+	/*
+	 * This is only meaningfull for old archs on 386 kernel
+	 * where we use LOOP+AAM instruction in delayloop()
+	 * which has documented cycle times.
+	 *
+	 * On AMD64, we use a chain of IDIVQ instructions but
+	 * hopefully, we have the TSC instruction available
+	 * to actually measure the delay.
+	 */
+	m->delaylcycles = t->aalcycles;
 	m->cpuidtype = t->name;
 
 	/*

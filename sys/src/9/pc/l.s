@@ -566,7 +566,7 @@ _cpuid:
 /*
  * Basic timing loop to determine CPU frequency.
  */
-TEXT aamloop(SB), $0
+TEXT delayloop(SB), $0
 	MOVL	count+0(FP), CX
 _aamloop:
 	AAM

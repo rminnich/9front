@@ -430,12 +430,23 @@ TEXT bios32call(SB), 1, $-4
 	RET
 
 /*
- * Basic timing loop to determine CPU frequency.
+ * Basic timing loop.
  */
-TEXT aamloop(SB), 1, $-4
+TEXT delayloop(SB), 1, $-4
 	MOVL	RARG, CX
-_aamloop:
-	LOOP	_aamloop
+	MOVL	$1, BX
+	MOVL	$0, DX
+	MOVL	$-1, AX
+_delayloop:
+	IDIVQ	BX
+	IDIVQ	BX
+	IDIVQ	BX
+	IDIVQ	BX
+	IDIVQ	BX
+	IDIVQ	BX
+	IDIVQ	BX
+	IDIVQ	BX
+	LOOP	_delayloop
 	RET
 
 TEXT _cycles(SB), 1, $-4			/* time stamp counter */

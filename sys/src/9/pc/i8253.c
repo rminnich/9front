@@ -123,23 +123,12 @@ i8253cpufreq(void)
 
 	ilock(&i8253);
 	for(loops = 1000;;loops += 1000) {
-		/*
-		 *  measure time for the loop
-		 *
-		 *			MOVL	loops,CX
-		 *	aaml1:	 	AAM
-		 *			LOOP	aaml1
-		 *
-		 *  the time for the loop should be independent of external
-		 *  cache and memory system since it fits in the execution
-		 *  prefetch buffer.
-		 *
-		 */
+		/* measure time for the delayloop() */
 		outb(Tmode, Latch2);
 		cycles(&a);
 		x = inb(T2cntr);
 		x |= inb(T2cntr)<<8;
-		aamloop(loops);
+		delayloop(loops);
 		outb(Tmode, Latch2);
 		cycles(&b);
 		y = inb(T2cntr);
@@ -161,12 +150,12 @@ i8253cpufreq(void)
 	if(m->havetsc && b > a){
 		b -= a;
 		m->cyclefreq = b * 2*Freq / x;
-		m->aalcycles = (b + loops-1) / loops;
+		m->delaylcycles = (b + loops-1) / loops;
 
 		return m->cyclefreq;
 	}
 
-	return (vlong)loops*m->aalcycles * 2*Freq / x;
+	return (vlong)loops*m->delaylcycles * 2*Freq / x;
 }
 
 void
@@ -189,7 +178,7 @@ i8253init(void)
 
 	cpufreq = i8253cpufreq();
 
-	m->loopconst = (cpufreq/1000)/m->aalcycles;	/* AAM+LOOP's for 1 ms */
+	m->loopconst = (cpufreq/1000)/m->delaylcycles;	/* delayloop()'s for 1 ms */
 	m->cpuhz = cpufreq;
 
 	/*

@@ -46,7 +46,7 @@ delay(int millisecs)
 	millisecs *= m->loopconst;
 	if(millisecs <= 0)
 		millisecs = 1;
-	aamloop(millisecs);
+	delayloop(millisecs);
 }
 
 void
@@ -56,7 +56,7 @@ microdelay(int microsecs)
 	microsecs /= 1000;
 	if(microsecs <= 0)
 		microsecs = 1;
-	aamloop(microsecs);
+	delayloop(microsecs);
 }
 
 /*  

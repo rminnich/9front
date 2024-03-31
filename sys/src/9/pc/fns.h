@@ -1,6 +1,5 @@
 #include "../port/portfns.h"
 
-void	aamloop(int);
 Dirtab*	addarchfile(char*, int, long(*)(Chan*,void*,long,vlong), long(*)(Chan*,void*,long,vlong));
 void	archinit(void);
 void	archreset(void);
@@ -25,6 +24,7 @@ int	cpuidentify(void);
 void	cpuidprint(void);
 void	(*cycles)(uvlong*);
 void	delay(int);
+void	delayloop(int);
 void*	dmabva(int);
 #define	dmaflush(clean, addr, len)
 int	dmacount(int);
