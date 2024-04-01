@@ -1024,8 +1024,8 @@ cgen(Node *n, Node *nn)
 			diag(n, "DOT and no offset");
 			break;
 		}
-		nod1.xoffset += (long)r->vconst;
-		nod1.type = n->type;
+		nod.xoffset += (long)r->vconst;
+		nod.type = n->type;
 		cgen(&nod, nn);
 		break;
 
