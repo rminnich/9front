@@ -138,6 +138,21 @@ loadu32(int r, vlong d)
 		return LOP_IRR(OP_ORIS, r, REGZERO, v);
 	return AOP_IRR(OP_ADDIS, r, REGZERO, v);
 }
+
+static ulong
+rotateleft32(Prog *p, int as, int from, int to)
+{
+	ulong o;
+	uchar mask[2];
+
+	maskgen64(p, mask, 0xFFFFFFFFULL<<32);
+	if(mask[1] != (63-32))
+		diag("invalid mask for shift: %llux (shift %d)\n%P", 0xFFFFFFFFULL<<32, 32, p);
+	o = AOP_RRR(opirr(as), from, to, (32&0x1F));
+	o |= (mask[0]&31L)<<6 | 1<<1;
+	assert((mask[0] & 0x20) == 0);
+	return o;
+}
 	
 int
 asmout(Prog *p, Optab *o, int aflag)
@@ -949,6 +964,35 @@ asmout(Prog *p, Optab *o, int aflag)
 			reloc(&p->from, p->pc, 1);
 		break;
 
+	/* 64 bit constant operations */
+
+	case 77: /* mov $vucon,r */
+		d = vregoff(&p->from); 
+		o1 = loadu32(p->to.reg, d>>32);
+		o2 = LOP_IRR(OP_ORI, p->to.reg, p->to.reg, d>>32);
+		o3 = rotateleft32(p, ARLDMI, p->to.reg, p->to.reg);
+		break;
+
+	case 78: /* mov $vcon,r */
+		d = vregoff(&p->from); 
+		o1 = loadu32(p->to.reg, d);
+		o2 = loadu32(REGTMP, d>>32);
+		o3 = LOP_IRR(OP_ORI, p->to.reg, p->to.reg, (long)d);
+		o4 = LOP_IRR(OP_ORI, REGTMP, REGTMP, d>>32);
+		o5 = rotateleft32(p, ARLDMI, REGTMP, p->to.reg);
+		break;
+
+	case 79: /* mov $vulcon,r */
+		d = vregoff(&p->from);
+		o1 = LOP_IRR(OP_ORI, p->to.reg, REGZERO, d>>32);
+		o2 = rotateleft32(p, ARLDMI, p->to.reg, p->to.reg);
+		break;
+
+	case 80: /* mov $vuucon,r */
+		d = vregoff(&p->from); 
+		o1 = loadu32(p->to.reg, d>>32);
+		o2 = rotateleft32(p, ARLDMI, p->to.reg, p->to.reg);
+		break;
 	}
 	if(aflag)
 		return o1;

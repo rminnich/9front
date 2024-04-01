@@ -266,13 +266,33 @@ aclass(Adr *a)
 					return C_ANDCON;
 				if((instoffset & 0xffff) == 0 && isuint32(instoffset))	/* && (instoffset & (1<<31)) == 0) */
 					return C_UCON;
-				return C_LCON;
+				if((instoffset & 0xffffffff00000000) == 0) // 32-bit positive 
+					return C_LCON;
+				if((instoffset & 0xffffffff) == 0){
+					if((instoffset & 0xffff000000000000ull) == 0)
+						return C_VULCON;
+					if((instoffset & 0x0000ffff00000000ull) == 0)
+						return C_VUUCON;
+					return C_VUCON;
+				}
+				return C_VCON;
 			}
 			if(instoffset >= -0x8000)
 				return C_ADDCON;
 			if((instoffset & 0xffff) == 0 && isint32(instoffset))
 				return C_UCON;
-			return C_LCON;
+			if((instoffset & 0xffffffff80000000) == 0xffffffff80000000) // 32-bit negative
+				return C_LCON;
+			if((instoffset & 0xffffffff00000000) == 0) // 32-bit positive 
+				return C_LCON;
+			if((instoffset & 0xffffffff) == 0){
+				if((instoffset & 0xffff000000000000ull) == 0)
+					return C_VULCON;
+				if((instoffset & 0x0000ffff00000000ull) == 0)
+					return C_VUUCON;
+				return C_VUCON;
+			}
+			return C_VCON;
 
 		case D_EXTERN:
 		case D_STATIC:
@@ -398,6 +418,10 @@ cmp(int a, int b)
 	if(a == b)
 		return 1;
 	switch(a) {
+	case C_VCON:
+		if(b == C_VUCON || b == C_LCON || b == C_ZCON || b == C_SCON || b == C_UCON || b == C_ADDCON || b == C_ANDCON)
+			return 1;
+		break;
 	case C_LCON:
 		if(b == C_ZCON || b == C_SCON || b == C_UCON || b == C_ADDCON || b == C_ANDCON)
 			return 1;

@@ -140,7 +140,11 @@ enum
 	C_UCON,		/* low 16 bits 0 */
 	C_ADDCON,	/* -0x8000 <= v < 0 */
 	C_ANDCON,	/* 0 < v <= 0xFFFF */
-	C_LCON,		/* other */
+	C_LCON,		/* 32 bit */
+	C_VULCON,	/* 64 bit, low 32 bits 0, top 16 bits zero */
+	C_VUUCON,	/* 64 bit, low 32 bits 0, top 16 bits only */
+	C_VUCON,	/* 64 bit, low 32 bits 0 */
+	C_VCON,		/* 64 bit */
 	C_SACON,
 	C_SECON,
 	C_LACON,

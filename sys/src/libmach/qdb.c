@@ -147,8 +147,7 @@ typedef struct {
 	uchar	imm;		/* bits 16-19 */
 	ushort	xo;		/* bits 21-30, 22-30, 26-30, or 30 (beware) */
 	uvlong	imm64;
-	long w0;
-	long w1;
+	long	w[5];		/* full context of a combined pseudo instruction */
 	uchar	pop;		/* op of second half of prefixed instruction */
 	uvlong	addr;		/* pc of instruction */
 	short	target;
@@ -241,7 +240,7 @@ decode(uvlong pc, Instr *i)
 		i->imm64 <<= 16;
 	else if(i->op == 25 || i->op == 27 || i->op == 29)
 		i->imm64 = (uvlong)(i->uimm<<16);
-	i->w0 = w;
+	i->w[0] = w;
 	i->target = -1;
 	i->addr = pc;
 	i->size = 1;
@@ -252,34 +251,70 @@ static int
 mkinstr(uvlong pc, Instr *i)
 {
 	Instr x;
+	Instr sf[3];
 	ulong w;
+	int j;
 
 	if(decode(pc, i) < 0)
 		return -1;
 	/*
-	 * combine ADDIS/ORI (CAU/ORIL) into MOVW
-	 * also ORIS/ORIL for unsigned in 64-bit mode
+	 * Linker has to break out larger constants into multiple instructions.
+	 * Combine them back together into one MOV.
+	 * 15 is addis, 25 is oris, 24 is ori.
 	 */
-	if((i->op == 15 || i->op == 25) && i->ra==0) {
+	if((i->op == 15 && i->ra == 0) || (i->op == 25 && i->rs == 0) || (i->op == 24 && i->rs == 0)) {
 		if(decode(pc+4, &x) < 0)
-			return -1;
-		if(x.op == 24 && x.rs == x.ra && x.ra == i->rd) {
+			return 1;
+
+		/* very specific worst case 64 bit load */
+		if(x.rd == 31 && (x.op == 15 && x.ra == 0) || (x.op == 25 && x.rs == 0)){
+			for(j = 0; j < nelem(sf); j++)
+				if(decode(pc + 4*(j+2), sf+j) < 0)
+					goto Next;
+			if(sf[0].op == 24 && sf[0].rs == sf[0].ra && sf[0].ra == i->rd)
+			if(sf[1].op == 24 && sf[1].rs == sf[1].ra && sf[1].ra == 31)
+			if(sf[2].ra == (i->rs == 0 ? i->ra : i ->rs))
+			if(sf[2].op == 30 && IBF(sf[2].w[0], 27, 30) == 7)
+			if(sf[2].xsh == 32 && IBF(sf[2].w[0], 21, 26) == 0){
+				i->size = 5;
+				i->imm64 = (i->imm64&0xFFFF0000) | ((sf[0].imm64&0xFFFF));
+				i->imm64 |= ((x.imm64&0xFFFF0000)<<32) | ((sf[1].imm64&0xFFFF)<<32);
+			}
+			return 1;
+		}
+
+Next:
+		if(i->op != 24 && x.op == 24 && x.rs == x.ra && x.ra == i->rd) {
 			i->imm64 |= (x.imm64 & 0xFFFF);
 			if(i->op != 15)
 				i->imm64 &= 0xFFFFFFFFUL;
-			i->w1 = x.w0;
+			i->w[1] = x.w[0];
 			i->target = x.rd;
 			i->size++;
-			return 1;
+			if(decode(pc+8, &x) < 0)
+				return 1;
 		}
+
+		/* 64 bit constant mov with lower 32 zero */
+		if(x.ra == (i->rs == 0 ? i->ra : i ->rs))
+		if(x.op == 30 && IBF(x.w[0], 27, 30) == 7)
+		if(x.xsh == 32 && IBF(x.w[0], 21, 26) == 0){
+			i->imm64 <<= 32;
+			if(i->size == 2)
+				i->w[2] = x.w[0];
+			else
+				i->w[1] = x.w[0];
+			i->size++;
+		}
+		return 1;
 	}
 
 	/* ISA3.1+ prefixed instructions */
 	if(i->op == 1){
 		if(get4(mymap, pc+4, &w) < 0)
 			return -1;
-		i->w1 = w;
-		i->pop = IBF(i->w1, 0, 5);
+		i->w[1] = w;
+		i->pop = IBF(i->w[1], 0, 5);
 		i->size++;
 	}
 	return 1;
@@ -398,9 +433,9 @@ static void
 addi(Opcode *o, Instr *i)
 {
 	if (i->op==14 && i->ra == 0)
-		format("MOVW", i, "%i,R%d");
+		format("MOV%N", i, "%i,R%d");
 	else if (i->ra == REGSB) {
-		bprint(i, "MOVW\t$");
+		format("MOV%N\t$", i, nil);
 		address(i);
 		bprint(i, ",R%d", i->rd);
 	} else if(i->op==14 && i->simm < 0) {
@@ -417,22 +452,23 @@ addi(Opcode *o, Instr *i)
 static void
 addis(Opcode *o, Instr *i)
 {
-	long v;
+	vlong v;
 
 	v = i->imm64;
-	if (i->op==15 && i->ra == 0)
-		bprint(i, "MOVW\t$%lux,R%d", v, i->rd);
-	else if (i->op==15 && i->ra == REGSB) {
-		bprint(i, "MOVW\t$");
+	if (i->op==15 && i->ra == 0){
+		format("MOV%N\t", i, nil);
+		bprint(i, "$%llux,R%d", v, i->rd);
+	} else if (i->op==15 && i->ra == REGSB) {
+		format("MOV%N\t$", i, nil);
 		address(i);
 		bprint(i, ",R%d", i->rd);
 	} else if(i->op==15 && v < 0) {
-		bprint(i, "SUB\t$%ld,R%d", -v, i->ra);
+		bprint(i, "SUB\t$%lld,R%d", -v, i->ra);
 		if(i->rd != i->ra)
 			bprint(i, ",R%d", i->rd);
 	} else {
 		format(o->mnemonic, i, nil);
-		bprint(i, "\t$%ld,R%d", v, i->ra);
+		bprint(i, "\t$%lld,R%d", v, i->ra);
 		if(i->rd != i->ra)
 			bprint(i, ",R%d", i->rd);
 	}
@@ -683,18 +719,25 @@ or(Opcode *o, Instr *i)
 		if (i->rs == 0 && i->ra == 0 && i->rb == 0)
 			format("NOP", i, nil);
 		else if (i->rs == i->rb)
-			format("MOVW", i, "R%b,R%a");
+			format("MOV%N", i, "R%b,R%a");
 		else
 			and(o, i);
-	} else
+	} else if(i->op == 24 && i->rs == 0)
+		format("MOV%N", i, "$%B,R%a");
+	else
 		and(o, i);
 }
 
 static void
 shifted(Opcode *o, Instr *i)
 {
+	if (i->op == 25 && i->rs == 0){
+		format("MOV%N\t", i, nil);
+		bprint(i, "$%llux,R%d", i->imm64, i->ra);
+		return;
+	}
 	format(o->mnemonic, i, nil);
-	bprint(i, "\t$%lux,", (ulong)i->uimm<<16);
+	bprint(i, "\t$%llux,", i->imm64);
 	if (i->rs == i->ra)
 		bprint(i, "R%d", i->ra);
 	else
@@ -851,7 +894,7 @@ addpcis(Opcode *o, Instr *i)
 	long l;
 	char buf[16];
 
-	l = ((IBF(i->w0, 11, 15)<<11) | (IBF(i->w0, 16, 25)<<1) | (i->rc))<<16;
+	l = ((IBF(i->w[0], 11, 15)<<11) | (IBF(i->w[0], 16, 25)<<1) | (i->rc))<<16;
 	snprint(buf, sizeof buf, "$%ld,PC,R%%d", l);
 	format(o->mnemonic, i, buf);
 }
@@ -859,7 +902,7 @@ addpcis(Opcode *o, Instr *i)
 static void
 vsldbi(Opcode *o, Instr *i)
 {
-	switch(IBF(i->w0, 21, 22)){
+	switch(IBF(i->w[0], 21, 22)){
 	case 1:
 		format("vsrdbi", i, o->ken);
 		break;
@@ -1014,16 +1057,16 @@ prefixed(Opcode*, Instr *i)
 	for(p = popcodes; p->mnemonic != nil; p++){
 		if(i->pop != p->op2)
 			continue;
-		if((i->w0 & p->xomask1) != p->xo1)
+		if((i->w[0] & p->xomask1) != p->xo1)
 			continue;
-		if((i->w1 & p->xomask2) != p->xo2)
+		if((i->w[1] & p->xomask2) != p->xo2)
 			continue;
 		format(p->mnemonic, i, nil);
 		return;
 	}
-	if((i->w0 & XXM1) == 3<<24)
+	if((i->w[0] & XXM1) == 3<<24)
 		format("NOP", i, nil);
-	else if((i->w0 & XXM4) == 0){
+	else if((i->w[0] & XXM4) == 0){
 		if((i->pop & ~1) == 25<<1)
 			format("plxv", i, nil);
 		else if((i->pop & ~1) == 27<<1)
@@ -1178,18 +1221,21 @@ static Opcode opcodes[] = {
 
 	{19,	0,	ALL,	"MOVFL",	gen,	"%S,%D"},
 	{63,	64,	ALL,	"MOVCRFS",	gen,	"%S,%D"},
-	{31,	512,	ALL,	"MOVW",		gen,	"XER,%D"},
-	{31,	19,	ALL,	"MOVW",		gen,	"CR,R%d"},
+	{31,	19,	ALL,	"MOV%N",	gen,	"CR,R%d"},
 
-	{63,	583,	ALL,	"MOVW%C",	gen,	"FPSCR, F%d"},	/* mffs */
-	{31,	83,	ALL,	"MOVW",		gen,	"MSR,R%d"},
-	{31,	339,	ALL,	"MOVW",		gen,	"%P,R%d"},
-	{31,	595,	ALL,	"MOVW",		gen,	"SEG(%a),R%d"},
-	{31,	659,	ALL,	"MOVW",		gen,	"SEG(R%b),R%d"},
-	{31,	323,	ALL,	"MOVW",		gen,	"DCR(%Q),R%d"},
-	{31,	451,	ALL,	"MOVW",		gen,	"R%s,DCR(%Q)"},
-	{31,	259,	ALL,	"MOVW",		gen,	"DCR(R%a),R%d"},
-	{31,	387,	ALL,	"MOVW",		gen,	"R%s,DCR(R%a)"},
+	{31,	512,	ALL,	"MOVW",		gen,	"XER,%D"}, 	/* deprecated */
+	{31,	595,	ALL,	"MOVW",		gen,	"SEG(%a),R%d"},	/* deprecated */
+	{31,	659,	ALL,	"MOVW",		gen,	"SEG(R%b),R%d"},/* deprecated */
+	{31,	323,	ALL,	"MOVW",		gen,	"DCR(%Q),R%d"},	/* deprecated */
+	{31,	451,	ALL,	"MOVW",		gen,	"R%s,DCR(%Q)"},	/* deprecated */
+	{31,	259,	ALL,	"MOVW",		gen,	"DCR(R%a),R%d"},/* deprecated */
+	{31,	387,	ALL,	"MOVW",		gen,	"R%s,DCR(R%a)"},/* deprecated */
+	{31,	210,	ALL,	"MOVW",		gen,	"R%s,SEG(%a)"},	/* deprecated */
+	{31,	242,	ALL,	"MOVW",		gen,	"R%s,SEG(R%b)"},/* deprecated */
+
+	{63,	583,	ALL,	"MOV%N%C",	gen,	"FPSCR, F%d"},	/* mffs */
+	{31,	83,	ALL,	"MOV%N",	gen,	"MSR,R%d"},
+	{31,	339,	ALL,	"MOV%N",	gen,	"%P,R%d"},
 	{31,	144,	ALL,	"MOVFL",	gen,	"R%s,%m,CR"},
 	{63,	70,	ALL,	"MTFSB0%C",	gencc,	"%D"},
 	{63,	38,	ALL,	"MTFSB1%C",	gencc,	"%D"},
@@ -1197,9 +1243,7 @@ static Opcode opcodes[] = {
 	{63,	134,	ALL,	"MOVFL%C",	gencc,	"%K,%D"},
 	{31,	146,	ALL,	"MOVW",		gen,	"R%s,MSR"},
 	{31,	178,	ALL,	"MOVD",		gen,	"R%s,MSR"},
-	{31,	467,	ALL,	"MOVW",		gen,	"R%s,%P"},
-	{31,	210,	ALL,	"MOVW",		gen,	"R%s,SEG(%a)"},
-	{31,	242,	ALL,	"MOVW",		gen,	"R%s,SEG(R%b)"},
+	{31,	467,	ALL,	"MOV%N",	gen,	"R%s,%P"},
 
 	{31,	7,	ALL,	"MOVBE",	vldx,	0},
 	{31,	39,	ALL,	"MOVHE",	vldx,	0},
@@ -1263,7 +1307,7 @@ static Opcode opcodes[] = {
 	{31,	124,	ALL,	"NOR%C",	gencc,	il3},
 	{31,	444,	ALL,	"OR%C",		or,	il3},
 	{31,	412,	ALL,	"ORN%C",	or,	il3},
-	{24,	0,	0,	"OR",		and,	"%I,R%d,R%a"},
+	{24,	0,	0,	"OR",		or,	"%I,R%d,R%a"},
 	{25,	0,	0,	"OR",		shifted, 0},
 
 	{19,	50,	ALL,	"RFI",		gen,	0},
@@ -2301,6 +2345,10 @@ format(char *mnemonic, Instr *i, char *f)
 			bprint(i, "%d", i->frc);
 			break;
 
+		case 'B':
+			bprint(i, "%llx", i->imm64);
+			break;
+
 		case 'd':
 		case 's':
 			bprint(i, "%d", i->rd);
@@ -2325,7 +2373,7 @@ format(char *mnemonic, Instr *i, char *f)
 			break;
 
 		case 'E':
-			switch(IBF(i->w0,27,30)){	/* low bit is top bit of shift in rldiX cases */
+			switch(IBF(i->w[0],27,30)){	/* low bit is top bit of shift in rldiX cases */
 			case 8:	i->mb = i->xmbe; i->me = 63; break;	/* rldcl */
 			case 9:	i->mb = 0; i->me = i->xmbe; break;	/* rldcr */
 			case 4: case 5:
@@ -2399,6 +2447,10 @@ format(char *mnemonic, Instr *i, char *f)
 			bprint(i, "%d", i->nb==0? 32: i->nb);	/* eg, pg 10-103 */
 			break;
 
+		case 'N':
+			bprint(i, "%c", asstype==APOWER64 ? 'D' : 'W');
+			break;
+
 		case 'P':
 			n = ((i->spr&0x1f)<<5)|((i->spr>>5)&0x1f);
 			for(s=0; sprname[s].name; s++)
@@ -2438,7 +2490,7 @@ format(char *mnemonic, Instr *i, char *f)
 			break;
 
 		case 'w':
-			bprint(i, "[%lux]", i->w0);
+			bprint(i, "[%lux]", i->w[0]);
 			break;
 
 		case 'W':
@@ -2490,7 +2542,7 @@ printins(Map *map, uvlong pc, char *buf, int n)
 				format(o->mnemonic, &i, o->ken);
 			return i.size*4;
 		}
-	bprint(&i, "unknown %lux", i.w0);
+	bprint(&i, "unknown %lux", i.w[0]);
 	return i.size*4;
 }
 
@@ -2505,6 +2557,7 @@ static int
 powerdas(Map *map, uvlong pc, char *buf, int n)
 {
 	Instr instr;
+	int i;
 
 	mymap = map;
 	memset(&instr, 0, sizeof(instr));
@@ -2512,11 +2565,10 @@ powerdas(Map *map, uvlong pc, char *buf, int n)
 	instr.end = buf+n-1;
 	if (mkinstr(pc, &instr) < 0)
 		return -1;
-	if (instr.end-instr.curr > 8)
-		instr.curr = _hexify(instr.curr, instr.w0, 7);
-	if (instr.end-instr.curr > 9 && instr.size == 2) {
-		*instr.curr++ = ' ';
-		instr.curr = _hexify(instr.curr, instr.w1, 7);
+	for(i = 0; instr.end-instr.curr > 8+1 && i < instr.size; i++){
+		if(i != 0)
+			*instr.curr++ = ' ';
+		instr.curr = _hexify(instr.curr, instr.w[i], 7);
 	}
 	*instr.curr = 0;
 	return instr.size*4;

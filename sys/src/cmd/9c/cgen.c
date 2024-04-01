@@ -1,5 +1,15 @@
 #include "gc.h"
 
+static int
+isim32(vlong v)
+{
+	if((v & 0xffffffff80000000) == 0xffffffff80000000) // 32-bit negative
+		return 1;
+	if((v & 0xffffffff00000000) == 0) // 32-bit positive
+		return 1;
+	return 0;	
+}
+
 void
 cgen(Node *n, Node *nn)
 {
@@ -148,7 +158,7 @@ cgen(Node *n, Node *nn)
 		 * immediate operands
 		 */
 		if(nn != Z)
-		if(r->op == OCONST)
+		if(r->op == OCONST && isim32(r->vconst))
 		if(!typefd[n->type->etype]) {
 			cgen(l, nn);
 			if(r->vconst == 0)
@@ -203,7 +213,7 @@ cgen(Node *n, Node *nn)
 	case OASOR:
 		if(l->op == OBIT)
 			goto asbitop;
-		if(r->op == OCONST)
+		if(r->op == OCONST && isim32(r->vconst))
 		if(!typefd[r->type->etype])
 		if(!typefd[n->type->etype]) {
 			if(l->addable < INDEXED)

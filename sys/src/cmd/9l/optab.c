@@ -92,9 +92,9 @@ Optab	optab[] =
 	{ ASRAD,	C_SCON,	C_REG, C_NONE, 	C_REG,		56, 4, 0 },
 	{ ASRAD,	C_SCON,	C_NONE, C_NONE, 	C_REG,		56, 4, 0 },
 
-	{ ARLWMI,	C_SCON, C_REG, C_LCON, 	C_REG,		62, 4, 0 },
-	{ ARLWMI,	C_REG,	C_REG, C_LCON, 	C_REG,		63, 4, 0 },
-	{ ARLDMI,	C_SCON,	C_REG, C_LCON,	C_REG,		30, 4, 0 },
+	{ ARLWMI,	C_SCON, C_REG, C_VCON, 	C_REG,		62, 4, 0 },
+	{ ARLWMI,	C_REG,	C_REG, C_VCON, 	C_REG,		63, 4, 0 },
+	{ ARLDMI,	C_SCON,	C_REG, C_VCON,	C_REG,		30, 4, 0 },
 
 	{ ARLDC,	C_SCON,	C_REG, C_LCON,	C_REG,		29, 4, 0 },
 	{ ARLDCL,	C_SCON,	C_REG, C_LCON,	C_REG,		29, 4, 0 },
@@ -223,9 +223,13 @@ Optab	optab[] =
 	{ AMOVWZ,	C_LACON,C_NONE, C_NONE, 	C_REG,		26, 8, REGSP },
 	{ AMOVWZ,	C_ADDCON,C_NONE, C_NONE, C_REG,		 3, 4, REGZERO },
 
-	/* load unsigned/long constants (TO DO: check) */
+	/* load unsigned/long/vlong constants */
 	{ AMOVD,	C_UCON, C_NONE, C_NONE,  C_REG,		3, 4, REGZERO },
 	{ AMOVD,	C_LCON,	C_NONE, C_NONE, 	C_REG,		19, 8, 0 },
+	{ AMOVD,	C_VUCON, C_NONE, C_NONE, C_REG, 77, 12, 0 },
+	{ AMOVD,	C_VULCON, C_NONE, C_NONE, C_REG, 79, 8, 0 },
+	{ AMOVD,	C_VUUCON, C_NONE, C_NONE, C_REG, 80, 8, 0 },
+	{ AMOVD,	C_VCON, C_NONE, C_NONE,  C_REG, 78, 20, 0 },
 	{ AMOVW,	C_UCON, C_NONE, C_NONE,  C_REG,		3, 4, REGZERO },
 	{ AMOVW,	C_LCON,	C_NONE, C_NONE, 	C_REG,		19, 8, 0 },
 	{ AMOVWZ,	C_UCON, C_NONE, C_NONE,  C_REG,		3, 4, REGZERO },
