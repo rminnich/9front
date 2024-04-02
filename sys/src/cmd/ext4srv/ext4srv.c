@@ -679,7 +679,7 @@ rwalk1(Fid *fid, char *name, Qid *qid)
 	struct ext4_mountpoint *mp;
 	static char errbuf[ERRMAX];
 	struct ext4_inode inode;
-	u32int ino, t;
+	u32int ino, t, iflags;
 	Aux *a, dir;
 	int isroot;
 	char *s;
@@ -730,8 +730,11 @@ err:
 		a->type = Adir;
 	}else
 		a->type = Afile;
-	if(ext4_inode_get_flags(&inode) & EXT4_INODE_FLAG_APPEND)
+	iflags = ext4_inode_get_flags(&inode);
+	if(iflags & EXT4_INODE_FLAG_APPEND)
 		qid->type |= QTAPPEND;
+	if(iflags & EXT4_INODE_FLAG_NODUMP)
+		qid->type |= QTTMP;
 	free(a->path);
 	a->path = s;
 	fid->qid = *qid;
