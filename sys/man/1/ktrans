@@ -24,29 +24,47 @@ If a
 .I kbdtap
 file is given, it is used for both
 input and output instead.
-.I Ktrans
-starts in a passthrough mode, echoing out
-the input with no conversions. Control characters
-are used to give instructions, the following
-control sequences are used to switch between languages:
+By default
+.I ktrans
+starts in passthrough mode, echoing out
+the input with no conversions. The initial
+language is set with the
+.B -l
+flag. After operation has begun, the language
+may be changed by either typing a control sequence
+and/or through the plumber.
+The following table provides the control
+sequence and
+.I lang
+strings accepted for each supported language respectfully.
 .TP
-.B ctl-t
 English (Passthrough).
+ctl-t and en
 .TP
-.B ctl-n
 Japanese Hiragana.
+ctl-n and jp
 .TP
-.B ctl-k
 Japanese Katakana.
+ctl-k and jpk
 .TP
-.B ctl-c
 Chinese.
+ctl-c and zh
 .TP
-.B ctl-s
 Korean.
+ctl-k and ko
 .TP
-.B ctl-v
 Vietnamese.
+ctl-v and vn
+.PP
+.I Ktrans
+listens on the
+.I lang
+plumber port for switching languages. The data accepted
+on this port is the same as the
+.B -l
+flag's
+.I lang
+argument.
 .SH CONVERSION
 Conversion is done in two layers, an implicit
 layer for unambiguous mappings, and an explicit
@@ -74,16 +92,27 @@ However in some cases the automatic hinting will be insufficient.
 Input is always passed along, when a match is found
 .I Ktrans
 will emit backspaces to clear the input sequence and replace
-it with the matched sequence.
+it with the matched sequence. Once
+.B ctl-\e
+has been used to start the selection of an explicit match, the
+up and down arrow keys may be used to thumb around the options.
 .SH DISPLAY
 .I Ktrans
 will provide a graphical display of current explicit conversion
 candidates as implicit conversion is done. Candidates are highlighted
 as a user cycles through them. At the bottom of the list is an exit
 button for quitting the program. Keyboard input typed in to the window is
-transliterated but discarded, providing a scratch input space. The 
+transliterated but discarded, providing a scratch input space. The mouse
+may be used to scroll through and select candidates, but it requires that
+.I ktrans
+is started using
+.IR rio (1)'s
+.B -k
+flag.
+.PP
+The
 .B -G
-option disables this display.
+flag disables the graphical display entirely.
 .SH "KEY MAPPING"
 For convenience, the control characters used by
 .I ktrans
@@ -123,14 +152,17 @@ text files within
 .BR /lib/ktrans .
 The formats of which are specified within
 .IR ktrans (6).
-Users may create and or modify existing dictionaries by binding over
-the system defaults.
+Additionally, dictionaries located in
+.B $home/lib/ktrans/
+will be merged on top of the system dictionaries.
+Merging is done at a list level only; Keys that appear
+replace all values of the previous definition.
 .PP
 For backwards compatibility the
 .B jisho
 and
 .B zidian
-environment variables may also be set to pick explicit lookup dictionaries
+environment variables may also be set to pick alternate system dictionaries
 for Japanese and Chinese respectfully.
 .SH LANGUAGES
 .SS JAPANESE

@@ -9,7 +9,7 @@ struct {
 	"no", L"の",
 	"nno", L"んの",
 	"neko", L"猫",
-	"neko", L"ねこ",
+	"neko", L"猫",
 	"watashi", L"私",
 	"tanoShi", L"楽し",
 	"oreNO", L"俺の",
@@ -116,7 +116,7 @@ main(int argc, char **argv)
 					goto Verify;
 				case 8:
 					if(nstack == 0)
-						sysfatal("buffer underrun");
+						sysfatal("buffer underrun on: %s", set[i].input);
 					nstack--;
 					stack[nstack] = 0;
 					break;

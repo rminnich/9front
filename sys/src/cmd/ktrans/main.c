@@ -160,8 +160,6 @@ opendict(Hmap *h, char *name)
 
 	if(h == nil)
 		h = hmapalloc(8192, sizeof(kouho));
-	else
-		hmapreset(h, 1);
 	while(p = Brdstr(b, '\n', 1)){
 		if(p[0] == '\0' || p[0] == ';'){
 		Err:
@@ -275,7 +273,7 @@ maplkup(int lang, char *s, Map *m)
 	return hmapget(*h, s, m);
 }
 
-enum   { Msgsize = 64 };
+enum   { Msgsize = 256 };
 static Channel	*dictch;
 static Channel	*output;
 static Channel	*input;
@@ -291,19 +289,22 @@ displaythread(void*)
 	Mouse m;
 	Keyboardctl *kctl;
 	Rune key;
-	char *kouho[Maxkouho+1], **s;
-	Image *back, *text, *board, *high;
+	char *kouho[Maxkouho], **s, **e;
+	int i, page, total, height, round;
+	Image *back, *text, *board, *high, *scroll;
 	Font *f;
 	Point p;
-	Rectangle r, exitr, selr;
+	Rectangle r, exitr, selr, scrlr;
 	int selected;
-	enum { Adisp, Aresize, Amouse, Asel, Akbd, Aend };
+	char *mp, move[Msgsize];
+	enum { Adisp, Aresize, Amouse, Asel, Akbd, Amove, Aend };
 	Alt a[] = {
-		[Adisp] { nil, kouho+1, CHANRCV },
+		[Adisp] { nil, kouho, CHANRCV },
 		[Aresize] { nil, nil, CHANRCV },
 		[Amouse] { nil, &m, CHANRCV },
 		[Asel] { nil, &selected, CHANRCV },
 		[Akbd] { nil, &key, CHANRCV },
+		[Amove] { nil, move, CHANNOP },
 		[Aend] { nil, nil, CHANEND },
 	};
 
@@ -324,24 +325,28 @@ displaythread(void*)
 		sysfatal("failed to get keyboard: %r");
 
 	memset(kouho, 0, sizeof kouho);
-	kouho[0] = "候補";
 	selected = -1;
 	f = display->defaultfont;
 	high = allocimagemix(display, DYellowgreen, DWhite);
 	text = display->black;
 	back = allocimagemix(display, DPaleyellow, DWhite);
 	board = allocimagemix(display, DBlack, DWhite);
+	scroll = allocimage(display, Rect(0,0,1,1), screen->chan, 1, DYellowgreen);
 
 	a[Adisp].c = displaych;
 	a[Aresize].c = mctl->resizec;
 	a[Amouse].c = mctl->c;
 	a[Asel].c = selectch;
 	a[Akbd].c = kctl->c;
+	a[Amove].c = input;
 
 	threadsetname("display");
 	goto Redraw;
 	for(;;)
 		switch(alt(a)){
+		case Amove:
+			a[Amove].op = CHANNOP;
+			break;
 		case Akbd:
 			if(key != Kdel)
 				break;
@@ -350,29 +355,98 @@ displaythread(void*)
 		case Amouse:
 			if(!m.buttons)
 				break;
-			if(!ptinrect(m.xy, exitr))
+			if(ptinrect(m.xy, exitr)){
+				closedisplay(display);
+				threadexitsall(nil);
+			}
+			if(kouho[0] == nil)
 				break;
-			closedisplay(display);
-			threadexitsall(nil);
+			if(m.xy.x > scrlr.min.x && m.xy.x < scrlr.max.x){
+				if(m.xy.y > scrlr.min.y && m.xy.y < scrlr.max.y)
+					break;
+				if(m.xy.y < scrlr.min.y)
+					goto Up;
+				else
+					goto Down;
+			}
+
+			if(m.buttons & 7){
+				m.xy.y -= screen->r.min.y;
+				m.xy.y -= f->height;
+				if(m.xy.y < 0)
+					break;
+				i = round + m.xy.y/f->height + 1;
+				if(selected != -1)
+					i = i - selected - 1;
+			} else if(m.buttons == 8){
+			Up:
+				i = -1 * (selected % height + height);
+				if(selected + i < 0)
+					i = -(selected + (total % height));
+			} else if(m.buttons == 16){
+			Down:
+				i = height - (selected % height);
+				if(selected + i > total)
+					i = total - selected;
+			} else
+				break;
+
+			memset(move, 0, sizeof move);
+			move[0] = 'c';
+			if(i == 0)
+				break;
+			else if(i > 0)
+				memset(move+1, '', i);
+			else for(mp = move+1; i < 0; i++)
+				mp = seprint(mp, move + sizeof move, "%C", Kup);
+			a[Amove].op = CHANSND;
+			break;
 		case Aresize:
 			getwindow(display, Refnone);
 		case Adisp:
 		Redraw:
+			for(s = kouho, total = 0; *s != nil; s++, total++)
+				;
+
 			r = screen->r;
+			height = Dy(r)/f->height - 2;
 			draw(screen, r, back, nil, ZP);
 			r.max.y = r.min.y + f->height;
 			draw(screen, r, board, nil, ZP);
+			round = selected - (selected % height);
 
-			if(selected+1 > 0 && kouho[selected+1] != nil){
+			if(selected >= 0 && kouho[selected] != nil){
 				selr = screen->r;
-				selr.min.y += f->height*(selected+1);
+				selr.min.y += f->height*(selected-round+1);
 				selr.max.y = selr.min.y + f->height;
 				draw(screen, selr, high, nil, ZP);
 			}
 
+			scrlr = screen->r;
+			scrlr.min.y += f->height;
+			scrlr.max.y -= f->height;
+			scrlr.max.x = scrlr.min.x + 10;
+			draw(screen, scrlr, scroll, nil, ZP);
+
+			if(kouho[0] != nil){
+				scrlr.max.x--;
+				page = Dy(scrlr) / (total / height + 1);
+				scrlr.min.y = scrlr.min.y + page*(round / height);
+				scrlr.max.y = scrlr.min.y + page;
+				/* fill to the bottom on last page */
+				if((screen->r.max.y - f->height) - scrlr.max.y < page)
+					scrlr.max.y = screen->r.max.y - f->height;
+				draw(screen, scrlr, back, nil, ZP);
+			}
+
 			r.min.x += Dx(r)/2;
 			p.y = r.min.y;
-			for(s = kouho; *s != nil; s++){
+
+			p.x = r.min.x - stringwidth(f, "候補")/2;
+			string(screen, p, text, ZP, f, "候補");
+			p.y += f->height;
+
+			for(s = kouho+round, e = kouho+round+height; *s != nil && s < e; s++){
 				p.x = r.min.x - stringwidth(f, *s)/2;
 				string(screen, p, text, ZP, f, *s);
 				p.y += f->height;
@@ -414,7 +488,7 @@ dictthread(void*)
 	Str line;
 	Str last;
 	Str okuri;
-	int selected;
+	int selected, loop;
 
 	enum{
 		Kanji,
@@ -425,6 +499,7 @@ dictthread(void*)
 
 	dict = jisho;
 	selected = -1;
+	loop = 0;
 	mode = Kanji;
 	memset(kouho, 0, sizeof kouho);
 	resetstr(&last, &line, &okuri, nil);
@@ -463,6 +538,24 @@ dictthread(void*)
 				}
 				popstr(&line);
 				break;
+			case Kup:
+				if(selected == -1){
+					emitutf(output, p, 1);
+					break;
+				}
+				if(--selected < 0){
+					//wrap
+					while(kouho[++selected] != nil)
+						;
+					selected--;
+				}
+				loop = 1;
+				goto Select;
+			case Kdown:
+				if(selected == -1){
+					emitutf(output, p, 1);
+					break;
+				}
 			case '':
 				selected++;
 				if(selected == 0){
@@ -472,20 +565,16 @@ dictthread(void*)
 						line.p[-1] = '\0';
 				}
 				if(kouho[selected] == nil){
-					/* cycled through all matches; bail */
-					if(utflen(okuri.b) != 0)
-						emitutf(output, backspace, utflen(okuri.b));
-					emitutf(output, backspace, utflen(last.b));
-					emitutf(output, line.b, 0);
-					emitutf(output, okuri.b, 0);
-					break;
+					selected = 0;
+					loop = 1;
 				}
+			Select:
 				send(selectch, &selected);
 				send(displaych, kouho);
 
 				if(okuri.p != okuri.b)
 					emitutf(output, backspace, utflen(okuri.b));
-				if(selected == 0)
+				if(selected == 0 && !loop)
 					emitutf(output, backspace, utflen(line.b));
 				else
 					emitutf(output, backspace, utflen(last.b));
@@ -494,6 +583,7 @@ dictthread(void*)
 				last.p = pushutf(last.b, strend(&last), kouho[selected], 0);
 				emitutf(output, okuri.b, 0);
 				mode = Kanji;
+				loop = 0;
 				continue;
 			case ',': case '.':
 			case L'。': case L'、':
@@ -585,6 +675,7 @@ keythread(void*)
 {
 	int lang;
 	char m[Msgsize];
+	char *todict;
 	Map lkup;
 	char *p;
 	int n;
@@ -596,6 +687,7 @@ keythread(void*)
 	resetstr(&line, nil);
 	if(lang == LangJP || lang == LangZH)
 		emitutf(dictch, peek, 1);
+	todict = smprint("%C%C", Kup, Kdown);
 
 	threadsetname("keytrans");
 	while(recv(input, m) != -1){
@@ -624,7 +716,7 @@ keythread(void*)
 				emitutf(output, p, 1);
 				continue;
 			}
-			if(utfrune("", r) != nil){
+			if(utfrune(todict, r) != nil){
 				resetstr(&line, nil);
 				emitutf(dictch, p, 1);
 				continue;
@@ -684,7 +776,7 @@ static void
 kbdtap(void*)
 {
 	char m[Msgsize];
-	char buf[128];
+	char buf[Msgsize];
 	char *p;
 	int n;
 
@@ -774,15 +866,26 @@ usage(void)
 	threadexits("usage");
 }
 
+
+static char *kdir = "/lib/ktrans";
+
 struct {
 	char *s;
 	Hmap **m;
-} inittab[] = {
+} initmaptab[] = {
 	"judou", &judou,
 	"hira", &hira,
 	"kata", &kata,
 	"hangul", &hangul,
 	"telex", &telex,
+};
+struct {
+	char *env;
+	char *def;
+	Hmap **m;
+} initdicttab[] = {
+	"jisho", "kanji.dict", &jisho,
+	"zidian", "wubi.dict", &zidian,
 };
 
 mainstacksize = 8192*2;
@@ -792,7 +895,8 @@ threadmain(int argc, char *argv[])
 {
 	int nogui, i;
 	char buf[128];
-	char *jishoname, *zidianname;
+	char *e, *home;
+	Hmap *m;
 
 	deflang = LangEN;
 	nogui = 0;
@@ -822,39 +926,47 @@ threadmain(int argc, char *argv[])
 		usage();
 	}
 
+	dictch 	= chancreate(Msgsize, 0);
+	input 	= chancreate(Msgsize, 0);
+	output 	= chancreate(Msgsize, 0);
+
 	/* allow gui to warm up while we're busy reading maps */
 	if(nogui || access("/dev/winid", AEXIST) < 0){
 		displaych = nil;
 		selectch = nil;
 	} else {
-		selectch = chancreate(sizeof(int), 1);
-		displaych = chancreate(sizeof(char*)*Maxkouho, 1);
+		selectch = chancreate(sizeof(int), 0);
+		displaych = chancreate(sizeof(char*)*Maxkouho, 0);
 		proccreate(displaythread, nil, mainstacksize);
 	}
 
 	memset(backspace, '\b', sizeof backspace-1);
 	backspace[sizeof backspace-1] = '\0';
 
-	if((jishoname = getenv("jisho")) == nil)
-		jishoname = "/lib/ktrans/kanji.dict";
-	if((jisho = opendict(nil, jishoname)) == nil)
-		sysfatal("failed to open jisho: %r");
-
-	if((zidianname = getenv("zidian")) == nil)
-		zidianname = "/lib/ktrans/wubi.dict";
-	if((zidian = opendict(nil, zidianname)) == nil)
-		sysfatal("failed to open zidian: %r");
+	if((home = getenv("home")) == nil)
+		sysfatal("$home undefined");
+	for(i = 0; i < nelem(initdicttab); i++){
+		e = getenv(initdicttab[i].env);
+		if(e != nil){
+			snprint(buf, sizeof buf, "%s", e);
+			free(e);
+		} else
+			snprint(buf, sizeof buf, "%s/%s", kdir, initdicttab[i].def);
+		if((*initdicttab[i].m = opendict(*initdicttab[i].m, buf)) == nil)
+			sysfatal("failed to open dict: %r");
+		snprint(buf, sizeof buf, "%s/%s/%s", home, kdir, initdicttab[i].def);
+		m = opendict(*initdicttab[i].m, buf);
+		if(m != nil)
+			*initdicttab[i].m = m;
+	}
+	free(home);
 
 	natural = nil;
-	for(i = 0; i < nelem(inittab); i++){
-		snprint(buf, sizeof buf, "/lib/ktrans/%s.map", inittab[i].s);
-		if((*inittab[i].m = openmap(buf)) == nil)
+	for(i = 0; i < nelem(initmaptab); i++){
+		snprint(buf, sizeof buf, "%s/%s.map", kdir, initmaptab[i].s);
+		if((*initmaptab[i].m = openmap(buf)) == nil)
 			sysfatal("failed to open map: %r");
 	}
-
-	dictch 	= chancreate(Msgsize, 0);
-	input 	= chancreate(Msgsize, 0);
-	output 	= chancreate(Msgsize, 0);
 
 	plumbfd = plumbopen("lang", OREAD);
 	if(plumbfd >= 0)
