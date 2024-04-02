@@ -671,6 +671,59 @@ telexlkup(Str *line)
 }
 
 static void
+dubeolbksp(Str *line)
+{
+	Map lkup;
+
+	popstr(line);
+	/* lookup and emit remaining Jamo to output */
+	if(hmapget(hangul, line->b, &lkup) < 0)
+		return;
+	emitutf(output, lkup.kana, 0);
+}
+
+static void
+dubeollkup(Str *line)
+{
+	Map lkup;
+	char buf[UTFmax*2];
+	char *e2, *e1;
+
+	e1 = peekstr(line->p, line->b);
+	if(e1 != line->b){
+		e2 = peekstr(e1, line->b);
+		pushutf(buf, buf+sizeof buf, e2, utflen(e2));
+	}else
+		pushutf(buf, buf+sizeof buf, e1, utflen(e1));
+
+	if(hmapget(hangul, line->b, &lkup) < 0){
+		if(hmapget(hangul, buf, &lkup) < 0){
+			resetstr(line, nil);
+			line->p = pushutf(line->p, strend(line), e1, utflen(e1));
+			if(hmapget(hangul, line->b, &lkup) < 0)
+				return;
+		}else{
+			/* treat Jongseong as Choseong when it matches with new Jamo */
+			popstr(line);
+			popstr(line);
+			hmapget(hangul, line->b, &lkup);
+			emitutf(output, backspace, 2);
+			emitutf(output, lkup.kana, 0);
+
+			hmapget(hangul, buf, &lkup);
+			emitutf(output, lkup.kana, 0);
+			line->p = pushutf(line->b, strend(line), buf, utflen(buf));
+			return;
+		}
+	}
+	if(utflen(line->b) == 1)
+		emitutf(output, backspace, 1);
+	else
+		emitutf(output, backspace, 2);
+	emitutf(output, lkup.kana, 0);
+}
+
+static void
 keythread(void*)
 {
 	int lang;
@@ -737,6 +790,10 @@ keythread(void*)
 				resetstr(&line, nil);
 				continue;
 			} else if(r == '\b'){
+				if(lang == LangKO){
+					dubeolbksp(&line);
+					continue;
+				}
 				popstr(&line);
 				continue;
 			}
@@ -744,6 +801,9 @@ keythread(void*)
 			line.p = pushutf(line.p, strend(&line), p, 1);
 			if(lang == LangVN){
 				telexlkup(&line);
+				continue;
+			}else if(lang == LangKO){
+				dubeollkup(&line);
 				continue;
 			}
 			if(maplkup(lang, line.b, &lkup) < 0){

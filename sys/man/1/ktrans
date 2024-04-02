@@ -51,7 +51,7 @@ Chinese.
 ctl-c and zh
 .TP
 Korean.
-ctl-k and ko
+ctl-s and ko
 .TP
 Vietnamese.
 ctl-v and vn
@@ -199,8 +199,8 @@ Implicit conversion is modeled after Telex, supporting
 standard diacritic suffixes.
 .SS KOREAN
 Mapping is done by emulating a Dubeolsik layout, with each Latin
-character mapping to a single Jamo. Sequences of up to three Jamo
-are automatically converted to Hangul syllables.
+character mapping to a single Jamo. Sequences of Jamo are automatically
+converted to Hangul syllables.
 .SH EXAMPLES
 To type the following Japanese text:
 

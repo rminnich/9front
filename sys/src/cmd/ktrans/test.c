@@ -43,6 +43,10 @@ struct {
 	"ddaua", L"đâu",
 	"hoir", L"hỏi",
 	"giof", L"giò",
+
+	"gpffhdnjfemsms wlruqwksw\bgdk, wha tlstjsgks rj djqtdj?",
+	L"헬로월드는 지겹잖아, 좀 신선한 거 없어?",
+
 };
 
 char*
