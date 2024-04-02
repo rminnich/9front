@@ -387,7 +387,8 @@ Both
 and
 .CW /srv/clone
 are merged into 9front and their implementations are freely available as part of the base system.
-.SH REFERENCES
+.SH
+References
 .LP
 [Beck18]
 Bob Beck,
