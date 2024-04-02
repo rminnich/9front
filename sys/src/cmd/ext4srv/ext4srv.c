@@ -719,7 +719,7 @@ err:
 	t = ext4_inode_type(a->p->sb, &inode);
 	if(t != EXT4_INODE_MODE_FILE && t != EXT4_INODE_MODE_DIRECTORY){
 		free(s);
-		return "not found";
+		return "directory entry not found";
 	}
 
 	qid->type = 0;
