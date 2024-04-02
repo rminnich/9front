@@ -712,6 +712,8 @@ err:
 
 	s = isroot ? estrdup9p(name) : smprint("%s/%s", a->path, name);
 	cleanname(s);
+	if(s[0] == '.' && s[1] == 0) /* special case - root */
+		*s = 0;
 	if(ext4_raw_inode_fill(mp, s, &ino, &inode) < 0)
 		goto err;
 	t = ext4_inode_type(a->p->sb, &inode);
