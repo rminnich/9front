@@ -263,7 +263,7 @@ int ext4_inode_exist(struct ext4_mountpoint *mp, const char *path, int type);
  * @param mode New mode bits (for example 0777).
  *
  * @return  Standard error code.*/
-int ext4_mode_set(struct ext4_mountpoint *mp, const char *path, u32int mode);
+int ext4_mode_set(struct ext4_mountpoint *mp, const char *path, u32int mode, u32int iflags);
 
 
 /**@brief Get file/directory/link mode bits.

@@ -792,7 +792,9 @@ Notfound:
 	}
 
 	if (is_goal) {
-		if ((f->flags & O_TRUNC) && (imode == EXT4_INODE_MODE_FILE)) {
+		if (f->flags != O_RDONLY && !ext4_inode_can_truncate(sb, ref.inode))
+			f->flags |= O_APPEND;
+		if ((f->flags & (O_TRUNC|O_APPEND)) == O_TRUNC && imode == EXT4_INODE_MODE_FILE) {
 			r = ext4_trunc_inode(mp, ref.index, 0);
 			if (r != 0) {
 				ext4_fs_put_inode_ref(&ref);
@@ -803,10 +805,7 @@ Notfound:
 		f->mp = mp;
 		f->fsize = ext4_inode_get_size(sb, ref.inode);
 		f->inode = ref.index;
-		f->fpos = 0;
-
-		if (f->flags & O_APPEND)
-			f->fpos = f->fsize;
+		f->fpos = (f->flags & O_APPEND) ? f->fsize : 0;
 	}
 
 	return ext4_fs_put_inode_ref(&ref);
@@ -1164,6 +1163,7 @@ int ext4_fremove(struct ext4_mountpoint *mp, const char *path)
 	/*Link count will be zero, the inode should be freed. */
 	if (ext4_inode_get_links_cnt(child.inode) == 1) {
 		ext4_block_cache_write_back(mp->fs.bdev, 1);
+		ext4_inode_clear_flag(child.inode, EXT4_INODE_FLAG_APPEND);
 		r = ext4_trunc_inode(mp, child.index, 0);
 		if (r != 0) {
 			ext4_fs_put_inode_ref(&parent);
@@ -1806,7 +1806,7 @@ int ext4_inode_exist(struct ext4_mountpoint *mp, const char *path, int type)
 	return r;
 }
 
-int ext4_mode_set(struct ext4_mountpoint *mp, const char *path, u32int mode)
+int ext4_mode_set(struct ext4_mountpoint *mp, const char *path, u32int mode, u32int iflags)
 {
 	int r;
 	u32int orig_mode;
@@ -1827,6 +1827,10 @@ int ext4_mode_set(struct ext4_mountpoint *mp, const char *path, u32int mode)
 	orig_mode &= ~0xFFF;
 	orig_mode |= mode & 0xFFF;
 	ext4_inode_set_mode(&mp->fs.sb, inode_ref.inode, orig_mode);
+	iflags &= EXT4_INODE_FLAG_APPEND | EXT4_INODE_FLAG_NODUMP;
+	ext4_inode_set_flag(inode_ref.inode, iflags);
+	iflags ^= EXT4_INODE_FLAG_APPEND | EXT4_INODE_FLAG_NODUMP;
+	ext4_inode_clear_flag(inode_ref.inode, iflags);
 
 	inode_ref.dirty = true;
 	r = ext4_trans_put_inode_ref(mp, &inode_ref);

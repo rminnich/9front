@@ -243,8 +243,8 @@ Nomem:
 static void
 rcreate(Req *r)
 {
+	u32int perm, dirperm, t, iflags;
 	struct ext4_mountpoint *mp;
-	u32int perm, dirperm, t;
 	struct ext4_inode inode;
 	int mkdir, isroot;
 	long tm;
@@ -306,7 +306,12 @@ rcreate(Req *r)
 		}
 	}
 
-	if(ext4_mode_set(mp, s, perm) < 0)
+	iflags = 0;
+	if(r->ifcall.perm & DMAPPEND)
+		iflags |= EXT4_INODE_FLAG_APPEND;
+	if(r->ifcall.perm & DMTMP)
+		iflags |= EXT4_INODE_FLAG_NODUMP;
+	if(ext4_mode_set(mp, s, perm, iflags) < 0)
 		goto ext4errorrm;
 	ext4_owner_set(mp, s, a->uid, a->uid);
 	tm = time(nil);
@@ -338,8 +343,8 @@ static int
 dirfill(Dir *dir, Aux *a, char *path)
 {
 	struct ext4_mountpoint *mp;
+	u32int t, ino, id, iflags;
 	struct ext4_inode inode;
-	u32int t, ino, id;
 	char tmp[16];
 	Group *g;
 	char *s;
@@ -360,7 +365,7 @@ dirfill(Dir *dir, Aux *a, char *path)
 		return -1;
 	}
 
-	dir->mode = ext4_inode_get_mode(a->p->sb, &inode) & 0x1ff;
+	dir->mode = ext4_inode_get_mode(a->p->sb, &inode) & 0777;
 	dir->qid.path = a->p->qidmask.path | ino;
 	dir->qid.vers = ext4_inode_get_generation(&inode);
 	dir->qid.type = 0;
@@ -370,9 +375,15 @@ dirfill(Dir *dir, Aux *a, char *path)
 		dir->mode |= DMDIR;
 	}else
 		dir->length = ext4_inode_get_size(a->p->sb, &inode);
-	if(ext4_inode_get_flags(&inode) & EXT4_INODE_FLAG_APPEND){
+
+	iflags = ext4_inode_get_flags(&inode);
+	if(iflags & EXT4_INODE_FLAG_APPEND){
 		dir->qid.type |= QTAPPEND;
 		dir->mode |= DMAPPEND;
+	}
+	if(iflags & EXT4_INODE_FLAG_NODUMP){
+		dir->qid.type |= QTTMP;
+		dir->mode |= DMTMP;
 	}
 
 	if(path != nil && (s = strrchr(path, '/')) != nil)
@@ -458,11 +469,13 @@ rwrite(Req *r)
 			if(ext4_fwrite(a->file, zero, sz, &n) < 0)
 				goto error;
 		}
-		if(ext4_fseek(a->file, r->ifcall.offset, 0) < 0)
-			goto error;
-		if(ext4_ftell(a->file) != r->ifcall.offset){
-			werrstr("could not seek");
-			goto error;
+		if((a->file->flags & O_APPEND) == 0){
+			if(ext4_fseek(a->file, r->ifcall.offset, 0) < 0)
+				goto error;
+			if(ext4_ftell(a->file) != r->ifcall.offset){
+				werrstr("could not seek");
+				goto error;
+			}
 		}
 		if(ext4_fwrite(a->file, r->ifcall.data, r->ifcall.count, &n) < 0)
 			goto error;
@@ -472,7 +485,7 @@ rwrite(Req *r)
 		respond(r, nil);
 		return;
 	}else{
-		werrstr("can only write to files");
+		werrstr(Eperm);
 	}
 
 error:
@@ -543,7 +556,7 @@ rwstat(Req *r)
 	int res, isdir, wrperm, isowner, n;
 	struct ext4_mountpoint *mp;
 	struct ext4_inode inode;
-	u32int uid, gid;
+	u32int uid, gid, iflags;
 	ext4_file f;
 	Aux *a, o;
 	Group *g;
@@ -564,7 +577,7 @@ rwstat(Req *r)
 
 	/* permission to truncate */
 	isdir = ext4_inode_type(a->p->sb, &inode) == EXT4_INODE_MODE_DIRECTORY;
-	if(r->d.length >= 0 && (!wrperm || isdir || !ext4_inode_can_truncate(a->p->sb, &inode))){
+	if(r->d.length >= 0 && (!wrperm || isdir)){
 		werrstr(Eperm);
 		goto error;
 	}
@@ -622,7 +635,7 @@ rwstat(Req *r)
 	}
 
 	/* truncate */
-	if(r->d.length >= 0){
+	if(r->d.length >= 0 && ext4_inode_can_truncate(a->p->sb, &inode)){
 		if(ext4_fopen2(mp, &f, a->path, toext4mode(OWRITE, 0, 0)) < 0)
 			goto error;
 		res = ext4_ftruncate(&f, r->d.length);
@@ -632,8 +645,15 @@ rwstat(Req *r)
 	}
 
 	/* mode */
-	if(r->d.mode != ~0 && ext4_mode_set(mp, a->path, r->d.mode & 0x1ff) < 0)
-		goto error;
+	if(r->d.mode != ~0){
+		iflags = 0;
+		if(r->d.mode & DMAPPEND)
+			iflags |= EXT4_INODE_FLAG_APPEND;
+		if(r->d.mode & DMTMP)
+			iflags |= EXT4_INODE_FLAG_NODUMP;
+		if(ext4_mode_set(mp, a->path, r->d.mode & 0777, iflags) < 0)
+			goto error;
+	}
 
 	/* mtime */
 	if(r->d.mtime != ~0 && ext4_mtime_set(mp, a->path, r->d.mtime) < 0)
