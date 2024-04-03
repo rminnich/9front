@@ -715,13 +715,14 @@ pcmconv(Pcmconv *c, void *in0, void *out0, int insz)
 int
 pcmratio(Pcmconv *c, int insz)
 {
-	int outsz;
+	int outsz, fsz;
 
-	if(insz < c->idesc.framesz)
+	fsz = c->idesc.framesz;
+	if(insz < fsz)
 		goto Bad;
-	insz /= c->idesc.framesz;
-	outsz = ((uvlong)insz * ((uvlong)c->odesc.rate<<Np)/c->idesc.rate) >> Np;
-	if(outsz > 1)
+	insz = (insz + fsz)/fsz;
+	outsz = ((uvlong)insz * c->odesc.framesz * ((uvlong)c->odesc.rate<<Np)/c->idesc.rate) >> Np;
+	if(outsz >= c->odesc.framesz)
 		return outsz;
 Bad:
 	werrstr("invalid buffer size: %d", insz);
