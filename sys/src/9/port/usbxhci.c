@@ -1115,7 +1115,7 @@ initisoio(Epio *io, Ep *ep)
 		io->incr = 0;
 		io->tdsz = ep->maxpkt*ep->ntds;
 	} else {
-		io->incr = ((vlong)ep->hz*ep->pollival<<8)/1000;
+		io->incr = ((vlong)ep->hz*io->period<<8)/8000;
 		io->tdsz = (io->incr+255>>8)*ep->samplesz;
 	}
 	io->b = allocb((io->ring->mask+1)*io->tdsz);
