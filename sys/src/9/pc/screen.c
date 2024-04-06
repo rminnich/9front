@@ -147,10 +147,10 @@ setscreensize(VGAscr *scr, int x, int y, int z, ulong chan, int tilt)
 		error(err);
 
 	vgaimageinit(chan);
-	bootscreenconf(scr);
-
 	unlock(&vgascreenlock);
 	poperror();
+
+	bootscreenconf(scr);
 
 	drawcmap();
 
