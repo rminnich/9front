@@ -277,10 +277,10 @@ configures and manages a USB audio device.
 It implements a file system (normally seen under
 .BR /dev ),
 exporting
-.BN audioU N
-and
+.BI audioU N
+,
 .BI volumeU N
-files that have the same semantics as
+and other files that have the same semantics as
 .IR audio (1)).
 .SS Camera devices
 .I Cam
