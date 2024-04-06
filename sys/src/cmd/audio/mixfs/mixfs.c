@@ -4,6 +4,7 @@
 #include <thread.h>
 #include <9p.h>
 #include <pcm.h>
+#pragma varargck type "!" Pcmdesc
 
 enum {
 	NBUF = 8*1024,
@@ -45,7 +46,10 @@ int	volfd = -1;
 
 int	volume[2] = {100, 100};
 int	vol64k[2] = {65536, 65536};
-int	newrate;
+
+Pcmdesc	fmt;
+Lock	fmtlock;
+int	fmtchanged;
 
 int
 s16(uchar *p)
@@ -79,20 +83,36 @@ closeaudiodev(void)
 }
 
 void
-updrate(void)
+updfmt(void)
 {
 	static char svol[4*1024];
-	int n, rate;
-	char *s;
+	char *s, *e;
+	int n, ok;
 
-	rate = pcmdescdef.rate;
+	ok = 0;
 	if(volfd >= 0 && (n = pread(volfd, svol+1, sizeof(svol)-2, 0)) > 8){
 		svol[0] = '\n';
 		svol[1+n] = 0;
-		if((s = strstr(svol, "\nspeed ")) != nil && (n = strtol(s+6, &s, 10)) > 0)
-			rate = n;
+		if((s = strstr(svol, "\nfmtout ")) != nil && (e = strchr(s+12, '\n')) != nil){
+			*e = 0;
+			lock(&fmtlock);
+			ok = fmtchanged = mkpcmdesc(s+8, &fmt) == 0;
+			unlock(&fmtlock);
+		}
+		if(!ok && (s = strstr(svol, "\nspeed ")) != nil && (n = strtol(s+6, &s, 10)) > 0){
+			lock(&fmtlock);
+			fmt = pcmdescdef;
+			fmt.rate = n;
+			ok = fmtchanged = fmt.rate > 0;
+			unlock(&fmtlock);
+		}
 	}
-	newrate = rate;
+	if(!ok){
+		lock(&fmtlock);
+		fmt = pcmdescdef;
+		fmtchanged = 1;
+		unlock(&fmtlock);
+	}
 }
 
 int
@@ -164,7 +184,7 @@ found:
 		name = smprint("%.*svolume%s", (int)(p - name), name, p+5);
 		volfd = open(name, ORDWR);
 		free(name);
-		updrate();
+		updfmt();
 	}
 	return 0;
 }
@@ -222,22 +242,32 @@ fsclunk(Fid *f)
 	f->aux = nil;
 }
 
+int
+eqfmt(Pcmdesc *a, Pcmdesc *b)
+{
+	return
+		a->rate == b->rate
+		&& a->bits == b->bits
+		&& a->channels == b->channels
+		&& a->framesz == b->framesz
+		&& a->fmt == b->fmt;
+}
+
 void
 audioproc(void *)
 {
 	static uchar buf[ABUF];
-	static Pcmdesc desc;
-	int sweep, i, j, n, m, v;
+	int sweep, i, j, n, m, v, rate;
 	ulong rp;
 	Stream *s;
 	uchar *p, *bufconv;
 	Pcmconv	*conv;
 
 	threadsetname("audioproc");
-	desc = pcmdescdef;
 	conv = nil;
 	bufconv = nil;
 	sweep = 0;
+	rate = fmt.rate;
 
 	for(;;){
 		m = NBUF;
@@ -275,7 +305,7 @@ audioproc(void *)
 					/* attempt to sleep just shortly before buffer underrun */
 					ms = seek(audiofd, 0, 2);
 					ms *= 800;
-					ms /= desc.rate*NCHAN*2;
+					ms /= rate*NCHAN*2;
 				}
 				sweep = 1;
 			}
@@ -310,19 +340,24 @@ audioproc(void *)
 		mixrp = rp;
 		unlock(&rplock);
 
-		if(desc.rate != newrate){
-			desc.rate = newrate;
+		lock(&fmtlock);
+		if(fmtchanged){
+			fmtchanged = 0;
 			free(bufconv);
 			bufconv = nil;
 			freepcmconv(conv);
-			if((conv = allocpcmconv(&pcmdescdef, &desc)) == nil ||
+			conv = nil;
+			if(!eqfmt(&fmt, &pcmdescdef))
+			if((conv = allocpcmconv(&pcmdescdef, &fmt)) == nil ||
 			   (n = pcmratio(conv, ABUF)) < 0 ||
 			   (bufconv = malloc(n)) == nil){
 				fprint(2, "%s: %r\n", devaudio);
 				freepcmconv(conv);
 				conv = nil;
 			}
+			rate = fmt.rate;
 		}
+		unlock(&fmtlock);
 
 		n = p - buf;
 		p = buf;
@@ -340,17 +375,30 @@ fsread(Req *r)
 {
 	Srv *srv;
 	int i, j, n, m, v;
+	char *f, *e;
 	Stream *s;
 	uchar *p;
 
 	if(r->fid->file->aux == &volfd){
 		static char svol[4096];
 		if(r->ifcall.offset == 0){
-			m = snprint(svol, sizeof(svol), "dev %s\nmix %d %d\n",
+			m = snprint(svol, sizeof(svol), "dev %s\nmix %d %d\nfmtout %!\nspeed %d\n",
 				devaudio?devaudio:"",
-				volume[0], volume[1]);
-			if(volfd >= 0 && (n = pread(volfd, svol+m, sizeof(svol)-m-1, 0)) > 0)
+				volume[0], volume[1],
+				pcmdescdef,
+				pcmdescdef.rate);
+			if(volfd >= 0 && (n = pread(volfd, svol+m, sizeof(svol)-m-1, 0)) > 0){
 				svol[m+n] = 0;
+				/* device's fmtout and speed are removed */
+				if((f = strstr(svol+m-1, "\nfmtout ")) != nil && (e = strchr(f+8, '\n')) != nil){
+					n -= e-f;
+					memmove(f, e, n+1);
+				}
+				if((f = strstr(svol+m-1, "\nspeed ")) != nil && (e = strchr(f+7, '\n')) != nil){
+					n -= e-f;
+					memmove(f, e, n+1);
+				}
+			}
 		}
 		readstr(r, svol);
 		respond(r, nil);
@@ -574,7 +622,7 @@ threadmain(int argc, char **argv)
 	if(argc > 1)
 		usage();
 
-	newrate = pcmdescdef.rate;
+	fmtinstall('!', pcmdescfmt);
 	reopendevs(argv[0]);
 	closeaudiodev();
 
