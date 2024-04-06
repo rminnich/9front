@@ -165,11 +165,18 @@ readline(void *f, char *buf)
 static int
 timeout(int ms)
 {
+	long v;
+	volatile long *ticks = (long *) 0x46c;
+
+	v = *ticks;
 	while(ms > 0){
 		if(getc() != 0)
 			return 1;
-		usleep(100000);
-		ms -= 100;
+
+		if (v != *ticks) {
+			ms -= 55;
+			v = *ticks;
+		}
 	}
 	return 0;
 }

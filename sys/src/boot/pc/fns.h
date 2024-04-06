@@ -10,7 +10,6 @@ extern char bootname[];
 void start(void *sp);
 void cgaputc(int c);
 int kbdgetc(void);
-void usleep(int t);
 void halt(void);
 void jump(void *pc);
 
