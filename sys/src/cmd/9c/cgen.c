@@ -1,13 +1,36 @@
 #include "gc.h"
 
+/*
+ * POWER only gives us 16 bit immediates and shifted 16 bit immediate with optional sign extension
+ */
+
 static int
-isim32(vlong v)
+issim16(vlong v)
 {
-	if((v & 0xffffffff80000000) == 0xffffffff80000000) // 32-bit negative
+	if((short)v == v)
 		return 1;
-	if((v & 0xffffffff00000000) == 0) // 32-bit positive
+
+	if(v < 0 && (v & 0xFFFFFFFFULL<<32) != 0xFFFFFFFFULL<<32)
+		return 0;
+	else if((v & 0xFFFFFFFFULL<<32) != 0)
+		return 0;
+
+	if((v & 0xFFFF) != 0)
+		return 0;
+	return 1;
+}
+
+
+static int
+isuim16(vlong v)
+{
+	if((ushort)v == v)
 		return 1;
-	return 0;	
+	if((v & 0xFFFFFFFFULL<<32) != 0)
+		return 0;
+	if((v & 0xFFFF) == 0)
+		return 1;
+	return 0;
 }
 
 void
@@ -147,18 +170,34 @@ cgen(Node *n, Node *nn)
 			break;
 		}
 
-	case OADD:
-	case OSUB:
 	case OAND:
 	case OOR:
 	case OLSHR:
 	case OASHL:
 	case OASHR:
 		/*
-		 * immediate operands
+		 * unsigned immediate operands
 		 */
 		if(nn != Z)
-		if(r->op == OCONST && isim32(r->vconst))
+		if(r->op == OCONST && isuim16(r->vconst))
+		if(!typefd[n->type->etype]) {
+			cgen(l, nn);
+			if(r->vconst == 0)
+			if(o != OAND)
+				break;
+			if(nn != Z)
+				gopcode(o, r, Z, nn);
+			break;
+		}
+		goto usereg;
+
+	case OADD:
+	case OSUB:
+		/*
+		 * signed immediate operands
+		 */
+		if(nn != Z)
+		if(r->op == OCONST && issim16(r->vconst))
 		if(!typefd[n->type->etype]) {
 			cgen(l, nn);
 			if(r->vconst == 0)
@@ -175,6 +214,7 @@ cgen(Node *n, Node *nn)
 	case OLMOD:
 	case ODIV:
 	case OMOD:
+	usereg:
 		if(nn == Z) {
 			nullwarn(l, r);
 			break;
@@ -207,13 +247,34 @@ cgen(Node *n, Node *nn)
 	case OASASHL:
 	case OASASHR:
 	case OASAND:
-	case OASADD:
-	case OASSUB:
 	case OASXOR:
 	case OASOR:
 		if(l->op == OBIT)
 			goto asbitop;
-		if(r->op == OCONST && isim32(r->vconst))
+		if(r->op == OCONST && isuim16(r->vconst))
+		if(!typefd[r->type->etype])
+		if(!typefd[n->type->etype]) {
+			if(l->addable < INDEXED)
+				reglcgen(&nod2, l, Z);
+			else
+				nod2 = *l;
+			regalloc(&nod, l, nn);		/* note: l used for type, so shifts work! */
+			gopcode(OAS, &nod2, Z, &nod);
+			gopcode(o, r, Z, &nod);
+			gopcode(OAS, &nod, Z, &nod2);
+	
+			regfree(&nod);
+			if(l->addable < INDEXED)
+				regfree(&nod2);
+			break;
+		}
+		goto useregas;
+
+	case OASADD:
+	case OASSUB:
+		if(l->op == OBIT)
+			goto asbitop;
+		if(r->op == OCONST && issim16(r->vconst))
 		if(!typefd[r->type->etype])
 		if(!typefd[n->type->etype]) {
 			if(l->addable < INDEXED)
@@ -237,6 +298,7 @@ cgen(Node *n, Node *nn)
 	case OASMUL:
 	case OASDIV:
 	case OASMOD:
+	useregas:
 		if(l->op == OBIT)
 			goto asbitop;
 		if(l->complex >= r->complex) {
