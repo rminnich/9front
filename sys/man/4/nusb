@@ -281,7 +281,7 @@ exporting
 ,
 .BI volumeU N
 and other files that have the same semantics as
-.IR audio (1)).
+.IR audio (3)).
 .SS Camera devices
 .I Cam
 configures and exposes a USB camera device's capabilities,
