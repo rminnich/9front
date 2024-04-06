@@ -456,14 +456,21 @@ with all subsequent routes added via this file descriptor.
 .TP
 .BI add\  "target mask nexthop flags interface source smask"
 .TP
-.BI add\  "target mask nexthop flags tag interface source smask"
+.BI add\  "target mask nexthop flags tag interface source smask".
 Add the route to the table.  If one already exists with the
-same target and mask, replace it. The
+same target and mask, replace it. The destination
 .I interface
-can be given as either the interface number or a local
-IP address on the desired interface or as a
+can be specified as either
+the interface's /net/ipifc/n directory number,
+a local IP address on the desired interface,
+its bound device name or as
 .B "-"
-when unspecified.
+when unspecified,
+in which case the interface will be choosen
+based on the
+.I source
+and
+.IR nexthop .
 .TP
 .BI del\  "target mask"
 .TP

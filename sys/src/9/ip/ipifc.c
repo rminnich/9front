@@ -1279,6 +1279,35 @@ findipifc(Fs *f, uchar *local, uchar *remote, int type)
 	return nil;
 }
 
+/*
+ *  find the ifc bound to device name dev.
+ *  returns the rlock'd ifc, otherwise nil.
+ */
+Ipifc*
+findipifcdev(Fs *f, char *dev)
+{
+	Ipifc *ifc;
+	Conv **cp;
+
+	for(cp = f->ipifc->conv; *cp != nil; cp++){
+		ifc = (Ipifc*)(*cp)->ptcl;
+		rlock(ifc);
+		if(ifc->m != nil
+		&& ifc->m != &unboundmedium
+		&& strcmp(ifc->dev, dev) == 0)
+			return ifc;
+		runlock(ifc);
+	}
+	return nil;
+}
+
+/*
+ *  find a ifc based on:
+ *  - its /net/ipifc/X directory number
+ *  - a local ip address on that interface
+ *  - bound device name
+ *  returns the rlock'd ifc, otherwise nil.
+ */
 Ipifc*
 findipifcstr(Fs *f, char *s)
 {
@@ -1294,13 +1323,17 @@ findipifcstr(Fs *f, char *s)
 		if(x < 0)
 			return nil;
 		if(x < f->ipifc->nc && (c = f->ipifc->conv[x]) != nil){
-			if(ipifcinuse(c)){
-				ifc = (Ipifc*)c->ptcl;
-				rlock(ifc);
+			ifc = (Ipifc*)c->ptcl;
+			rlock(ifc);
+			if(ifc->m == nil || ifc->m == &unboundmedium){
+				runlock(ifc);
+				ifc = nil;
 			}
 		}
 	} else if(parseip(ip, s) != -1)
 		ifc = findipifc(f, ip, ip, Runi);
+	else
+		ifc = findipifcdev(f, s);
 	return ifc;
 }
 

@@ -728,6 +728,7 @@ extern void	addipmedium(Medium *med);
 extern void	ipifcoput(Ipifc *ifc, Block *bp, int version, uchar *ip, Routehint *rh);
 extern int	ipforme(Fs*, uchar *addr);
 extern Ipifc*	findipifc(Fs*, uchar *local, uchar *remote, int type);
+extern Ipifc*	findipifcdev(Fs *f, char *dev);
 extern Ipifc*	findipifcstr(Fs *f, char *s);
 extern void	findlocalip(Fs*, uchar *local, uchar *remote);
 extern int	ipv4local(Ipifc *ifc, uchar *local, int prefixlen, uchar *remote);

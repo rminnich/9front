@@ -1129,7 +1129,7 @@ parseroute(Fs *f, char **argv, int argc)
 			error(Ebadip);
 	}
 
-	if(ifcstr != nil)
+	if(ifcstr != nil && strcmp(ifcstr, "-") != 0)
 		ifc = findipifcstr(f, ifcstr);
 	else
 		ifc = findipifc(f, src, gate, type);
