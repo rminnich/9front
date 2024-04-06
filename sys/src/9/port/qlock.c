@@ -153,6 +153,11 @@ rlock(RWlock *q)
 {
 	Proc *p;
 
+	if(m->ilockdepth != 0)
+		print("rlock: %#p: ilockdepth %d\n", getcallerpc(&q), m->ilockdepth);
+	if(up != nil && up->nlocks)
+		print("rlock: %#p: nlocks %d\n", getcallerpc(&q), up->nlocks);
+
 	lock(&q->use);
 	rwstats.rlock++;
 	if(q->writer == 0 && q->head == nil){
@@ -208,6 +213,11 @@ wlock(RWlock *q)
 	uintptr pc;
 
 	pc = getcallerpc(&q);
+
+	if(m->ilockdepth != 0)
+		print("wlock: %#p: ilockdepth %d\n", pc, m->ilockdepth);
+	if(up != nil && up->nlocks)
+		print("wlock: %#p: nlocks %d\n", pc, up->nlocks);
 
 	lock(&q->use);
 	rwstats.wlock++;
