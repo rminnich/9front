@@ -712,6 +712,8 @@ newproc(void)
 	p->syserrstr = p->errbuf1;
 	p->errbuf0[0] = '\0';
 	p->errbuf1[0] = '\0';
+	p->lastlock = nil;
+	p->lastilock = nil;
 	p->nlocks = 0;
 	p->delaysched = 0;
 	p->trace = 0;
