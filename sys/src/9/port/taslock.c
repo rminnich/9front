@@ -6,12 +6,15 @@
 #include "../port/error.h"
 #include "edf.h"
 
+#ifdef LOCKCYCLES
 long maxlockcycles;
 long maxilockcycles;
 long cumlockcycles;
 long cumilockcycles;
 uintptr maxlockpc;
 uintptr maxilockpc;
+uintptr ilockpcs[0x100] = { [0xff] = 1 };
+#endif
 
 struct
 {
@@ -19,19 +22,6 @@ struct
 	ulong	glare;
 	ulong	inglare;
 } lockstats;
-
-static void
-dumplockmem(char *tag, Lock *l)
-{
-	uchar *cp;
-	int i;
-
-	iprint("%s: ", tag);
-	cp = (uchar*)l;
-	for(i = 0; i < 64; i++)
-		iprint("%2.2ux ", cp[i]);
-	iprint("\n");
-}
 
 void
 lockloop(Lock *l, uintptr pc)
@@ -213,15 +203,13 @@ unlock(Lock *l)
 		sched();
 }
 
-uintptr ilockpcs[0x100] = { [0xff] = 1 };
-static int n;
-
 void
 iunlock(Lock *l)
 {
 	ulong sr;
 
 #ifdef LOCKCYCLES
+	static uint n;
 	l->lockcycles += lcycles();
 	cumilockcycles += l->lockcycles;
 	if(l->lockcycles > maxilockcycles){
@@ -229,7 +217,7 @@ iunlock(Lock *l)
 		maxilockpc = l->pc;
 	}
 	if(l->lockcycles > 2400)
-		ilockpcs[n++ & 0xff]  = l->pc;
+		ilockpcs[n++ % nelem(ilockpcs)]  = l->pc;
 #endif
 	if(l->key == 0)
 		print("iunlock(%#p): not locked: pc %#p\n", l, getcallerpc(&l));
