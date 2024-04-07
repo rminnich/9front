@@ -24,6 +24,7 @@ filter, list, deliver, token, vf \-  filtering mail
 .I recipient
 .I fromfile
 .I mbox
+.PP
 .B upas/dkim
 [
 .B -d
