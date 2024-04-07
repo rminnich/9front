@@ -400,7 +400,7 @@ saiprobe(Audio *adev)
 	iomuxpad("pad_sai2_txd0", "sai2_tx_data0", "~LVTTL HYS PUE ~ODE FAST 45_OHM");
 	iomuxpad("pad_sai2_mclk", "sai2_mclk", "~LVTTL HYS PUE ~ODE FAST 45_OHM");
 
-	setclkrate("sai2.ipg_clk", "audio_pll1_clk", 25*Mhz);
+	setclkrate("sai2.ipg_clk", "osc_25m_ref_clk", 25*Mhz);
 	setclkgate("sai2.ipg_clk", 1);
 
 	intrenable(IRQsai2, saiinterrupt, ctlr, BUSUNKNOWN, "sai2");
