@@ -57,6 +57,7 @@ sensetrace(uchar *cdb, uchar *u)
 {
 	char *e;
 
+	USED(cdb, u);
 	if(1)
 		return;
 	e = scsierror(u[12], u[13]);
