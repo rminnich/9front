@@ -18,7 +18,7 @@ struct	Plink
 	Plink	*link;
 	long	pc;
 	long	count;
-	vlong time;
+	vlong	time;
 };
 
 #pragma profile off
@@ -48,7 +48,7 @@ _profin(void)
 		if(p->pc == pc)
 			goto out;
 	p = _tos->prof.next + 1;
-	if(p >= _tos->prof.last) {
+	if(p >= _tos->prof.last){
 		_tos->prof.pp = 0;
 		perr++;
 		return _restore(arg, ret);

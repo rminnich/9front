@@ -20,6 +20,7 @@ OFILES=\
 	access.$O\
 	alarm.$O\
 	brk.$O\
+	callmain.$O\
 	cfgetospeed.$O\
 	chdir.$O\
 	chroot.$O\

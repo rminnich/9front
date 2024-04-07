@@ -21,7 +21,6 @@
 char **environ;
 int *_errnoloc;
 unsigned long _clock;
-static void fdsetup(char *, char *);
 static void sigsetup(char *, char *);
 
 enum {

@@ -23,8 +23,8 @@ typedef unsigned long long uvlong;
 
 extern	void*	sbrk(ulong);
 extern	long	_callpc(void**);
-extern	void*	_savearg(void);
 extern	void*	_saveret(void);
+extern	void*	_savearg(void);
 extern	void	_cycles(uvlong*);	/* 64-bit value of the cycle counter if there is one, 0 if there isn't */
 
 static ulong	khz;
@@ -45,7 +45,7 @@ struct	Plink
 #pragma profile off
 
 static void*
-_restore(void*, void *ret)
+_restore(void*, void* ret)
 {
 	return ret;
 }
@@ -56,7 +56,7 @@ _profin(void)
 	void *dummy;
 	long pc;
 	Plink *pp, *p;
-	void *ret, *arg;
+	void *arg, *ret;
 	vlong t;
 
 	ret = _saveret();
@@ -65,7 +65,6 @@ _profin(void)
 	pp = _tos->prof.pp;
 	if(pp == 0 || (_tos->prof.pid && _tos->pid != _tos->prof.pid))
 		return _restore(arg, ret);
-
 	for(p=pp->down; p; p=p->link)
 		if(p->pc == pc)
 			goto out;
@@ -95,7 +94,7 @@ out:
 		/* Add kernel cycles on proc entry */
 		p->time = p->time + _tos->kcycles;
 		/* fall through */
-	case Proftime:	
+	case Proftime:
 	proftime:		/* Subtract cycle counter on proc entry */
 		_cycles((uvlong*)&t);
 		p->time = p->time - t;
@@ -118,7 +117,7 @@ _profout(void)
 	arg = _savearg();
 	p = _tos->prof.pp;
 	if (p == NULL || (_tos->prof.pid != 0 && _tos->pid != _tos->prof.pid))
-		return arg;	/* Not our process */
+		return _restore(arg, ret);	/* Not our process */
 	switch(_tos->prof.what){
 	case Profkernel:		/* Add proc cycles on proc entry */
 		p->time = p->time + _tos->pcycles;
@@ -126,7 +125,7 @@ _profout(void)
 	case Profuser:			/* Subtract kernel cycles on proc entry */
 		p->time = p->time - _tos->kcycles;
 		/* fall through */
-	case Proftime:	
+	case Proftime:
 	proftime:				/* Add cycle counter on proc entry */
 		_cycles((uvlong*)&t);
 		p->time = p->time + t;
@@ -262,7 +261,6 @@ _profdump(void)
 	}
 	write(f, (char*)_tos->prof.first, vp - (char*)_tos->prof.first);
 	close(f);
-
 }
 
 void
@@ -279,8 +277,8 @@ _profinit(int entries, int what)
 	_tos->clock = 1;
 }
 
-void
-_profmain(void)
+int
+_profmain(int argc, char **argv)
 {
 	char ename[50];
 	int n, f;
@@ -290,7 +288,7 @@ _profmain(void)
 		khz = _tos->cyclefreq / 1000;	/* Report times in milliseconds */
 		havecycles = 1;
 	}
-	f = open("/env/profsize", OREAD);
+	f = open("/env/profsize", OREAD|OCEXEC);
 	if(f >= 0) {
 		memset(ename, 0, sizeof(ename));
 		read(f, ename, sizeof(ename)-1);
@@ -298,7 +296,7 @@ _profmain(void)
 		n = atol(ename);
 	}
 	_tos->prof.what = Profuser;
-	f = open("/env/proftype", OREAD);
+	f = open("/env/proftype", OREAD|OCEXEC);
 	if(f >= 0) {
 		memset(ename, 0, sizeof(ename));
 		read(f, ename, sizeof(ename)-1);
@@ -319,6 +317,9 @@ _profmain(void)
 	_tos->prof.pid = _tos->pid;
 	atexit(_profdump);
 	_tos->clock = 1;
+	_tos->prof.pp = _tos->prof.next;
+	extern int _apemain(int, char**);
+	return _apemain(argc, argv);
 }
 
 void prof(void (*fn)(void*), void *arg, int entries, int what)
