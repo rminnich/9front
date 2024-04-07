@@ -749,19 +749,20 @@ struct Proc
 	Chan	*slash;
 	Chan	*dot;
 
+	Note	*lastnote;
 	Note	*note[NNOTE];
 	short	nnote;
 	short	notified;	/* sysnoted is due */
-	Note	*lastnote;
 	int	(*notify)(void*, char*);
-
-	Lock	*lockwait;
-	Lock	*lastlock;	/* debugging */
-	Lock	*lastilock;	/* debugging */
 
 	Mach	*wired;
 	Mach	*mp;		/* machine this process last ran on */
+
+	Lock	*lastlock;	/* debugging */
+	Lock	*lastilock;	/* debugging */
+
 	int	nlocks;		/* number of locks held by proc */
+
 	ulong	delaysched;
 	ulong	priority;	/* priority level */
 	ulong	basepri;	/* base priority level */
