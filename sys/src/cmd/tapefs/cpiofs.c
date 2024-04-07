@@ -42,7 +42,9 @@ rd16le()
 {
 	ushort x;
 
-	return x = egetc(), x |= egetc()<<8;
+	x = egetc();
+	x |= egetc()<<8;
+	return x;
 }
 
 static ulong
@@ -50,7 +52,11 @@ rd3211()
 {
 	ulong x;
 
-	return x = egetc()<<16, x |= egetc()<<24, x |= egetc(), x |= egetc()<<8;
+	x = egetc()<<16;
+	x |= egetc()<<24;
+	x |= egetc();
+	x |= egetc()<<8;
+	return x;
 }
 
 /* sysvr3 and sysvr4 skip records with names longer than 256. pwb 1.0,
