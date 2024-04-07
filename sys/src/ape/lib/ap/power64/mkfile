@@ -9,6 +9,8 @@ OFILES=\
 	setjmp.$O\
 	argv0.$O\
 	main9.$O\
+	main9p.$O\
+	cycles.$O\
 
 </sys/src/cmd/mksyslib
 

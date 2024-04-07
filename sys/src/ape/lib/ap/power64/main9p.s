@@ -1,3 +1,5 @@
+GLOBL	_tos(SB), $8
+
 TEXT	_mainp(SB), 1, $-8
 	ADD	$-16, R1
 	MOVD	$0, R0
