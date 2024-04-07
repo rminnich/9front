@@ -754,7 +754,10 @@ ctrlvalue(Ctrl *c)
 		else {
 			n = (c->max - c->min);
 			x = (c->cur - c->min) * 100;
-			x /= n;
+			if(n == 0)
+				x = 100;
+			else
+				x /= n;
 		}
 	}else{
 		x = !!c->cur;
