@@ -191,8 +191,11 @@ cgen(Node *n, Node *nn)
 		}
 		goto usereg;
 
-	case OADD:
 	case OSUB:
+		r->vconst = -r->vconst;
+		o = n->op = OADD;
+
+	case OADD:
 		/*
 		 * signed immediate operands
 		 */
@@ -270,8 +273,11 @@ cgen(Node *n, Node *nn)
 		}
 		goto useregas;
 
-	case OASADD:
 	case OASSUB:
+		r->vconst = -r->vconst;
+		o = n->op = OASADD;
+
+	case OASADD:
 		if(l->op == OBIT)
 			goto asbitop;
 		if(r->op == OCONST && issim16(r->vconst))
@@ -1118,7 +1124,7 @@ copy:
 	pc1 = pc;
 	layout(&nod1, &nod2, c, 0, Z);
 
-	gopcode(OSUB, nodconst(1L), Z, &nod3);
+	gopcode(OADD, nodconst(-1L), Z, &nod3);
 	nod1.op = OREGISTER;
 	gopcode(OADD, nodconst(c*SZ_LONG), Z, &nod1);
 	nod2.op = OREGISTER;

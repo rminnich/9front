@@ -973,6 +973,18 @@ gmove(Node *f, Node *t)
 		}
 		break;
 	}
+	if(f->op == OCONST)
+		switch(a){
+		case AMOVBZ:
+			f->vconst &= 0xFF;
+			break;
+		case AMOVHZ:
+			f->vconst &= 0xFFFF;
+			break;
+		case AMOVWZ:
+			f->vconst &= 0xFFFFFFFFUL;
+			break;
+		}
 	if(a == AGOK)
 		diag(Z, "bad opcode in gmove %T -> %T", f->type, t->type);
 	if(a == AMOVD || (a == AMOVW || a == AMOVWZ) && ewidth[ft] == ewidth[tt] || a == AFMOVS || a == AFMOVD)

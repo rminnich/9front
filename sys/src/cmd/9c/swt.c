@@ -22,7 +22,7 @@ swit2(C1 *q, int nc, long def, Node *n, Node *tn)
 			if(sval(q->val)) {
 				gopcode(OEQ, n, Z, nodconst(q->val));
 			} else {
-				gopcode(OSUB, nodconst(q->val), n, tn);
+				gopcode(OADD, nodconst(-q->val), n, tn);
 				gopcode(OEQ, tn, Z, nodconst(0));
 			}
 			patch(p, q->label);
@@ -38,7 +38,7 @@ swit2(C1 *q, int nc, long def, Node *n, Node *tn)
 		gopcode(OGT, n, Z, nodconst(r->val));
 		sp = p;
 	} else {
-		gopcode(OSUB, nodconst(r->val), n, tn);
+		gopcode(OADD, nodconst(-r->val), n, tn);
 		gopcode(OGT, tn, Z, nodconst(0));
 		sp = p;
 	}

@@ -1005,27 +1005,6 @@ loop:
 		}
 		goto casedef;
 
-	case ASUBC:
-		if(p->from.type == D_CONST) {
-			p->from.offset = -p->from.offset;
-			p->as = AADDC;
-		}
-		goto casedef;
-
-	case ASUBCCC:
-		if(p->from.type == D_CONST) {
-			p->from.offset = -p->from.offset;
-			p->as = AADDCCC;
-		}
-		goto casedef;
-
-	case ASUB:
-		if(p->from.type == D_CONST) {
-			p->from.offset = -p->from.offset;
-			p->as = AADD;
-		}
-		goto casedef;
-
 	default:
 	casedef:
 		if(skip)
