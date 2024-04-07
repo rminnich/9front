@@ -206,7 +206,6 @@ syscall(Ureg *ureg)
 	up->scallnr = scallnr = ureg->r0;
 	spllo();
 	
-	up->nerrlab = 0;
 	startns = 0;
 	ret = -1;
 	if(!waserror()){

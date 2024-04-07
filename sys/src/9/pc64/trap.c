@@ -456,7 +456,6 @@ syscall(Ureg* ureg)
 
 	ret = -1;
 	startns = 0;
-	up->nerrlab = 0;
 	if(!waserror()){
 		if(sp<(USTKTOP-BY2PG) || sp>(USTKTOP-sizeof(Sargs)-BY2WD))
 			validaddr(sp, sizeof(Sargs)+BY2WD, 0);

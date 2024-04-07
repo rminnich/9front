@@ -645,7 +645,6 @@ syscall(Ureg *ur)
 	/* no fpu, so no fp state to save */
 	spllo();
 
-	up->nerrlab = 0;
 	ret = -1;
 	if(!waserror()) {
 		if(sp & (BY2WD-1)){

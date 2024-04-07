@@ -610,7 +610,6 @@ syscall(Ureg* ureg)
 	spllo();
 
 	sp = ureg->usp;
-	up->nerrlab = 0;
 	ret = -1;
 	if(!waserror()){
 		if(sp<(USTKTOP-BY2PG) || sp>(USTKTOP-sizeof(Sargs)-BY2WD))
