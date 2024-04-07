@@ -130,9 +130,6 @@ setscreensize(VGAscr *scr, int x, int y, int z, ulong chan, int tilt)
 {
 	char *err;
 
-	if(waserror())
-		nexterror();
-
 	if(memimageinit() < 0)
 		error("memimageinit failed");
 
@@ -141,16 +138,12 @@ setscreensize(VGAscr *scr, int x, int y, int z, ulong chan, int tilt)
 		unlock(&vgascreenlock);
 		nexterror();
 	}
-
 	err = setscreensize0(scr, x, y, z, chan, tilt);
 	if(err != nil)
 		error(err);
-
 	vgaimageinit(chan);
 	unlock(&vgascreenlock);
 	poperror();
-
-	bootscreenconf(scr);
 
 	drawcmap();
 
@@ -160,7 +153,7 @@ setscreensize(VGAscr *scr, int x, int y, int z, ulong chan, int tilt)
 		cursoron();
 	}
 
-	poperror();
+	bootscreenconf(scr);
 }
 
 int
