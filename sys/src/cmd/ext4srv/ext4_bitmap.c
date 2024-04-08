@@ -42,7 +42,7 @@ Nospace:
 		}
 
 		if (ext4_bmap_is_bit_clr(bmap, i)) {
-			*bit_id = sbit;
+			*bit_id = i;
 			return 0;
 		}
 
