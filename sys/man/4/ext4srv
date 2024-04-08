@@ -94,19 +94,6 @@ of permissions. The usual
 .I uid
 in this case is
 .IR 0 .
-.PP
-Some file system state is cached in memory, and may
-be flushed only when the file system is unmounted if
-.B -C
-flag is used, which enabled write-back cache.
-Therefore if
-.I ext4srv
-is stopped or the machine is rebooted while an ext4 file system is
-still mounted, the superblock on the device will have been marked `not
-valid'
-(unless the
-.B -r
-flag was used).
 .SH MKFS
 A different mode of
 .I ext4srv
@@ -124,6 +111,8 @@ and all existing data on it is destroyed.
 Additional options may be specified, for example
 .B -L
 may be used to set the filesystem label.
+.SH SOURCE
+.B /sys/src/cmd/ext4srv
 .SH BUGS
 Yes.
 .PP
