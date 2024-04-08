@@ -167,10 +167,6 @@ procswitch(void)
 	up->pcycles -= t;
 }
 
-/*
- *  If changing this routine, look also at sleep().  It
- *  contains a copy of the guts of sched().
- */
 void
 sched(void)
 {
@@ -929,8 +925,9 @@ wakeup(Rendez *r)
 
 	lock(r);
 	p = r->p;
-
-	if(p != nil){
+	if(p == nil)
+		unlock(r);
+	else {
 		lock(&p->rlock);
 		if(p->state != Wakeme || p->r != r){
 			iprint("%p %p %d\n", p->r, r, p->state);
@@ -938,11 +935,11 @@ wakeup(Rendez *r)
 		}
 		r->p = nil;
 		p->r = nil;
-		ready(p);
 		unlock(&p->rlock);
+		unlock(r);
+		/* hands off r */
+		ready(p);
 	}
-	unlock(r);
-
 	splx(s);
 
 	return p;
@@ -982,14 +979,18 @@ procinterrupt(Proc *p)
 					r->p != p, p->r != r, p->state);
 			p->r = nil;
 			r->p = nil;
-			ready(p);
+			unlock(&p->rlock);
 			unlock(r);
-			break;
+			/* hands off r */
+			ready(p);
+			splx(s);
+			return;
 		}
 
 		/* give other process time to get out of critical section and try again */
 		unlock(&p->rlock);
 		splx(s);
+
 		sched();
 	}
 	unlock(&p->rlock);
@@ -1013,8 +1014,10 @@ procinterrupt(Proc *p)
 							q->tail = l;
 						p->qnext = nil;
 						p->eql = nil;	/* not taken */
+						unlock(&q->use);
+						/* hands off q */
 						ready(p);
-						break;
+						return;
 					}
 				}
 			}
@@ -1032,8 +1035,10 @@ procinterrupt(Proc *p)
 				if(d == p) {
 					*l = p->rendhash;
 					p->rendval = ~0;
+					unlock(p->rgrp);
+					/* hands off p->rgrp */
 					ready(p);
-					break;
+					return;
 				}
 				l = &d->rendhash;
 			}
