@@ -20,7 +20,6 @@ OFILES=\
 	ext4_ialloc.$O\
 	ext4_inode.$O\
 	ext4_journal.$O\
-	ext4_mbr.$O\
 	ext4_mkfs.$O\
 	ext4_super.$O\
 	ext4_trans.$O\
@@ -48,7 +47,6 @@ HFILES=\
 	include/ext4_ialloc.h\
 	include/ext4_inode.h\
 	include/ext4_journal.h\
-	include/ext4_mbr.h\
 	include/ext4_misc.h\
 	include/ext4_mkfs.h\
 	include/ext4_super.h\
