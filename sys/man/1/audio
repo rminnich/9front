@@ -356,7 +356,11 @@ from the parent namespace is proxied with an additional control "mix"
 which is used to set the output volume of the mixer.
 Another additional control "dev" can be used to switch between
 audio devices.
-A alternative mountpoint 
+.I Mixfs
+will resample incoming audio to the format of the audio device output
+if it does not match the default
+.RI ( s16c2r44100 ).
+An alternative mountpoint 
 .I mtpt
 can be specified with the
 .B -m
