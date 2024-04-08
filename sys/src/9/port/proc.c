@@ -180,8 +180,6 @@ sched(void)
 		/*
 		 * Delay the sched until the process gives up the locks
 		 * it is holding.  This avoids dumb lock loops.
-		 * Don't delay if the process is Moribund.
-		 * It called sched to die.
 		 * But do sched eventually.  This avoids a missing unlock
 		 * from hanging the entire kernel. 
 		 * But don't reschedule procs holding palloc or procalloc.
@@ -192,7 +190,7 @@ sched(void)
 		 * but Lock.p has not yet been initialized.
 		 */
 		if(up->nlocks)
-		if(up->state != Moribund)
+		if(up->state == Running)
 		if(up->delaysched < 20
 		|| palloc.Lock.p == up
 		|| fscache.Lock.p == up
