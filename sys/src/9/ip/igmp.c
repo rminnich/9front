@@ -30,6 +30,9 @@ enum
 
 	MSPTICK		= 100,
 	MAXTIMEOUT	= 10000/MSPTICK,	/* at most 10 secs for a response */
+
+	NHASH		= 1<<5,
+#define hashipa(a) (((a)[IPaddrlen-2] + (a)[IPaddrlen-1])%NHASH)
 };
 
 typedef struct IGMPpkt IGMPpkt;
@@ -100,7 +103,8 @@ struct Priv
 {
 	QLock;
 	Rendez	r;
-	Report	*reports;
+	int	nreports;
+	Report	*reports[NHASH];
 };
 
 static void
@@ -179,58 +183,53 @@ sendreport(Proto *pr, uchar *ia, uchar *group, int done)
 static int
 isreport(void *a)
 {
-	return ((Priv*)a)->reports != 0;
+	return ((Priv*)a)->nreports != 0;
 }
 
 static void
 igmpproc(void *a)
 {
-	Proto *pr, *igmp = a;
+	Proto *igmp = a;
 	Priv *priv = igmp->priv;
-	Report *rp, **lrp;
-	Ipmulti *mp, **lmp;
+	Report *list, *rp, **lrp;
+	uint h;
 
 	for(;;){
 		sleep(&priv->r, isreport, priv);
 		for(;;){
 			qlock(priv);
-			if(priv->reports == nil)
+			if(priv->nreports == 0)
 				break;
 	
-			/* look for a single report */
-			mp = nil;
-			pr = nil;
-			lrp = &priv->reports;
-			for(rp = *lrp; rp != nil; rp = *lrp){
-				lmp = &rp->multi;
-				for(mp = *lmp; mp != nil; mp = *lmp){
-					if(rp->timeout <= 1 || nrand(rp->timeout) == 0){
-						*lmp = mp->next;
-						break;
+			/* time out reports and put them in a list */
+			list = nil;
+			for(h = 0; h < NHASH; h++){
+				lrp = &priv->reports[h];
+				while((rp = *lrp) != nil){
+					if(rp->timeout > 1 && nrand(rp->timeout) != 0){
+						lrp = &rp->next;
+						rp->timeout--;
+						continue;
 					}
-					lmp = &mp->next;
-				}
-				pr = rp->proto;
-				if(rp->multi != nil){
-					rp->timeout--;
-					lrp = &rp->next;
-				} else {
 					*lrp = rp->next;
-					free(rp);
+					rp->next = list;
+					list = rp;
+					priv->nreports--;
 				}
-				if(mp != nil)
-					break;
 			}
 			qunlock(priv);
 
-			if(mp != nil){
-				/* do a single report and try again */
-				if(pr != nil && !waserror()){
-					sendreport(pr, mp->ia, mp->ma, 0);
+			/* send all timed out reports */
+			while((rp = list) != nil){
+				list = rp->next;
+				rp->next = nil;
+
+				if(!waserror()){
+					sendreport(rp->proto, rp->multi->ia, rp->multi->ma, 0);
 					poperror();
 				}
-				free(mp);
-				continue;
+				free(rp->multi);
+				free(rp);
 			}
 
 			tsleep(&up->sleep, return0, 0, MSPTICK);
@@ -239,73 +238,87 @@ igmpproc(void *a)
 	}
 }
 
-/*
- *  find report list for this protocol and interface
- */
-static Report*
-findreport(Report *rp, Proto *pr, Ipifc *ifc)
-{
-	for(; rp != nil; rp = rp->next)
-		if(rp->proto == pr && rp->ifc == ifc && rp->ifcid == ifc->ifcid)
-			return rp;
-
-	return nil;
-}
-
 static void
 queuereport(Proto *pr, Ipifc *ifc, uchar *group, int timeout)
 {
 	Priv *priv = pr->priv;
+	Ipmulti *mp, *xp;
 	Report *rp;
+	uint h;
 
-	qlock(priv);
-	if(findreport(priv->reports, pr, ifc) != nil){
-		/*
-		 *  we are already reporting on this interface,
-		 *  wait for the report to time-out.
-		 */
+	if(timeout < 1 || timeout > MAXTIMEOUT)
+		timeout = MAXTIMEOUT;
+
+	for(mp = ipifcgetmulti(pr->f, ifc, group); mp != nil; mp = xp){
+		group = mp->ma;
+		xp = mp->next;
+		mp->next = nil;
+
+		h = hashipa(group);
+		qlock(priv);
+		for(rp = priv->reports[h]; rp != nil; rp = rp->next){
+			if(rp->proto == pr
+			&& rp->ifc == ifc && rp->ifcid == ifc->ifcid
+			&& ipcmp(rp->multi->ma, group) == 0)
+				break;
+		}
+		if(rp != nil){
+			/*
+			 * already reporting this group on this interface,
+			 * only update the timeout when it is shorter.
+			 */
+			if(timeout < rp->timeout)
+				rp->timeout = timeout;
+		Skip:
+			qunlock(priv);
+			free(mp);
+			continue;
+		}
+		rp = malloc(sizeof(Report));
+		if(rp == nil)
+			goto Skip;
+
+		rp->proto = pr;
+		rp->ifc = ifc;
+		rp->ifcid = ifc->ifcid;
+		rp->timeout = timeout;
+		rp->multi = mp;
+
+		rp->next = priv->reports[h];
+		priv->reports[h] = rp;
+		if(priv->nreports++ == 0)
+			wakeup(&priv->r);
 		qunlock(priv);
-		return;
 	}
-
-	/*
-	 *  start reporting groups that we're a member of.
-	 */
-	rp = smalloc(sizeof(Report));
-	rp->proto = pr;
-	rp->ifc = ifc;
-	rp->ifcid = ifc->ifcid;
-	rp->timeout = (timeout < 1 || timeout > MAXTIMEOUT) ? MAXTIMEOUT : timeout;
-	rp->multi = ipifcgetmulti(pr->f, ifc, group);
-
-	rp->next = priv->reports;
-	priv->reports = rp;
-
-	wakeup(&priv->r);
-	qunlock(priv);
 }
 
 static void
 purgereport(Proto *pr, Ipifc *ifc, uchar *group)
 {
 	Priv *priv = pr->priv;
-	Report *rp;
+	Report *rp, **lrp;
+	uint h;
 
+	h = hashipa(group);
 	qlock(priv);
-	if((rp = findreport(priv->reports, pr, ifc)) != nil){
-		Ipmulti *mp, **lmp;
+	for(lrp = &priv->reports[h]; (rp = *lrp) != nil; lrp = &rp->next){
+		if(rp->proto == pr
+		&& rp->ifc == ifc && rp->ifcid == ifc->ifcid
+		&& ipcmp(rp->multi->ma, group) == 0){
+			*lrp = rp->next;
+			rp->next = nil;
 
-		lmp = &rp->multi;
-		for(mp = *lmp; mp; mp = *lmp){
-			if(ipcmp(mp->ma, group) == 0){
-				*lmp = mp->next;
-				free(mp);
-				break;
-			}
-			lmp = &mp->next;
+			priv->nreports--;
+			break;
 		}
 	}
 	qunlock(priv);
+
+	if(rp == nil)
+		return;
+
+	free(rp->multi);
+	free(rp);
 }
 
 static void
