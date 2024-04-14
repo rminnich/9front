@@ -25,6 +25,7 @@ PROTOS=\
 	hdlc\
 	icmp6\
 	icmp\
+	igmp\
 	il\
 	ip6\
 	ip\
