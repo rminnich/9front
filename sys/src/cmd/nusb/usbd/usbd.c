@@ -236,7 +236,7 @@ usbdwrite(Req *req)
 	}
 	cb = parsecmd(req->ifcall.data, req->ifcall.count);
 	if(cb->nf < 4){
-		respond(req, "not enougth arguments");
+		respond(req, "not enough arguments");
 		goto out;
 	}
 	if(strcmp(cb->f[0], "portpower") == 0)
@@ -244,7 +244,7 @@ usbdwrite(Req *req)
 	else if(strcmp(cb->f[0], "portindicator") == 0)
 		feature = Fportindicator;
 	else {
-		respond(req, "unnown feature");
+		respond(req, "unknown feature");
 		goto out;
 	}
 	port = atoi(cb->f[2]);
