@@ -837,7 +837,7 @@ initdpll(Igfx *igfx, int x, int freq, int port)
 			dpll = igfx->pipe[x].dpll;
 			/* enable pll */
 			dpll->ctrl.v = 1<<31;
-			/* LCPLL 2700 (non scc) reference */
+			/* LCPLL 2700 (non ssc) reference */
 			dpll->ctrl.v |= 3<<28;
 
 			genwrpll(freq, &n2, &p1, &r2);

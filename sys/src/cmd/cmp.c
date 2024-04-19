@@ -127,6 +127,6 @@ main(int argc, char *argv[])
 static void
 usage(void)
 {
-	print("usage: cmp [-lLs] file1 file2 [offset1 [offset2] ]\n");
+	fprint(2, "usage: cmp [-lLs] file1 file2 [offset1 [offset2] ]\n");
 	exits("usage");
 }

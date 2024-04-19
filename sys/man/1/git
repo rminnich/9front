@@ -230,7 +230,7 @@ Passing the
 .B -b
 option will cause the repository to be initialized as a bare repository.
 Passing the
-. -u
+.B -u
 .I upstream
 option will cause the upstream to be configured to
 .I upstream.

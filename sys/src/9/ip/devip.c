@@ -816,7 +816,7 @@ lportinuse(Proto *p, ushort lport)
 }
 
 /* 
- *  find a unused loacal port for a protocol.
+ *  find a unused local port for a protocol.
  *
  *  p needs to be locked
  */
