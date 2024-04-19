@@ -32,7 +32,7 @@ key you can get it with:
 .PP
 .RS
 .L
-cat /sys/lib/kbmap/caps >/dev/kbmap
+cat /sys/lib/kbmap/caps >> /dev/kbmap
 .RE
 .PP
 The delete character
