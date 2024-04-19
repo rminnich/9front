@@ -25,6 +25,15 @@ On the PC and some other machines, the key labeled
 .B Caps
 .B Lock
 acts as an additional control key.
+To make it work like an actual
+.B Caps
+.B Lock
+key you can get it with:
+.PP
+.RS
+.L
+cat /sys/lib/kbmap/caps >/dev/kbmap
+.RE
 .PP
 The delete character
 .RB ( 0x7F )
