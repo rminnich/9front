@@ -64,6 +64,8 @@ static Mux p_mux[] =
 	{"llc",	0x007a, },
 	{"dot1q",	0x8100, },
 	{"eapol",	0x888e, },
+	{"ip6",		0x86dd, },
+	{"ether", 0x6558, },
 	{0},
 };
 
