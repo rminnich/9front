@@ -964,13 +964,13 @@ if(0)print("convsetstate %d: %s -> %s\n", c->id, convstatename[c->state], convst
 		panic("setstate: bad state: %d", state);
 	case CDial:
 		assert(c->state == CInit);
-		c->dialid = (rand()<<16) + rand();
+		c->dialid = (nrand(1<<16)<<16)|nrand(1<<16);
 		convretryinit(c);
 		convoconnect(c, ConOpenRequest, c->dialid, 0);
 		break;
 	case CAccept:
 		assert(c->state == CInit);
-		c->acceptid = (rand()<<16) + rand();
+		c->acceptid = (nrand(1<<16)<<16)|nrand(1<<16);
 		convretryinit(c);
 		convoconnect(c, ConOpenAck, c->dialid, c->acceptid);
 		break;
