@@ -5,6 +5,7 @@ database=
 	file=/net/ndb
 	file=/lib/ndb/local
 	file=/lib/ndb/common
+	file=/lib/ndb/dnsroot
 	file=/lib/ndb/dnschallenge
 
 #
