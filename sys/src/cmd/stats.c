@@ -22,6 +22,7 @@ struct Graph
 	Machine		*mach;
 	int		overflow;
 	Image		*overtmp;
+	uvlong		hiwater;
 };
 
 enum
@@ -399,6 +400,111 @@ drawdatum(Graph *g, int x, uvlong prev, uvlong v, uvlong vmax)
 
 }
 
+/* round vmax such that ylabel's have at most 3 non-zero digits */
+uvlong
+roundvmax(uvlong v)
+{
+	int e, o;
+
+	e = ceil(log10(v)) - 2;
+	if(e <= 0)
+		return v + (v % 4);
+	o = pow10(e);
+	v /= o;
+	v &= ~1;
+	return v * o;
+}
+
+
+void
+labelstrs(Graph *g, char strs[Nlab][Lablen], int *np)
+{
+	int j;
+	uvlong v, vmax;
+
+	g->newvalue(g->mach, &v, &vmax, 1);
+	if(vmax == 0)
+		vmax = 1;
+	if(g->hiwater > vmax)
+		vmax = g->hiwater;
+	vmax = roundvmax(vmax);
+	if(logscale){
+		for(j=1; j<=2; j++)
+			sprint(strs[j-1], "%g", scale*pow10(j)*(double)vmax/100.);
+		*np = 2;
+	}else{
+		for(j=1; j<=3; j++)
+			sprint(strs[j-1], "%g", scale*j*(double)vmax/4.0);
+		*np = 3;
+	}
+}
+
+int
+labelwidth(void)
+{
+	int i, j, n, w, maxw;
+	char strs[Nlab][Lablen];
+
+	maxw = 0;
+	for(i=0; i<ngraph; i++){
+		/* choose value for rightmost graph */
+		labelstrs(&graph[ngraph*(nmach-1)+i], strs, &n);
+		for(j=0; j<n; j++){
+			w = stringwidth(font, strs[j]);
+			if(w > maxw)
+				maxw = w;
+		}
+	}
+	return maxw;
+}
+
+int
+drawlabels(int maxx)
+{
+	int x, j, k, y, dy, dx, starty, startx, nlab, ly;
+	int wid;
+	Graph *g;
+	char labs[Nlab][Lablen];
+	Rectangle r;
+
+	/* label left edge */
+	x = screen->r.min.x;
+	y = screen->r.min.y + Labspace+font->height+Labspace;
+	dy = (screen->r.max.y - y)/ngraph;
+	dx = Labspace+stringwidth(font, "0")+Labspace;
+	startx = x+dx+1;
+	starty = y;
+	dx = (screen->r.max.x - startx)/nmach;
+
+	if(!dy>Nlab*(font->height+1))
+		return maxx;
+
+	/* if there's not enough room */
+	if((wid = labelwidth()) >= dx-10)
+		return maxx;
+
+	maxx -= 1+Lx+wid;
+	draw(screen, Rect(maxx, starty, maxx+1, screen->r.max.y), display->black, nil, ZP);
+	y = starty;
+	for(j=0; j<ngraph; j++, y+=dy){
+		/* choose value for rightmost graph */
+		g = &graph[ngraph*(nmach-1)+j];
+		labelstrs(g, labs, &nlab);
+		r = Rect(maxx+1, y, screen->r.max.x, y+dy-1);
+		if(j == ngraph-1)
+			r.max.y = screen->r.max.y;
+		draw(screen, r, cols[g->colindex][0], nil, paritypt(r.min.x));
+		for(k=0; k<nlab; k++){
+			ly = y + (dy*(nlab-k)/(nlab+1));
+			draw(screen, Rect(maxx+1, ly, maxx+1+Lx, ly+1), display->black, nil, ZP);
+			ly -= font->height/2;
+			string(screen, Pt(maxx+1+Lx, ly), display->black, ZP, font, labs[k]);
+		}
+	}
+	return maxx;
+}
+
+
 void
 redraw(Graph *g, uvlong vmax)
 {
@@ -418,6 +524,19 @@ update1(Graph *g, uvlong v, uvlong vmax)
 	char buf[48];
 	int overflow;
 
+	overflow = 0;
+	if(v > g->hiwater){
+		g->hiwater = v;
+		if(v > vmax){
+			overflow = 1;
+			g->hiwater = v;
+			if(ylabels)
+				drawlabels(screen->r.max.x);
+			redraw(g, g->hiwater);
+		}
+	}
+	if(g->hiwater > vmax)
+		vmax = g->hiwater;
 	if(g->overflow && g->overtmp!=nil)
 		draw(screen, g->overtmp->r, g->overtmp, nil, g->overtmp->r.min);
 	draw(screen, g->r, screen, nil, Pt(g->r.min.x+1, g->r.min.y));
@@ -425,10 +544,6 @@ update1(Graph *g, uvlong v, uvlong vmax)
 	memmove(g->data+1, g->data, (g->ndata-1)*sizeof(g->data[0]));
 	g->data[0] = v;
 	g->overflow = 0;
-	if(logscale)
-		overflow = (v>10*vmax*scale);
-	else
-		overflow = (v>vmax*scale);
 	if(overflow && g->overtmp!=nil){
 		g->overflow = 1;
 		draw(g->overtmp, g->overtmp->r, screen, nil, g->overtmp->r.min);
@@ -1049,52 +1164,13 @@ addmachine(char *name)
 }
 
 void
-labelstrs(Graph *g, char strs[Nlab][Lablen], int *np)
-{
-	int j;
-	uvlong v, vmax;
-
-	g->newvalue(g->mach, &v, &vmax, 1);
-	if(vmax == 0)
-		vmax = 1;
-	if(logscale){
-		for(j=1; j<=2; j++)
-			sprint(strs[j-1], "%g", scale*pow(10., j)*(double)vmax/100.);
-		*np = 2;
-	}else{
-		for(j=1; j<=3; j++)
-			sprint(strs[j-1], "%g", scale*(double)j*(double)vmax/4.0);
-		*np = 3;
-	}
-}
-
-int
-labelwidth(void)
-{
-	int i, j, n, w, maxw;
-	char strs[Nlab][Lablen];
-
-	maxw = 0;
-	for(i=0; i<ngraph; i++){
-		/* choose value for rightmost graph */
-		labelstrs(&graph[ngraph*(nmach-1)+i], strs, &n);
-		for(j=0; j<n; j++){
-			w = stringwidth(font, strs[j]);
-			if(w > maxw)
-				maxw = w;
-		}
-	}
-	return maxw;
-}
-
-void
 resize(void)
 {
-	int i, j, k, n, startx, starty, x, y, dx, dy, ly, ondata, maxx, wid, nlab;
+	int i, j, n, startx, starty, x, y, dx, dy, ondata, maxx;
 	Graph *g;
 	Rectangle machr, r;
 	uvlong v, vmax;
-	char buf[128], labs[Nlab][Lablen];
+	char buf[128];
 
 	draw(screen, screen->r, display->white, nil, ZP);
 
@@ -1129,32 +1205,8 @@ resize(void)
 	}
 
 	maxx = screen->r.max.x;
-
-	/* label right, if requested */
-	if(ylabels && dy>Nlab*(font->height+1)){
-		wid = labelwidth();
-		if(wid < dx-10){
-			/* else there's not enough room */
-			maxx -= 1+Lx+wid;
-			draw(screen, Rect(maxx, starty, maxx+1, screen->r.max.y), display->black, nil, ZP);
-			y = starty;
-			for(j=0; j<ngraph; j++, y+=dy){
-				/* choose value for rightmost graph */
-				g = &graph[ngraph*(nmach-1)+j];
-				labelstrs(g, labs, &nlab);
-				r = Rect(maxx+1, y, screen->r.max.x, y+dy-1);
-				if(j == ngraph-1)
-					r.max.y = screen->r.max.y;
-				draw(screen, r, cols[g->colindex][0], nil, paritypt(r.min.x));
-				for(k=0; k<nlab; k++){
-					ly = y + (dy*(nlab-k)/(nlab+1));
-					draw(screen, Rect(maxx+1, ly, maxx+1+Lx, ly+1), display->black, nil, ZP);
-					ly -= font->height/2;
-					string(screen, Pt(maxx+1+Lx, ly), display->black, ZP, font, labs[k]);
-				}
-			}
-		}
-	}
+	if(ylabels)
+		maxx = drawlabels(maxx);
 
 	/* create graphs */
 	for(i=0; i<nmach; i++){
@@ -1188,6 +1240,9 @@ resize(void)
 			g->newvalue(g->mach, &v, &vmax, 0);
 			if(vmax == 0)
 				vmax = 1;
+			if(g->hiwater > vmax)
+				vmax = g->hiwater;
+			vmax = roundvmax(vmax);
 			redraw(g, vmax);
 		}
 	}
@@ -1415,6 +1470,7 @@ main(int argc, char *argv[])
 			graph[i].newvalue(graph[i].mach, &v, &vmax, 0);
 			if(vmax == 0)
 				vmax = 1;
+			vmax = roundvmax(vmax);
 			graph[i].update(&graph[i], v, vmax);
 		}
 		flushimage(display, 1);
