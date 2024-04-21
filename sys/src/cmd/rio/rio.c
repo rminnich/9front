@@ -352,7 +352,7 @@ keyboardtap(void*)
 {
 	Window *cur = nil;
 	Channel *c;
-	char *s;
+	char *s, *t;
 
 	enum { Akbd, Aopen, Aclose, Awrite, NALT };
 	Alt alts[NALT+1] = {
@@ -397,6 +397,8 @@ keyboardtap(void*)
 			}
 			if(c == totap)
 				totap = nil;
+			while(nbrecv(c, &t))
+				free(t);
 			chanfree(c);
 			break;
 		case Awrite:
