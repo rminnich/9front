@@ -766,17 +766,12 @@ loop:
 static ulong
 newgen(void)
 {
-	static Lock lk;
 	static ulong gen = 0;
-	ulong r;
 
-	lock(&lk);
 	while(gen == 0 || gen == Hangupgen)
 		gen = (nrand(1<<16)<<16)|nrand(1<<16);
-	r = gen++;
-	unlock(&lk);
 
-	return r;
+	return gen++;
 }
 
 /*
