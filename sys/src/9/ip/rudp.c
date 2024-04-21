@@ -162,9 +162,6 @@ struct Rudppriv
 };
 
 
-static ulong generation = 0;
-static Rendez rend;
-
 /*
  *  protocol specific part of Conv
  */
@@ -180,17 +177,17 @@ struct Rudpcb
 /*
  * local functions 
  */
-void	relsendack(Conv*, Reliable*, int);
-int	reliput(Conv*, Block*, uchar*, ushort);
-Reliable *relstate(Rudpcb*, uchar*, ushort, char*);
-void	relput(Reliable*);
-void	relforget(Conv *, uchar*, int, int);
-void	relackproc(void *);
-void	relackq(Reliable *, Block*);
-void	relhangup(Conv *, Reliable*);
-void	relrexmit(Conv *, Reliable*);
-void	relput(Reliable*);
-void	rudpkick(void *x);
+static void	relsendack(Conv*, Reliable*, int);
+static int	reliput(Conv*, Block*, uchar*, ushort);
+static Reliable *relstate(Rudpcb*, uchar*, ushort, char*);
+static void	relput(Reliable*);
+static void	relforget(Conv *, uchar*, int, int);
+static void	relackproc(void *);
+static void	relackq(Reliable *, Block*);
+static void	relhangup(Conv *, Reliable*);
+static void	relrexmit(Conv *, Reliable*);
+static void	relput(Reliable*);
+static void	rudpkick(void *x);
 
 static void
 rudpstartackproc(Proto *rudp)
@@ -325,7 +322,7 @@ doipoput(Conv *c, Fs *f, Block *bp, int ttl, int tos)
 		ipoput4(f, bp, nil, ttl, tos, nil);
 }
 
-int
+static int
 flow(void *v)
 {
 	Reliable *r = v;
@@ -333,7 +330,7 @@ flow(void *v)
 	return UNACKED(r) <= Maxunacked;
 }
 
-void
+static void
 rudpkick(void *x)
 {
 	Conv *c = x;
@@ -471,7 +468,7 @@ rudpkick(void *x)
 	poperror();
 }
 
-void
+static void
 rudpiput(Proto *rudp, Ipifc *ifc, Block *bp)
 {
 	int len, olen;
@@ -598,7 +595,7 @@ rudpiput(Proto *rudp, Ipifc *ifc, Block *bp)
 
 static char *rudpunknown = "unknown rudp ctl request";
 
-char*
+static char*
 rudpctl(Conv *c, char **f, int n)
 {
 	Rudpcb *ucb;
@@ -634,7 +631,7 @@ rudpctl(Conv *c, char **f, int n)
 	return rudpunknown;
 }
 
-void
+static void
 rudpadvise(Proto *rudp, Block *bp, Ipifc *, char *msg)
 {
 	Udphdr *h;
@@ -665,7 +662,7 @@ rudpadvise(Proto *rudp, Block *bp, Ipifc *, char *msg)
 	freeblist(bp);
 }
 
-int
+static int
 rudpstats(Proto *rudp, char *buf, int len)
 {
 	Rudppriv *upriv;
@@ -711,7 +708,7 @@ rudpinit(Fs *fs)
 /*
  *  Enqueue a copy of an unacked block for possible retransmissions
  */
-void
+static void
 relackq(Reliable *r, Block *bp)
 {
 	Block *np;
@@ -732,7 +729,7 @@ relackq(Reliable *r, Block *bp)
 /*
  *  retransmit unacked blocks
  */
-void
+static void
 relackproc(void *a)
 {
 	Rudpcb *ucb;
@@ -766,37 +763,44 @@ loop:
 	goto loop;
 }
 
+static ulong
+newgen(void)
+{
+	static Lock lk;
+	static ulong gen = 0;
+	ulong r;
+
+	lock(&lk);
+	while(gen == 0 || gen == Hangupgen)
+		gen = (nrand(1<<16)<<16)|nrand(1<<16);
+	r = gen++;
+	unlock(&lk);
+
+	return r;
+}
+
 /*
  *  get the state record for a conversation
  */
-Reliable*
+static Reliable*
 relstate(Rudpcb *ucb, uchar *addr, ushort port, char *from)
 {
 	Reliable *r, **l;
 
 	l = &ucb->r;
 	for(r = *l; r; r = *l){
-		if(memcmp(addr, r->addr, IPaddrlen) == 0 && 
-		    port == r->port)
+		if(ipcmp(addr, r->addr) == 0 && port == r->port)
 			break;
 		l = &r->next;
 	}
 
 	/* no state for this addr/port, create some */
 	if(r == nil){
-		while(generation == 0)
-			generation = rand();
-
-		DPRINT("from %s new state %lud for %I!%ud\n", 
-		        from, generation, addr, port);
-
 		r = smalloc(sizeof(Reliable));
-		memmove(r->addr, addr, IPaddrlen);
+		ipmove(r->addr, addr);
 		r->port = port;
 		r->unacked = 0;
-		if(generation == Hangupgen)
-			generation++;
-		r->sndgen = generation++;
+		r->sndgen = newgen();
 		r->sndseq = 0;
 		r->ackrcvd = 0;
 		r->rcvgen = 0;
@@ -807,6 +811,9 @@ relstate(Rudpcb *ucb, uchar *addr, ushort port, char *from)
 		r->ref = 0;
 		incref(r);	/* one reference for being in the list */
 
+		DPRINT("from %s new state %lud for %I!%ud\n", 
+		        from, r->sndgen, r->addr, r->port);
+
 		*l = r;
 	}
 
@@ -814,7 +821,7 @@ relstate(Rudpcb *ucb, uchar *addr, ushort port, char *from)
 	return r;
 }
 
-void
+static void
 relput(Reliable *r)
 {
 	if(decref(r) == 0)
@@ -824,7 +831,7 @@ relput(Reliable *r)
 /*
  *  forget a Reliable state
  */
-void
+static void
 relforget(Conv *c, uchar *ip, int port, int originator)
 {
 	Rudpcb *ucb;
@@ -852,7 +859,7 @@ relforget(Conv *c, uchar *ip, int port, int originator)
  *
  *  called with ucb locked.
  */
-int
+static int
 reliput(Conv *c, Block *bp, uchar *addr, ushort port)
 {
 	Block *nbp;
@@ -953,7 +960,7 @@ out:
 	return rv;
 }
 
-void
+static void
 relsendack(Conv *c, Reliable *r, int hangup)
 {
 	Udphdr *uh;
@@ -1007,7 +1014,7 @@ relsendack(Conv *c, Reliable *r, int hangup)
 /*
  *  called with ucb locked (and c locked if user initiated close)
  */
-void
+static void
 relhangup(Conv *c, Reliable *r)
 {
 	int n;
@@ -1029,9 +1036,7 @@ relhangup(Conv *c, Reliable *r)
 	r->rcvgen = 0;
 	r->rcvseq = 0;
 	r->acksent = 0;
-	if(generation == Hangupgen)
-		generation++;
-	r->sndgen = generation++;
+	r->sndgen = newgen();
 	r->sndseq = 0;
 	r->ackrcvd = 0;
 	r->xmits = 0;
@@ -1042,7 +1047,7 @@ relhangup(Conv *c, Reliable *r)
 /*
  *  called with ucb locked
  */
-void
+static void
 relrexmit(Conv *c, Reliable *r)
 {
 	Rudppriv *upriv;
