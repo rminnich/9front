@@ -68,9 +68,9 @@ LIB=\
 	/$objtype/lib/libmemdraw.a\
 	/$objtype/lib/libdraw.a\
 	/$objtype/lib/libip.a\
-	/$objtype/lib/libc.a\
 	/$objtype/lib/libsec.a\
 	/$objtype/lib/libmp.a\
+	/$objtype/lib/libc.a\
 	/$objtype/lib/libfis.a\
 	/$objtype/lib/libaml.a\
 	/$objtype/lib/libdtracy.a\
