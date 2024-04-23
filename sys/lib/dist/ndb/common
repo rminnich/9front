@@ -318,38 +318,3 @@ udp=uldata port=12667
 udp=dldata port=12668
 
 gre=ppp port=34827
-
-#
-# authdom declarations need to be visible on the inside network,
-# even for outside machines.  putting them here ensures
-# their visibility everywhere.
-#
-
-# bell labs
-auth=sources.cs.bell-labs.com authdom=outside.plan9.bell-labs.com
-
-# for geoff
-auth=www.9netics.com authdom=9netics.com
-auth=newcpu.9netics.net authdom=9netics.net
-auth=mordor.tip9ug.jp authdom=tip9ug.jp
-
-# for geoff's ipv6 testing
-auth=9grid.hamnavoe.com
-	authdom=hamnavoe.com
-	authdom=9grid.hamnavoe.com
-
-auth=whale.lsub.org
-	authdom=lsub.org
-	authdom=dat.escet.urjc.es
-
-# for jmk
-auth=tor.texas.9grid.us authdom=9grid.us
-auth=9grid.net authdom=9grid.net
-
-# for sape
-auth=130.89.145.31 authdom=cs.utwente.nl
-
-# for sl
-auth=auth.stanleylieber.com authdom=inri
-auth=mars2.inri.net authdom=mars2
-auth=cb.inri.net authdom=nyc
