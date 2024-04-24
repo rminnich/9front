@@ -1,0 +1,41 @@
+</$objtype/mkfile
+
+TARG=jc
+
+OFILES=\
+	cgen.$O\
+	enam.$O\
+	list.$O\
+	machcap.$O\
+	mul.$O\
+	peep.$O\
+	pgen.$O\
+	pswt.$O\
+	reg.$O\
+	sgen.$O\
+	swt.$O\
+	txt.$O\
+	lex.$O\
+
+HFILES=\
+	gc.h\
+	j.out.h\
+	../cc/cc.h\
+
+LIB=../cc/cc.a$O
+
+BIN=/$objtype/bin
+</sys/src/cmd/mkone
+
+$LIB:	../cc/cc.h
+	cd ../cc
+	mk install
+
+lex.$O: ../cc/lex.c ../cc/y.tab.h
+	$CC -Dmain'='ccmain $CFLAGS ../cc/lex.c
+
+%.$O: ../cc/%.c
+	$CC $CFLAGS ../cc/$stem.c
+
+enam.c:	j.out.h
+	rc mkenam
