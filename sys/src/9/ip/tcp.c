@@ -308,7 +308,6 @@ int	tcp_irtt = DEF_RTT;	/* Initial guess at round trip time */
 enum {
 	/* MIB stats */
 	MaxConn,
-	Mss,
 	ActiveOpens,
 	PassiveOpens,
 	EstabResets,
@@ -339,13 +338,14 @@ enum {
 	RecoveryCwind,
 	RecoveryPA,
 
+	InLimbo,
+
 	Nstats
 };
 
 static char *statnames[Nstats] =
 {
 [MaxConn]	"MaxConn",
-[Mss]		"MaxSegment",
 [ActiveOpens]	"ActiveOpens",
 [PassiveOpens]	"PassiveOpens",
 [EstabResets]	"EstabResets",
@@ -374,6 +374,8 @@ static char *statnames[Nstats] =
 [RecoveryNoSeq]	"RecoveryNoSeq",
 [RecoveryCwind]	"RecoveryCwind",
 [RecoveryPA]	"RecoveryPA",
+
+[InLimbo]	"InLimbo",
 };
 
 typedef struct Tcppriv Tcppriv;
@@ -887,7 +889,6 @@ inittcpctl(Conv *s, int mode)
 	Tcpctl *tcb;
 	Tcp4hdr* h4;
 	Tcp6hdr* h6;
-	Tcppriv *tpriv;
 	int mss;
 
 	tcb = (Tcpctl*)s->ptcl;
@@ -944,9 +945,6 @@ inittcpctl(Conv *s, int mode)
 
 	tcb->mss = tcb->cwind = mss;
 	tcb->abcbytes = 0;
-	tpriv = s->p->priv;
-	tpriv->stats[Mss] = tcb->mss;
-
 	/* default is no window scaling */
 	tcpsetscale(s, tcb, 0, 0);
 }
@@ -1304,8 +1302,6 @@ ntohtcp4(Tcp *tcph, Block **bpp)
 static void
 tcpsndsyn(Conv *s, Tcpctl *tcb)
 {
-	Tcppriv *tpriv;
-
 	tcb->iss = (nrand(1<<16)<<16)|nrand(1<<16);
 	tcb->rttseq = tcb->iss;
 	tcb->snd.wl2 = tcb->iss;
@@ -1319,8 +1315,6 @@ tcpsndsyn(Conv *s, Tcpctl *tcb)
 
 	/* set desired mss and scale */
 	tcb->mss = tcpmtu(v6lookup(s->p->f, s->raddr, s->laddr, s), s->ipversion, &tcb->scale);
-	tpriv = s->p->priv;
-	tpriv->stats[Mss] = tcb->mss;
 }
 
 static int
@@ -1754,7 +1748,6 @@ tcpincoming(Conv *s, Tcp *segp, uchar *src, uchar *dst, uchar version)
 	/* our sending max segment size cannot be bigger than what he asked for */
 	if(lp->mss != 0 && lp->mss < tcb->mss)
 		tcb->mss = lp->mss;
-	tpriv->stats[Mss] = tcb->mss;
 
 	/* window scaling */
 	tcpsetscale(new, tcb, lp->rcvscale, lp->sndscale);
@@ -2985,7 +2978,6 @@ static void
 procsyn(Conv *s, Tcp *seg)
 {
 	Tcpctl *tcb;
-	Tcppriv *tpriv;
 
 	tcb = (Tcpctl*)s->ptcl;
 	tcb->flags |= FORCE;
@@ -2997,11 +2989,8 @@ procsyn(Conv *s, Tcp *seg)
 	tcb->irs = seg->seq;
 
 	/* our sending max segment size cannot be bigger than what he asked for */
-	if(seg->mss != 0 && seg->mss < tcb->mss) {
+	if(seg->mss != 0 && seg->mss < tcb->mss)
 		tcb->mss = seg->mss;
-		tpriv = s->p->priv;
-		tpriv->stats[Mss] = tcb->mss;
-	}
 
 	/* if the server does not support ws option, disable window scaling */
 	if(seg->ws == 0){
@@ -3393,9 +3382,9 @@ tcpstats(Proto *tcp, char *buf, int len)
 	priv = tcp->priv;
 	p = buf;
 	e = p+len;
+	priv->stats[InLimbo] = priv->nlimbo;
 	for(i = 0; i < Nstats; i++)
 		p = seprint(p, e, "%s: %llud\n", statnames[i], priv->stats[i]);
-	p = seprint(p, e, "InLimbo: %d\n", priv->nlimbo);
 	return p - buf;
 }
 
