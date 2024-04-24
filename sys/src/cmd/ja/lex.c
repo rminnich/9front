@@ -9,14 +9,7 @@ main(int argc, char *argv[])
 	char *p;
 	int nout, nproc, status, i, c;
 
-	thechar = 'i';
-	p = strrchr(argv[0], '/');
-	if(p == nil)
-		p = argv[0];
-	else
-		p++;
-	if(*p == 'j')
-		thechar = 'j';
+	thechar = 'j';
 	memset(debug, 0, sizeof(debug));
 	cinit();
 	outfile = 0;
@@ -44,12 +37,12 @@ main(int argc, char *argv[])
 		break;
 
 	} ARGEND
+	if(debug['i'])
+		thechar = 'i';
 	if(*argv == 0) {
 		print("usage: %ca [-options] file.s\n", thechar);
 		errorexit();
 	}
-	if(debug['j'])
-		thechar = 'j';
 	thestring = (thechar == 'j'? "riscv64" : "riscv");
 	if(argc > 1 && systemtype(Windows)){
 		print("can't assemble multiple files on windows\n");

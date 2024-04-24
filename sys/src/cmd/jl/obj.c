@@ -8,8 +8,8 @@
 
 char	*noname		= "<none>";
 char	symname[]	= SYMDEF;
-char	thechar		= 'i';
-char	*thestring 	= "riscv";
+char	thechar		= 'j';
+char	*thestring 	= "riscv64";
 
 /*
  *	-H1 -R4				is headerless (-R8 for jl)
@@ -50,15 +50,8 @@ main(int argc, char *argv[])
 	INITDAT = -1;
 	INITRND = -1;
 	INITENTRY = 0;
-	ptrsize = 4;
+	ptrsize = 8;
 
-	a = strrchr(argv[0], '/');
-	if(a == nil)
-		a = argv[0];
-	else
-		a++;
-	if(*a == 'j')
-		thechar = 'j';
 	ARGBEGIN {
 	default:
 		c = ARGC();
@@ -99,18 +92,16 @@ main(int argc, char *argv[])
 			HEADTYPE = atolwhex(a);
 		break;
 	} ARGEND
-
 	USED(argc);
 
+	if(debug['i']){
+		thechar = 'i';
+		thestring = "riscv";
+		ptrsize = 4;
+	}
 	if(*argv == 0) {
 		diag("usage: %cl [-options] objects", thechar);
 		errorexit();
-	}
-	if(debug['j'])
-		thechar = 'j';
-	if(thechar == 'j'){
-		thestring = "riscv64";
-		ptrsize = 8;
 	}
 	if(!debug['9'] && !debug['U'] && !debug['B'])
 		debug[DEFAULT] = 1;

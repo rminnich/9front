@@ -15,19 +15,12 @@ main(int argc, char **argv)
 		maxregalloc = atoi(p);
 	if (maxregalloc < REGALLOC || maxregalloc >= NREG)
 		maxregalloc = REGALLOC;
-	thechar = 'i';
-	p = strrchr(argv[0], '/');
-	if(p == nil)
-		p = argv[0];
-	else
-		p++;
-	if(*p == 'j')
-		thechar = 'j';
+	thechar = 'j';
 	oargc = argc;
 	oargv = argv;
 	ARGBEGIN {
-	case 'j':
-		thechar = 'j';
+	case 'i':
+		thechar = 'i';
 		break;
 	case 'o':
 	case 'D':
