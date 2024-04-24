@@ -1,0 +1,14 @@
+.TH USBTREE 8
+.SH NAME
+usbtree \- print USB hubs and their attached devices
+.SH SYNOPSIS
+.B usbtree
+.SH DESCRIPTION
+.I Usbtree
+prints a indented tree of USB hubs with each
+hub listing the active ports and the attached
+devices recursively.
+.SH SOURCE
+.B /rc/bin/usbtree
+.SH SEE ALSO
+.IR usb (3)
