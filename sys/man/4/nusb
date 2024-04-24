@@ -96,12 +96,21 @@ increase verbosity.
 .SS Hubs
 .I Usbd
 enumerates the tree of USB hubs and configures the device on
-attachment. It provides a filesystem with the file
+attachment. It provides a filesystem with the files
 .B usbevent
+and
+.B usbhubctl
 (usually seen as
-.BR /dev/usbevent )
-which, when read, returns a 6-column, space-separated line of
-text, one for each event. The columns are:
+.B /dev/usbevent
+and
+.BR /dev/usbhubctl ).
+.PP
+When the
+.B usbevent
+file is read,
+it returns a 6-column, space-separated line of
+text, one for each event.
+The columns are:
 .B attach
 or
 .B detach
@@ -120,7 +129,7 @@ and
 .I did
 are formatted as 4 digit hexadecimal.
 .I Csp
-is the device class, subclass, protocol indentifier
+is the device class, subclass, protocol identifier
 formatted as 6 digit hexadecimal.
 .I Usbd
 assigns a stable device identifier based on the
@@ -134,7 +143,31 @@ and
 .I hname
 are passed to a suitable driver as
 .I devid
-in the form \fIaddr\fB:\fIhname
+in the form \fIaddr\fB:\fIhname\fR.
+.PP
+The
+.B usbhubctl
+file provides per-port power switching control (PPPS)
+by writing the following 4-column command format:
+.B portpower
+or
+.B portindicator
+followed by
+.IR hub ,
+.IR port
+and the state
+.B on
+or
+.B off
+where
+.I hub
+selects the hub device (using its device address
+.I addr
+or
+.IR hname )
+and
+.I port
+is the decimal port number (counting from 1).
 .SS Keyboards and mice
 .I Kb
 supports USB keyboards and mice either as separate USB devices
@@ -180,7 +213,7 @@ provides a file system (usually seen under
 that includes one directory per storage device, named
 .BI sdU N [. M ]
 in correspondence with the USB device identifier
-and the storage unit number (or LUN). The LUN is omited
+and the storage unit number (or LUN). The LUN is omitted
 for single lun devices.
 .PP
 The storage device directory contains the usual files
