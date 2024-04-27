@@ -254,6 +254,7 @@ tzoffset(Tzone *tz, vlong abs, Tm *tm)
 		tm->tzoff = 0;
 		return;
 	}
+	abs += tz->stdiff;
 	for(p = tz->dlpairs; *p; p += 2)
 		if(abs > p[0] && abs <= p[1]){
 			dl = 1;
