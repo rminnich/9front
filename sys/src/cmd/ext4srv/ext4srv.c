@@ -30,23 +30,17 @@ struct Aux {
 enum {
 	Adir,
 	Afile,
+
+	Root = 0,
 };
 
 static Opts opts = {
-	.group = nil,
-	.cachewb = 0,
-	.asroot = 0,
-	.rdonly = 0,
-
-	.fstype = -1,
-	.blksz = 1024,
 	.label = "",
-	.inodesz = 256,
-	.ninode = 0,
 };
-static u32int Root;
 static u8int zero[65536];
-static char *srvname = "ext4";
+static char *srvname;
+static char *device;
+static Part *devpart;
 
 static int
 haveperm(Aux *a, int p, struct ext4_inode *inodeout)
@@ -115,27 +109,31 @@ haveperm(Aux *a, int p, struct ext4_inode *inodeout)
 static void
 rattach(Req *r)
 {
-	char err[ERRMAX];
 	Aux *a;
 
 	if((a = calloc(1, sizeof(*a))) == nil)
 		respond(r, "memory");
-	else if((a->p = openpart(r->ifcall.aname, &opts)) == nil){
-		free(a);
-		rerrstr(err, sizeof(err));
-		respond(r, err);
-	}else{
-		if(opts.asroot || findgroup(&a->p->groups, r->ifcall.uname, &a->uid) == nil)
-			a->uid = Root;
-
-		incref(a->p);
-		a->type = Adir;
-		a->path = estrdup9p("");
-		r->ofcall.qid = a->p->qidmask;
-		r->fid->qid = a->p->qidmask;
-		r->fid->aux = a;
-		respond(r, nil);
+	if(r->ifcall.aname && *r->ifcall.aname){
+		if((a->p = openpart(r->ifcall.aname, &opts)) == nil){
+			free(a);
+			responderror(r);
+			return;
+		}
+	}else if((a->p = devpart) == nil){
+		respond(r, "no file specified");
+		return;
 	}
+
+	if(opts.asroot || findgroup(&a->p->groups, r->ifcall.uname, &a->uid) == nil)
+		a->uid = Root;
+
+	incref(a->p);
+	a->type = Adir;
+	a->path = estrdup9p("");
+	r->ofcall.qid = a->p->qidmask;
+	r->fid->qid = a->p->qidmask;
+	r->fid->aux = a;
+	respond(r, nil);
 }
 
 static u32int
@@ -573,7 +571,7 @@ rwstat(Req *r)
 
 	wrperm = haveperm(a, OWRITE, &inode);
 	uid = ext4_inode_get_uid(&inode);
-	isowner = uid == Root || a->uid == uid;
+	isowner = a->uid == Root || a->uid == uid;
 
 	/* permission to truncate */
 	isdir = ext4_inode_type(a->p->sb, &inode) == EXT4_INODE_MODE_DIRECTORY;
@@ -876,8 +874,9 @@ static Srv fs = {
 static void
 usage(void)
 {
-	fprint(2, "usage: %s [-Crs] [-g groupfile] [-R uid] [srvname]\n", argv0);
-	fprint(2, "mkfs:  %s -M (2|3|4) [-L label] [-b blksize] [-N numinodes] [-I inodesize] device\n", argv0);
+	fprint(2,
+		"usage: %s [-Ss] [-f file] [-g groupfile] [-n srvname] [-r (2|3|4)]"
+		" [-b blksize] [-I inodesize] [-L label]\n", argv0);
 	threadexitsall("usage");
 }
 
@@ -891,20 +890,19 @@ threadmain(int argc, char **argv)
 	rfork(RFNOTEG);
 
 	stdio = 0;
+	device = nil;
 	ARGBEGIN{
 	case 'D':
 		chatty9p++;
-nomkfs:
-		if(opts.fstype > 0)
-			usage();
-		opts.fstype = 0;
 		break;
 	case 'd':
 		ext4_dmask_set(strtoul(EARGF(usage()), nil, 0));
 		break;
-	case 'C':
-		opts.cachewb = 1;
-		goto nomkfs;
+	case 'f':
+		if(device != nil)
+			usage();
+		device = EARGF(usage());
+		break;
 	case 'g':
 		gr = EARGF(usage());
 		if((f = open(gr, OREAD)) < 0)
@@ -919,70 +917,62 @@ nomkfs:
 			sysfatal("%s: read failed", gr);
 		close(f);
 		opts.group[sz] = 0;
-		goto nomkfs;
-	case 'R':
-		opts.asroot = 1;
-		Root = atoll(EARGF(usage()));
-		goto nomkfs;
-	case 'r':
-		opts.rdonly = 1;
-		goto nomkfs;
+		break;
+	case 'n':
+		if(stdio != 0)
+			usage();
+		srvname = EARGF(usage());
+		break;
 	case 's':
 		stdio = 1;
-		goto nomkfs;
-	case 'M':
-		if(!opts.fstype)
+		if(srvname != nil)
 			usage();
-		opts.fstype = atoi(EARGF(usage()));
-		if(opts.fstype < 2 || opts.fstype > 4)
-			usage();
+		break;
+	case 'S':
+		opts.asroot = 1;
 		break;
 
 	case 'b':
 		opts.blksz = atoi(EARGF(usage()));
 		if(opts.blksz != 1024 && opts.blksz != 2048 && opts.blksz != 4096)
 			usage();
-yesmkfs:
-		if(opts.fstype < 1)
-			usage();
 		break;
-	case 'L':
-		opts.label = EARGF(usage());
-		goto yesmkfs;
 	case 'I':
 		opts.inodesz = atoi(EARGF(usage()));
 		if(opts.inodesz < 128 || ((opts.inodesz-1) & opts.inodesz) != 0)
 			usage();
-		goto yesmkfs;
-	case 'N':
-		opts.ninode = atoi(EARGF(usage()));
-		if(opts.ninode < 1)
+		break;
+	case 'L':
+		opts.label = EARGF(usage());
+		break;
+	case 'r':
+		if(opts.ream > 0)
 			usage();
-		goto yesmkfs;
+		opts.ream = atoi(EARGF(usage()));
+		if(opts.ream < 2 || opts.ream > 4)
+			usage();
+		break;
 
 	default:
 		usage();
 	}ARGEND
 
-	if(opts.fstype > 1){
-		if(argc != 1)
-			usage();
-		if(openpart(argv[0], &opts) == nil)
-			sysfatal("%r");
-		closeallparts();
-		threadexitsall(nil);
-	}else{
-		if(!stdio && argc == 1)
-			srvname = *argv;
-		else if(argc != 0)
-			usage();
+	if(argc != 0)
+		usage();
 
-		if(stdio){
-			fs.infd = 0;
-			fs.outfd = 1;
-			threadsrv(&fs);
-		}else
-			threadpostsrv(&fs, srvname);
-		threadexits(nil);
+	if(device == nil && opts.ream > 1)
+		usage();
+	if(device != nil && (devpart = openpart(device, &opts)) == nil)
+		sysfatal("%r");
+
+	if(stdio){
+		fs.infd = 0;
+		fs.outfd = 1;
+		threadsrv(&fs);
+	}else{
+		if(srvname == nil)
+			srvname = "ext4";
+		threadpostsrv(&fs, srvname);
 	}
+	threadexits(nil);
 }

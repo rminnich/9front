@@ -3,14 +3,10 @@ typedef struct Part Part;
 
 struct Opts {
 	char *group;
-	int cachewb;
 	int asroot;
-	int rdonly;
-
-	int fstype;
+	int ream;
 	int blksz;
 	int inodesz;
-	u32int ninode;
 	char *label;
 };
 

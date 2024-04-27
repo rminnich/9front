@@ -4,34 +4,29 @@ ext4srv \- ext4 file system
 .SH SYNOPSIS
 .B ext4srv
 [
-.B -Crs
+.B -Ss
+] [
+.B -f
+.I file
 ] [
 .B -g
 .I groupfile
 ] [
-.B -R
-.I uid
+.B -n
+.I srvname
 ] [
-.I service
-]
-.PP
-.B ext4srv
-.B -M
+.B -r
 .I (2|3|4)
-[
-.B -L
-.I label
 ] [
 .B -b
 .I blksize
 ] [
-.B -N
-.I numinodes
-] [
 .B -I
 .I inodesize
+] [
+.B -L
+.I label
 ]
-.I device
 .SH DESCRIPTION
 .I Ext4srv
 is a file server that interprets the Linux Second, Third and Fourth
@@ -43,20 +38,20 @@ simultaneously.
 .PP
 .I Ext4srv
 posts a file descriptor named
-.I service
+.I srvname
 (default
 .BR ext4 )
 in the
 .B /srv
-directory.
-To access an ext4 file system on a device, use
+directory.  To access an ext4 file system on a device, use
 .B mount
 with the
 .I spec
 argument
 (see
 .IR bind (1))
-the name of the file holding the raw ext4 file system, typically the disk or partition.
+the name of the file holding the raw ext4 file system, typically the
+disk or partition.
 If
 .I spec
 is undefined in the
@@ -68,60 +63,52 @@ as the default name for the device holding the file system.
 .PP
 Normally
 .I ext4srv
-creates a pipe to act as the communications channel between
-itself and its clients.
+creates a pipe to act as the communications channel between itself and
+its clients.
 The
 .B -s
 flag instructs
 .I ext4srv
-to use its standard input and output instead.
-This flag also prevents the creation of an explicit service file in
+to use its standard input and output instead.  This flag also prevents
+the creation of an explicit service file in
 .BR /srv .
 .PP
-The
-.B -r
-flag (recommended) makes the file system read-only.
+By default,
+.I ext4srv
+will try to parse and use
+.I /etc/group
+file for permission checks, if available on the mounted filesystem.
 The optional
 .B -g
-flags specify Unix-format group file that give the mapping between the
-numeric user- and group-ID numbers in the ext4 file system and the
-strings reported by Plan 9 status inquiries.
+flag specifies Unix-format group file that gives the mapping between
+the numeric user- and group-ID numbers in the Extended file system and
+the strings reported by Plan 9 status inquiries.  The file is assumed
+to reside on the filesystem where
+.I ext4srv
+executable is running, not the one to be mounted.
 .PP
 With
-.B -R
-option the filesystem can be mounted in "root" mode, allowing full access regardless
-of permissions. The usual
-.I uid
-in this case is
-.IR 0 .
-.SH MKFS
-A different mode of
-.I ext4srv
-is enabled with
-.B -M
-option that accepts the file system version
-.RI ( 2
-for
-.I ext2
-and so on).
-In this mode filesystem is initialized on the specified
-.I device
-and all existing data on it is destroyed.
+.B -S
+option the filesystem can be mounted in "root" mode, allowing full
+access, regardless of permissions.
 .PP
-Additional options may be specified, for example
-.B -L
-may be used to set the filesystem label.
+With
+.B -r
+option the filesystem will be reamed - the old data erased and the
+file reformatted as specified.  An optional label can be specified
+with
+.BR -L ,
+block size (default is 4096 bytes) with
+.B -b
+and
+inode size (default is 256 bytes) with
+.BR -I .
 .SH SOURCE
 .B /sys/src/cmd/ext4srv
-.SH BUGS
-Yes.
-.PP
-Permission checking is very basic and may not be complete.
+.SH NOTES
 Symlinks are not resolved.
-There may be many bugs.
-It is advisable to use
-.I ext4srv
-in read-only mode whenever possible.
+.SH BUGS
+There may be bugs - no refunds.
 .SH HISTORY
 .I Ext4srv
 first appeared in 9front (February, 2024).

@@ -154,16 +154,12 @@ static void *
 readfile(Part *p, char *path, usize *sz)
 {
 	usize n, got;
-	char *s, *d;
 	ext4_file f;
+	char *d;
 	int r;
 
 	d = nil;
-	while(*path == '/')
-		path++;
-	s = smprint("/%s", path);
-	r = ext4_fopen2(&p->mp, &f, s, O_RDONLY);
-	free(s);
+	r = ext4_fopen2(&p->mp, &f, path, O_RDONLY);
 
 	if(r == 0){
 		*sz = ext4_fsize(&f);
@@ -203,7 +199,7 @@ mountpart(Part *p, Opts *opts)
 	int r;
 
 	mp = &p->mp;
-	if(ext4_mount(mp, &p->bdev, opts->rdonly) < 0){
+	if(ext4_mount(mp, &p->bdev, 0) < 0){
 		werrstr("mount: %r");
 		goto error;
 	}
@@ -219,8 +215,7 @@ mountpart(Part *p, Opts *opts)
 		werrstr("journal: %r");
 		goto error;
 	}
-	if(opts->cachewb)
-		ext4_cache_write_back(mp, 1);
+	ext4_cache_write_back(mp, 1);
 
 	if(ext4_get_sblock(mp, &p->sb) < 0){
 		werrstr("sblock: %r");
@@ -230,7 +225,7 @@ mountpart(Part *p, Opts *opts)
 	r = 0;
 	if(opts->group != nil){
 		r = loadgroups(&p->groups, opts->group);
-	}else if((gr = readfile(p, "/etc/group", &sz)) != nil){
+	}else if((gr = readfile(p, "etc/group", &sz)) != nil){
 		gr[sz] = 0;
 		r = loadgroups(&p->groups, gr);
 		free(gr);
@@ -307,19 +302,18 @@ openpart(char *dev, Opts *opts)
 		p->partdev = (char*)(p+1) + blksz;
 		strcpy(p->partdev, dev);
 
-		if(opts->fstype > 1){
+		if(opts->ream > 1){
 			memset(&fs, 0, sizeof(fs));
 			memset(&info, 0, sizeof(info));
 			info.block_size = opts->blksz;
 			snprint(info.label, sizeof(info.label), opts->label);
 			info.inode_size = opts->inodesz;
-			info.inodes = opts->ninode;
-			info.journal = opts->fstype > 2;
+			info.journal = opts->ream > 2;
 			for(i = 0; i < 16; i += 4){
 				rn = truerand();
 				memcpy(info.uuid+i, &rn, 4);
 			}
-			if(ext4_mkfs(&fs, &p->bdev, &info, opts->fstype) < 0){
+			if(ext4_mkfs(&fs, &p->bdev, &info, opts->ream) < 0){
 				werrstr("mkfs: %r");
 				goto error;
 			}
