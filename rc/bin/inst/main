@@ -15,10 +15,8 @@ tasks=(\
 	configfs\
 	partdisk prepdisk\
 	mountfs\
-	configdist\
 	confignet\
 	mountdist\
-	download\
 	copydist\
 	ndbsetup\
 	tzsetup\

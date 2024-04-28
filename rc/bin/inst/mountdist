@@ -1,6 +1,6 @@
 #!/bin/rc
 
-# prereq: mountfs configdist
+# prereq: mountfs
 # desc: locate and mount the distribution
 
 fn domount{
@@ -16,43 +16,11 @@ fn exitifdone{
 }
 
 fn havedist {
-	test -d $1/dist/plan9front || test -f $1/9front.iso || test -f $1/9front.iso.bz2
+	test -d $1/dist/plan9front
 }
-
-fn trycdimage{
-	if(test -f $1){
-		rm -f /srv/9660.dist
-		unmount /n/dist >[2]/dev/null
-		9660srv 9660.dist >[2]/dev/null
-		logprog mount /srv/9660.dist /n/dist $1
-		exitifdone
-		mountdist=notdone
-		export mountdist
-		exit notdone
-	}
-}
-
-fn trycdimagebz2 {
-	if(test -f $1){
-		mkdir -p /n/newfs/dist
-		echo -n 'bunzip2 < '^$1^' >/n/newfs/dist/9front.iso'
-		bunzip2 < $1 >/n/newfs/dist/_9front.iso &&
-		mv /n/newfs/dist/_9front.iso /n/newfs/dist/9front.iso
-		echo
-		trycdimage /n/newfs/dist/9front.iso
-		mountdist=notdone
-		export mountdist
-		exit notdone
-	}
-}
-
 
 switch($1){
 case checkready
-	if(! ~ $distisfrom local && ! ~ $download done){
-		mountdist=notdone
-		export mountdist
-	}
 	if(! ~ $#mountmedia 0 1){
 		if(domount){
 			mountdist=done
@@ -135,10 +103,6 @@ case go
 		if(~ $first yes){
 			echo
 			echo Which directory contains the distribution?
-			echo 'Any of the following will suffice (in order of preference):'
-			echo '	- the root directory of the cd image'
-			echo '	- the directory containing 9front.iso'
-			echo '	- the directory containing 9front.iso.bz2'
 			echo
 			first=no
 		}
@@ -177,12 +141,6 @@ case checkdone
 		export mountdist
 		exit notdone
 	}
-
-	trycdimage /n/distmedia/$distmediadir/9front.iso
-	trycdimage /n/newfs/dist/9front.iso
-
-	trycdimagebz2 /n/distmedia/$distmediadir/9front.iso.bz2
-	trycdimagebz2 /n/newfs/dist/9front.iso.bz2
 
 	mountdist=notdone
 	export mountdist
