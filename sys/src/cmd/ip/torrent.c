@@ -751,7 +751,7 @@ hopen(char *url, ...)
 void
 webseed(Dict *w, File *f)
 {
-	int fd, err, n, m, o, p, x, y;
+	int fd, err, n, m, o, p, x;
 	uchar buf[MAXIO];
 	vlong off, len;
 	Dict *w0;
@@ -791,10 +791,10 @@ Error:
 			break;
 
 		x = off / blocksize;
+
 		p = off - (vlong)x*blocksize;
 		off += n;
 		len -= n;
-		y = off / blocksize;
 
 		o = 0;
 		while(n > 0){
@@ -803,13 +803,17 @@ Error:
 				m = n;
 			if((havemap[x>>3] & (0x80>>(x&7))) == 0)
 				rwpiece(1, x, buf+o, m, p);
-			if(x == y)
+
+			p += m;
+			if(p < pieces[x].len)
 				break;
+
+			p = 0;
 			o += m;
 			n -= m;
-			p = 0;
 			if(havepiece(x++, w->str))
 				continue;
+
 			if(++err > 10){
 				close(fd);
 				werrstr("file corrupted");
@@ -817,8 +821,6 @@ Error:
 			}
 		}
 	}
-	if(off < f->off + f->len)
-		havepiece(off / blocksize, w->str);
 	havepiece(f->off / blocksize, w->str);
 	close(fd);
 	exits(0);
