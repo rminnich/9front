@@ -476,6 +476,10 @@ cgen(Node *n, Node *nn)
 			cgen(l, nn);
 			break;
 		}
+		if(ewidth[n->type->etype] < ewidth[l->type->etype]){
+			if(l->type->etype == TIND && typechlp[n->type->etype])
+				warn(n, "conversion of pointer to shorter integer");
+		}
 		regalloc(&nod, l, nn);
 		cgen(l, &nod);
 		regalloc(&nod1, n, &nod);
