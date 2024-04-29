@@ -6,7 +6,7 @@ OFILES=\
 	lex.$O\
 
 HFILES=\
-	../qc/q.out.h\
+	../9c/9.out.h\
 	y.tab.h\
 	a.h\
 
