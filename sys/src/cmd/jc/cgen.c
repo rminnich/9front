@@ -251,12 +251,21 @@ cgen(Node *n, Node *nn)
 				nod2 = *l;
 		}
 
-		regalloc(&nod, n, nn);
-		gmove(&nod2, &nod);
-		gopcode(o, &nod1, Z, &nod);
+		if(nod1.type->etype == nod2.type->etype || !typefd[nod1.type->etype])
+			regalloc(&nod, &nod2, nn);
+		else
+			regalloc(&nod, &nod1, Z);
+		gopcode(OAS, &nod2, Z, &nod);
+		if(nod1.type->etype != nod.type->etype){
+			regalloc(&nod3, &nod, Z);
+			gmove(&nod1, &nod3);
+			regfree(&nod1);
+			nod1 = nod3;
+		}
+		gopcode(o, &nod1, &nod, &nod);
 		gmove(&nod, &nod2);
 		if(nn != Z)
-			gopcode(OAS, &nod, Z, nn);
+			gmove(&nod, nn);
 		regfree(&nod);
 		regfree(&nod1);
 		if(l->addable < INDEXED)
