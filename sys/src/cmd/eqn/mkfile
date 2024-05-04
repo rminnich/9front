@@ -30,16 +30,9 @@ YFILES=eqn.y\
 HFILES=e.h\
 	y.tab.h\
 
-CLEANFILES=prevy.tab.h\
-
 BIN=/$objtype/bin
 </sys/src/cmd/mkone
 CC=pcc
 LD=pcc
 YFLAGS=-d -S
 CFLAGS=-c
-
-y.tab.c:	prevy.tab.h
-
-prevy.tab.h:	y.tab.h
-	rc -c 'cmp -s y.tab.h prevy.tab.h || cp y.tab.h prevy.tab.h'
