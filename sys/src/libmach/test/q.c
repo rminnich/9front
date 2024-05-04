@@ -1282,14 +1282,20 @@ Map fakemap = {
 };
 
 void
-main(int, char**)
+main(int argc, char **argv)
 {
 	uchar buf[64];
 	int i, w;
-	int fail;
+	int debug;
 
-	fail = 0;
 	machbytype(FPOWER64);
+	debug = 0;
+
+	ARGBEGIN{
+	case 'd':
+		debug++;
+		break;
+	}ARGEND
 
 	for(w = 0; w < 2; w++){
 		which = w;
@@ -1297,11 +1303,9 @@ main(int, char**)
 			buf[0] = 0;
 			machdata->das(&fakemap, i*4, 0, (char*)buf, sizeof buf);
 			if(strstr((char*)buf, "unknown") != nil)
-				fail++;
-			else if(strstr((char*)buf, instab[i].mneomic) == nil)
+				sysfatal("%s not implemented", instab[i].mneomic);
+			else if(debug && strstr((char*)buf, instab[i].mneomic) == nil)
 				print("%s\t%s\n", instab[i].mneomic, (char*)buf);
-			if(fail > 20)
-				sysfatal("fail %d", i-20);
 		}
 	}
 	for(w = 0; w < 2; w++){
@@ -1309,14 +1313,10 @@ main(int, char**)
 		for(i = 0; i < nelem(instab2); i++){
 			buf[0] = 0;
 			machdata->das(&fakemap, nelem(instab)*4+i*8, 0, (char*)buf, sizeof buf);
-			if(strstr((char*)buf, "unknown") != nil){
-				print("(%d) %s\t%s\n", which, instab2[i].mneomic, (char*)buf);
-				fail++;
-			} else if(strstr((char*)buf, instab2[i].mneomic) == nil){
+			if(strstr((char*)buf, "unknown") != nil)
+				sysfatal("%s not implemented", instab2[i].mneomic);
+			else if(debug && strstr((char*)buf, instab2[i].mneomic) == nil)
 				print("%s\t%s\n", instab2[i].mneomic, (char*)buf);
-			}
-			if(fail > 20)
-				sysfatal("fail %d", i-20);
 		}
 	}
 	exits(nil);
