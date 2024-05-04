@@ -394,27 +394,21 @@ peer(int fd, int incoming, char *addr)
 	procsetname("peer %s: %s", addr, incoming ? "incoming" : "outgoing");
 	if(debug) fprint(2, "peer %s: %s connected\n", addr, incoming ? "incoming" : "outgoing");
 
-	for(i=0; i<2; i++){
-		if((incoming && i) || (!incoming && !i)){
-			if(debug) fprint(2, "peer %s: -> handshake\n", addr);
-			n = pack(buf, sizeof(buf), "*________**", 
-				20, "\x13BitTorrent protocol",
-				sizeof(infohash), infohash,
-				sizeof(peerid), peerid);
-			if(write(fd, buf, n) != n)
-				return 1;
-		}
-		if((incoming && !i) || (!incoming && i)){
-			n = 20 + 8 + sizeof(infohash);
-			if(readn(fd, buf, n) != n)
-				return 1;
-			if(memcmp(buf, "\x13BitTorrent protocol", 20))
-				return 0;
-			if(memcmp(infohash, buf + 20 + 8, sizeof(infohash)))
-				return 0;
-			if(debug) fprint(2, "peer %s: <- handshake\n", addr);
-		}
-	}
+	if(debug) fprint(2, "peer %s: -> handshake\n", addr);
+	n = pack(buf, sizeof(buf), "*________**", 
+		20, "\x13BitTorrent protocol",
+		sizeof(infohash), infohash,
+		sizeof(peerid), peerid);
+	if(write(fd, buf, n) != n)
+		return 1;
+	n = 20 + 8 + sizeof(infohash);
+	if(readn(fd, buf, n) != n)
+		return 1;
+	if(memcmp(buf, "\x13BitTorrent protocol", 20))
+		return 0;
+	if(memcmp(infohash, buf + 20 + 8, sizeof(infohash)))
+		return 0;
+	if(debug) fprint(2, "peer %s: <- handshake\n", addr);
 	if(readn(fd, buf, sizeof(peerid)) != sizeof(peerid))
 		return 1;
 	if(memcmp(peerid, buf, sizeof(peerid)) == 0)
@@ -841,6 +835,24 @@ clients4(uchar *p, int len)
 }
 
 void
+clients6(uchar *p, int len)
+{
+	char ip[64], port[6];
+
+	while(len >= 18){
+		len -= 18;
+		snprint(ip, sizeof(ip), "%x:%x:%x:%x:%x:%x:%x:%x",
+			p[0]<<8 | p[1], p[2]<<8 | p[3],
+			p[4]<<8 | p[5], p[6]<<8 | p[7],
+			p[8]<<8 | p[9], p[10]<<8 | p[11],
+			p[12]<<8 | p[13], p[14]<<8 | p[15]);
+		snprint(port, sizeof(port), "%d", p[16]<<8 | p[17]);
+		p += 18;
+		client(ip, port);
+	}
+}
+
+void
 webtracker(char *url)
 {
 	char *event, *p;
@@ -887,6 +899,10 @@ webtracker(char *url)
 				clients4((uchar*)l->str, l->len);
 			else for(; l && l->typ == 'l'; l = l->next)
 				client(dstr(dlook(l->val, "ip")), dstr(dlook(l->val, "port")));
+		}
+		if(l = dlook(d, "peers6")){
+			if(l->typ == 's')
+				clients6((uchar*)l->str, l->len);
 		}
 		n = 0;
 		if(p = dstr(dlook(d, "interval")))
