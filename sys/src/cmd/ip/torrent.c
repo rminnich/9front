@@ -891,7 +891,7 @@ webtracker(char *url)
 		n = 0;
 		if(p = dstr(dlook(d, "interval")))
 			n = atoi(p);
-		if(n < 10 | n > 60*60)
+		if(n < 10 || n > 60*60)
 			n = 2*60;
 		freedict(d);
 		sleep(n * 1000 + nrand(5000));
