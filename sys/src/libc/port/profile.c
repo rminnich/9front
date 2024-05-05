@@ -19,6 +19,7 @@ struct	Plink
 	long	pc;
 	long	count;
 	vlong	time;
+	uint	rec;
 };
 
 #pragma profile off
@@ -44,6 +45,11 @@ _profin(void)
 	pp = _tos->prof.pp;
 	if(pp == 0 || (_tos->prof.pid && _tos->pid != _tos->prof.pid))
 		return _restore(arg, ret);
+	if(pc == pp->pc){
+		pp->rec++;
+		p = pp;
+		goto out;
+	}
 	for(p=pp->down; p; p=p->link)
 		if(p->pc == pc)
 			goto out;
@@ -113,7 +119,10 @@ _profout(void)
 		p->time = p->time + _tos->clock;
 		break;
 	}
-	_tos->prof.pp = p->old;
+	if(p->rec)
+		p->rec--;
+	else
+		_tos->prof.pp = p->old;
 	return _restore(arg, ret);
 }
 
