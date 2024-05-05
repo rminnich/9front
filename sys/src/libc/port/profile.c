@@ -240,7 +240,7 @@ _profmain(int argc, char **argv)
 	char ename[50];
 	int n, f;
 
-	n = 2000;
+	n = 256*1024;
 	if (_tos->cyclefreq != 0LL){
 		khz = _tos->cyclefreq / 1000;	/* Report times in milliseconds */
 		havecycles = 1;
