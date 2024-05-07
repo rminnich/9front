@@ -172,6 +172,8 @@ threadmain(int argc, char *argv[])
 	a[Eresize].c = mctl->resizec;
 	a[Ekeyboard].c = kctl->c;
 	bg = allocimage(display, Rect(0,0,1,1), screen->chan, 1, 0xCCCCCCFF);
+	if(bg==nil)
+		sysfatal("allocimage: %r");
 	n = readimage(display, fd, 0);
 	if(n==nil)
 		sysfatal("readimage: %r");
@@ -185,9 +187,8 @@ threadmain(int argc, char *argv[])
 		case Emouse:
 			if(m.buttons==1){
 				for(;;) {
-					o = m.xy;
-					if(!readmouse(mctl))
-						break;
+					o = mctl->xy;
+					readmouse(mctl);
 					if((mctl->buttons & 1) == 0)
 						break;
 					translate(subpt(mctl->xy, o));
