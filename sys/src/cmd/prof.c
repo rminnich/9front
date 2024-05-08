@@ -13,8 +13,9 @@ struct Data
 	ushort	right;
 	ulong	pc;
 	ulong	count;
-	ulong	time;
+	uvlong	time;
 };
+enum { Datasz = 2+2+4+4+8 };
 
 struct Pc
 {
@@ -26,13 +27,13 @@ struct Acc
 {
 	char	*name;
 	ulong	pc;
-	ulong	ms;
-	ulong	calls;
+	uvlong	ticks;
+	uvlong	calls;
 };
 
 Data*	data;
 Acc*	acc;
-ulong	ms;
+uvlong	ticks;
 long	nsym;
 long	ndata;
 int	dflag;
@@ -40,6 +41,7 @@ int	rflag;
 Biobuf	bout;
 int	tabstop = 4;
 int	verbose;
+uvlong	cyclefreq;
 
 void	syms(char*);
 void	datas(char*);
@@ -68,18 +70,15 @@ main(int argc, char *argv[])
 		rflag = 1;
 		break;
 	default:
+	usage:
 		fprint(2, "usage: prof [-dr] [8.out] [prof.out]\n");
 		exits("usage");
 	}ARGEND
 	Binit(&bout, 1, OWRITE);
-	if(argc > 0)
-		syms(argv[0]);
-	else
-		syms(defaout());
-	if(argc > 1)
-		datas(argv[1]);
-	else
-		datas("prof.out");
+	if(argc < 2)
+		goto usage;
+	syms(argv[0]);
+	datas(argv[1]);
 	if(ndata){
 		if(dflag)
 			graph(0, data[0].down, 0);
@@ -89,26 +88,16 @@ main(int argc, char *argv[])
 	exits(0);
 }
 
-void
-swapdata(Data *dp)
-{
-	dp->down = beswab(dp->down);
-	dp->right = beswab(dp->right);
-	dp->pc = beswal(dp->pc);
-	dp->count = beswal(dp->count);
-	dp->time = beswal(dp->time);
-}
-
 int
 acmp(void *va, void *vb)
 {
 	Acc *a, *b;
-	ulong ua, ub;
+	uvlong ua, ub;
 
 	a = va;
 	b = vb;
-	ua = a->ms;
-	ub = b->ms;
+	ua = a->ticks;
+	ub = b->ticks;
 
 	if(ua > ub)
 		return 1;
@@ -123,24 +112,21 @@ syms(char *cout)
 	Fhdr f;
 	int fd;
 
-	if((fd = open(cout, 0)) < 0){
-		perror(cout);
-		exits("open");
-	}
-	if (!crackhdr(fd, &f)) {
-		fprint(2, "can't read text file header\n");
-		exits("read");
-	}
-	if (f.type == FNONE) {
-		fprint(2, "text file not an a.out\n");
-		exits("file type");
-	}
-	if (syminit(fd, &f) < 0) {
-		fprint(2, "syminit: %r\n");
-		exits("syms");
-	}
+	if((fd = open(cout, 0)) < 0)
+		sysfatal("%r");
+	if(!crackhdr(fd, &f))
+		sysfatal("can't read text file header: %r");
+	if(f.type == FNONE)
+		sysfatal("text file not an a.out");
+	if(syminit(fd, &f) < 0)
+		sysfatal("syminit: %r");
 	close(fd);
 }
+
+#define GET2(p) (u16int)(p)[1] | (u16int)(p)[0]<<8
+#define GET4(p) (u32int)(p)[3] | (u32int)(p)[2]<<8 | (u32int)(p)[1]<<16 | (u32int)(p)[0]<<24
+#define GET8(p) (u64int)(p)[7] | (u64int)(p)[6]<<8 | (u64int)(p)[5]<<16 | (u64int)(p)[4]<<24 | \
+		(u64int)(p)[3]<<32 | (u64int)(p)[2]<<40 | (u64int)(p)[1]<<48 | (u64int)(p)[0]<<56
 
 void
 datas(char *dout)
@@ -148,6 +134,7 @@ datas(char *dout)
 	int fd;
 	Dir *d;
 	int i;
+	uchar hdr[3+1+8], *buf, *p;
 
 	if((fd = open(dout, 0)) < 0){
 		perror(dout);
@@ -158,20 +145,29 @@ datas(char *dout)
 		perror(dout);
 		exits("stat");
 	}
-	ndata = d->length/sizeof(data[0]);
+	d->length -= sizeof hdr;
+	ndata = d->length/Datasz;
 	data = malloc(ndata*sizeof(Data));
-	if(data == 0){
-		fprint(2, "prof: can't malloc data\n");
-		exits("data malloc");
+	buf = malloc(d->length);
+	if(buf == 0 || data == 0)
+		sysfatal("malloc");
+	if(read(fd, hdr, sizeof hdr) != sizeof hdr)
+		sysfatal("read data header: %r");
+	if(memcmp(hdr, "pr\x0f", 3) != 0)
+		sysfatal("bad magic");
+	cyclefreq = GET8(hdr+4);
+	if(readn(fd, buf, d->length) != d->length)
+		sysfatal("data file read: %r");
+	for(p = buf, i = 0; i < ndata; i++){
+		data[i].down = GET2(p); p += 2;
+		data[i].right = GET2(p); p += 2;
+		data[i].pc = GET4(p); p += 4;
+		data[i].count = GET4(p); p += 4;
+		data[i].time = GET8(p); p += 8;
 	}
-	if(read(fd, data, d->length) != d->length){
-		fprint(2, "prof: can't read data file\n");
-		exits("data read");
-	}
+	free(buf);
 	free(d);
 	close(fd);
-	for (i = 0; i < ndata; i++)
-		swapdata(data+i);
 }
 
 char*
@@ -189,7 +185,8 @@ name(ulong pc)
 void
 graph(int ind, ulong i, Pc *pc)
 {
-	long time, count, prgm;
+	long count, prgm;
+	vlong time;
 	Pc lpc;
 
 	if(i >= ndata){
@@ -205,9 +202,9 @@ graph(int ind, ulong i, Pc *pc)
 		graph(ind, data[i].right, pc);
 	indent(ind);
 	if(count == 1)
-		Bprint(&bout, "%s:%lud\n", name(prgm), time);
+		Bprint(&bout, "%s:%.9f\n", name(prgm), (double)time/cyclefreq);
 	else
-		Bprint(&bout, "%s:%lud/%lud\n", name(prgm), time, count);
+		Bprint(&bout, "%s:%.9f/%lud\n", name(prgm), (double)time/cyclefreq, count);
 	if(data[i].down == 0xFFFF)
 		return;
 	lpc.next = pc;
@@ -246,10 +243,11 @@ symind(ulong pc)
 	return -1;
 }
 
-ulong
+double
 sum(ulong i)
 {
-	long j, dtime, time;
+	long j;
+	vlong dtime, time;
 	int k;
 	static indent;
 
@@ -264,7 +262,7 @@ sum(ulong i)
 	if (verbose){
 		for(k = 0; k < indent; k++)
 			print("	");
-		print("%lud: %ld/%lud", i, data[i].time, data[i].count);
+		print("%lud: %llud/%.9f/%lud", i, data[i].time, (double)data[i].time/cyclefreq, data[i].count);
 		if (j >= 0)
 			print("	%s\n", acc[j].name);
 		else
@@ -278,8 +276,8 @@ sum(ulong i)
 	}
 	j = symind(data[i].pc);
 	if (j >= 0) {
-		acc[j].ms += time - dtime;
-		ms += time - dtime;
+		acc[j].ticks += time - dtime;
+		ticks += time - dtime;
 		acc[j].calls += data[i].count;
 	}
 	if(data[i].right == 0xFFFF)
@@ -300,18 +298,18 @@ plot(void)
 		}
 		acc[nsym].name = s.name;
 		acc[nsym].pc = s.value;
-		acc[nsym].calls = acc[nsym].ms = 0;
+		acc[nsym].calls = acc[nsym].ticks = 0;
 	}
 	sum(data[0].down);
 	qsort(acc, nsym, sizeof(Acc), acmp);
-	Bprint(&bout, "  %%     Time     Calls  Name\n");
-	if(ms == 0)
-		ms = 1;
+	Bprint(&bout, "  %%       Time        Calls  Name\n");
+	if(ticks == 0)
+		ticks = 1;
 	while (--nsym >= 0) {
 		if(acc[nsym].calls)
-			Bprint(&bout, "%4.1f %8.3f %8lud\t%s\n",
-				(100.0*acc[nsym].ms)/ms,
-				acc[nsym].ms/1000.0,
+			Bprint(&bout, "%4.1f   %.9f %8llud\t%s\n",
+				(100.0*acc[nsym].ticks)/ticks,
+				(double)acc[nsym].ticks/cyclefreq,
 				acc[nsym].calls,
 				acc[nsym].name);
 	}
@@ -329,31 +327,4 @@ indent(int ind)
 	}
 	if(j)
 		Bwrite(&bout, ".                            ", j);
-}
-
-char*	trans[] =
-{
-	"386",		"8.out",
-	"68020",		"2.out",
-	"amd64",	"6.out",
-	"arm",		"5.out",
-	"mips",		"v.out",
-	"power",		"q.out",
-	"sparc",		"k.out",
-	"spim",		"0.out",
-	0,0
-};
-
-char*
-defaout(void)
-{
-	char *p;
-	int i;
-
-	p = getenv("objtype");
-	if(p)
-	for(i=0; trans[i]; i+=2)
-		if(strcmp(p, trans[i]) == 0)
-			return trans[i+1];
-	return trans[1];
 }

@@ -6,12 +6,8 @@ prof, tprof, kprof \- display profiling data
 [
 .B -dr
 ]
-[
 .I program
-]
-[
 .I profile
-]
 .PP
 .B tprof
 .I pid
@@ -26,16 +22,11 @@ interprets files produced automatically by programs loaded using the
 option of
 .IR 2l (1)
 or other loader.
-The symbol table in the
-named program file
-.RL ( 2.out
-etc., according to
-.BR $objtype ,
-by default)
-is read and correlated with the
-profile file
-.RL ( prof.out
-by default).
+The symbol table in the named
+.I program
+file is read and correlated with the
+.I profile
+file.
 For each symbol, the percentage
 of time (in seconds) spent executing between that symbol
 and the next
@@ -59,7 +50,7 @@ where
 .I symbol
 is the entry point of the call,
 .I time
-is in milliseconds,
+is in seconds,
 and
 .I ncall
 is the number of times that entry point was called at that

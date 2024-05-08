@@ -6,9 +6,7 @@ extern	uintptr	_callpc(void**);
 extern	uintptr	_saveret(void);
 extern	uintptr	_savearg(void);
 
-static	ulong	khz;
 static	ulong	perr;
-static	int	havecycles;
 
 typedef	struct	Plink	Plink;
 struct	Plink
@@ -19,7 +17,6 @@ struct	Plink
 	long	pc;
 	long	count;
 	vlong	time;
-	uint	rec;
 };
 
 #pragma profile off
@@ -45,11 +42,6 @@ _profin(void)
 	pp = _tos->prof.pp;
 	if(pp == 0 || (_tos->prof.pid && _tos->pid != _tos->prof.pid))
 		return _restore(arg, ret);
-	if(pc == pp->pc){
-		pp->rec++;
-		p = pp;
-		goto out;
-	}
 	for(p=pp->down; p; p=p->link)
 		if(p->pc == pc)
 			goto out;
@@ -119,10 +111,7 @@ _profout(void)
 		p->time = p->time + _tos->clock;
 		break;
 	}
-	if(p->rec)
-		p->rec--;
-	else
-		_tos->prof.pp = p->old;
+	_tos->prof.pp = p->old;
 	return _restore(arg, ret);
 }
 
@@ -130,10 +119,11 @@ void
 _profdump(void)
 {
 	int f;
-	long n;
+	vlong n;
 	Plink *p;
 	char *vp;
 	char filename[64];
+	uchar hdr[3+1+8] = {'p', 'r', 0x0f, 0x2};
 
 	if (_tos->prof.what == 0)
 		return;	/* No profiling */
@@ -168,8 +158,17 @@ _profdump(void)
 		_tos->prof.first->time = _tos->clock;
 		break;
 	}
-	vp = (char*)_tos->prof.first;
+	hdr[4+0] = _tos->cyclefreq>>56;
+	hdr[4+1] = _tos->cyclefreq>>48;
+	hdr[4+2] = _tos->cyclefreq>>40;
+	hdr[4+3] = _tos->cyclefreq>>32;
+	hdr[4+4] = _tos->cyclefreq>>24;
+	hdr[4+5] = _tos->cyclefreq>>16;
+	hdr[4+6] = _tos->cyclefreq>>8;
+	hdr[4+7] = _tos->cyclefreq;
+	write(f, hdr, sizeof hdr);
 
+	vp = (char*)_tos->prof.first;
 	for(p = _tos->prof.first; p <= _tos->prof.next; p++) {
 
 		/*
@@ -214,16 +213,16 @@ _profdump(void)
 		/*
 		 * vlong time
 		 */
-		if (havecycles){
-			n = (vlong)(p->time / (vlong)khz);
-		}else
-			n = p->time;
-
-		vp[0] = n>>24;
-		vp[1] = n>>16;
-		vp[2] = n>>8;
-		vp[3] = n;
-		vp += 4;
+		n = p->time;
+		vp[0] = n>>56;
+		vp[1] = n>>48;
+		vp[2] = n>>40;
+		vp[3] = n>>32;
+		vp[4] = n>>24;
+		vp[5] = n>>16;
+		vp[6] = n>>8;
+		vp[7] = n;
+		vp += 8;
 	}
 	write(f, (char*)_tos->prof.first, vp - (char*)_tos->prof.first);
 	close(f);
@@ -250,10 +249,6 @@ _profmain(int argc, char **argv)
 	int n, f;
 
 	n = 256*1024;
-	if (_tos->cyclefreq != 0LL){
-		khz = _tos->cyclefreq / 1000;	/* Report times in milliseconds */
-		havecycles = 1;
-	}
 	f = open("/env/profsize", OREAD|OCEXEC);
 	if(f >= 0) {
 		memset(ename, 0, sizeof(ename));
