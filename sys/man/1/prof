@@ -9,6 +9,10 @@ prof, tprof, kprof \- display profiling data
 .I program
 .I profile
 .PP
+.B flambe
+.I program
+.I profile
+.PP
 .B tprof
 .I pid
 .PP
@@ -102,6 +106,17 @@ to profile time measured spent in user mode, time spent in user+kernel mode, or 
 using the cycle counter, or the time in user mode using the kernel's HZ clock.  The cycle counter
 is currently only available on modern PCs and on the PowerPC.  Default profiling measures user
 time, using the cycle counter if it is available.
+.PP
+.I Flambe
+presents an interactive flame graph using information gathered by
+.IR prof .
+The graph is presented as a series of rows, each row representing a level in the call stack.
+Each row is split up among all the siblings of the respective call stack level,
+their width representative of the portion of their parent's time they occupied.
+Hovering the mouse over any block shows its full name, the total time spent in the function, and
+the number of calls made to it in the top left hand side of the window.
+Clicking a block reroots the the graph with the selected block as the base.
+The escape key can be used to return to the real root of the graph.
 .PP
 .I Tprof
 is similar to
