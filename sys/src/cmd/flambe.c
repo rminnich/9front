@@ -154,12 +154,6 @@ onhover(int i)
 	flushimage(display, 1);
 }
 
-int
-getwidth(int i)
-{
-	return ((double)data[i].time * Dx(screen->r)) / total;
-}
-
 void
 graph(int i, int x, int h)
 {
@@ -168,7 +162,10 @@ graph(int i, int x, int h)
 	if(i >= ndata)
 		sysfatal("corrupted profile data");
 	r.min = (Point){x, screen->r.max.y - rowh*h};
-	r.max = (Point){x + getwidth(i), r.min.y + rowh};
+	r.max = (Point){
+		x + ((double)data[i].time * Dx(screen->r)) / total,
+		r.min.y + rowh
+	};
 	clicks[i] = r;
 	if(Dx(r) > 6){
 		draw(screen, r, colfor(h), nil, ZP);
@@ -246,7 +243,7 @@ threadmain(int argc, char **argv)
 			data[i].time =  t + data[0].time;
 	}
 
-	if(initdraw(nil, nil, "profflame") < 0)
+	if(initdraw(nil, nil, "flambe") < 0)
 		sysfatal("initdraw: %r");
 	if((kctl = initkeyboard(nil)) == nil)
 		sysfatal("initkeyboard: %r");
