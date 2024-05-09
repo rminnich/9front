@@ -613,7 +613,7 @@ threadmain(int argc, char *argv[])
 	}ARGEND;
 
 	parse(0);
-	if(nblocks==0){
+	if(nblocks==1 && blocks[0]->nlines==0){
 		fprint(2, "no diff\n");
 		exits(nil);
 	}
