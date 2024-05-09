@@ -190,9 +190,9 @@ redraw(void)
 	if(viewh < totalh){
 		h = ((double)viewh/totalh)*Dy(scrollr);
 		y = ((double)offset/totalh)*Dy(scrollr);
-		ye = scrollr.min.y + y + h - 1;
+		ye = scrollr.min.y + y + h;
 		if(ye >= scrollr.max.y)
-			ye = scrollr.max.y - 1;
+			ye = scrollr.max.y;
 		scrposr = Rect(scrollr.min.x, scrollr.min.y+y+1, scrollr.max.x-1, ye);
 	}else
 		scrposr = Rect(scrollr.min.x, scrollr.min.y, scrollr.max.x-1, scrollr.max.y);
@@ -217,7 +217,7 @@ pan(int off)
 {
 	int max;
 
-	max = Hpadding + Margin + Hpadding + maxlength * spacew + 2 * ellipsisw - Dx(blocks[0]->r);
+	max = Dx(scrollr) + Margin + Hpadding + maxlength*spacew + 2*ellipsisw + Hpadding + Margin - Dx(blocks[0]->r)/2;
 	Δpan += off * spacew;
 	if(Δpan < 0 || max <= 0)
 		Δpan = 0;
@@ -360,13 +360,14 @@ emouse(Mouse m)
 	else if(m.buttons == 0)
 		scrolling = 0;
 
-	n = (m.xy.y - scrollr.min.y);
+	n = (m.xy.y - viewr.min.y - Margin)/lineh * lineh;
 	if(scrolling){
 		if(m.buttons&1){
 			scroll(-n);
 			return;
 		}else if(m.buttons&2){
 			offset = (m.xy.y - scrollr.min.y) * totalh/Dy(scrollr);
+			offset = offset/lineh * lineh;
 			clampoffset();
 			redraw();
 		}else if(m.buttons&4){
@@ -377,7 +378,7 @@ emouse(Mouse m)
 		scroll(-n);
 	}else if(m.buttons&16){
 		scroll(n);
-	}else if(m.buttons != 0 && ptinrect(m.xy, viewr)){
+	}else if((oldbuttons^m.buttons) != 0 && ptinrect(m.xy, viewr)){
 		for(i = 0; i < nblocks; i++){
 			b = blocks[i];
 			if(ptinrect(addpt(m.xy, Pt(0, offset)), b->sr)){
@@ -598,8 +599,6 @@ threadmain(int argc, char *argv[])
 	};
 	int b;
 
-	scrolling = 0;
-	oldbuttons = 0;
 	b = 0;
 	ARGBEGIN{
 	case 'b':
@@ -620,7 +619,6 @@ threadmain(int argc, char *argv[])
 	}
 	if(initdraw(nil, nil, "vdiff")<0)
 		sysfatal("initdraw: %r");
-	display->locking = 0;
 	if((mctl = initmouse(nil, screen)) == nil)
 		sysfatal("initmouse: %r");
 	if((kctl = initkeyboard(nil)) == nil)
