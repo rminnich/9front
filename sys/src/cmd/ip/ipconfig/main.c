@@ -182,6 +182,7 @@ parseverb(char *name)
 		[Vtorus]	"torus",
 		[Vtree]		"tree",
 		[Vpkt]		"pkt",
+		[Vnull]		"null",
 	};
 	int i;
 
@@ -226,6 +227,7 @@ parseargs(int argc, char **argv)
 		case Vppp:
 		case Vtorus:
 		case Vtree:
+		case Vnull:
 			conf.type = *argv++;
 			argc--;
 			if(argc > 0){
@@ -236,8 +238,11 @@ parseargs(int argc, char **argv)
 			break;
 		}
 	}
-	if(conf.dev == nil)
+	if(conf.dev == nil){
+		if(!isether())
+			sysfatal("no device specified for medium %s", conf.type);
 		conf.dev = finddev(conf.mpoint, "ether", "/net/ether0");
+	}
 
 	/* get optional verb */
 	if (argc > 0){
@@ -250,6 +255,7 @@ parseargs(int argc, char **argv)
 		case Vtorus:
 		case Vtree:
 		case Vpkt:
+		case Vnull:
 			sysfatal("medium %s already specified", conf.type);
 		case Vadd:
 		case Vdel:
