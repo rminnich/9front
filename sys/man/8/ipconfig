@@ -83,6 +83,7 @@ may be
 .BR gbe ,
 .BR ppp ,
 .BR pkt ,
+.BR null ,
 or
 .BR loopback .
 The
@@ -396,6 +397,23 @@ and listen for router announcements.
 .EX
 ip/ipconfig -6 
 ip/ipconfig ra6 recvra 1
+.EE
+.PP
+Configure
+.B loopback
+interface for localhost addresses.
+.IP
+.EX
+ip/ipconfig loopback /dev/null 127.1 /128
+ip/ipconfig loopback /net/null ::1 /128
+.EE
+.PP
+Configure
+.B null
+interface for discarding packets.
+.IP
+.EX
+ip/ipconfig null /dev/mordor 8.8.8.8 /128
 .EE
 .SH FILES
 .B /sys/log/ipconfig
