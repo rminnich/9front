@@ -9,7 +9,7 @@
 
 enum
 {
-	Maxtu=	16*1024,
+	Maxtu=	64*1024,
 };
 
 typedef struct LB LB;
