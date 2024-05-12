@@ -10,7 +10,6 @@
 static void
 nullbind(Ipifc*, int, char**)
 {
-	error("cannot bind null device");
 }
 
 static void
@@ -27,6 +26,7 @@ nullbwrite(Ipifc*, Block *bp, int, uchar*, Routehint*)
 
 Medium nullmedium =
 {
+.maxtu=		64*1024,
 .name=		"null",
 .bind=		nullbind,
 .unbind=	nullunbind,
@@ -36,6 +36,7 @@ Medium nullmedium =
 /* used in ipifc to prevent unbind while bind is in progress */
 Medium unboundmedium =
 {
+.maxtu=		64*1024,
 .name=		"unbound",
 .bind=		nullbind,
 .unbind=	nullunbind,
