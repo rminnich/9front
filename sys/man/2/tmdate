@@ -226,7 +226,7 @@ char *e, *est, *pst;
 
 pst = "Tue Dec 10 12:36:00 PST 2019";
 est = "Tue Dec 10 15:36:00 EST 2019";
-f(tmparse(&a, Fmt, pst, nil, &e) == nil)
+if(tmparse(&a, Fmt, pst, nil, &e) == nil)
 	sysfatal("failed to parse: %r");
 if(*e != '\\0')
 	sysfatal("trailing junk %s", e);
@@ -266,7 +266,7 @@ Tm t;
 char *date = "Sun Nov 2 13:11:11 PST 2019";
 if(tmparse(&t, "W MMM D hh:mm:ss z YYYY, date, nil) == nil)
 	print("failed to parse");
-t.day++;
+t.mday++;
 tmnorm(&t);
 print("%τ", tmfmt(&t, nil)); /*  Mon Nov 3 13:11:11 PST 2019 */
 .EE
