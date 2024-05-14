@@ -784,6 +784,7 @@ buildop(void)
 			oprange[AISYNC] = oprange[r];
 			oprange[APTESYNC] = oprange[r];
 			oprange[ATLBSYNC] = oprange[r];
+			oprange[ALWSYNC] = oprange[r];
 			break;
 		case ARLWMI:
 			oprange[ARLWMICC] = oprange[r];

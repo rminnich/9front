@@ -914,6 +914,24 @@ vsldbi(Opcode *o, Instr *i)
 	}
 }
 
+static void
+sync(Opcode *o, Instr *i)
+{
+	switch(IBF(i->w[0], 9, 10)){
+	case 0:
+		format(o->mnemonic, i, o->ken);
+		break;
+	case 1:
+		format("LWSYNC", i, o->ken);
+		break;
+	case 2:
+		format("PTESYNC", i, o->ken);
+		break;
+	default:
+		format("reserved instruction", i, 0);
+	}
+}
+
 static	char	ir2[] = "R%a,R%d";		/* reverse of IBM order */
 static	char	ir3[] = "R%b,R%a,R%d";
 static	char	ir3r[] = "R%a,R%b,R%d";
@@ -1098,10 +1116,10 @@ static Opcode opcodes[] = {
 	{19,	528,	ALL,	"BC%L",		branch,	"%d,%a,(CTR)"},
 	{19,	16,	ALL,	"BC%L",		branch,	"%d,%a,(LR)"},
 
-	{31,	0,	ALL,	"CMP",		0,	icmp3},
-	{11,	0,	0,	"CMP",		0,	"R%a,%i,%D"},
-	{31,	32,	ALL,	"CMPU",		0,	icmp3},
-	{10,	0,	0,	"CMPU",		0,	"R%a,%I,%D"},
+	{31,	0,	ALL,	"CMP%W",	0,	icmp3},
+	{11,	0,	0,	"CMP%W",	0,	"R%a,%i,%D"},
+	{31,	32,	ALL,	"CMP%WU",	0,	icmp3},
+	{10,	0,	0,	"CMP%WU",	0,	"R%a,%I,%D"},
 
 	{31,	58,	ALL,	"CNTLZD%C",	gencc,	ir2},	/* 64 */
 	{31,	26,	ALL,	"CNTLZ%W%C",	gencc,	ir2},
@@ -1390,7 +1408,7 @@ static Opcode opcodes[] = {
 	{31,	232,	OEM,	"SUBME%V%C",	sub,	ir2},
 	{31,	200,	OEM,	"SUBZE%V%C",	sub,	ir2},
 
-	{31,	598,	ALL,	"SYNC",		gen,	0},	/* TO DO: there's a parameter buried in there */
+	{31,	598,	ALL,	"SYNC",		sync,	0},
 	{2,	0,	0,	"TD",		gen,	"%d,R%a,%i"},	/* 64 */
 	{31,	370,	ALL,	"TLBIA",	gen,	0},	/* optional */
 	{31,	306,	ALL,	"TLBIE",	gen,	"R%b"},	/* optional */
@@ -2494,7 +2512,10 @@ format(char *mnemonic, Instr *i, char *f)
 			break;
 
 		case 'W':
-			if(i->m64)
+			if(!i->m64)
+				break;
+			/* sloppy */
+			if(i->xo == 26 || IB(i->w[0], 10) == 0)
 				bprint(i, "W");
 			break;
 

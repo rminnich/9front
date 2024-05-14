@@ -361,6 +361,8 @@ enum	as
 	/* more 64-bit operations */
 	AHRFID,
 
+	ALWSYNC,
+
 	ALAST
 };
 

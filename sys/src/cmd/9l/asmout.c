@@ -1302,6 +1302,7 @@ oprrr(int a)
 	case ASUBZEVCC:	return OPVCC(31,200,1,1);
 
 	case ASYNC:	return OPVCC(31,598,0,0);
+	case ALWSYNC:	return OPVCC(31,598,0,0) | (1<<21);
 	case APTESYNC:	return OPVCC(31,598,0,0) | (2<<21);
 
 	case ATLBIE:	return OPVCC(31,306,0,0);
