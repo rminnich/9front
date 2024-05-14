@@ -1218,8 +1218,11 @@ static Opcode opcodes[] = {
 	{46,	0,	0,	"MOVMW",	load,	ldop},
 	{31,	597,	ALL,	"LSW",		gen,	"(R%a),$%n,R%d"},
 	{31,	533,	ALL,	"LSW",		ldx,	0},
+	{31,	52,	ALL,	"LBAR",		ldx,	0},
+	{31,	116,	ALL,	"LHAR",		ldx,	0},
 	{31,	20,	ALL,	"LWAR",		ldx,	0},
-	{31,	84,	ALL,	"LWARD",	ldx,	0},	/* 64 */
+	{31,	84,	ALL,	"LDAR",		ldx,	0},	/* 64 */
+	{31,	276,	ALL,	"LQAR",		ldx,	0},	/* 64 */
 
 	{58,	0,	ALL,	"MOVD",		load,	ldop},	/* 64 */
 	{58,	1,	ALL,	"MOVDU",	load,	ldop},	/* 64 */
@@ -1378,8 +1381,11 @@ static Opcode opcodes[] = {
 	{31,	661,	ALL,	"STSW",		stx,	0},
 	{36,	0,	0,	"MOVW",		store,	stop},
 	{31,	662,	ALL,	"MOVWBR",	stx,	0},
+	{31,	694,	ALL,	"STBCCC",	stx,	0},
+	{31,	726,	ALL,	"STHCCC",	stx,	0},
 	{31,	150,	ALL,	"STWCCC",	stx,	0},
 	{31,	214,	ALL,	"STDCCC",	stx,	0},	/* 64 */
+	{31,	182,	ALL,	"STQCCC",	stx,	0},	/* 64 */
 	{37,	0,	0,	"MOVWU",	store,	stop},
 	{31,	183,	ALL,	"MOVWU",	stx,	0},
 	{31,	151,	ALL,	"MOVW",		stx,	0},
@@ -1865,9 +1871,6 @@ static Opcode opcodes[] = {
 	{31,	435,	ALL,	"mtvsrdd",	0,	0},
 	{31,	755,	ALL,	"darn",	0,	0},
 	{31,	979,	ALL,	"slbfee.",	0,	0},
-	{31,	52,	ALL,	"lbarx",	0,	0},
-	{31,	116,	ALL,	"lharx",	0,	0},
-	{31,	276,	ALL,	"lqarx",	0,	0},
 	{31,	532,	ALL,	"ldbrx",	0,	0},
 	{31,	660,	ALL,	"stdbrx",	0,	0},
 	{31,	789,	ALL,	"lwzcix",	0,	0},
@@ -1880,9 +1883,6 @@ static Opcode opcodes[] = {
 	{31,	1013,	ALL,	"stdcix",	0,	0},
 	{31,	22,	ALL,	"icbt",	0,	0},
 	{31,	886,	ALL,	"msgsync",	0,	0},
-	{31,	182,	ALL,	"stqcx.",	0,	0},
-	{31,	694,	ALL,	"stbcx.",	0,	0},
-	{31,	726,	ALL,	"sthcx.",	0,	0},
 	{31,	503,	ALL,	"spom",	0,	0},
 	{31,	791,	ALL,	"lfdpx",	0,	0},
 	{31,	855,	ALL,	"lfiwax",	0,	0},

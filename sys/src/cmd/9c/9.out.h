@@ -362,6 +362,12 @@ enum	as
 	AHRFID,
 
 	ALWSYNC,
+	ALBAR,
+	ALHAR,
+	ALQAR,
+	ASTBCCC,
+	ASTHCCC,
+	ASTQCCC,
 
 	ALAST
 };

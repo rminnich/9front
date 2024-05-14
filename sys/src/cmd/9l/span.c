@@ -530,7 +530,11 @@ buildop(void)
 			oprange[AICBI] = oprange[r];
 			break;
 		case AECOWX:	/* indexed store: op s,(b+a); op s,(b) */
+			oprange[ASTBCCC] = oprange[r];
+			oprange[ASTHCCC] = oprange[r];
 			oprange[ASTWCCC] = oprange[r];
+			oprange[ASTDCCC] = oprange[r];
+			oprange[ASTQCCC] = oprange[r];
 			break;
 		case AREM:	/* macro */
 			oprange[AREMCC] = oprange[r];
@@ -809,7 +813,11 @@ buildop(void)
 			oprange[AFMOVSU] = oprange[r];
 			break;
 		case AECIWX:
+			oprange[ALBAR] = oprange[r];
+			oprange[ALHAR] = oprange[r];
 			oprange[ALWAR] = oprange[r];
+			oprange[ALDAR] = oprange[r];
+			oprange[ALQAR] = oprange[r];
 			break;
 		case ASYSCALL:	/* just the op; flow of control */
 			oprange[ARFI] = oprange[r];

@@ -1452,7 +1452,11 @@ oploadx(int a)
 	case AMOVHZ:	return OPVCC(31,279,0,0);	/* lhzx */
 	case AMOVHZU:	return OPVCC(31,311,0,0);	/* lhzux */
 	case AECIWX:	return OPVCC(31,310,0,0);	/* eciwx */
+	case ALBAR:	return OPVCC(31,52,0,0);	/* lbarx */
+	case ALHAR:	return OPVCC(31,116,0,0);	/* lharx */
 	case ALWAR:	return OPVCC(31,20,0,0);	/* lwarx */
+	case ALDAR:	return OPVCC(31,84,0,0);	/* ldarx */
+	case ALQAR:	return OPVCC(31,276,0,0);	/* lqarx */
 	case ALSW:	return OPVCC(31,533,0,0);	/* lswx */
 	case AMOVD:	return OPVCC(31,21,0,0);	/* ldx */
 	case AMOVDU:	return OPVCC(31,53,0,0);	/* ldux */
@@ -1519,8 +1523,11 @@ opstorex(int a)
 	case AMOVWU:	return OPVCC(31,183,0,0);	/* stwux */
 	case ASTSW:	return OPVCC(31,661,0,0);	/* stswx */
 	case AMOVWBR:	return OPVCC(31,662,0,0);	/* stwbrx */
+	case ASTBCCC:	return OPVCC(31,694,0,0);	/* stbcx */
+	case ASTHCCC:	return OPVCC(31,726,0,0);	/* sthcx */
 	case ASTWCCC:	return OPVCC(31,150,0,1);	/* stwcx. */
 	case ASTDCCC:	return OPVCC(31,214,0,1);	/* stwdx. */
+	case ASTQCCC:	return OPVCC(31,182,0,1);	/* stqcx. */
 	case AECOWX:	return OPVCC(31,438,0,0);	/* ecowx */
 	case AMOVD:	return OPVCC(31,149,0,0);	/* stdx */
 	case AMOVDU:	return OPVCC(31,181,0,0);	/* stdux */
