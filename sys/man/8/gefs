@@ -1,0 +1,199 @@
+.TH GEFS 8
+.SH NAME
+gefs \- file server maintenance
+.SH SYNOPSIS
+.PD 0
+.PP
+.B check
+.PP
+.B df
+.PP
+.B halt
+.PP
+.B help
+.PP
+.B permit
+[
+.B on
+|
+.BR off
+]
+.PP
+.B save trace
+.I filename
+.PP
+.B snap
+[
+-Smdl
+]
+[
+.I old 
+[
+.I new
+]
+]
+.PP
+.B sync
+.PP
+.B users
+.SH DESCRIPTION
+.IR Gefs (4)
+provides an administration console on
+.IR /srv/gefs.cmd .
+By default, this console is only readable
+and writable by the owner of the file system.
+.SH CONSOLE
+.PP
+The console handles the following commands:
+.PP
+.I Check
+applies basic consistency checks to the file system,
+reporting invalid blocks, broken metadata, and other
+similar structural issues.
+.PP
+.I Df
+prints the amount of used space and total space in megabytes,
+as well as the percentage of space occupied.
+.PP
+.I Halt
+syncs all IO to disk and exits the file system.
+While the syncing occurs, the file system does not
+allow new writes.
+.PP
+.I Help
+prints a summary of the available commands.
+This table includes additional debug commands that are
+subject to change, and are intentionally undocumented.
+.PP
+.I Permit
+[
+.B on
+|
+.B off
+]
+has two effects.
+First, if the user table is broken, it allows a fallback to a default user list.
+This allows the system administrator to recover if they reboot with a broken user file.
+Second, it allows mounts to occur in permissive mode by any user.
+Permissive mounts are designated by prefixing the attach spec with a
+.I %
+sigil.
+Permissive disables permissions checks when accessing files, and allows
+.IR wstat (5)
+to modify the owner of the file.
+This may be useful during file system initialization.
+.PP
+.B Snap
+manages snapshots.
+It can be invoked as
+.I snap
+.BR -l ,
+.I snap
+.B -d
+.IR snap ,
+or
+.I snap
+[
+.B -flags
+]
+.IR "old new" ,
+which will list, delete, or create new snapshots respectively.
+It accepts the following options:
+.TP
+.B -l
+Lists snapshots and their attributes.
+.TP
+.BI "-d " snap
+Deletes a snapshot, reclaiming whatever space is not shared
+is not shared with other snapshots.
+.TP
+.B -m
+Flags that the newly created snapshot should be mutable.
+.TP
+.B -S
+Disables automatic snapshots.
+.I old
+and gives it the name
+.IR new .
+.PP
+.I Sync
+writes dirty blocks in memory to the disk.
+.PP
+.B Users
+attempts to reload the user table from
+.IR /adm/users .
+.PP
+.I save trace
+saves a trace of recent operations to a file.
+If a file is not specified, it prints to the console.
+.SH ADM FILES
+.PP
+Gefs supports independent snapshots in the same file system.
+As a result, global configuration needs to be separated from snapshots.
+The global configuration resides in a well known snapshot called
+.IR adm .
+.PP
+The adm snapshot would conventionally be mounted in
+.IR /adm .
+It contains the
+.IR users (6)
+file.
+.IR
+The
+.I users
+file is read at file system startup, or when the
+.I users
+command is run on the console.
+If the users file is malformed at file system start, then the file system will refuse to initialize.
+.I Permissive
+mode will allow the file system to fall back to a default users table.
+It will also allow any user to mount the
+.I adm
+snapshot: this can help recover from disasters.
+.PP
+The
+.B default
+table looks like this:
+.IP
+.EX
+-1:adm:adm:
+0:none::
+1:$user:$user:
+.EE
+.PP
+Where
+.I $user
+is specified at the time that the file system is reamed.
+.SH EXAMPLES
+.PP
+To show current disk usage, the following may be written on the console:
+.IP
+.EX
+df
+.EE
+To create a new snapshot:
+.IP
+.EX
+snap main myimmutable
+.EE
+.PP
+To create a new mutable snapshot that does not take automatic
+checkpoints:
+.IP
+.EX
+snap -Sm main mymutable
+.EE
+.PP
+To delete a snapshot:
+.IP
+.EX
+snap -d mysnap
+.EE
+.SH BUGS
+.PP
+Currently, it's not possible to change the mutability of a snapshot.
+Instead, a new label needs to be created.
+.PP
+.SH SEE ALSO
+.IR gefs (4)
+

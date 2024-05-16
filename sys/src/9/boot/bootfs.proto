@@ -20,6 +20,7 @@ $objtype
 		dossrv
 		echo
 		cwfs64x
+		gefs
 		grep
 		ip
 			ipconfig

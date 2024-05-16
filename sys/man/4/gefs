@@ -1,0 +1,161 @@
+.TH GEFS 4
+.SH NAME
+gefs \- file server
+.SH SYNOPSIS
+.B gefs
+[
+.B -A
+]
+[
+.B -r
+.I user
+]
+[
+.B -f
+.I file
+]
+[
+.B -m
+.I mem
+]
+[
+.B -n
+.I name
+]
+[
+.B -a
+.I ann
+] ...
+[
+.B -S
+]
+[
+.B -s
+]
+.SH DESCRIPTION
+.PP
+.I Gefs
+is an experimental file server.
+It attempts to be crash safe, snapshotting, and corruption-detecting,
+without giving up too much performance.
+.PP
+Gefs allows multiple snapshots to be mounted and maintained concurrently.
+These snapshots all share the same storage pool, but can be written to,
+snapshotted, and rolled back independently.
+.PP
+The snapshot to mount is selected by using the attach specifier when
+mounting. If the attach specifier begins with a
+.I %
+sigil, then the snapshot is mounted in permissive mode.
+In permissive mode, permissions are not checked, and
+.IR wstat (5)
+may change any attributes of any file including the owner.
+Unless the file system is started with the permissive flag,
+only users in the
+.I adm
+group may mount snapshots permissively.
+.PP
+Gefs accepts the following options:
+.TP
+.B -A
+Disable auth. Permissions are still checked, but anyone will be able
+to attach as any user.
+.TP
+.BI "-a " ann
+Announce and listen on the specified network address.
+.TP
+.BI "-f " file
+Use
+.I file
+as the disk.
+.TP
+.B -g
+Grow the file system to fill the current partition.
+.TP
+.BI "-m " mem
+Specify the amount of memory to use as cache.
+The
+.I mem
+parameter recognizes
+.IR M ,
+.IR G ,
+and
+.I %
+as suffixes.
+If left unspecified, it defaults to 25% of installed RAM.
+.TP
+.BI "-n " name
+Use
+.I name
+as the name of the service.
+If unspecified, the default service name is
+.IR gefs .
+.TP
+.BI "-r " user
+Ream the file system, erasing all of the old data.
+Create a user named
+.I user
+in the
+.I adm
+group.
+After reaming,
+.I gefs
+will exit.
+.TP
+.B -S
+Allow permissive mounts for all users.
+Additionally, if the user file is unreadable, fall back to the default user table.
+Without god, all things are permitted.
+.TP
+.B -s
+Read and write protocol messages on standard file descriptors zero and one.
+.TP
+.B -t
+Set the size of the trace buffer in megabytes.
+If set to 0, no debug traces are recorded.
+By default, 16 megabytes of trace buffer are kept.
+.SH EXAMPLES
+.PP
+Mount snapshots
+.I gefs
+from the partition
+.I /dev/sdE0/fs
+onto a few different mountpoints.
+The
+.I main
+snapshot is mounted to
+.IR /n/gefs .
+The
+.I sys
+snapshot is mounted to
+.IR /n/gefs/sys .
+And finally, the
+.I adm
+snapshot is mounted in permissive mode to
+.IR  /n/adm .
+.IP
+.EX
+gefs -f /dev/sdE0/fs
+mount /srv/gefs /n/gefs
+mount /srv/gefs /n/gefs/sys sys
+mount /srv/gefs /n/adm %adm
+.EE
+.PP
+Initialize a new file system on a device.
+Note, this assumes the disk has already been prepared with
+.IR prep (8),
+and a
+.I fs
+partition has been created.
+.IP
+.EX
+gefs -r $user -f /dev/sdE0/fs
+.EE
+.SH SEE ALSO
+.IR cwfs (4),
+.IR hjfs (4),
+.IR gefs (8),
+.IR prep (8),
+.IR sd (3)
+.SH BUGS
+Yes
