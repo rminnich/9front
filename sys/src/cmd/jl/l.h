@@ -2,6 +2,7 @@
 #include	<libc.h>
 #include	<bio.h>
 #include	"../jc/j.out.h"
+#include	"../cc/compat.h"
 
 #ifndef	EXTERN
 #define	EXTERN	extern
@@ -228,7 +229,6 @@ EXTERN	char*	library[50];
 EXTERN	char*	libraryobj[50];
 EXTERN	int	libraryp;
 EXTERN	int	xrefresolv;
-EXTERN	char*	hunk;		/* compat.c's malloc */
 EXTERN	char	inuxi1[1];
 EXTERN	char	inuxi2[2];
 EXTERN	char	inuxi4[4];
@@ -237,7 +237,6 @@ EXTERN	Prog*	lastp;
 EXTERN	long	lcsize;
 EXTERN	char	literal[32];
 EXTERN	int	nerrors;
-EXTERN	long	nhunk;		/* compat.c's malloc */
 EXTERN	Prog	nopalign;
 EXTERN	long	instoffset;
 EXTERN	vlong	instoffx;
@@ -250,7 +249,6 @@ EXTERN	uchar	repop[ALAST];
 EXTERN	long	symsize;
 EXTERN	Prog*	textp;
 EXTERN	long	textsize;
-EXTERN	long	thunk;		/* compat.c's malloc */
 EXTERN	int	version;
 EXTERN	char	xcmp[32][32];
 EXTERN	Prog	zprg;
@@ -310,7 +308,6 @@ void	errorexit(void);
 void	exchange(Prog*);
 int	find1(long, int);
 void	follow(void);
-void	gethunk(void);
 void	histtoauto(void);
 double	ieeedtod(Ieee*);
 long	ieeedtof(Ieee*);

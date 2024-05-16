@@ -240,7 +240,6 @@ main(int argc, char *argv[])
 out:
 	if(debug['v']) {
 		Bprint(&bso, "%5.2f cpu time\n", cputime());
-		Bprint(&bso, "%ld memory used\n", thunk);
 		Bprint(&bso, "%lld sizeof adr\n", (vlong)sizeof(Adr));
 		Bprint(&bso, "%lld sizeof prog\n", (vlong)sizeof(Prog));
 	}
@@ -437,26 +436,14 @@ zaddr(uchar *p, Adr *a, Sym *h[])
 		break;
 
 	case D_SCONST:
-		while(nhunk < NSNAME)
-			gethunk();
-		a->sval = (char*)hunk;
-		nhunk -= NSNAME;
-		hunk += NSNAME;
-
+		a->sval = mallocz(NSNAME, 1);
 		memmove(a->sval, p+4, NSNAME);
 		c += NSNAME;
 		break;
 
 	case D_VCONST:
-		while(nhunk < 12)
-			gethunk();
-		if((uintptr)hunk & 2){
-			nhunk -= 4;
-			hunk += 4;
-		}
-		a->vval = (vlong*)hunk;
-		nhunk -= 8;
-		hunk += 8;
+		a->vval = mallocz(sizeof(vlong), 1);
+
 		*(long*)a->vval = p[4] | (p[5]<<8) |
 			(p[6]<<16) | (p[7]<<24);
 		*((long*)a->vval + 1) = p[8] | (p[9]<<8) |
@@ -465,11 +452,7 @@ zaddr(uchar *p, Adr *a, Sym *h[])
 		break;
 
 	case D_FCONST:
-		while(nhunk < sizeof(Ieee))
-			gethunk();
-		a->ieee = (Ieee*)hunk;
-		nhunk -= NSNAME;
-		hunk += NSNAME;
+		a->ieee = mallocz(sizeof(Ieee), 1);
 
 		a->ieee->l = p[4] | (p[5]<<8) |
 			(p[6]<<16) | (p[7]<<24);
@@ -494,11 +477,7 @@ zaddr(uchar *p, Adr *a, Sym *h[])
 			return c;
 		}
 
-	while(nhunk < sizeof(Auto))
-		gethunk();
-	u = (Auto*)hunk;
-	nhunk -= sizeof(Auto);
-	hunk += sizeof(Auto);
+	u = mallocz(sizeof(Auto), 1);
 
 	u->link = curauto;
 	curauto = u;
@@ -786,12 +765,7 @@ loop:
 		goto loop;
 	}
 
-	if(nhunk < sizeof(Prog))
-		gethunk();
-	p = (Prog*)hunk;
-	nhunk -= sizeof(Prog);
-	hunk += sizeof(Prog);
-
+	p = prg();
 	p->as = o;
 	p->reg = bloc[1];
 	p->line = bloc[2] | (bloc[3]<<8) | (bloc[4]<<16) | (bloc[5]<<24);
@@ -1168,11 +1142,7 @@ lookup(char *symb, int v)
 		if(memcmp(s->name, symb, l) == 0)
 			return s;
 
-	while(nhunk < sizeof(Sym))
-		gethunk();
-	s = (Sym*)hunk;
-	nhunk -= sizeof(Sym);
-	hunk += sizeof(Sym);
+	s = mallocz(sizeof(Sym), 1);
 
 	s->name = malloc(l);
 	memmove(s->name, symb, l);
@@ -1191,36 +1161,9 @@ prg(void)
 {
 	Prog *p;
 
-	while(nhunk < sizeof(Prog))
-		gethunk();
-	p = (Prog*)hunk;
-	nhunk -= sizeof(Prog);
-	hunk += sizeof(Prog);
-
+	p = malloc(sizeof *p);
 	*p = zprg;
 	return p;
-}
-
-void
-gethunk(void)
-{
-	char *h;
-	long nh;
-
-	nh = NHUNK;
-	if(thunk >= 5L*NHUNK) {
-		nh = 5L*NHUNK;
-		if(thunk >= 25L*NHUNK)
-			nh = 25L*NHUNK;
-	}
-	h = mysbrk(nh);
-	if(h == (char*)-1) {
-		diag("out of memory");
-		errorexit();
-	}
-	hunk = h;
-	nhunk = nh;
-	thunk += nh;
 }
 
 void

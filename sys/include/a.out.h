@@ -28,12 +28,14 @@ struct	Exec
 #define	L_MAGIC		_MAGIC(0, 23)		/* dec alpha (retired) */
 #define	P_MAGIC		_MAGIC(0, 24)		/* mips 3000 LE */
 #define	U_MAGIC		_MAGIC(0, 25)		/* sparc64 */
+#define	Y_MAGIC		_MAGIC(0, 29)		/* riscv */
 #define	S_MAGIC		_MAGIC(HDR_MAGIC, 26)	/* amd64 */
 #define	T_MAGIC		_MAGIC(HDR_MAGIC, 27)	/* powerpc64 */
 #define	R_MAGIC		_MAGIC(HDR_MAGIC, 28)	/* arm64 */
+#define	B_MAGIC		_MAGIC(HDR_MAGIC, 30)	/* riscv64 */
 
 #define	MIN_MAGIC	8
-#define	MAX_MAGIC	28			/* <= 90 */
+#define	MAX_MAGIC	30			/* <= 90 */
 
 #define	DYN_MAGIC	0x80000000		/* dlm */
 

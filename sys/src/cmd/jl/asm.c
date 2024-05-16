@@ -135,7 +135,7 @@ asmb(void)
 	case 1:
 		break;
 	case 2:
-		t = thechar == 'j'? (debug['X']? B_MAGIC: Y_MAGIC): Z_MAGIC;
+		t = thechar == 'j'? B_MAGIC: Y_MAGIC;
 		lput(t);
 		lput(textsize);			/* sizes */
 		lput(datsize);
@@ -147,11 +147,6 @@ asmb(void)
 		if (t & HDR_MAGIC)
 			llput(entryvalue());	/* va of entry */
 		break;
-	case 5:
-		if(thechar == 'j')
-			elf64(243, ELFDATA2LSB, 0, nil); /* 243 is RISCV */
-		else
-			elf32(243, ELFDATA2LSB, 0, nil);
 	}
 	cflush();
 }

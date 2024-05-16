@@ -2,6 +2,7 @@
 #include <libc.h>
 #include <bio.h>
 #include "../jc/j.out.h"
+#include "../cc/compat.h"
 
 #ifndef	EXTERN
 #define	EXTERN	extern
@@ -95,14 +96,12 @@ EXTERN	int	nDlist;
 EXTERN	Hist*	ehist;
 EXTERN	int	newflag;
 EXTERN	Hist*	hist;
-EXTERN	char*	hunk;
 EXTERN	char*	include[NINCLUDE];
 EXTERN	Io*	iofree;
 EXTERN	Io*	ionext;
 EXTERN	Io*	iostack;
 EXTERN	long	lineno;
 EXTERN	int	nerrors;
-EXTERN	long	nhunk;
 EXTERN	int	ninclude;
 EXTERN	int	nosched;
 EXTERN	Gen	nullgen;
@@ -115,7 +114,6 @@ EXTERN	int	sym;
 EXTERN	char	symb[NSYMB];
 EXTERN	int	thechar;
 EXTERN	char*	thestring;
-EXTERN	long	thunk;
 EXTERN	Biobuf	obuf;
 
 void*	alloc(long);
@@ -144,7 +142,7 @@ Sym*	getsym(void);
 void	domacro(void);
 void	macund(void);
 void	macdef(void);
-void	macexpand(Sym*, char*);
+int	macexpand(Sym*, char*, int);
 void	macinc(void);
 void	macprag(void);
 void	maclin(void);
@@ -154,29 +152,7 @@ void	dodefine(char*);
 void	prfile(long);
 void	outhist(void);
 void	linehist(char*, int);
-void	gethunk(void);
 void	yyerror(char*, ...);
 int	yyparse(void);
 void	setinclude(char*);
 int	assemble(char*);
-
-/*
- *	system-dependent stuff from ../cc/compat.c
- */
-
-enum				/* keep in synch with ../cc/cc.h */
-{
-	Plan9	= 1<<0,
-	Unix	= 1<<1,
-	Windows	= 1<<2
-};
-int	mywait(int*);
-int	mycreat(char*, int);
-int	systemtype(int);
-int	pathchar(void);
-char*	mygetwd(char*, int);
-int	myexec(char*, char*[]);
-int	mydup(int, int);
-int	myfork(void);
-int	mypipe(int*);
-void*	mysbrk(ulong);
