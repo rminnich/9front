@@ -588,7 +588,7 @@ The
 .I sweeper ,
 .I reader ,
 and
-.I sycer .
+.I syncer .
 Most of these processes can be replicated,
 however, there may only be one
 .IR mutator ,
