@@ -41,7 +41,7 @@ And even after adding all this complexity, the fossil+venti system provides no w
 Why GEFS Is Good Enough
 .PP
 GEFS aims to solve these problems with the above file systems.
-The data and metadata is copied on write, with atomic commits.
+The data and metadata are copied on write, with atomic commits.
 This happens by construction, with fewer subtle ordering requirements than soft updates.
 If the file server crashes before the superblocks are updated,
 then the next mount will see the last commit that was synced to disk.
@@ -63,8 +63,8 @@ This algorithm is described later in the paper.
 .PP
 While snapshot consistency is useful to keep data consistent, disks often fail over time.
 In order to detect corruption, block pointers contain a hash of the data that they point at.
-If corrupted data is returned by the underlying storage medium, this is detected via the block hashes.
-And if a programmer error causes the file system to write garbage to disk, this can be often be caught early.
+If corrupted data is returned by the underlying storage medium, this is detected via block hashes.
+And if a programmer error causes the file system to write garbage to disk, this can often be caught early.
 The corruption is reported, and the damaged data may then be recovered from backups, RAID restoration, or some other means.
 .PP
 By selecting a suitable data structure, a large amount of complexity elsewhere in the file system falls away.
@@ -83,21 +83,21 @@ Like B-trees, the pivot nodes contain pointers to their children, which are eith
 Unlike B-trees, the pivot nodes also contain a write buffer.
 .PP
 The Bε tree implements a simple key-value API, with point queries and range scans.
-It diverges form a traditional B-tree key value store by the addition of an upsert operation.
+It diverges from a traditional B-tree key value store with the addition of an upsert operation.
 Upsert operations are operations that insert a modification message into the tree.
 These modifications are addressed to a key.
 .PP
-To insert to the tree, the root node is copied, and the new message is
+To insert into the tree, the root node is copied, and the new message is
 inserted into its write buffer.
 When the write buffer is full, it is inspected, and the number of messages directed
 to each child is counted up.
 The child with the largest number of pending writes is picked as the victim.
 The root's write buffer is flushed into the selected victim.
-This proceeds recursively down the tree, until either an intermediate node has
+This proceeds recursively down the tree until either an intermediate node has
 sufficient space in its write buffer, or the messages reach a leaf node, at which
 point the value in the leaf is updated.
 .PP
-In order to query a value, the tree is walked as normal, however the path to the
+In order to query a value, the tree is walked as normal; however, the path to the
 leaf node is recorded.
 When a value is found, the write buffers along the path to the root are inspected,
 and any messages that have not yet reached the leaves are applied to the final
@@ -310,7 +310,7 @@ looking up the existing block containing the data so that it can be modified and
 updated.
 If a write happens to fully cover a data block, then a blind upsert of the data
 is done instead.
-Atomically along with the upsert of the new data, a blind write of the version number incremnt,
+Atomically, along with the upsert of the new data, a blind write of the version number increment,
 mtime, and muid is performed.
 .PP
 Stats and wstat operations both construct and look up the keys for the directory entries,
@@ -704,7 +704,7 @@ freeblks(limbo[globalepoch - 2])
 .PP
 If the old epoch is not empty, then the blocks are not freed, and the cleanup is deferred.
 If a reader stalls out for a very long time, this can lead to a large accumulation of garbage,
-and as a result, GEFS starts to apply backpressure to the writers if the limbo list begins
+and as a result, GEFS starts to apply back pressure to the writers if the limbo list begins
 to get too large.
 .PP
 This epoch based approach allows GEFS to avoid contention between writes and reads.
