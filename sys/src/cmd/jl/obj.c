@@ -119,6 +119,7 @@ main(int argc, char *argv[])
 		errorexit();
 
 	case 1:	/* headerless */
+	case 6: /* headerless, padded segments */
 		HEADR = 0;
 		if(INITTEXT == -1)
 			INITTEXT = 0;

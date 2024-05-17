@@ -83,8 +83,11 @@ asmb(void)
 	case 2:
 	case 3:
 	case 5:
-	case 6:
 		OFFSET = HEADR+textsize;
+		seek(cout, OFFSET, 0);
+		break;
+	case 6: /* headerless, padded segments */
+		OFFSET = rnd(HEADR+textsize, INITRND);
 		seek(cout, OFFSET, 0);
 		break;
 	}
@@ -111,8 +114,11 @@ asmb(void)
 		case 2:
 		case 1:
 		case 5:
-		case 6:
 			OFFSET = HEADR+textsize+datsize;
+			seek(cout, OFFSET, 0);
+			break;
+		case 6: /* headerless, padded segments */
+			OFFSET += rnd(datsize, INITRND);
 			seek(cout, OFFSET, 0);
 			break;
 		}
