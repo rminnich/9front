@@ -130,7 +130,7 @@ main(int argc, char *argv[])
 		break;
 	case 2:	/* plan 9 */
 		HEADR = 32L;
-		if (thechar == 'j' && debug['X'])
+		if (thechar == 'j')
 			HEADR += sizeof(vlong);	/* for virtual entry addr. */
 		if(INITTEXT == -1)
 			INITTEXT = 4096 + HEADR;
