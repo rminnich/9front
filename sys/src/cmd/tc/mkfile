@@ -1,7 +1,6 @@
 </$objtype/mkfile
 
 TARG=tc
-
 OFILES=	cgen.$O\
 	enam.$O\
 	list.$O\
@@ -12,18 +11,12 @@ OFILES=	cgen.$O\
 	swt.$O\
 	txt.$O\
 
-HFILES=	gc.h\
-	5.out.h\
+HFILES=\
+	gc.h\
+	../5c/5.out.h\
+	../cc/compat.h\
 	../cc/cc.h\
 
-LIB=../cc/cc.a$O
-
-BIN=/$objtype/bin
+T=5
+<../cc/mkfile.port
 </sys/src/cmd/mkone
-
-$LIB:	../cc/cc.h
-	cd ../cc
-	mk install
-
-%.$O: ../cc/%.c
-	$CC $CFLAGS ../cc/$stem.c

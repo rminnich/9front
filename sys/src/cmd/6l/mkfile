@@ -26,6 +26,9 @@ UPDATE=\
 
 </sys/src/cmd/mkone
 
+../6c/enam.c: ../6c/6.out.h
+	@ { cd ../6c; mk enam.c }
+
 enam.$O:	../6c/enam.c
 	$CC $CFLAGS ../6c/enam.c
 

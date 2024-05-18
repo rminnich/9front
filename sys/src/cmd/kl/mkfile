@@ -21,6 +21,9 @@ HFILES=\
 BIN=/$objtype/bin
 </sys/src/cmd/mkone
 
+../kc/enam.c: ../kc/k.out.h
+	@ { cd ../kc; mk enam.c }
+
 enam.$O:	../kc/enam.c
 	$CC $CFLAGS ../kc/enam.c
 

@@ -23,8 +23,13 @@ HFILES=\
 BIN=/$objtype/bin
 </sys/src/cmd/mkone
 
+../qc/enam.c: ../qc/q.out.h
+	@ { cd ../qc; mk enam.c }
+
 enam.$O:	../qc/enam.c
 	$CC $CFLAGS ../qc/enam.c
+
 cnam.c:	l.h mkcname
 	rc ./mkcname
+
 compat.$O:	../cc/compat

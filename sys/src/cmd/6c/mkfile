@@ -22,19 +22,6 @@ HFILES=\
 	../cc/compat.h\
 	../cc/cc.h\
 
-LIB=../cc/cc.a$O
-
-BIN=/$objtype/bin
+T=6
+<../cc/mkfile.port
 </sys/src/cmd/mkone
-
-$LIB:	../cc/cc.h
-	cd ../cc
-	mk install
-
-%.$O: ../cc/%.c
-	$CC $CFLAGS ../cc/$stem.c
-
-bound.$O:	bound.h
-
-enam.c:	6.out.h
-	rc mkenam

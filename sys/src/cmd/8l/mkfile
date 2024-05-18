@@ -27,6 +27,9 @@ UPDATE=\
 
 </sys/src/cmd/mkone
 
+../8c/enam.c: ../8c/8.out.h
+	@ { cd ../8c; mk enam.c }
+
 enam.$O:	../8c/enam.c
 	$CC $CFLAGS ../8c/enam.c
 
