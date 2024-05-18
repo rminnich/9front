@@ -42,8 +42,9 @@ enum {
 	Ndtab	= 1024,			/* number of dir tab entries */
 	Max9p	= 32*KiB,		/* biggest message size we're willing to negotiate */
 	Nsec	= 1000LL*1000*1000,	/* nanoseconds to the second */
-	Maxname	= 256,			/* maximum size of a name element */
-	Maxent	= 9+Maxname+1,		/* maximum size of ent key, with terminator */
+	Maxent	= 256,			/* maximum size of ent key, with terminator */
+	Maxname	= Maxent-1-9-1,		/* maximum size of a name element */
+	Maxuname= 64,			/* maximum length of a username */
 	Maxtag	= 1<<16,		/* maximum tag in 9p */
 
 	/*
@@ -51,7 +52,7 @@ enum {
 	 * there is no way to get a valid split of a
 	 * maximally filled tree.
 	 */
-	Keymax	= 128,			/* key data limit */
+	Keymax	= Maxent,		/* key data limit */
 	Inlmax	= 512,			/* inline data limit */
 	Ptrsz	= 24,			/* off, hash, gen */
 	Pptrsz	= 26,			/* off, hash, gen, fill */
@@ -128,7 +129,8 @@ enum {
 #define Zb (Bptr){-1, -1, -1}
 
 /* internal errors */
-#define Efs	(abort(), "fs broke")
+//#define Efs	(abort(), "fs broke")
+extern char Efs[];
 extern char Ecorrupt[];
 extern char Efsvers[];
 extern char Eimpl[];

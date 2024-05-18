@@ -12,8 +12,7 @@ unpackstr(char *p, char *e, char **s)
 {
 	int n;
 
-	if (e - p < 3)
-		error(Elength);
+	assert(e - p >= 3);
 	n = UNPACK16(p);
 	if(e - p < n + 3 || p[n+2] != 0)
 		broke(Efs);
@@ -28,8 +27,7 @@ packstr(char *p, char *e, char *s)
 	int n;
 
 	n = strlen(s);
-	if (e - p < n+3)
-		error(Elength);
+	assert(e - p >= n+3);
 	PACK16(p, n);		p += 2;
 	memmove(p, s, n);	p += n;
 	*p = 0;			p += 1;

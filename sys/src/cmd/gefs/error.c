@@ -4,6 +4,7 @@
 #include <fcall.h>
 #include "dat.h"
 
+char Efs[]	= "internal error";
 char Ecorrupt[] = "block contents corrupted";
 char Efsvers[]	= "unknown fs version";
 char Eimpl[]	= "not implemented";

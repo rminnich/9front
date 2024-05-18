@@ -253,22 +253,22 @@ filldumpdir(Xdir *d)
 	d->muid = -1;
 }
 
-static int
+static char*
 okname(char *name)
 {
 	int i;
 
 	if(name[0] == 0)
-		return -1;
+		return Ename;
 	if(strcmp(name, ".") == 0 || strcmp(name, "..") == 0)
-		return -1;
+		return Ename;
 	for(i = 0; i < Maxname; i++){
 		if(name[i] == 0)
-			return 0;
+			return nil;
 		if((name[i]&0xff) < 0x20 || name[i] == '/')
-			return -1;
+			return Ename;
 	}
-	return -1;
+	return Elength;
 }
 
 Chan*
@@ -1230,9 +1230,11 @@ fswalk(Fmsg *m)
 	dmode = d.mode;
 	r.type = Rwalk;
 	for(i = 0; i < m->nwname; i++){
+		name = m->wname[i];
+		if(strlen(name) > Maxname)
+			error(Elength);
 		if(fsaccess(o, d.mode, d.uid, d.gid, DMEXEC) != 0)
 			error(Eperm);
-		name = m->wname[i];
 		if(d.qid.path == Qdump){
 			if((mnt = getmount(m->wname[i])) == nil)
 				error(Esrch);
@@ -1345,7 +1347,7 @@ static void
 fswstat(Fmsg *m, int id, Amsg **ao)
 {
 	char rnbuf[Kvmax], opbuf[Kvmax], upbuf[Upksz];
-	char *p, strs[65535];
+	char *p, *e, strs[65535];
 	int op, nm, rename;
 	vlong oldlen;
 	Qid old;
@@ -1395,10 +1397,12 @@ fswstat(Fmsg *m, int id, Amsg **ao)
 			error(Ewstatv);
 	}
 	if(*d.name != '\0'){
+		if(strlen(d.name) > Maxname)
+			error(Elength);
 		if(strcmp(d.name, de->name) != 0){
 			rename = 1;
-			if(okname(d.name) == -1)
-				error(Ename);
+			if((e = okname(d.name)) != nil)
+				error(e);
 			if(walk1(t, f->dent->up, d.name, &old, &oldlen) == 0)
 				error(Eexist);
 			n.name = d.name;
@@ -1452,6 +1456,8 @@ fswstat(Fmsg *m, int id, Amsg **ao)
 		}
 	}
 	if(*d.uid != '\0'){
+		if(strlen(d.uid) > Maxuname)
+			error(Elength);
 		rlock(&fs->userlk);
 		u = name2user(d.uid);
 		if(u == nil){
@@ -1467,6 +1473,8 @@ fswstat(Fmsg *m, int id, Amsg **ao)
 		}
 	}
 	if(*d.gid != '\0'){
+		if(strlen(d.gid) > Maxuname)
+			error(Elength);
 		rlock(&fs->userlk);
 		u = name2user(d.gid);
 		if(u == nil){
@@ -1573,7 +1581,7 @@ fsclunk(Fmsg *m, Amsg **ao)
 static void
 fscreate(Fmsg *m)
 {
-	char *p, buf[Kvmax], upkbuf[Keymax], upvbuf[Inlmax];
+	char *p, *e, buf[Kvmax], upkbuf[Keymax], upvbuf[Inlmax];
 	Dent *de;
 	vlong oldlen;
 	Qid old;
@@ -1583,8 +1591,8 @@ fscreate(Fmsg *m)
 	Xdir d;
 	int nm;
 
-	if(okname(m->name) == -1){
-		rerror(m, Ename);
+	if((e = okname(m->name)) != nil){
+		rerror(m, e);
 		return;
 	}
 	if(m->perm & (DMMOUNT|DMAUTH)){

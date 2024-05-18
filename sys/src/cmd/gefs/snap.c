@@ -377,12 +377,12 @@ tagsnap(Tree *t, char *name, int flg)
 
 	i = 0;
 	n = nil;
-	if(waserror()){
-		free(n);
-		nexterror();
-	}
 	if(flg & Lmut){
 		n = emalloc(sizeof(Tree), 1);
+		if(waserror()){
+			free(n);
+			nexterror();
+		}
 		n->memref = 1;
 		n->dirty = 0;
 		n->nlbl = 1;
@@ -405,6 +405,7 @@ tagsnap(Tree *t, char *name, int flg)
 		m[i].op = Oinsert;
 		tree2kv(n, &m[i], buf[i], sizeof(buf[i]));
 		i++;
+		poperror();
 	}else{
 		t->nlbl++;
 		m[i].op = Orelink;
@@ -418,7 +419,6 @@ tagsnap(Tree *t, char *name, int flg)
 		i++;
 	}
 	btupsert(&fs->snap, m, i);
-	poperror();
 	free(n);
 }
 
