@@ -664,7 +664,8 @@ struct Fid {
 	 */
 	Mount	*mnt;
 	Scan	*scan;	/* in progres scan */
-	Dent	*dent;	/* (pqid, name) ref, modified on rename */	
+	Dent	*dent;	/* (pqid, name) ref, modified on rename */
+	Amsg	*rclose;	
 	void	*auth;
 
 	u32int	fid;
@@ -680,7 +681,6 @@ struct Fid {
 	int	dmode;
 
 	char	permit;
-	char	rclose;
 };
 
 enum {

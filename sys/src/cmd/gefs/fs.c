@@ -773,14 +773,17 @@ clunkfid(Conn *c, Fid *fid, Amsg **ao)
 		free(f->scan);
 		f->scan = nil;
 	}
-	if(f->rclose){
+	if(f->rclose != nil){
+		*ao = f->rclose;
+
 		qlock(&f->dent->trunclk);
 		f->dent->trunc = 1;
 		qunlock(&f->dent->trunclk);
+
 		wlock(f->dent);
 		f->dent->gone = 1;
 		wunlock(f->dent);
-		*ao = emalloc(sizeof(Amsg), 1);
+
 		aincl(&f->dent->ref, 1);
 		aincl(&f->mnt->ref, 1);
 		(*ao)->op = AOrclose;
@@ -1200,6 +1203,7 @@ fswalk(Fmsg *m)
 	Fid *o, *f;
 	Dent *dent;
 	Mount *mnt;
+	Amsg *ao;
 	Tree *t;
 	Fcall r;
 	Xdir d;
@@ -1286,7 +1290,8 @@ Found:
 		lock(f);
 		if(waserror()){
 			if(f != o)
-				clunkfid(m->conn, f, nil);
+				clunkfid(m->conn, f, &ao);
+			assert(ao == nil);
 			unlock(f);
 			nexterror();
 		}
@@ -1679,7 +1684,7 @@ fscreate(Fmsg *m)
 	f->qpath = d.qid.path;
 	f->dent = de;
 	if(m->mode & ORCLOSE)
-		f->rclose = 1;
+		f->rclose = emalloc(sizeof(Amsg), 1);
 
 	r.type = Rcreate;
 	r.qid = d.qid;
@@ -1728,7 +1733,12 @@ fsremove(Fmsg *m, int id, Amsg **ao)
 		return;
 	}
 	t = f->mnt->root;
-	clunkfid(m->conn, f, nil);
+	lock(f);
+	clunkfid(m->conn, f, ao);
+	/* rclose files are getting removed here anyways */
+	if(*ao != nil)
+		f->rclose = nil;
+	unlock(f);
 
 	truncwait(f->dent, id);
 	wlock(f->dent);
@@ -1756,10 +1766,12 @@ fsremove(Fmsg *m, int id, Amsg **ao)
 		error(e);
 	if(fsaccess(f, f->dmode, f->duid, f->dgid, DMWRITE) == -1)
 		error(Eperm);
+	lock(f);
 	mb[0].op = Odelete;
 	mb[0].k = f->dent->k;
 	mb[0].nk = f->dent->nk;
 	mb[0].nv = 0;
+	unlock(f);
 
 	if(f->dent->qid.type & QTDIR){
 		packsuper(buf, sizeof(buf), f->qpath);
@@ -1769,7 +1781,8 @@ fsremove(Fmsg *m, int id, Amsg **ao)
 		mb[1].nv = 0;
 		upsert(f->mnt, mb, 2);
 	}else{
-		*ao = emalloc(sizeof(Amsg), 1);
+		if(*ao == nil)
+			*ao = emalloc(sizeof(Amsg), 1);
 		aincl(&f->mnt->ref, 1);
 		(*ao)->op = AOclear;
 		(*ao)->mnt = f->mnt;
@@ -1890,7 +1903,7 @@ fsopen(Fmsg *m, int id, Amsg **ao)
 	}
 	f->mode = mode2bits(m->mode);
 	if(m->mode & ORCLOSE)
-		f->rclose = 1;
+		f->rclose = emalloc(sizeof(Amsg), 1);
 	unlock(f);
 	poperror();
 	respond(m, &r);
@@ -2298,7 +2311,10 @@ runmutate(int id, void *)
 					rerror(m, Enofid);
 					continue;
 				}
-				clunkfid(m->conn, f, nil);
+				clunkfid(m->conn, f, &a);
+				/* read only: ignore rclose */
+				f->rclose = nil;
+				free(a);
 				putfid(f);
 			}
 			rerror(m, Erdonly);
