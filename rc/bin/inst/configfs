@@ -16,7 +16,7 @@ case go
 	echo '	cwfs64x	the cached-worm file server'
 	echo '	hjfs	the new 9front file server (experimental!)'
 	echo
-	prompt -d cwfs64x 'File system' cwfs64x hjfs
+	prompt -d cwfs64x -h gefs 'File system' cwfs64x hjfs
 	fstype=$rd
 	export fstype
 }

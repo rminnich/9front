@@ -7,7 +7,7 @@ fn autotype {
 	switch($fstype){
 	case cwfs cwfs64 cwfs64x
 		echo -a 9fat -a nvram -a fscache -a fsworm -a other
-	case hjfs
+	case hjfs gefs
 		echo -a 9fat -a nvram -a fs
 	}
 }

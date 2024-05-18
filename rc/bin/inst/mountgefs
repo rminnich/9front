@@ -1,0 +1,84 @@
+#!/bin/rc
+
+# desc: choose and mount file system partition
+
+sname=gefs.newfs
+userfile='-1:adm:adm:'^$user^'
+0:none::
+1:tor:tor:
+2:'^$user^':'^$user:^'
+10000:sys::'^$user^'
+10001:map:map:
+10002:doc::
+10003:upas:upas:'^$user^'
+10004:font::
+10005:bootes:bootes:'
+
+switch($1){
+case go
+	echo
+	echo Please choose your $fstype partition
+	echo
+
+	files=(`{ls /dev/sd*/fs* >[2]/dev/null})
+	if(! ~ $#files 0)
+		ls -l $files
+	echo
+	if(~ $#files 1)
+		default=(-d $files)
+	if not
+		default=()
+	prompt $default 'Gefs partition' $files
+	fs=$rd
+	export fs
+	fsflags=(-A)
+	export fsflags
+
+	ream=no
+	if(! ~ $fstype `{fstype $fs})
+		ream=yes
+	prompt -d $ream 'Ream the filesystem?' yes no
+	ream=$rd
+
+	log Starting $fstype file server for $fs
+	unmount /n/newfs >[2]/dev/null
+	echo halt >>/srv/$sname.cmd >[2]/dev/null
+	rm -f /srv/$sname /srv/$sname.cmd
+
+	if(~ $ream yes){
+		echo gefs -n $sname -r $user $fsflags -SAf $fs
+		gefs -n $sname -r $user $fsflags -SAf $fs
+	}
+	gefs -n $sname $fsflags -SAf $fs
+
+	log Mounting $fstype file server for $fs
+	while(! logprog mount -c /srv/$sname /n/newfs %main)
+		sleep 2
+	while(! logprog mount -c /srv/$sname /n/newfs.adm %adm)
+		sleep 2
+	log Configuring $fstype file server for $fs
+	echo $"userfile > /n/newfs.adm/users
+	echo sync >>/srv/$sname.cmd
+	echo users >>/srv/$sname.cmd
+	sleep 1
+	for(dir in adm dist usr){
+		logprog mkdir /n/newfs/$dir
+		usrgrp = sys
+		if(~ $dir adm)
+			usrgrp = adm
+		logprog chgrp $usrgrp /n/newfs/$dir
+		logprog chgrp -u $usrgrp /n/newfs/$dir
+	}
+
+case checkready checkdone
+	if(! ~ $fstype '' && ~ $#fs 1 && test -f $fs){
+		if(test -f /srv/$sname && test -d /n/newfs/dist){
+			mountfs=done
+			export mountfs
+			exit
+		}
+	}
+	mountfs=ready
+	export mountfs
+	exit
+}

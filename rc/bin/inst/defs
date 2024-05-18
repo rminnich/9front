@@ -23,9 +23,15 @@ fn sigint {
 
 fn prompt {
 	def=()
+	hide=()
 	what=()
 	if(~ $1 -d && ! ~ $#* 1){
 		def=$2
+		shift
+		shift
+	}
+	if(~ $1 -h && ! ~ $#* 1){
+		hide=$2
 		shift
 		shift
 	}
@@ -93,7 +99,7 @@ fn prompt {
 				if(! ~ $rd '')
 					okay=yes
 			case *
-				if(~ $rd $opts)
+				if(~ $rd $opts $hide)
 					okay=yes
 			}
 		}

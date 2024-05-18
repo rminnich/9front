@@ -8,6 +8,8 @@ case cwfs cwfs64 cwfs64x
 	exec ./mountcwfs $*
 case hjfs
 	exec ./mounthjfs $*
+case gefs
+	exec ./mountgefs $*
 case *
 	mountfs=notdone
 	export mountfs
