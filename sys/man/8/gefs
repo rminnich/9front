@@ -123,7 +123,7 @@ writes dirty blocks in memory to the disk.
 attempts to reload the user table from
 .IR /adm/users .
 .PP
-.I save trace
+.I Save trace
 saves a trace of recent operations to a file.
 If a file is not specified, it prints to the console.
 .SH ADM FILES
@@ -171,6 +171,7 @@ To show current disk usage, the following may be written on the console:
 .EX
 df
 .EE
+.PP
 To create a new snapshot:
 .IP
 .EX
