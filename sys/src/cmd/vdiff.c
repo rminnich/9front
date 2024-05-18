@@ -546,8 +546,11 @@ parse(int fd)
 		case Lfile:
 			if(s[0] == '-'){
 				b = addblock();
-				if(strncmp(s+4, "a/", 2) == 0)
+				b->f = s+4;
+				if(strncmp(b->f, "a/", 2) == 0){
 					ab = 1;
+					b->f++;
+				}
 			}else if(s[0] == '+'){
 				f = s+4;
 				if(ab && strncmp(f, "b/", 2) == 0){
@@ -558,7 +561,8 @@ parse(int fd)
 				tab = strchr(f, '\t');
 				if(tab != nil)
 					*tab = 0;
-				b->f = f;
+				if(strcmp(f, "/dev/null") != 0)
+					b->f = f;
 			}
 			break;
 		case Lsep:
