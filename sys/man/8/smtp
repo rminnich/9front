@@ -6,7 +6,7 @@ smtp, smtpd \-  mail transport
 .ti -0.5i
 .B upas/smtp
 [
-.B -aAdfipst
+.B -aACdfipst
 ] [
 .B -b
 .I busted-mx
@@ -80,6 +80,9 @@ ignore
 .I busted-mx
 when trying MX hosts.
 May be repeated.
+.TP
+.B -C
+ignore bad thumbprints for TLS connections.
 .TP
 .B -d
 turn on debugging to standard error.

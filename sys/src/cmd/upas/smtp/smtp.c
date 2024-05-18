@@ -46,6 +46,7 @@ int	ping;
 int	quitting;	/* when error occurs in quit */
 int	tryauth;	/* Try to authenticate, if supported */
 int	trysecure;	/* Try to use TLS if the other side supports it */
+int	nocertcheck; /* ignore unrecognized certs. Still logged */
 
 char	*quitrv;	/* deferred return value when in quit */
 char	ddomain[1024];	/* domain name of destination machine */
@@ -85,7 +86,7 @@ deliverytype(void)
 void
 usage(void)
 {
-	fprint(2, "usage: smtp [-aAdfipst] [-b busted-mx] [-g gw] [-h host] "
+	fprint(2, "usage: smtp [-aACdfipst] [-b busted-mx] [-g gw] [-h host] "
 		"[-u user] [.domain] net!host[!service] sender rcpt-list\n");
 	exits(Giveup);
 }
@@ -186,6 +187,9 @@ main(int argc, char **argv)
 		break;
 	case 'u':
 		user = EARGF(usage());
+		break;
+	case 'C':
+		nocertcheck = 1;
 		break;
 	default:
 		usage();
@@ -414,6 +418,12 @@ wraptls(void)
 	fd = dup(fd, Bfildes(&bin));
 	Bterm(&bin);
 	Binit(&bin, fd, OREAD);
+
+	if (nocertcheck) {
+		syslog(0, "smtp", "ignoring cert for %s", ddomain);
+		err = nil;
+		goto Out;
+	}
 
 	goodcerts = initThumbprints(smtpthumbs, smtpexclthumbs, "x509");
 	if (goodcerts == nil) {
