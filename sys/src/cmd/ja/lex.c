@@ -244,6 +244,10 @@ struct
 	"F30",		LFREG,	30,
 	"F31",		LFREG,	31,
 
+	"RARG",		LREG,	REGARG,
+	"RSP",		LREG,	REGSP,
+	"LR",		LREG,	1,
+
 	"CSR",		LCTL,	0,
 
 	"ADD",		LADD,	AADD,

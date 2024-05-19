@@ -22,7 +22,7 @@ TEXT asetl+0(SB),1,$0
 	FENCE_RW
 	AMOW(Amoswap, AQ|RL, 12, ARG, 10)
 	FENCE_RW
-	MOVW	R10, R(ARG)
+	MOVW	R10, RARG
 	RET
 
 TEXT asetv+0(SB),1,$0
@@ -31,7 +31,7 @@ TEXT asetp+0(SB),1,$0
 	FENCE_RW
 	AMOD(Amoswap, AQ|RL, 12, ARG, 10)
 	FENCE_RW
-	MOV	R10, R(ARG)
+	MOV	R10, RARG
 	RET
 
 /*  inc variants */
@@ -41,7 +41,7 @@ TEXT aincl+0(SB),1,$0
 	/* after: value before add in R10, value after add in memory */
 	AMOW(Amoadd, AQ|RL, 9, ARG, 10)
 	FENCE_RW
-	ADDW	$1, R10, R(ARG)		/* old value ±1 for ainc/adec */
+	ADDW	$1, R10, RARG		/* old value ±1 for ainc/adec */
 	RET
 
 TEXT aincv+0(SB),1,$0
@@ -51,7 +51,7 @@ TEXT aincp+0(SB),1,$0
 	/* after: value before add in R10, value after add in memory */
 	AMOD(Amoadd, AQ|RL, 9, ARG, 10)
 	FENCE_RW
-	ADDW	$1, R10, R(ARG)		/* old value ±1 for ainc/adec */
+	ADDW	$1, R10, RARG		/* old value ±1 for ainc/adec */
 	RET
 
 /*  cas variants */
@@ -61,18 +61,18 @@ TEXT acasl+0(SB),1,$0
 	MOV	R0, R11		/* default to failure */
 	FENCE_RW
 spincas:
-	LRW(ARG, 14)		/* (R(ARG)) -> R14 */
+	LRW(ARG, 14)		/* (RARG) -> R14 */
 	SLL	$32, R14
 	SRL	$32, R14	/* don't sign extend */
 	BNE	R12, R14, fail
 	FENCE_RW
-	SCW(13, ARG, 14)	/* R13 -> (R(ARG)) maybe, R14=0 if ok */
+	SCW(13, ARG, 14)	/* R13 -> (RARG) maybe, R14=0 if ok */
 	BNE	R14, spincas	/* R14 != 0 means store failed */
 ok:
 	MOV	$1, R11
 fail:
 	FENCE_RW
-	MOV	R11, R(ARG)
+	MOV	R11, RARG
 	RET
 
 TEXT acasv+0(SB),1,$0
@@ -82,10 +82,10 @@ TEXT acasp+0(SB),1,$0
 	MOV	R0, R11		/* default to failure */
 	FENCE_RW
 spincasp:
-	LRD(ARG, 14)		/* (R(ARG)) -> R14 */
+	LRD(ARG, 14)		/* (RARG) -> R14 */
 	BNE	R12, R14, fail
 	FENCE_RW
-	SCD(13, ARG, 14)	/* R13 -> (R(ARG)) maybe, R14=0 if ok */
+	SCD(13, ARG, 14)	/* R13 -> (RARG) maybe, R14=0 if ok */
 	BNE	R14, spincasp	/* R14 != 0 means store failed */
 	JMP	ok
 

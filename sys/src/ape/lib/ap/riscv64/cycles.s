@@ -1,5 +1,3 @@
-#define RARG R8
-
 /* user-accessible CSRs */
 #define CYCLO		0xc00
 
