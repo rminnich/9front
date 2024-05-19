@@ -1,3 +1,3 @@
-TEXT	getcallerpc(SB), $-4
-	MOVD	0(R1), R3
+TEXT	getcallerpc(SB), $-8
+	MOVD	0(RSP), RARG
 	RETURN

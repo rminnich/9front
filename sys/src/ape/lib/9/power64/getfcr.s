@@ -1,18 +1,18 @@
 TEXT	getfcr(SB), $8
 	MOVFL	FPSCR, F3
 	FMOVD	F3, f-8(SP)
-	MOVW	-4(SP), R3
+	MOVW	-4(SP), RARG
 	RETURN
 
 TEXT	getfsr(SB), $8
 	MOVFL	FPSCR, F3
 	FMOVD	F3, f-8(SP)
-	MOVW	-4(SP), R3
+	MOVW	-4(SP), RARG
 	RETURN
 
 TEXT	setfcr(SB), $8
 	SYNC
-	MOVW	R3, -4(SP)
+	MOVW	RARG, -4(SP)
 	FMOVD	-8(SP), F3
 	MOVFL	F3, FPSCR
 	ISYNC
@@ -20,7 +20,7 @@ TEXT	setfcr(SB), $8
 
 TEXT	setfsr(SB), $8
 	SYNC
-	MOVW	R3, -4(SP)
+	MOVW	RARG, -4(SP)
 	FMOVD	-8(SP), F3
 	MOVFL	F3, FPSCR
 	ISYNC
