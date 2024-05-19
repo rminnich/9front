@@ -1,12 +1,3 @@
-#define CMPXCHG	/* (CX) */\
-	BYTE $0x0F; BYTE $0xB1; BYTE $0x11
-#define CMPXCHG64 /* (DI) */\
-	BYTE $0x0F; BYTE $0xC7; BYTE $0x0F
-#define XADDL /* BX, (AX) */ \
-	BYTE $0x0F; BYTE $0xC1; BYTE $0x03
-#define XADDLSP /* AX, (SP) */ \
-	BYTE $0x0F; BYTE $0xC1; BYTE $0x04; BYTE $0x24
-
 /*  get variants */
 TEXT ageti+0(SB),1,$0
 TEXT agetl+0(SB),1,$0
@@ -38,7 +29,7 @@ TEXT asetv+0(SB),1,$0
 	MOVL	0(DI), AX
 	MOVL	4(DI), DX
 loop:
-	LOCK;	CMPXCHG64
+	LOCK;	CMPXCHG8B (DI)
         JNE     loop
 	MOVL	p+0(FP),DI
 	MOVL	AX, 0(DI)
@@ -52,7 +43,7 @@ TEXT aincp+0(SB),1,$0
 	MOVL	p+0(FP), BX
 	MOVL	v+4(FP), CX
 	MOVL	CX, AX
-	LOCK; XADDL
+	LOCK; XADDL AX, (BX)
 	ADDL	CX, AX
 	RET
 
@@ -65,7 +56,7 @@ retry:
 	MOVL	DX, CX
 	ADDL	v+8(FP), BX
 	ADCL	v+12(FP), CX
-	LOCK; CMPXCHG64
+	LOCK; CMPXCHG8B (DI)
 	JNE	retry
 	MOVL	r+0(FP), DI
 	MOVL	BX, 0x0(DI)
@@ -79,7 +70,7 @@ TEXT acasp+0(SB),1,$0
 	MOVL	p+0(FP), CX
 	MOVL	ov+4(FP), AX
 	MOVL	nv+8(FP), DX
-	LOCK; CMPXCHG
+	LOCK; CMPXCHGL DX, (CX)
 	JNE	fail32
 	MOVL	$1,AX
 	RET
@@ -93,7 +84,7 @@ TEXT acasv+0(SB),1,$0
 	MOVL	ov+8(FP), DX
 	MOVL	nv+12(FP), BX
 	MOVL	nv+16(FP), CX
-	LOCK; CMPXCHG64
+	LOCK; CMPXCHG8B (DI)
 	JNE	fail64
 	MOVL	$1,AX
 	RET
@@ -105,5 +96,5 @@ fail64:
 TEXT coherence+0(SB),1,$0
 	/* this is essentially mfence but that requires sse2 */
 	XORL	AX, AX
-	LOCK; XADDLSP
+	LOCK; XADDL AX, (SP)
 	RET
