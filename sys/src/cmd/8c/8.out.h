@@ -586,7 +586,11 @@ enum	as
 	API2FL,
 
 	AJMPF,
+
 	ACMPXCHG8B,
+	AXADDB,
+	AXADDL,
+	AXADDW,
 
 	/* add new operations here. nowhere else. here. */
 	ALAST
