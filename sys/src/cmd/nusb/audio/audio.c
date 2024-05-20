@@ -489,7 +489,8 @@ findcontrols1(void)
 					c->cs = cs;
 					c->cn = cn;
 					c->id = b[1];
-					getvalues(c);
+					if(getvalues(c) != 0)
+						nctrl--;
 				}
 			}
 			break;
@@ -532,7 +533,8 @@ findcontrols2(void)
 					c->cs = cs;
 					c->cn = cn;
 					c->id = b[1];
-					getvalues(c);
+					if(getvalues(c) != 0)
+						nctrl--;
 				}
 			}
 			break;
