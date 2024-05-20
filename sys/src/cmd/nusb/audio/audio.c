@@ -37,7 +37,7 @@ enum {
 	Cnum,
 
 	Conlycur = 1<<Cmute | 1<<Cagc | 1<<Cbassboost | 1<<Cloudness,
-	Cszone = 1<<Cbass | 1<<Cmid | 1<<Ctreble,
+	Cszone = Conlycur | 1<<Cbass | 1<<Cmid | 1<<Ctreble,
 	Cmask1 = (1<<Cvolume | Conlycur | Cszone)>>1,
 	Cmask2 = (
 		3<<Cmute*2 | 3<<Cvolume*2 | 3<<Cbass*2 |
@@ -380,20 +380,20 @@ setvalue(uchar id, uchar hi, uchar lo, short value, int sz)
 }
 
 int
-getvalue(int r, uchar id, uchar hi, uchar lo, short *value)
+getvalue(int r, uchar id, uchar cs, uchar cn, short *value)
 {
-	uchar b[2 + 32*3*4];
-	int rc, i, n;
+	uchar b[2 + 1*3*2];
+	int rc, i, n, sz;
 
 	*value = 0;
 	i = 0;
-	if(Proto(ac->csp) == Paudio1)
-		rc = usbcmd(adev, Rd2h|Rclass|Riface, r, hi<<8 | lo, id<<8 | ac->id, b, sizeof(b));
-	else {
+	sz = (Cszone & (1<<cs)) ? 1 : 2;
+	if(Proto(ac->csp) == Paudio2){
+		sz = 2 + 1*3*sz;
 		i = r - Rgetmin;
 		r = r == Rgetcur ? Rcur : Rrange;
-		rc = usbcmd(adev, Rd2h|Rclass|Riface, r, hi<<8 | lo, id<<8 | ac->id, b, sizeof(b));
 	}
+	rc = usbcmd(adev, Rd2h|Rclass|Riface, r, cs<<8 | cn, id<<8 | ac->id, b, sz);
 	if(rc < 0)
 		return -1;
 	if(rc < 1)
