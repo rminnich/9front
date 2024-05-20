@@ -1068,7 +1068,7 @@ fsaccess(Fid *f, ulong fmode, int fuid, int fgid, int m)
 			if((m & (fmode>>3)) == m)
 				return 0;
 	}
-	if(m & fmode) {
+	if((m & fmode) == m) {
 		if((fmode & DMDIR) && (m == DMEXEC))
 			return 0;
 		if(!ingroup(f->uid, nogroupid))
