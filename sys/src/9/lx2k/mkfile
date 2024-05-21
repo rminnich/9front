@@ -1,0 +1,115 @@
+CONF=honeycomb
+CONFLIST=honeycomb
+
+kzero=0xffffffff40000000
+loadaddr=0xffffffffc0100000
+
+objtype=arm64
+</$objtype/mkfile
+p=9
+
+DEVS=`{rc ../port/mkdevlist $CONF}
+
+PORT=\
+	alarm.$O\
+	alloc.$O\
+	allocb.$O\
+	auth.$O\
+	cache.$O\
+	chan.$O\
+	dev.$O\
+	edf.$O\
+	fault.$O\
+	mul64fract.$O\
+	page.$O\
+	parse.$O\
+	pgrp.$O\
+	portclock.$O\
+	print.$O\
+	proc.$O\
+	qio.$O\
+	qlock.$O\
+	rdb.$O\
+	rebootcmd.$O\
+	segment.$O\
+	syscallfmt.$O\
+	sysfile.$O\
+	sysproc.$O\
+	taslock.$O\
+	tod.$O\
+	xalloc.$O\
+	userinit.$O\
+
+OBJ=\
+	l.$O\
+	cache.v8.$O\
+	clock.$O\
+	fpu.$O\
+	main.$O\
+	mmu.$O\
+	mem.$O\
+	sysreg.$O\
+	random.$O\
+	trap.$O\
+	$CONF.root.$O\
+	$CONF.rootc.$O\
+	$DEVS\
+	$PORT\
+
+LIB=\
+	/$objtype/lib/libmemlayer.a\
+	/$objtype/lib/libmemdraw.a\
+	/$objtype/lib/libdraw.a\
+	/$objtype/lib/libip.a\
+	/$objtype/lib/libsec.a\
+	/$objtype/lib/libmp.a\
+	/$objtype/lib/libc.a\
+#	/$objtype/lib/libdtracy.a\
+
+9:V:	$p$CONF $p$CONF.u
+
+$p$CONF.u:D:	$p$CONF
+	aux/aout2uimage -Z$kzero $p$CONF
+
+$p$CONF:D:	$OBJ $CONF.$O $LIB
+	$LD -o $target -T$loadaddr -l $prereq
+	size $target
+
+$OBJ: $HFILES
+
+install:V: /$objtype/$p$CONF
+
+/$objtype/$p$CONF:D: $p$CONF $p$CONF.u
+	cp -x $p$CONF $p$CONF.u /$objtype/
+
+ARM64FILES=`{../port/mkfilelist ../arm64}
+^($ARM64FILES)\.$O:R:	'../arm64/\1.c'
+	$CC $CFLAGS -I. -. ../arm64/$stem1.c
+
+cache.v8.$O:	../arm64/cache.v8.s
+	$AS $AFLAGS -I. -. ../arm64/cache.v8.s
+init9.$O:	../arm64/init9.s
+	$AS $AFLAGS -I. -. ../arm64/init9.s
+rebootcode.$O:	../arm64/rebootcode.s
+	$AS $AFLAGS -I. -. ../arm64/rebootcode.s
+
+<../boot/bootmkfile
+<../port/portmkfile
+<|../port/mkbootrules $CONF
+
+main.$O: rebootcode.i
+
+pcilx2k.$O: ../port/pci.h
+usbxhcilx2k.$O: ../port/usbxhci.h
+usdhc.$O: ../port/sd.h
+
+l.$O main.$O clock.$O gic.$O cache.v8.$O fpu.$O trap.$O rebootcode.$O: ../arm64/sysreg.h
+
+initcode.out:		init9.$O initcode.$O /$objtype/lib/libc.a
+	$LD -l -R1 -s -o $target $prereq
+
+rebootcode.out:		rebootcode.$O cache.v8.$O
+	$LD -l -H6 -R1 -T0x80020000 -s -o $target $prereq
+
+$CONF.clean:
+	rm -rf $p$CONF $p$CONF.u errstr.h $CONF.c boot$CONF.c

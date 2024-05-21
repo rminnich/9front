@@ -2,6 +2,7 @@ ARCH=\
 	bcm\
 	bitsy\
 	efi\
+	honeycomb\
 	pc\
 	qemu\
 	reform\
