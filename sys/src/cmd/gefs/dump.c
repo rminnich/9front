@@ -89,9 +89,10 @@ showval(Fmt *fmt, Kvp *v, int op, int flg)
 		case Onop:
 		case Oinsert:
 			kv2dir(v, &d);
-			n = fmtprint(fmt, "[qid=(%llux,%lud,%d), %luo, t=%lld,%lld, l=%lld]",
-				d.qid.path, d.qid.vers, d.qid.type,
-				d.mode, d.atime, d.mtime, d.length);
+			n = fmtprint(fmt, "[qid=(%llux,%lud,%d), p=%luo, f=%llux, t=%lld,%lld, l=%lld, o=%d, g=%d m=%d]",
+				d.qid.path, d.qid.vers, d.qid.type, d.mode,
+				d.flag, d.atime, d.mtime, d.length,
+				d.uid, d.gid, d.muid);
 			break;
 		case Odelete:
 			n = fmtprint(fmt, "delete");
