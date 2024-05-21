@@ -84,7 +84,6 @@ readblk(vlong bp, int flg)
 	b->bp.addr = bp;
 	b->bp.hash = -1;
 	b->bp.gen = -1;
-	b->fnext = nil;
 
 	b->nval = 0;
 	b->valsz = 0;
@@ -628,8 +627,6 @@ initblk(Blk *b, vlong bp, vlong gen, int ty)
 		b->data = b->buf + Leafhdsz;
 		break;
 	}
-	b->fnext = nil;
-
 	setflag(b, Bdirty);
 	b->nval = 0;
 	b->valsz = 0;

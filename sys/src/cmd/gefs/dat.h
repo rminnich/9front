@@ -716,11 +716,6 @@ struct Blk {
 	Blk	*cprev;
 	Blk	*hnext;
 
-	/* Freelist entry */
-	Blk	*fnext;
-
-	long	flag;
-
 	/* serialized to disk in header */
 	short	type;	/* @0, for all */
 	union {
@@ -749,6 +744,7 @@ struct Blk {
 
 	Bptr	bp;
 	long	ref;
+	long	flag;
 	char	*data;
 	char	buf[Blksz];
 	vlong	magic;
