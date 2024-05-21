@@ -115,6 +115,14 @@ inst:
 		outcode($1, &nullgen, NREG, &nullgen);
 	}
 
+|	LCALL addr
+	{
+		outcode($1, &nullgen, REGLINK, &$2);
+	}
+|	LCALL rel
+	{
+		outcode($1, &nullgen, REGLINK, &$2);
+	}
 |	LCALL sreg ',' addr
 	{
 		outcode($1, &nullgen, $2, &$4);

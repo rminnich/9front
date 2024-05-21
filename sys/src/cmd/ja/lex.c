@@ -300,6 +300,7 @@ struct
 
 	"JAL",		LCALL,	AJAL,
 	"JALR",		LCALL,	AJAL,
+	"CALL",		LCALL,	AJAL,
 
 	"MOVB",		LMOVB,	AMOVB,
 	"MOVH",		LMOVB,	AMOVH,
