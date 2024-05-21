@@ -424,7 +424,7 @@ for which
 provides a
 .LR pragma .
 The precision in the format string changes the base,
-defaulting to hexadecimal when omited.
+defaulting to hexadecimal when omitted.
 .PP
 .I Mptobe
 and
@@ -468,7 +468,7 @@ significant byte is at
 while
 .I mptolel
 fills in little endian order; left adjusted; so that the least
-significat byte is filled into
+significant byte is filled into
 .IR buf[0] .
 .PP
 .IR Betomp ,
@@ -747,8 +747,8 @@ and
 are the constants 2, 1 and 0.  These cannot be freed.
 .SS "Time invariant computation"
 .PP
-In the field of cryptography, it is sometimes neccesary to implement
-algorithms such that the runtime of the algorithm is not depdenent on
+In the field of cryptography, it is sometimes necessary to implement
+algorithms such that the runtime of the algorithm is not dependent on
 the input data. This library provides partial support for time
 invariant computation with the
 .I MPtimesafe
