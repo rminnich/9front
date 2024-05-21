@@ -105,7 +105,8 @@ After opening, the
 file is equivalent to the file
 .IB n /ctl \fR.
 A connection is assumed closed once all files in its
-directory have been closed, and is then will be reallocated.
+directory have been closed, at which point its index
+may be reused.
 .PP
 Each connection has a URL attribute
 .B url
