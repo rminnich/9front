@@ -4,7 +4,7 @@
 # prereq: copydist
 
 fats=()
-for(i in /dev/sd*/9fat){
+for(i in (/dev/sd*/9fat /dev/sd*/esp)){
 	if(test -f $i)
 		fats=($fats $i)
 }

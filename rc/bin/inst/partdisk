@@ -67,14 +67,16 @@ case go
 	}
 
 case checkdone
-	# we want at least one disk with both an mbr and a plan9 partition
-	mbrandplan9=0
+	# we want at least one disk that is both bootable and contains a Plan 9 partition
+	bootandplan9=0
 	disks=`{ls /dev/sd*/plan9 >[2]/dev/null | sed 's!/dev/(sd.*)/plan9!\1!'}
 	for(disk in $disks) {
-		if(./hasmbr /dev/$disk/data)
-			mbrandplan9=1
+		if(test -f /dev/$disk/esp)
+			bootandplan9=1
+		if not if(./hasmbr /dev/$disk/data)
+			bootandplan9=1
 	}
-	if(~ $mbrandplan9 0){
+	if(~ $bootandplan9 0){
 		partdisk=notdone
 		export partdisk
 	}
