@@ -1226,6 +1226,7 @@ btupsert(Tree *t, Msg *msg, int nmsg)
 	Kvp sep;
 	Bptr bp;
 
+	assert(!canqlock(&fs->mutlk));
 	sz = 0;
 	stablesort(msg, nmsg);
 	for(i = 0; i < nmsg; i++)
