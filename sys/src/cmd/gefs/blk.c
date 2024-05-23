@@ -263,7 +263,7 @@ logappend(Arena *a, vlong off, vlong len, int op)
 {
 	vlong o, start, end;
 	Blk *nl, *lb;
-	char *p, *name;
+	char *p;
 
 	lb = a->logtl;
 	assert((off & 0xff) == 0);
@@ -275,14 +275,8 @@ logappend(Arena *a, vlong off, vlong len, int op)
 		assert(off >= start);
 		assert(off <= end);
 	}
-	switch(op){
-	case LogAlloc:	name = "alloc";	break;
-	case LogFree:	name = "free";	break;
-	case LogSync:	name = "sync";	break;
-	default:	name = "???";	break;
-	}
 	assert(lb == nil || lb->logsz >= 0);
-	dprint("logop %llx+%llx@%x: %s\n", off, len, lb?lb->logsz:-1, name);
+	dprint("logop %d: %llx+%llx@%x\n", op, off, len, lb?lb->logsz:-1);
 	/*
 	 * move to the next block when we have
 	 * too little room in the log:
