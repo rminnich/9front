@@ -2555,7 +2555,9 @@ Justhalt:
 				mb[nm].nv = 0;
 				nm++;
 			}
+			qlock(&fs->mutlk);
 			upsert(am->mnt, mb, nm);
+			qunlock(&fs->mutlk);
 			/* fallthrough */
 		case AOclear:
 			tracem("bgclear");
