@@ -1657,6 +1657,7 @@ fscreate(Fmsg *m)
 	d.mtime = d.atime;
 	d.length = 0;
 	d.uid = f->uid;
+	d.gid = de->gid;
 	d.muid = f->uid;
 
 	mb[nm].op = Oinsert;
