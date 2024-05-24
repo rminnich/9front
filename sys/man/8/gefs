@@ -126,6 +126,51 @@ attempts to reload the user table from
 .I Save trace
 saves a trace of recent operations to a file.
 If a file is not specified, it prints to the console.
+.SH SNAPSHOTS
+Snapshots are independent views of a filesystem hierarchy.
+A snapshot may be mutable or immutable.
+Mutable snapshots can be mounted and written to,
+Immutable snapshots are a view of a file system hierarchy at a point im time.
+They are referred to by name, and are selected at mount time with an attach spec.
+When the attach spec starts with the
+.B %
+sigil, a snapshot is mounted in permissive mode.
+This allows the mounting user to bypass normal file system permission checks.'
+In order to mount a snapshot in permissive mode, the mounting user must be in the
+.I adm
+group.
+.PP
+There are several attach names that are reserved for the file system's internal use.
+All of these other than the
+.I main
+snapshot are required for the file system to work correctly, and may not be removed.
+.TP
+.I dump:
+This is the name used to mount a list of all snapshots.
+Each snapshot in the file system will be listed in a directory.
+.IP
+.I empty:
+This is a read-only empty snapshot.
+It contains no files or directories.
+The empty snapshot may be forked in order to create a new hierarchy,
+independent of other snapshots.
+.TP
+.I adm:
+This is the snapshot where administrative files live.
+The
+.I users
+file is read at gefs startup, and define the users and groups for all snapshots.
+This file is described in detail in the following section.
+.TP
+.I main:
+This snapshot is less special than the other special snapshots.
+It is created by default at file system mount time,
+and is the snapshot which is mounted when an attach specifier is not given.
+However, it is otherwise not special.
+It may be deleted, created, and freely modified.
+.PP
+All snapshots are allocated from the same storage pool, and therefore
+share space.
 .SH ADM FILES
 .PP
 Gefs supports independent snapshots in the same file system.
