@@ -38,11 +38,18 @@ walk1(Tree *t, vlong up, char *name, Qid *qid, vlong *len)
 static void
 wrbarrier(void)
 {
+	tracev("barrier", fs->qgen);
+	aincv(&fs->qgen, 1);
+}
+
+static void
+wrwait(void)
+{
 	Qent qe;
 	int i;
-	
+
+	tracev("wrwait", fs->qgen);
 	aincv(&fs->qgen, 1);
-	tracev("barrier", fs->qgen);
 	fs->syncing = fs->nsyncers;
 	for(i = 0; i < fs->nsyncers; i++){
 		qe.op = Qfence;
@@ -130,6 +137,8 @@ sync(void)
 	packsb(fs->sb1->buf, Blksz, fs);
 	finalize(fs->sb0);
 	finalize(fs->sb1);
+	setflag(fs->sb0, Bdirty);
+	setflag(fs->sb1, Bdirty);
 	fs->snap.dirty = 0;
 	qunlock(&fs->mutlk);
 
@@ -150,10 +159,10 @@ sync(void)
 	 * get synced after so that we can use them next
 	 * time around.
          */
-	qlock(&fs->mutlk);
 	tracem("supers");
-	syncblk(fs->sb0);
-	syncblk(fs->sb1);
+	enqueue(fs->sb0);
+	enqueue(fs->sb1);
+	wrbarrier();
 
 	/*
 	 * pass 3: sync block footers; if we crash here,
@@ -165,11 +174,13 @@ sync(void)
 		enqueue(fs->arenas[i].h1);
 
 	/*
-	 * Pass 4: clean up the old snap tree's deadlist
+	 * Pass 4: clean up the old snap tree's deadlist.
+	 * we need to wait for all the new data to hit disk
+	 * before we can free anything, otherwise it gets
+	 * clobbered.
 	 */
 	tracem("snapdl");
-	wrbarrier();
-	qunlock(&fs->mutlk);
+	wrwait();
 	freedl(&dl, 1);
 	qunlock(&fs->synclk);
 	tracem("synced");

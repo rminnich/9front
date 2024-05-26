@@ -153,8 +153,10 @@ getarena(vlong b)
 
 	lo = 0;
 	hi = fs->narena;
-	if(b == 0)
+	if(b == fs->sb0->bp.addr)
 		return &fs->arenas[0];
+	if(b == fs->sb1->bp.addr)
+		return &fs->arenas[hi-1];
 	while(1){
 		mid = (hi + lo)/2;
 		a = &fs->arenas[mid];
@@ -1000,7 +1002,7 @@ qput(Syncq *q, Qent qe)
 	int i;
 
 	if(qe.op == Qfree || qe.op == Qwrite)
-		assert(qe.bp.addr != 0 && (qe.bp.addr & (Blksz-1)) == 0);
+		assert((qe.bp.addr & (Blksz-1)) == 0);
 	else if(qe.op == Qfence)
 		assert(fs->syncing > 0);
 	else
