@@ -2446,7 +2446,7 @@ runsweep(int id, void*)
 		case AOsync:
 			tracem("syncreq");
 			if(!fs->snap.dirty && !am->halt)
-				continue;
+				goto Next;
 			if(agetl(&fs->rdonly))
 				goto Justhalt;
 			if(waserror()){
@@ -2601,6 +2601,7 @@ Justhalt:
 			poperror();
 			break;
 		}
+Next:
 		assert(estacksz() == 0);
 		free(am);
 	}
