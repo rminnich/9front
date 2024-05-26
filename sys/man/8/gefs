@@ -214,26 +214,42 @@ is specified at the time that the file system is reamed.
 To show current disk usage, the following may be written on the console:
 .IP
 .EX
-df
+gefs# df
 .EE
 .PP
 To create a new snapshot:
 .IP
 .EX
-snap main myimmutable
+gefs# snap main myimmutable
 .EE
 .PP
 To create a new mutable snapshot that does not take automatic
 checkpoints:
 .IP
 .EX
-snap -Sm main mymutable
+gefs# snap -Sm main mymutable
 .EE
 .PP
 To delete a snapshot:
 .IP
 .EX
-snap -d mysnap
+gefs# snap -d mysnap
+.EE
+.PP
+To create a new user:
+.IP
+.EX
+# mount the adm namespace (as a user in adm group):
+# and add the user to the user file
+% mount /srv/gefs /adm adm
+% sam /adm/users
+
+# create the user home directory
+# and tmp snapshot
+% mount /srv/gefs /n/u %main
+% mkdir /n/u/usr/$newuser
+% chgrp -u $newuser /n/u/usr/$newuser
+% chgrp $newuser /n/u/usr/$newuser
 .EE
 .SH BUGS
 .PP
