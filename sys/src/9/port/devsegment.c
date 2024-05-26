@@ -492,7 +492,7 @@ fixedseg(uintptr va, ulong len)
 		h = t = nil;
 		f = &palloc.head;
 		while((p = *f) != nil){
-			if(p > &l[-len] && p <= l){
+			if(p > l-len && p <= l){
 				*f = p->next;
 				if((p->next = h) == nil)
 					t = p;
@@ -514,7 +514,7 @@ fixedseg(uintptr va, ulong len)
 		palloc.freecount -= i;
 		unlock(&palloc);
 
-		p = &l[-len];
+		p = l-len;
 		do {
 			p++;
 			p->ref = 1;
