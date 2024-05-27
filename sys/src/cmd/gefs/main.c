@@ -397,7 +397,11 @@ main(int argc, char **argv)
 	loadfs(dev);
 	fs->wrchan = mkchan(32);
 	fs->admchan = mkchan(32);
-	fs->nsyncers = nproc/2;
+	/*
+	 * for spinning disks, parallel sync tanks performance
+	 * for ssds, it doesn't help much.
+	 */
+	fs->nsyncers = 1;
 	fs->nreaders = nproc/2;
 	if(fs->nsyncers > fs->narena)
 		fs->nsyncers = fs->narena;
