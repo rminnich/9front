@@ -471,6 +471,7 @@ writeb(Fid *f, Msg *m, Bptr *ret, char *s, vlong o, vlong n, vlong sz)
 	char buf[Kvmax];
 	vlong fb, fo;
 	Blk *b, *t;
+	int seq;
 	Tree *r;
 	Bptr bp;
 	Kvp kv;
@@ -482,7 +483,11 @@ writeb(Fid *f, Msg *m, Bptr *ret, char *s, vlong o, vlong n, vlong sz)
 	PACK64(m->k+1, f->qpath);
 	PACK64(m->k+9, fb);
 
-	b = newblk(f->mnt->root, Tdat, f->qpath);
+	if(fo+n >= Blksz)
+		seq = 1;
+	else
+		seq = 0;
+	b = newdblk(f->mnt->root, f->qpath, seq);
 	t = nil;
 	r = f->mnt->root;
 	if(btlookup(r, m, &kv, buf, sizeof(buf))){

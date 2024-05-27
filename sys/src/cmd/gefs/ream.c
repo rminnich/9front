@@ -286,7 +286,7 @@ reamfs(char *dev)
 		loadlog(a, a->loghd);
 	}
 
-	if((mb = newblk(mnt->root, Tleaf, 0)) == nil)
+	if((mb = newblk(mnt->root, Tleaf)) == nil)
 		sysfatal("ream: allocate root: %r");
 	holdblk(mb);
 	initroot(mb);
@@ -296,9 +296,9 @@ reamfs(char *dev)
 	mnt->root->ht = 1;
 	mnt->root->bp = mb->bp;
 
-	if((ab = newblk(adm->root, Tleaf, 0)) == nil)
+	if((ab = newblk(adm->root, Tleaf)) == nil)
 		sysfatal("ream: allocate root: %r");
-	if((ub = newblk(adm->root, Tdat, 0)) == nil)
+	if((ub = newdblk(adm->root, 0, 1)) == nil)
 		sysfatal("ream: allocate root: %r");
 	holdblk(ab);
 	holdblk(ub);
@@ -322,7 +322,7 @@ reamfs(char *dev)
 	 * a single snap block that the tree will insert
 	 * into, and take a snapshot as the initial state.
 	 */
-	if((tb = newblk(mnt->root, Tleaf, 0)) == nil)
+	if((tb = newblk(mnt->root, Tleaf)) == nil)
 		sysfatal("ream: allocate snaps: %r");
 	holdblk(tb);
 	initsnap(tb, mb, ab);

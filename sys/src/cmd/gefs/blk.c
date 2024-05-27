@@ -7,8 +7,8 @@
 #include "fns.h"
 #include "atomic.h"
 
-static vlong	blkalloc_lk(Arena*);
-static vlong	blkalloc(int, uint);
+static vlong	blkalloc_lk(Arena*, int);
+static vlong	blkalloc(int, uint, int);
 static void	blkdealloc_lk(Arena*, vlong);
 static Blk*	initblk(Blk*, vlong, vlong, int);
 
@@ -286,7 +286,7 @@ logappend(Arena *a, vlong off, vlong len, int op)
 	 * and chaining.
 	 */
 	if(lb == nil || lb->logsz >= Logspc - Logslop){
-		o = blkalloc_lk(a);
+		o = blkalloc_lk(a, 0);
 		if(o == -1)
 			error(Efull);
 		nl = mklogblk(a, o);
@@ -430,7 +430,7 @@ compresslog(Arena *a)
 		nexterror();
 	}
 	for(i = 0; i < nblks; i++){
-		blks[i] = blkalloc_lk(a);
+		blks[i] = blkalloc_lk(a, 1);
 		if(blks[i] == -1)
 			error(Efull);
 	}
@@ -495,14 +495,15 @@ logbarrier(Arena *a, vlong gen)
  * the alloc log.
  */
 static vlong
-blkalloc_lk(Arena *a)
+blkalloc_lk(Arena *a, int seq)
 {
-	Avltree *t;
 	Arange *r;
 	vlong b;
 
-	t = a->free;
-	r = (Arange*)t->root;
+	if(seq)
+		r = (Arange*)avlmin(a->free);
+	else
+		r = (Arange*)avlmax(a->free);
 	if(!usereserve && a->size - a->used <= a->reserve)
 		return -1;
 	if(r == nil)
@@ -515,11 +516,16 @@ blkalloc_lk(Arena *a)
 	 * the sort order because the tree
 	 * covers disjoint ranges
 	 */
-	b = r->off;
-	r->len -= Blksz;
-	r->off += Blksz;
+	if(seq){
+		b = r->off;
+		r->len -= Blksz;
+		r->off += Blksz;
+	}else{
+		r->len -= Blksz;
+		b = r->off + r->len;
+	}
 	if(r->len == 0){
-		avldelete(t, r);
+		avldelete(a->free, r);
 		free(r);
 	}
 	a->used += Blksz;
@@ -548,7 +554,7 @@ blkdealloc(vlong b)
 }
 
 static vlong
-blkalloc(int ty, uint hint)
+blkalloc(int ty, uint hint, int seq)
 {
 	Arena *a;
 	vlong b;
@@ -575,7 +581,7 @@ Again:
 		qunlock(a);
 		nexterror();
 	}
-	b = blkalloc_lk(a);
+	b = blkalloc_lk(a, seq);
 	if(b == -1){
 		qunlock(a);
 		poperror();
@@ -633,12 +639,27 @@ initblk(Blk *b, vlong bp, vlong gen, int ty)
 }
 
 Blk*
-newblk(Tree *t, int ty, vlong hint)
+newdblk(Tree *t, vlong hint, int seq)
 {
 	vlong bp;
 	Blk *b;
 
-	bp = blkalloc(ty, hint);
+	bp = blkalloc(Tdat, hint, seq);
+	b = cachepluck();
+	initblk(b, bp, t->memgen, Tdat);
+	b->alloced = getcallerpc(&t);
+	tracex("newblk" , b->bp, Tdat, -1);
+	return b;
+
+}
+
+Blk*
+newblk(Tree *t, int ty)
+{
+	vlong bp;
+	Blk *b;
+
+	bp = blkalloc(ty, 0, 0);
 	b = cachepluck();
 	initblk(b, bp, t->memgen, ty);
 	b->alloced = getcallerpc(&t);
@@ -651,7 +672,7 @@ dupblk(Tree *t, Blk *b)
 {
 	Blk *r;
 
-	if((r = newblk(t, b->type, 0)) == nil)
+	if((r = newblk(t, b->type)) == nil)
 		return nil;
 
 	tracex("dup" , b->bp, b->type, t->gen);

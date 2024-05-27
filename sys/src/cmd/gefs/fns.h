@@ -35,8 +35,9 @@ extern int	admid;
 
 void*	emalloc(usize, int);
 
-Blk*	newblk(Tree *, int, vlong);
-Blk*	dupblk(Tree *, Blk*);
+Blk*	newdblk(Tree*, vlong, int);
+Blk*	newblk(Tree*, int);
+Blk*	dupblk(Tree*, Blk*);
 Blk*	getroot(Tree*, int*);
 Blk*	getblk(Bptr, int);
 Blk*	holdblk(Blk*);

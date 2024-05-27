@@ -482,7 +482,7 @@ updateleaf(Tree *t, Path *up, Path *p)
 	 */
 	full = 0;
 	spc = Leafspc - blkfill(b);
-	n = newblk(t, b->type, 0);
+	n = newblk(t, b->type);
 	assert(i >= 0 && j >= 0);
 	while(i < b->nval || j < up->hi){
 		if(i >= b->nval)
@@ -573,7 +573,7 @@ updatepiv(Tree *t, Path *up, Path *p, Path *pp)
 	Msg m, u;
 
 	b = p->b;
-	n = newblk(t, b->type, 0);
+	n = newblk(t, b->type);
 	for(i = 0; i < b->nval; i++){
 		if(pp != nil && i == p->midx){
 			copyup(n, pp, nil);
@@ -657,8 +657,8 @@ splitleaf(Tree *t, Path *up, Path *p, Kvp *mid)
 		efreeblk(t, r);
 		nexterror();
 	}
-	l = newblk(t, b->type, 0);
-	r = newblk(t, b->type, 0);
+	l = newblk(t, b->type);
+	r = newblk(t, b->type);
 
 	d = l;
 	i = 0;
@@ -770,8 +770,8 @@ splitpiv(Tree *t, Path *, Path *p, Path *pp, Kvp *mid)
 		efreeblk(t, r);
 		nexterror();
 	}
-	l = newblk(t, b->type, 0);
-	r = newblk(t, b->type, 0);
+	l = newblk(t, b->type);
+	r = newblk(t, b->type);
 	d = l;
 	copied = 0;
 	halfsz = (2*b->nval + b->valsz)/2;
@@ -820,7 +820,7 @@ merge(Tree *t, Path *p, Path *pp, int idx, Blk *a, Blk *b)
 	Msg m;
 	int i;
 
-	d = newblk(t, a->type, 0);
+	d = newblk(t, a->type);
 	for(i = 0; i < a->nval; i++){
 		getval(a, i, &m);
 		setval(d, &m);
@@ -904,8 +904,8 @@ rotate(Tree *t, Path *p, Path *pp, int midx, Blk *a, Blk *b, int halfpiv)
 		efreeblk(t, r);
 		nexterror();
 	}
-	l = newblk(t, a->type, 0);
-	r = newblk(t, a->type, 0);
+	l = newblk(t, a->type);
+	r = newblk(t, a->type);
 	d = l;
 	cp = 0;
 	sp = -1;
@@ -1088,7 +1088,7 @@ flush(Tree *t, Path *path, int npath)
 	}
 	if(pp->nl != nil && pp->nr != nil){
 		rp = &path[0];
-		rp->nl = newblk(t, Tpivot, 0);
+		rp->nl = newblk(t, Tpivot);
 		rp->npull = pp->npull;
 		rp->pullsz = pp->pullsz;
 		copyup(rp->nl, pp, nil);

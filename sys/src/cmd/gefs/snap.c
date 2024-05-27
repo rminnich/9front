@@ -596,7 +596,7 @@ killblk(Tree *t, Bptr bp)
 		nexterror();
 	}
 	if(dl->ins == nil || Logspc - dl->ins->logsz < Logslop){
-		b = newblk(&fs->snap, Tdlist, 0);
+		b = newblk(&fs->snap, Tdlist);
 		if(dl->ins != nil){
 			enqueue(dl->ins);
 			dropblk(dl->ins);
