@@ -338,6 +338,24 @@ savetrace(int fd, char **ap, int na)
 }
 
 static void
+showfree(int fd, char **, int)
+{
+	Arange *r;
+	Arena *a;
+	int i;
+
+	for(i = 0; i < fs->narena; i++){
+		a = &fs->arenas[i];
+		qlock(a);
+		fprint(fd, "arena %d %llx+%llx{\n", i, a->h0->bp.addr, a->size);
+		for(r = (Arange*)avlmin(a->free); r != nil; r = (Arange*)avlnext(r))
+			fprint(fd, "\t%llx..%llx (%llx)\n", r->off, r->off+r->len, r->len);
+		fprint(fd, "}\n");
+		qunlock(a);
+	}
+}
+
+static void
 unreserve(int fd, char **ap, int)
 {
 	if(strcmp(ap[0], "on") == 0)
@@ -387,6 +405,7 @@ Cmd cmdtab[] = {
 	{.name="show",		.sub="tree",	.minarg=0, .maxarg=1, .fn=showtree},
 	{.name="show",		.sub="users",	.minarg=0, .maxarg=0, .fn=showusers},
 	{.name="show",		.sub="bstate",	.minarg=0, .maxarg=0, .fn=showbstate},
+	{.name="show",		.sub="free",	.minarg=0, .maxarg=0, .fn=showfree},
 	{.name="debug",		.sub=nil,	.minarg=0, .maxarg=1, .fn=setdbg},
 	{.name="save",		.sub="trace",	.minarg=0, .maxarg=1, .fn=savetrace},
 	{.name=nil, .sub=nil},
