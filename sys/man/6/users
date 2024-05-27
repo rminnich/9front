@@ -49,7 +49,7 @@ in a line is an identifier used in the on-disk structures maintained
 by a file server; there should be no duplicate
 .IR id s
 in the file.
-In older Plan 9 file servers,
+In some Plan 9 file servers,
 .IR id s
 are small decimal numbers.
 In those, 
