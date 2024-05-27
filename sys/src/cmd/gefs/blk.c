@@ -134,14 +134,14 @@ readblk(vlong bp, int flg)
 static Arena*
 pickarena(uint ty, uint hint, int tries)
 {
-	uint n;
+	uint n, r;
 
-	n = hint + tries + ainc(&fs->roundrobin)/1024;
+	r = ainc(&fs->roundrobin)/2048;
 	if(ty == Tdat)
-		n++;
-	if(hint % fs->narena == 0)
-		n++;
-	return &fs->arenas[n%fs->narena];
+		n = hint % (fs->narena - 1) + r + 1;
+	else
+		n = r;
+	return &fs->arenas[(n + tries) % fs->narena];
 }
 
 Arena*
