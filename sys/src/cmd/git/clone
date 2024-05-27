@@ -17,8 +17,8 @@ if(~ $#local 0)
 if(~ $#branch 1)
 	branchflag=(-b $branch)
 
-if(test -e $local)
-	die 'repository already exists:' $local
+if(test -e $local && ~ `{ls $local | sed 1q | wc -l} 1)
+	die 'destination already exists:' $local
 
 fn clone{
 	flag +e
