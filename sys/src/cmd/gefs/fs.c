@@ -2149,7 +2149,8 @@ fswrite(Fmsg *m, int id)
 	if(f->dent->mode & DMAPPEND)
 		o = f->dent->length;
 	t = agetp(&f->mnt->root);
-	for(i = 0; i < nelem(kv)-1 && c != 0; i++){
+	for(i = 0; c != 0; i++){
+		assert(i < nelem(kv));
 		assert(i == 0 || o%Blksz == 0);
 		kv[i].op = Oinsert;
 		kv[i].k = kbuf[i];
@@ -2454,10 +2455,6 @@ runsweep(int id, void*)
 		sysfatal("malloc log heads");
 	while(1){
 		am = chrecv(fs->admchan);
-		if(agetl(&fs->rdonly)){
-			fprint(2, "spurious adm message\n");
-			break;
-		}
 		switch(am->op){
 		case AOsync:
 			tracem("syncreq");
@@ -2527,8 +2524,8 @@ Justhalt:
 		case AOsnap:
 			tracem("snapreq");
 			if(agetl(&fs->rdonly)){
-				fprint(2, "read only fs");
-				continue;
+				fprint(2, "snap on read only fs");
+				goto Next;
 			}
 			if(waserror()){
 				fprint(2, "taking snap: %s\n", errmsg());
@@ -2558,6 +2555,10 @@ Justhalt:
 			break;
 
 		case AOrclose:
+			if(agetl(&fs->rdonly)){
+				fprint(2, "rclose on read only fs");
+				goto Next;
+			}
 			nm = 0;
 			mb[nm].op = Odelete;
 			mb[nm].k = am->dent->k;
@@ -2577,6 +2578,10 @@ Justhalt:
 			qunlock(&fs->mutlk);
 			/* fallthrough */
 		case AOclear:
+			if(agetl(&fs->rdonly)){
+				fprint(2, "clear on read only fs");
+				goto Next;
+			}
 			tracem("bgclear");
 			if(waserror()){
 				fprint(2, "clear file %llx: %s\n", am->qpath, errmsg());
