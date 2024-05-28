@@ -937,6 +937,7 @@ epochclean(void)
 			qe.bp = p->bp;
 			qe.b = nil;
 			qput(a->sync, qe);
+			cacheflag(p->bp.addr, Bfreed);
 			if(p->b != nil){
 				clrflag(p->b, Blimbo);
 				setflag(p->b, Bfreed);

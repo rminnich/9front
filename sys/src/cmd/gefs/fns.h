@@ -47,6 +47,7 @@ void	lrutop(Blk*);
 void	lrubot(Blk*);
 void	cacheins(Blk*);
 void	cachedel(vlong);
+void	cacheflag(vlong, int);
 Blk*	cacheget(vlong);
 Blk*	cachepluck(void);
 
