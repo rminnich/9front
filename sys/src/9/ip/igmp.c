@@ -128,6 +128,25 @@ igmpsendreport(Fs *f, uchar *src, uchar *dst, uchar *group, int done)
 	ipoput4(f, bp, nil, 1, DFLTTOS, nil);	/* TTL of 1 */
 }
 
+static int
+mldvalidgroup(uchar *group)
+{
+	if(ipismulticast(group) != V6)
+		return 0;
+
+	/*
+	 * MLD messages are never sent for multicast addresses
+	 * whos scope is 0 (reserved) or 1 (node-local).
+	 * MLD messages ARE sent for multicast addresses whose
+	 * scope is 2 (link-local) ... except all-nodes address.
+	 */
+	if((group[1] & 0xF) < Link_local_scop
+	|| ipcmp(group, v6allnodesL) == 0)
+		return 0;
+
+	return 1;
+}
+
 static void
 mldsendreport(Fs *f, uchar *src, uchar *dst, uchar *group, int done)
 {
@@ -135,6 +154,9 @@ mldsendreport(Fs *f, uchar *src, uchar *dst, uchar *group, int done)
 	Block *bp;
 
 	if(!islinklocal(src))
+		return;
+
+	if(!mldvalidgroup(group))
 		return;
 
 	bp = allocb(sizeof(mldhbhopt)+MLDPKTSZ);
@@ -358,8 +380,7 @@ mldiput(Proto *mld, Ipifc *ifc, Block *bp)
 	hnputs(p->ploadlen, MLDPKTSZ-IP6HDR);
 	if(ptclcsum(bp, 0, MLDPKTSZ))
 		goto error;
-
-	if(ipcmp(p->group, IPnoaddr) != 0 && ipismulticast(p->group) != V6)
+	if(ipcmp(p->group, IPnoaddr) != 0 && !mldvalidgroup(p->group))
 		goto error;
 
 	switch(p->type){
