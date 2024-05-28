@@ -405,7 +405,7 @@ interface for localhost addresses.
 .IP
 .EX
 ip/ipconfig loopback /dev/null 127.1 /128
-ip/ipconfig loopback /net/null ::1 /128
+ip/ipconfig loopback /dev/null ::1 /128
 .EE
 .PP
 Configure
