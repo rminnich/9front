@@ -253,13 +253,14 @@ showfid(int fd, char**, int)
 	Conn *c;
 
 	for(c = fs->conns; c != nil; c = c->next){
-		fprint(fd, "fids:\n");
+		fprint(fd, "-- conn %p: fids --\n", c);
 		for(i = 0; i < Nfidtab; i++){
 			lock(&c->fidtablk[i]);
 			for(f = c->fidtab[i]; f != nil; f = f->next){
 				rlock(f->dent);
-				fprint(fd, "\tfid[%d] from %#zx: %d [refs=%ld, k=%K, qid=%Q]\n",
-					i, getmalloctag(f), f->fid, f->dent->ref, &f->dent->Key, f->dent->qid);
+				fprint(fd, "\tfid[%d] from %#zx: %d [refs=%ld, k=%K, qid=%Q m=%d, dmode:%d duid: %d, dgid: %d]\n",
+					i, getmalloctag(f), f->fid, f->dent->ref, &f->dent->Key, f->dent->qid,
+					f->mode, f->dmode, f->duid, f->dgid);
 				runlock(f->dent);
 			}
 			unlock(&c->fidtablk[i]);
