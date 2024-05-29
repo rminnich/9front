@@ -96,8 +96,10 @@ sync(void)
          */
 	qlock(&fs->mutlk);
 	tracem("packb");
-	for(mnt = agetp(&fs->mounts); mnt != nil; mnt = mnt->next)
+	rlock(&fs->mountlk);
+	for(mnt = fs->mounts; mnt != nil; mnt = mnt->next)
 		updatesnap(&mnt->root, mnt->root, mnt->name, mnt->flag);
+	runlock(&fs->mountlk);
 	/*
 	 * Now that we've updated the snaps, we can sync the
 	 * dlist; the snap tree will not change from here.
@@ -199,7 +201,8 @@ snapfs(Amsg *a, Tree **tp)
 	}
 	t = nil;
 	*tp = nil;
-	for(mnt = agetp(&fs->mounts); mnt != nil; mnt = mnt->next){
+	rlock(&fs->mountlk);
+	for(mnt = fs->mounts; mnt != nil; mnt = mnt->next){
 		if(strcmp(a->old, mnt->name) == 0){
 			updatesnap(&mnt->root, mnt->root, mnt->name, mnt->flag);
 			t = agetp(&mnt->root);
@@ -207,6 +210,7 @@ snapfs(Amsg *a, Tree **tp)
 			break;
 		}
 	}
+	runlock(&fs->mountlk);
 	if(t == nil && (t = opensnap(a->old, nil)) == nil){
 		if(a->fd != -1)
 			fprint(a->fd, "snap: open '%s': does not exist\n", a->old);
@@ -623,13 +627,13 @@ getmount(char *name)
 		return fs->snapmnt;
 	}
 
-	for(mnt = agetp(&fs->mounts); mnt != nil; mnt = mnt->next){
+	wlock(&fs->mountlk);
+	for(mnt = fs->mounts; mnt != nil; mnt = mnt->next){
 		if(strcmp(name, mnt->name) == 0){
 			ainc(&mnt->ref);
 			goto Out;
 		}
 	}
-
 	if((mnt = mallocz(sizeof(*mnt), 1)) == nil)
 		error(Enomem);
 	if(waserror()){
@@ -644,32 +648,33 @@ getmount(char *name)
 	mnt->flag = flg;
 	mnt->root = t;
 	mnt->next = fs->mounts;
-	asetp(&fs->mounts, mnt);
+	fs->mounts = mnt;
 	poperror();
 
 Out:
+	wunlock(&fs->mountlk);
 	return mnt;
 }
 
 void
 clunkmount(Mount *mnt)
 {
-	Mount *me, **p;
-	Bfree *f;
+	Mount *e, **p;
 
 	if(mnt == nil)
 		return;
 	if(adec(&mnt->ref) == 0){
-		for(p = &fs->mounts; (me = *p) != nil; p = &me->next){
-			if(me == mnt)
+		wlock(&fs->mountlk);
+		p = &fs->mounts;
+		for(e = fs->mounts; e != nil; e = e->next){
+			if(e == mnt)
 				break;
+			p = &e->next;
 		}
-		assert(me != nil);
-		f = emalloc(sizeof(Bfree), 0);
-		f->op = DFmnt;
-		f->m = mnt;
-		*p = me->next;
-		limbo(f);
+		assert(e != nil);
+		*p = e->next;
+		free(mnt);
+		wunlock(&fs->mountlk);
 	}
 }
 
@@ -2673,7 +2678,8 @@ runtasks(int, void *)
 		chsend(fs->admchan, a);
 
 		tmnow(&now, nil);
-		for(mnt = agetp(&fs->mounts); mnt != nil; mnt = mnt->next){
+		rlock(&fs->mountlk);
+		for(mnt = fs->mounts; mnt != nil; mnt = mnt->next){
 			if(!(mnt->flag & Ltsnap))
 				continue;
 			if(now.yday != then.yday){
@@ -2696,6 +2702,7 @@ runtasks(int, void *)
 				snapmsg("main", mnt->minutely[m], Lauto);
 			}
 		}
+		runlock(&fs->mountlk);
 		if(now.hour != then.hour)
 			h = (h+1)%24;
 		if(now.min != then.min)
