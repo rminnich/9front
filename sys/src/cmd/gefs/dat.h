@@ -433,6 +433,7 @@ struct Tree {
 
 enum {
 	DFblk,
+	DFmnt,
 	DFtree,
 };
 
@@ -516,7 +517,6 @@ struct Gefs {
 	QLock	synclk;
 	Rendez	syncrz;
 
-	RWLock	mountlk;
 	Mount	*mounts;
 	Mount	*snapmnt;
 	Lock	connlk;

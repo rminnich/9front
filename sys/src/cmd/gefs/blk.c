@@ -928,6 +928,9 @@ epochclean(void)
 		case DFtree:
 			free(p->t);
 			break;
+		case DFmnt:
+			free(p->m);
+			break;
 		case DFblk:
 			a = getarena(p->bp.addr);
 			qe.op = Qfree;
