@@ -527,15 +527,15 @@ writeb(Fid *f, Msg *m, Bptr *ret, char *s, vlong o, vlong n, vlong sz)
 }
 
 static Dent*
-getdent(vlong pqid, Xdir *d)
+getdent(Mount *mnt, vlong pqid, Xdir *d)
 {
 	Dent *de;
 	char *e;
 	u32int h;
 
 	h = ihash(d->qid.path) % Ndtab;
-	lock(&fs->dtablk);
-	for(de = fs->dtab[h]; de != nil; de = de->next){
+	lock(&mnt->dtablk);
+	for(de = mnt->dtab[h]; de != nil; de = de->next){
 		if(de->qid.path == d->qid.path){
 			ainc(&de->ref);
 			goto Out;
@@ -558,11 +558,11 @@ getdent(vlong pqid, Xdir *d)
 	de->k = de->buf;
 	de->nk = e - de->buf;
 	de->name = de->buf + 11;
-	de->next = fs->dtab[h];
-	fs->dtab[h] = de;
+	de->next = mnt->dtab[h];
+	mnt->dtab[h] = de;
 
 Out:
-	unlock(&fs->dtablk);
+	unlock(&mnt->dtablk);
 	return de;
 }
 
@@ -674,7 +674,7 @@ clunkmount(Mount *mnt)
 }
 
 static void
-clunkdent(Dent *de)
+clunkdent(Mount *mnt, Dent *de)
 {
 	Dent *e, **pe;
 	u32int h;
@@ -685,12 +685,12 @@ clunkdent(Dent *de)
 		free(de);
 		return;
 	}
-	lock(&fs->dtablk);
+	lock(&mnt->dtablk);
 	if(adec(&de->ref) != 0)
 		goto Out;
 	h = ihash(de->qid.path) % Ndtab;
-	pe = &fs->dtab[h];
-	for(e = fs->dtab[h]; e != nil; e = e->next){
+	pe = &mnt->dtab[h];
+	for(e = mnt->dtab[h]; e != nil; e = e->next){
 		if(e == de)
 			break;
 		pe = &e->next;
@@ -699,7 +699,7 @@ clunkdent(Dent *de)
 	*pe = e->next;
 	free(de);
 Out:
-	unlock(&fs->dtablk);
+	unlock(&mnt->dtablk);
 }
 
 static Fid*
@@ -724,8 +724,8 @@ putfid(Fid *f)
 {
 	if(adec(&f->ref) != 0)
 		return;
+	clunkdent(f->mnt, f->dent);
 	clunkmount(f->mnt);
-	clunkdent(f->dent);
 	free(f);
 }
 
@@ -1163,7 +1163,7 @@ fsattach(Fmsg *m)
 			error(Enosnap);
 		kv2dir(&kv, &d);
 	}
-	de = getdent(-1, &d);
+	de = getdent(mnt, -1, &d);
 	memset(&f, 0, sizeof(Fid));
 	f.fid = NOFID;
 	f.mnt = mnt;
@@ -1190,7 +1190,7 @@ fsattach(Fmsg *m)
 	poperror();
 
 
-Err:	clunkdent(de);
+Err:	clunkdent(mnt, de);
 	clunkmount(mnt);
 }
 
@@ -1312,15 +1312,15 @@ Found:
 			nexterror();
 		}
 		if(up == Qdump)
-			dent = getdent(-1ULL, &d);
+			dent = getdent(mnt, -1ULL, &d);
 		else
-			dent = getdent(up, &d);
+			dent = getdent(mnt, up, &d);
+		clunkdent(f->mnt, f->dent);
 		if(mnt != f->mnt){
 			clunkmount(f->mnt);
 			ainc(&mnt->ref);
 			f->mnt = mnt;
 		}
-		clunkdent(f->dent);
 		f->qpath = r.wqid[i-1].path;
 		f->pqpath = up;
 		f->dent = dent;
@@ -1694,8 +1694,8 @@ fscreate(Fmsg *m)
 	}
 	upsert(f->mnt, mb, nm);
 
-	de = getdent(f->qpath, &d);
-	clunkdent(f->dent);
+	de = getdent(f->mnt, f->qpath, &d);
+	clunkdent(f->mnt, f->dent);
 	f->mode = mode2bits(m->mode);
 	f->pqpath = f->qpath;
 	f->qpath = d.qid.path;
@@ -2616,7 +2616,7 @@ Justhalt:
 				am->dent->trunc = 0;
 				rwakeup(&am->dent->truncrz);
 				qunlock(&am->dent->trunclk);
-				clunkdent(am->dent);
+				clunkdent(am->mnt, am->dent);
 			}
 			clunkmount(am->mnt);
 			poperror();

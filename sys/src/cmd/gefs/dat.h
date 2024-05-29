@@ -545,10 +545,6 @@ struct Gefs {
 	User	*users;
 	int	nusers;
 
-	/* open directory entries */
-	Lock	dtablk;
-	Dent	*dtab[Ndtab];
-
 	/* slow block io */
 	QLock	blklk[32];
 	
@@ -635,6 +631,10 @@ struct Mount {
 	Tree	*root;	/* EBR protected */
 
 	int	flag;
+
+	/* open directory entries */
+	Lock	dtablk;
+	Dent	*dtab[Ndtab];
 
 	/* snapshot history */
 	char	minutely[60][128];
