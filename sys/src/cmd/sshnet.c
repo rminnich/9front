@@ -1408,7 +1408,7 @@ ssh(int argc, char *argv[])
 void
 usage(void)
 {
-	fprint(2, "usage: sshnet [-m mtpt] [ssh options]\n");
+	fprint(2, "usage: sshnet [-m mtpt] [-s service] [-- ssh-options] [user@]host\n");
 	exits("usage");
 }
 
