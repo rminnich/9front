@@ -6,26 +6,14 @@ sshnet - secure file transfer protocol client
 [
 .B -m
 .I mtpt
-]
-[
+] [
 .B -s
 .I service
 ] [
-.IB user @] host
-.br
-.B sshnet
-[
-.B -m
-.I mtpt
-]
-[
-.B -s
-.I service
-]
 .B --
 .I ssh-options
-[
-.IB user @] host
+] [
+.IR user @] host
 .SH DESCRIPTION
 The SSH protocol allows clients to make outgoing and incoming TCP calls
 via the server.
