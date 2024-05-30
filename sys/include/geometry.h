@@ -124,6 +124,8 @@ Quaternion slerp(Quaternion, Quaternion, double);
 Point3 qrotate(Point3, Point3, double);
 
 /* RFrame */
+void rframematrix(Matrix, RFrame);
+void rframematrix3(Matrix3, RFrame3);
 Point2 rframexform(Point2, RFrame);
 Point3 rframexform3(Point3, RFrame3);
 Point2 invrframexform(Point2, RFrame);

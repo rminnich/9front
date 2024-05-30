@@ -1,6 +1,6 @@
 .TH GEOMETRY 2
 .SH NAME
-Flerp, fberp, fclamp, Pt2, Vec2, addpt2, subpt2, mulpt2, divpt2, lerp2, berp2, dotvec2, vec2len, normvec2, edgeptcmp, ptinpoly, Pt3, Vec3, addpt3, subpt3, mulpt3, divpt3, lerp3, berp3, dotvec3, crossvec3, vec3len, normvec3, identity, addm, subm, mulm, smulm, transposem, detm, tracem, minorm, cofactorm, adjm, invm, xform, identity3, addm3, subm3, mulm3, smulm3, transposem3, detm3, tracem3, minorm3, cofactorm3, adjm3, invm3, xform3, Quat, Quatvec, addq, subq, mulq, smulq, sdivq, dotq, invq, qlen, normq, slerp, qrotate, rframexform, rframexform3, invrframexform, invrframexform3, centroid, barycoords, centroid3, vfmt, Vfmt, GEOMfmtinstall \- computational geometry library
+Flerp, fberp, fclamp, Pt2, Vec2, addpt2, subpt2, mulpt2, divpt2, lerp2, berp2, dotvec2, vec2len, normvec2, edgeptcmp, ptinpoly, Pt3, Vec3, addpt3, subpt3, mulpt3, divpt3, lerp3, berp3, dotvec3, crossvec3, vec3len, normvec3, identity, addm, subm, mulm, smulm, transposem, detm, tracem, minorm, cofactorm, adjm, invm, xform, identity3, addm3, subm3, mulm3, smulm3, transposem3, detm3, tracem3, minorm3, cofactorm3, adjm3, invm3, xform3, Quat, Quatvec, addq, subq, mulq, smulq, sdivq, dotq, invq, qlen, normq, slerp, qrotate, rframematrix, rframematrix3, rframexform, rframexform3, invrframexform, invrframexform3, centroid, barycoords, centroid3, vfmt, Vfmt, GEOMfmtinstall \- computational geometry library
 .SH SYNOPSIS
 .de PB
 .PP
@@ -135,6 +135,8 @@ Quaternion slerp(Quaternion q, Quaternion r, double t);
 Point3 qrotate(Point3 p, Point3 axis, double θ);
 .PB
 /* RFrame */
+void rframematrix(Matrix, RFrame);
+void rframematrix3(Matrix3, RFrame3);
 Point2 rframexform(Point2 p, RFrame rf);
 Point3 rframexform3(Point3 p, RFrame3 rf);
 Point2 invrframexform(Point2 p, RFrame rf);
@@ -615,7 +617,7 @@ by
 .I θ
 radians.
 .SS Frames of reference
-A frame of reference in a
+A frame of reference (or rframe) in a
 .IR n -dimensional
 space is made out of n+1 points, one being the origin
 .IR p ,
@@ -623,33 +625,33 @@ and the remaining being the
 basis vectors
 .I b1,⋯,bn
 that define the metric within that frame.
-.PP
-The origin point and the bases are all defined in terms of an origin
-frame of reference O. Applying a forward transformation
-.RI ( rframexform
-and
-.IR rframexform3 )
-to a point relative to O will result in a point relative to the new frame.
-Applying an inverse transformation
-.RI ( invrframexform
-and
-.IR invrframexform3 )
-to that same point—now defined in terms of the new frame—will bring it back to O.
 .TP
 Name
 Description
 .TP
+.B rframematrix(\fIm\fP,\fIrf\fP)
+Initializes
+.I m
+as an rframe transformation matrix based on
+.IR rf .
+.TP
+.B rframematrix3(\fIm\fP,\fIrf\fP)
+Initializes
+.I m
+as an rframe transformation matrix based on
+.IR rf .
+.TP
 .B rframexform(\fIp\fP,\fIrf\fP)
 Transforms the point
 .IR p ,
-relative to some origin frame of reference O, into the frame of reference
+relative to some origin frame of reference O, into the rframe
 .IR rf .
 It then returns the new 2D point.
 .TP
 .B rframexform3(\fIp\fP,\fIrf\fP)
 Transforms the point
 .IR p ,
-relative to some origin frame of reference O, into the frame of reference
+relative to some origin frame of reference O, into the rframe
 .IR rf .
 It then returns the new 3D point.
 .TP
@@ -658,7 +660,7 @@ Transforms the point
 .IR p ,
 relative to
 .IR rf ,
-into a point relative to the origin frame of reference O.
+into a point relative to the origin rframe O.
 It then returns the new 2D point.
 .TP
 .B invrframexform3(\fIp\fP,\fIrf\fP)
@@ -666,7 +668,7 @@ Transforms the point
 .IR p ,
 relative to
 .IR rf ,
-into a point relative to the origin frame of reference O.
+into a point relative to the origin rframe O.
 It then returns the new 3D point.
 .SS Triangles
 .TP
@@ -689,7 +691,53 @@ relative to the triangle
 Returns the geometric center of
 .B Triangle3
 .IR t .
-.SH EXAMPLE
+.SH EXAMPLES
+.PP
+Rotate a point p by θ, scale it 2x, then translate it by vector v:
+.IP
+.EX
+Matrix R = {
+	cos(θ), -sin(θ), 0,
+	sin(θ),  cos(θ), 0,
+	0, 0, 1,
+}, S = {
+	2, 0, 0,
+	0, 2, 0,
+	0, 0, 1,
+}, T = {
+	1, 0, v.x,
+	0, 1, v.y,
+	0, 0, 1,
+};
+
+mulm(S, R);
+mulm(T, S);
+p = xform(p, T); /* p' = T·S·R·p */
+.EE
+
+.PP
+Given a space with two observers, A and B, and a point p relative to
+A, find its location relative to B:
+.IP
+.EX
+pb = rframexform(invrframexform(p, A), B);
+.EE
+.PP
+Now let's say observer C is located relative to A; find the point's
+location in C:
+.IP
+.EX
+pc = rframexform(p, C);
+.EE
+.PP
+Finally, to obtain its location relative to the space itself (its
+global position):
+.IP
+.EX
+pg = invrframexform(p, A);
+.EE
+
+.PP
 The following is a common example of an
 .B RFrame
 being used to define the coordinate system of a
@@ -701,13 +749,8 @@ pointing upwards, to contrast with the window system where
 .IR y -values
 grow downwards (see
 .IR graphics (2)).
-.PP
+.IP
 .EX
-#include <u.h>
-#include <libc.h>
-#include <draw.h>
-#include <geometry.h>
-
 RFrame worldrf;
 
 /* from screen... */
@@ -733,112 +776,6 @@ main(void)
 	worldrf.by = Vec2(0,-1);
 	⋯
 .EE
-.PP
-The following snippet shows how to use the
-.B RFrame
-declared earlier to locate and draw a ship based on its orientation,
-for which we use matrix translation
-.B T
-and rotation
-.BR R
-transformations.
-.PP
-.EX
-⋯
-typedef struct Ship Ship;
-typedef struct Shipmdl Shipmdl;
-
-struct Ship
-{
-	RFrame;
-	double θ; /* orientation (yaw) */
-	Shipmdl mdl;
-};
-
-struct Shipmdl
-{
-	Point2 pts[3]; /* a free-form triangle */
-};
-
-Ship *ship;
-
-void
-redraw(void)
-{
-	int i;
-	Point pts[3+1];
-	Point2 *p;
-	Matrix T = {
-		1, 0, ship->p.x,
-		0, 1, ship->p.y,
-		0, 0, 1,
-	}, R = {
-		cos(ship->θ), -sin(ship->θ), 0,
-		sin(ship->θ),  cos(ship->θ), 0,
-		0, 0, 1,
-	};
-
-	mulm(T, R); /* rotate, then translate */
-	p = ship->mdl.pts;
-	for(i = 0; i < nelem(pts)-1; i++)
-		pts[i] = fromworld(xform(p[i], T));
-	pts[i] = pts[0];
-	draw(screen, screen->r, display->white, nil, ZP);
-	poly(screen, pts, nelem(pts), 0, 0, 0, display->black, ZP);
-}
-⋯
-main(void)
-	⋯
-	ship = malloc(sizeof(Ship));
-	ship->p = Pt2(0,0,1); /* place it at the origin */
-	ship->θ = 45*DEG; /* counter-clockwise */
-	ship->mdl.pts[0] = Pt2( 10, 0,1);
-	ship->mdl.pts[1] = Pt2(-10, 5,1);
-	ship->mdl.pts[2] = Pt2(-10,-5,1);
-	⋯
-	redraw();
-⋯
-.EE
-.PP
-Notice how we could've used the
-.B RFrame
-embedded in the
-.B ship
-to transform the
-.B Shipmdl
-into the window.  Instead of applying the matrices to every point, the
-ship's local frame of reference can be rotated, effectively changing
-the model coordinates after an
-.IR invrframexform .
-We are also getting rid of the
-.B θ
-variable, since it's no longer needed.
-.PP
-.EX
-⋯
-struct Ship
-{
-	RFrame;
-	Shipmdl mdl;
-};
-⋯
-redraw(void)
-	⋯
-		pts[i] = fromworld(invrframexform(p[i], *ship));
-⋯
-main(void)
-	⋯
-	Matrix R = {
-		cos(45*DEG), -sin(45*DEG), 0,
-		sin(45*DEG),  cos(45*DEG), 0,
-		0, 0, 1,
-	};
-	⋯
-	//ship->θ = 45*DEG; /* counter-clockwise */
-	ship->bx = xform(ship->bx, R);
-	ship->by = xform(ship->by, R);
-⋯
-.EE
 .SH SOURCE
 .B /sys/src/libgeometry
 .SH SEE ALSO
@@ -857,6 +794,8 @@ Jonathan Blow,
 The Inner Product, April 2004.
 .br
 https://www.3dgep.com/understanding-quaternions/
+.br
+https://motion.cs.illinois.edu/RoboticSystems/CoordinateTransformations.html
 .SH BUGS
 No care is taken to avoid numeric overflows.
 .SH HISTORY
