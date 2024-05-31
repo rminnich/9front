@@ -231,6 +231,7 @@ extern char Einval[];
 extern char Eperm[];
 extern char Eexists[];
 extern char Elocked[];
+extern char Ebadspec[];
 
 enum { /* getblk modes */
 	GBREAD = 0,

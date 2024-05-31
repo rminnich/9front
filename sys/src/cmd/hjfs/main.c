@@ -12,6 +12,7 @@ char Einval[] = "invalid operation";
 char Eperm[] = "permission denied";
 char Eexists[] = "file exists";
 char Elocked[] = "file locked";
+char Ebadspec[] = "bad attach specifier";
 
 int mainstacksize = 65536;
 

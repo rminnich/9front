@@ -13,8 +13,10 @@ tauth(Req *req)
 {
 	if((fsmain->flags & FSNOAUTH) != 0)
 		respond(req, "no authentication required");
-	else
+	else if(*req->ifcall.aname == 0 || strcmp(req->ifcall.aname, "dump") == 0)
 		auth9p(req);
+	else
+		respond(req, Ebadspec);
 }
 
 static void
@@ -30,12 +32,12 @@ tattach(Req *req)
 		respond(req, "no such user");
 		return;
 	}
-	if(req->ifcall.aname == nil || *req->ifcall.aname == 0)
+	if(*req->ifcall.aname == 0)
 		flags = 0;
 	else if(strcmp(req->ifcall.aname, "dump") == 0)
 		flags = CHFDUMP|CHFRO;
 	else{
-		respond(req, Einval);
+		respond(req, Ebadspec);
 		return;
 	}
 	ch = chanattach(fsmain, flags);
