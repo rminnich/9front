@@ -146,6 +146,7 @@ void	menuins(int, uchar*, Text*, int, int);
 void	menudel(int);
 Text	*sweeptext(int, int);
 void	setpat(char*);
+void	menucmd(char*);
 void	scrdraw(Flayer*, long tot);
 int	rcontig(Rasp*, ulong, ulong, int);
 int	rmissing(Rasp*, ulong, ulong);

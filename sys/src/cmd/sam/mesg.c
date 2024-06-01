@@ -55,6 +55,7 @@ char *hname[] = {
 	[Hack]		"Hack",
 	[Hexit]		"Hexit",
 	[Hplumb]	"Hplumb",
+	[Hmenucmd]	"Hmenucmd",
 };
 
 char *tname[] = {
@@ -82,6 +83,8 @@ char *tname[] = {
 	[Tack]		"Tack",
 	[Texit]		"Texit",
 	[Tplumb]	"Tplumb",
+	[Tmenucmd]	"Tmenucmd",
+	[Tmenucmdsend]	"Tmenucmdsend",
 };
 
 void
@@ -566,6 +569,22 @@ inmesg(Tmesg type)
 			free(c);
 		}
 		plumbfree(pm);
+		break;
+
+	case Tmenucmd:
+		dprint((char*)inp);
+		break;
+
+	case Tmenucmdsend:
+		termlocked++;
+		str = tmpcstr((char*)inp);
+		Straddc(str, '\n');
+		loginsert(cmd, cmd->nc, str->s, str->n);
+		freetmpstr(str);
+		fileupdate(cmd, FALSE, TRUE);
+		cmd->dot.r.p1 = cmd->dot.r.p2 = cmd->nc;
+		telldot(cmd);
+		termcommand();
 		break;
 
 	case Texit:

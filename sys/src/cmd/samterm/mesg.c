@@ -300,6 +300,10 @@ inmesg(Hmesg type, int count)
 	case Hplumb:
 		hplumb(m);
 		break;
+
+	case Hmenucmd:
+		menucmd((char *)indata);
+		break;
 	}
 }
 

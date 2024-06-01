@@ -1,8 +1,9 @@
 /* VERSION 1 introduces plumbing
 	2 increases SNARFSIZE from 4096 to 32000
 	3 adds a triple click
+	4 adds M command (add b2 menu action)
  */
-#define	VERSION	3
+#define	VERSION	4
 
 #define	TBLOCKSIZE 512		  /* largest piece of text sent to terminal */
 #define	DATASIZE  (UTFmax*TBLOCKSIZE+30) /* ... including protocol header stuff */
@@ -36,6 +37,8 @@ typedef enum Tmesg
 	Texit,		/* exit */
 	Tplumb,		/* send plumb message */
 	Ttclick,	/* triple click */
+	Tmenucmd,	/* list custom cmds in b2 menu */
+	Tmenucmdsend,	/* execute custom cmd from b2 menu */
 	TMAX,
 }Tmesg;
 /*
@@ -69,6 +72,7 @@ typedef enum Hmesg
 	Hack,		/* request acknowledgement */
 	Hexit,
 	Hplumb,		/* return plumb message to terminal - version 1 */
+	Hmenucmd,	/* modify custom cmds in b2 menu */
 	HMAX,
 }Hmesg;
 typedef struct Header{

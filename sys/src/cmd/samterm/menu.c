@@ -29,9 +29,6 @@ enum Menu2
 	Look,
 	Exch,
 	Search,
-	NMENU2 = Search,
-	Send = Search,
-	NMENU2C
 };
 
 enum Menu3
@@ -51,7 +48,7 @@ char	*menu2str[] = {
 	"plumb",
 	"look",
 	"<rio>",
-	0,		/* storage for last pattern */
+	nil,		/* storage for last pattern */
 };
 
 char	*menu3str[] = {
@@ -65,6 +62,33 @@ char	*menu3str[] = {
 Menu	menu2 =	{0, genmenu2};
 Menu	menu2c ={0, genmenu2c};
 Menu	menu3 =	{0, genmenu3};
+
+typedef struct Menucmd Menucmd;
+struct Menucmd{
+	char *cmd;
+	Menucmd *next;
+}*menucmds;
+
+char*
+findmenucmd(int n){
+	Menucmd *m;
+
+	for(m = menucmds; n > 0 && m != nil; n--)
+		m = m->next;
+	if(n == 0 && m != nil)
+		return m->cmd;
+	return nil;
+}
+
+void
+menucmdhit(char *s)
+{
+	if(s == nil)
+		return;
+	outstart(Tmenucmdsend);
+	outcopy(strlen(s), (uchar*)s);
+	outsend();
+}
 
 void
 menu2hit(void)
@@ -109,12 +133,18 @@ menu2hit(void)
 		break;
 
 	case Search:
-		outcmd();
-		if(t==&cmd)
-			outTsll(Tsend, 0 /*ignored*/, which->p0, which->p1);
-		else
-			outT0(Tsearch);
-		setlock();
+		if(t == &cmd || menu2str[Search] != nil){
+			outcmd();
+			if(t == &cmd)
+				outTsll(Tsend, 0 /*ignored*/, which->p0, which->p1);
+			else
+				outT0(Tsearch);
+			setlock();
+			break;
+		}
+	default:
+		m -= Search + (t == &cmd || menu2str[Search] != nil);
+		menucmdhit(findmenucmd(m));
 		break;
 	}
 }
@@ -285,6 +315,37 @@ setpat(char *s)
 	menu2str[Search] = pat;
 }
 
+void
+menucmd(char *s)
+{
+	Menucmd **mp, *m;
+
+	while(*s == ' ' || *s == '\t')
+		s++;
+	if(*s == 0){
+		outstart(Tmenucmd);
+		for(m = menucmds; m != nil; m = m->next){
+			outcopy(3, (uchar*)"\tM ");
+			outcopy(strlen(m->cmd), (uchar*)m->cmd);
+			outcopy(1, (uchar*)"\n");
+		}
+		outsend();
+		return;
+	}
+	for(mp = &menucmds; *mp != nil; mp = &(*mp)->next)
+		if(!strcmp(s, (*mp)->cmd)){
+			m = *mp;
+			*mp = m->next;
+			free(m->cmd);
+			free(m);
+			return;
+		}
+	*mp = m = malloc(sizeof(Menucmd));
+	if(m == nil) panic("malloc");
+	m->cmd = strdup(s);
+	m->next = nil;
+}
+
 #define	NBUF	64
 static uchar buf[NBUF*UTFmax]={' ', ' ', ' ', ' '};
 
@@ -299,15 +360,23 @@ paren(char *s)
 	*t = 0;
 	return (char *)buf;
 }
+
 char*
 genmenu2(int n)
 {
 	Text *t=(Text *)which->user1;
 	char *p;
-	if(n>=NMENU2+(menu2str[Search]!=0))
-		return 0;
-	p = menu2str[n];
-	if(!hostlock && !t->lock || n==Search || n==Look)
+	if(n < Search || n == Search && menu2str[Search] != nil)
+		p = menu2str[n];
+	else{
+		n -= Search + (menu2str[Search] != nil);
+		p = findmenucmd(n);
+		if(p == nil)
+			return nil;
+	}
+	if(!hostlock && !t->lock
+	|| p == menu2str[Search]
+	|| p == menu2str[Look])
 		return p;
 	return paren(p);
 }
@@ -316,12 +385,12 @@ genmenu2c(int n)
 {
 	Text *t=(Text *)which->user1;
 	char *p;
-	if(n >= NMENU2C)
-		return 0;
-	if(n == Send)
-		p="send";
-	else
+	if(n < Search)
 		p = menu2str[n];
+	else if(n == Search)
+		p = "send";
+	else if((p = findmenucmd(n - Search - 1)) == nil)
+		return nil;
 	if(!hostlock && !t->lock)
 		return p;
 	return paren(p);

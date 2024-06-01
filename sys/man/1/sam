@@ -630,7 +630,7 @@ and
 do not have defaults.
 .PD
 .SS Miscellany
-.TF (empty)
+.TF M_command
 .TP
 .B k
 Set the current file's mark to the range.  Does not set dot.
@@ -653,6 +653,7 @@ Successive
 move further back in time.
 The only commands for which u is ineffective are
 .BR cd ,
+.BR M ,
 .BR u ,
 .BR q ,
 .B w
@@ -663,6 +664,10 @@ If
 is negative,
 .B u
 `redoes,' undoing the undo, going forwards in time again.
+.TP
+.BI \*aM " command
+Toggle the appearance of a menu entry for the command in the button 2 menu.
+Selecting the entry with button 2 will run the command.
 .TP
 (empty)
 If the range is explicit, set dot to the range.

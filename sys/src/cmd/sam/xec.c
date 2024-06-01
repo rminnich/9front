@@ -167,6 +167,17 @@ m_cmd(File *f, Cmd *cp)
 }
 
 int
+M_cmd(File *f, Cmd *cp)
+{
+	USED(f);
+	if(downloaded)
+		outTS(Hmenucmd, cp->ctext);
+	else
+		dprint("not downloaded\n");
+	return TRUE;
+}
+
+int
 n_cmd(File *f, Cmd *cp)
 {
 	int i;
