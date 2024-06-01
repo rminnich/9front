@@ -366,13 +366,6 @@ aoeonline(SDunit *u)
 	int r;
 
 	c = u->dev->ctlr;
-	r = 0;
-
-	if((c->feat&Datapi) && c->drivechange){
-		if(aoeconnect(u, c) == 0 && (r = scsionline(u)) > 0)
-			c->drivechange = 0;
-		return r;
-	}
 
 	if(c->drivechange){
 		if(aoeconnect(u, c) == -1)
@@ -396,8 +389,6 @@ aoebio(SDunit *u, int, int write, void *a, long count, uvlong lba)
 	Ctlr *c;
 
 	c = u->dev->ctlr;
-//	if(c->feat & Datapi)
-//		return scsibio(u, lun, write, a, count, lba);
 	data = a;
 	if(write)
 		rio = devtab[c->c->type]->write;
@@ -431,8 +422,6 @@ aoerio(SDreq *r)
 
 	u = r->unit;
 	c = u->dev->ctlr;
-//	if(c->feat & Datapi)
-//		return aoeriopkt(r, d);
 
 	if(r->cmd[0] == 0x35 || r->cmd[0] == 0x91){
 		qlock(c);
