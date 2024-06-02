@@ -84,9 +84,7 @@ cacheins(Blk *b)
 	bkt = &fs->bcache[h % fs->cmax];
 	qlock(&fs->lrulk);
 	traceb("cache", b->bp);
-	lock(bkt);
 	if(checkflag(b, Bcached)){
-		unlock(bkt);
 		qunlock(&fs->lrulk);
 		return;
 	}
@@ -97,7 +95,6 @@ cacheins(Blk *b)
 	b->cached = getcallerpc(&b);
 	b->hnext = bkt->b;
 	bkt->b = b;
-	unlock(bkt);
 	qunlock(&fs->lrulk);
 }
 
@@ -114,7 +111,6 @@ cachedel_lk(vlong addr)
 	tracex("uncache", Zb, addr, getcallerpc(&addr));
 	h = ihash(addr);
 	bkt = &fs->bcache[h % fs->cmax];
-	lock(bkt);
 	p = &bkt->b;
 	for(b = bkt->b; b != nil; b = b->hnext){
 		if(b->bp.addr == addr){
@@ -126,7 +122,6 @@ cachedel_lk(vlong addr)
 		}
 		p = &b->hnext;
 	}
-	unlock(bkt);
 }
 void
 cachedel(vlong addr)
@@ -147,11 +142,9 @@ cacheflag(vlong addr, int flg)
 	h = ihash(addr);
 	bkt = &fs->bcache[h % fs->cmax];
 	qlock(&fs->lrulk);
-	lock(bkt);
 	for(b = bkt->b; b != nil; b = b->hnext)
 		if(b->bp.addr == addr)
 			setflag(b, flg);
-	unlock(bkt);
 	qunlock(&fs->lrulk);
 
 }
@@ -166,7 +159,6 @@ cacheget(vlong addr)
 	h = ihash(addr);
 	bkt = &fs->bcache[h % fs->cmax];
 	qlock(&fs->lrulk);
-	lock(bkt);
 	for(b = bkt->b; b != nil; b = b->hnext){
 		if(b->bp.addr == addr){
 			holdblk(b);
@@ -175,7 +167,6 @@ cacheget(vlong addr)
 			break;
 		}
 	}
-	unlock(bkt);
 	qunlock(&fs->lrulk);
 
 	return b;

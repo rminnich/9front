@@ -377,7 +377,6 @@ struct Arange {
 };
 
 struct Bucket {
-	Lock;
 	Blk	*b;
 };
 
