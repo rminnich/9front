@@ -443,7 +443,7 @@ truncwait(Dent *de, int id)
 static int
 readb(Tree *t, Fid *f, char *d, vlong o, vlong n, vlong sz)
 {
-	char buf[17], kvbuf[17+32];
+	char buf[Offksz], kvbuf[Offksz+32];
 	vlong fb, fo;
 	Bptr bp;
 	Blk *b;
@@ -2442,13 +2442,13 @@ void
 runsweep(int id, void*)
 {
 	char buf[Kvmax];
+	Msg mb[Kvmax/Offksz];
 	Bptr bp, nb, *oldhd;
 	vlong off;
 	Tree *t;
 	Arena *a;
 	Amsg *am;
 	Blk *b;
-	Msg m, mb[2];
 	int i, nm;
 
 	if((oldhd = calloc(fs->narena, sizeof(Bptr))) == nil)
@@ -2591,26 +2591,30 @@ Justhalt:
 			if(am->dent != nil)
 				qlock(&am->dent->trunclk);
 			fs->snap.dirty = 1;
+			nm = 0;
 			for(off = am->off; off < am->end; off += Blksz){
-				qlock(&fs->mutlk);
-				if(waserror()){
+				mb[nm].op = Oclearb;
+				mb[nm].k = buf + Offksz * nm;
+				mb[nm].nk = Offksz;
+				mb[nm].k[0] = Kdat;
+				PACK64(mb[nm].k+1, am->qpath);
+				PACK64(mb[nm].k+9, off);
+				mb[nm].v = nil;
+				mb[nm].nv = 0;
+				if(++nm >= nelem(mb) || off + Blksz >= am->end){
+					qlock(&fs->mutlk);
+					if(waserror()){
+						qunlock(&fs->mutlk);
+						nexterror();
+					}
+					epochstart(id);
+					upsert(am->mnt, mb, nm);
+					epochend(id);
+					epochclean();
 					qunlock(&fs->mutlk);
-					nexterror();
+					poperror();
+					nm = 0;
 				}
-				epochstart(id);
-				m.k = buf;
-				m.nk = sizeof(buf);
-				m.op = Oclearb;
-				m.k[0] = Kdat;
-				PACK64(m.k+1, am->qpath);
-				PACK64(m.k+9, off);
-				m.v = nil;
-				m.nv = 0;
-				upsert(am->mnt, &m, 1);
-				epochend(id);
-				epochclean();
-				qunlock(&fs->mutlk);
-				poperror();
 			}
 			if(am->dent != nil){
 				am->dent->trunc = 0;
