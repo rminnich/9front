@@ -132,23 +132,6 @@ cachedel(vlong addr)
 	qunlock(&fs->lrulk);
 }
 
-void
-cacheflag(vlong addr, int flg)
-{
-	Bucket *bkt;
-	u32int h;
-	Blk *b;
-
-	h = ihash(addr);
-	bkt = &fs->bcache[h % fs->cmax];
-	qlock(&fs->lrulk);
-	for(b = bkt->b; b != nil; b = b->hnext)
-		if(b->bp.addr == addr)
-			setflag(b, flg);
-	qunlock(&fs->lrulk);
-
-}
-
 Blk*
 cacheget(vlong addr)
 {
