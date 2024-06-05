@@ -228,10 +228,11 @@ smscreceive(Dev *ep)
 			break;
 		if((hd & Rxerror) == 0){
 			if(n == BLEN(b)){
+				b->wp -= 4;
 				etheriq(b);
 				return 0;
 			}
-			etheriq(copyblock(b, n));
+			etheriq(copyblock(b, n - 4));
 		}
 		b->rp += (n + 3) & ~3;
 	}
