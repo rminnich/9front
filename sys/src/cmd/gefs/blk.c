@@ -955,6 +955,10 @@ epochclean(void)
 			qe.op = Qfree;
 			qe.bp = f->bp;
 			qe.b = nil;
+			if((b = cacheget(f->bp.addr)) != nil){
+				setflag(b, Bfreed);
+				dropblk(b);
+			}
 			qput(a->sync, qe);
 			qlock(&fs->bfreelk);
 			f->next = fs->bfree;
