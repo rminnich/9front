@@ -10,6 +10,7 @@ typedef struct Val	Val;
 typedef struct Kvp	Kvp;
 typedef struct Xdir	Xdir;
 typedef struct Bptr	Bptr;
+typedef struct Limbo	Limbo;
 typedef struct Bfree	Bfree;
 typedef struct Scan	Scan;
 typedef struct Dent	Dent;
@@ -325,6 +326,18 @@ enum {
 	AOrclose,
 };
 
+enum {
+	DFblk,
+	DFbp,
+	DFmnt,
+	DFtree,
+};
+
+struct Limbo {
+	Limbo	*next;
+	int	op;
+};
+
 struct Bptr {
 	vlong	addr;
 	uvlong	hash;
@@ -412,6 +425,8 @@ struct Fmsg {
 };
 
 struct Tree {
+	Limbo;
+
 	/* in-memory */
 	Lock	lk;
 	long	memref;	/* number of in-memory references to this */
@@ -430,19 +445,9 @@ struct Tree {
 	vlong	base;	/* base snapshot */
 };
 
-enum {
-	DFblk,
-	DFmnt,
-	DFtree,
-};
-
 struct Bfree {
-	Bfree	*next;
-	int	op;
-	Mount	*m;
-	Tree	*t;
-	Blk	*b;
-	Bptr	bp;
+	Limbo;
+	Bptr bp;
 };
 
 struct User {
@@ -516,6 +521,7 @@ struct Gefs {
 	QLock	synclk;
 	Rendez	syncrz;
 
+	QLock	mountlk;
 	Mount	*mounts;
 	Mount	*snapmnt;
 	Lock	connlk;
@@ -529,7 +535,7 @@ struct Gefs {
 	long	nworker;
 	long	epoch;
 	long	lepoch[32];
-	Bfree	*limbo[3];
+	Limbo	*limbo[3];
 	long	nlimbo;
 
 	Syncq	syncq[32];
@@ -562,6 +568,11 @@ struct Gefs {
 	Blk	*ctail;
 	usize	ccount;
 	usize	cmax;
+
+	/* preallocated deferred frees */
+	QLock	bfreelk;
+	Rendez	bfreerz;
+	Bfree	*bfree;
 
 	RWLock	flushq[Nflushtab];
 	int	flushop[Nflushtab];
@@ -622,6 +633,7 @@ struct Dent {
 };
 
 struct Mount {
+	Limbo;
 	Lock;
 	Mount	*next;
 	long	ref;
@@ -710,6 +722,7 @@ struct Scan {
 };
 
 struct Blk {
+	Limbo;
 	/* cache entry */
 	Blk	*cnext;
 	Blk	*cprev;

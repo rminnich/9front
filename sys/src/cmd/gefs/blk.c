@@ -819,16 +819,17 @@ blkfill(Blk *b)
 }
 
 void
-limbo(Bfree *f)
+limbo(int op, Limbo *l)
 {
-	Bfree *p;
+	Limbo *p;
 	ulong ge;
 
+	l->op = op;
 	while(1){
 		ge = agetl(&fs->epoch);
 		p = agetp(&fs->limbo[ge]);
-		f->next = p;
-		if(acasp(&fs->limbo[ge], p, f)){
+		l->next = p;
+		if(acasp(&fs->limbo[ge], p, l)){
 			aincl(&fs->nlimbo, 1);
 			break;
 		}
@@ -836,7 +837,23 @@ limbo(Bfree *f)
 }
 
 void
-freeblk(Tree *t, Blk *b, Bptr bp)
+freeblk(Tree *t, Blk *b)
+{
+	if(t == &fs->snap || (t != nil && b->bp.gen < t->memgen)){
+		tracex("killb", b->bp, getcallerpc(&t), -1);
+		killblk(t, b->bp);
+		return;
+	}
+	b->freed = getcallerpc(&t);
+	tracex("freeb", b->bp, getcallerpc(&t), -1);
+	setflag(b, Blimbo);
+	holdblk(b);
+	assert(b->ref > 1);
+	limbo(DFblk, b);
+}
+
+void
+freebp(Tree *t, Bptr bp)
 {
 	Bfree *f;
 
@@ -845,18 +862,17 @@ freeblk(Tree *t, Blk *b, Bptr bp)
 		killblk(t, bp);
 		return;
 	}
-
 	tracex("freeb", bp, getcallerpc(&t), -1);
-	f = emalloc(sizeof(Bfree), 0);
-	f->op = DFblk;
+
+	qlock(&fs->bfreelk);
+	while(fs->bfree == nil)
+		rsleep(&fs->bfreerz);
+	f = fs->bfree;
+	fs->bfree = (Bfree*)f->next;
+	qunlock(&fs->bfreelk);
+
 	f->bp = bp;
-	f->b = nil;
-	if(b != nil){
-		setflag(b, Blimbo);
-		b->freed = getcallerpc(&t);
-		f->b = holdblk(b);
-	}
-	limbo(f);
+	limbo(DFbp, f);
 }
 
 void
@@ -889,7 +905,7 @@ Again:
 	for(i = 0; i < fs->nworker; i++){
 		e = agetl(&fs->lepoch[i]);
 		if((e & Eactive) && e != (ge | Eactive)){
-			if(delay < 100)
+			if(delay < 1000)
 				delay++;
 			else
 				fprint(2, "stalled epoch %lx [worker %d]\n", e, i);
@@ -903,7 +919,9 @@ void
 epochclean(void)
 {
 	ulong c, e, ge;
-	Bfree *p, *n;
+	Limbo *p, *n;
+	Blk *b;
+	Bfree *f;
 	Arena *a;
 	Qent qe;
 	int i;
@@ -926,28 +944,39 @@ epochclean(void)
 		n = p->next;
 		switch(p->op){
 		case DFtree:
-			free(p->t);
+			free(p);
 			break;
 		case DFmnt:
-			free(p->m);
+			free(p);
 			break;
-		case DFblk:
-			a = getarena(p->bp.addr);
+		case DFbp:
+			f = (Bfree*)p;
+			a = getarena(f->bp.addr);
 			qe.op = Qfree;
-			qe.bp = p->bp;
+			qe.bp = f->bp;
 			qe.b = nil;
 			qput(a->sync, qe);
-			if(p->b != nil){
-				clrflag(p->b, Blimbo);
-				setflag(p->b, Bfreed);
-				dropblk(p->b);
-			}
+			qlock(&fs->bfreelk);
+			f->next = fs->bfree;
+			fs->bfree = f;
+			rwakeup(&fs->bfreerz);
+			qunlock(&fs->bfreelk);
+			break;
+		case DFblk:
+			b = (Blk*)p;
+			a = getarena(b->bp.addr);
+			qe.op = Qfree;
+			qe.bp = b->bp;
+			qe.b = nil;
+			setflag(b, Bfreed);
+			clrflag(b, Blimbo);
+			qput(a->sync, qe);
+			dropblk(b);
 			break;
 		default:
 			abort();
 		}
 		aincl(&fs->nlimbo, -1);
-		free(p);
 	}
 }
 
@@ -1007,6 +1036,8 @@ qput(Syncq *q, Qent qe)
 		assert(fs->syncing > 0);
 	else
 		abort();
+	if(qe.b != nil)
+		assert(qe.b->ref > 0);
 	qlock(&q->lk);
 	qe.qgen = agetv(&fs->qgen);
 	while(q->nheap == q->heapsz)
@@ -1080,12 +1111,16 @@ runsync(int, void *p)
 		switch(qe.op){
 		case Qfree:
 			tracex("qfreeb", qe.bp, qe.qgen, -1);
+			/*
+			 * we shouldn't have a block in a free op,
+			 * the frees go into the queue just to ensure
+			 * write/reuse ordering.
+			 */
+			assert(qe.b == nil);
 			a = getarena(qe.bp.addr);
 			qlock(a);
 			cachedel(qe.bp.addr);
 			blkdealloc_lk(a, qe.bp.addr);
-			if(qe.b != nil)
-				dropblk(qe.b);
 			qunlock(a);
 			break;
 		case Qfence:

@@ -28,6 +28,7 @@ int	noneid		= 0;
 int	nogroupid	= 9999;
 int	admid		= -1;
 Blk	*blkbuf;
+Bfree	*bfbuf;
 Errctx	**errctx;
 
 void
@@ -156,6 +157,7 @@ emalloc(usize sz, int zero)
 static void
 initfs(vlong cachesz)
 {
+	Bfree *f, *g;
 	Blk *b;
 
 	if((fs = mallocz(sizeof(Gefs), 1)) == nil)
@@ -167,6 +169,7 @@ initfs(vlong cachesz)
 	}
 	fs->lrurz.l = &fs->lrulk;
 	fs->syncrz.l = &fs->synclk;
+	fs->bfreerz.l = &fs->bfreelk;
 	fs->noauth = noauth;
 	fs->cmax = cachesz/Blksz;
 	if(fs->cmax > (1<<30))
@@ -181,12 +184,23 @@ initfs(vlong cachesz)
 	if((fs->dlcache = mallocz(fs->dlcmax*sizeof(Dlist*), 1)) == nil)
 		sysfatal("malloc: %r");
 
+	bfbuf = sbrk(fs->cmax * sizeof(Bfree));
+	if(bfbuf == (void*)-1)
+		sysfatal("sbrk: %r");
+
+	g = nil;
+	for(f = bfbuf; f != bfbuf+fs->cmax; f++){
+		f->bp = Zb;
+		f->next = g;
+		g = f;
+	}
+	fs->bfree = g;
+
 	blkbuf = sbrk(fs->cmax * sizeof(Blk));
 	if(blkbuf == (void*)-1)
 		sysfatal("sbrk: %r");
 	for(b = blkbuf; b != blkbuf+fs->cmax; b++){
-		b->bp.addr = -1;
-		b->bp.hash = -1;
+		b->bp = Zb;
 		b->magic = Magic;
 		lrutop(b);
 	}

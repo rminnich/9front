@@ -29,7 +29,7 @@ struct Path {
 
 #define efreeblk(t, b) do { \
 	if(b != nil) \
-		freeblk(t, b, b->bp); \
+		freeblk(t, b); \
 	} while(0)
 
 static void
@@ -517,7 +517,7 @@ updateleaf(Tree *t, Path *up, Path *p)
 			|| m.op == Oinsert
 			|| m.op == Odelete){
 				bp = unpackbp(v.v, v.nv);
-				freeblk(t, nil, bp);
+				freebp(t, bp);
 			}
 			ok = apply(&v, &m, buf, sizeof(buf));
 			goto Copyloop;
@@ -541,7 +541,7 @@ updateleaf(Tree *t, Path *up, Path *p)
 				|| m.op == Oinsert
 				|| m.op == Odelete){
 					bp = unpackbp(v.v, v.nv);
-					freeblk(t, nil, bp);
+					freebp(t, bp);
 				}
 				p->pullsz += msgsz(&m);
 				ok = apply(&v, &m, buf, sizeof(buf));
@@ -701,7 +701,7 @@ splitleaf(Tree *t, Path *up, Path *p, Kvp *mid)
 			|| m.op == Oinsert
 			|| m.op == Odelete){
 				bp = unpackbp(v.v, v.nv);
-				freeblk(t, nil, bp);
+				freebp(t, bp);
 			}
 			ok = apply(&v, &m, buf, sizeof(buf));
 			goto Copyloop;
@@ -725,7 +725,7 @@ splitleaf(Tree *t, Path *up, Path *p, Kvp *mid)
 				|| m.op == Oinsert
 				|| m.op == Odelete){
 					bp = unpackbp(v.v, v.nv);
-					freeblk(t, nil, bp);
+					freebp(t, bp);
 				}
 				p->pullsz += msgsz(&m);
 				ok = apply(&v, &m, buf, sizeof(buf));
@@ -1105,9 +1105,9 @@ freepath(Tree *t, Path *path, int npath)
 
 	for(p = path; p != path + npath; p++){
 		if(p->b != nil)
-			freeblk(t, p->b, p->b->bp);
+			freeblk(t, p->b);
 		if(p->m != nil)
-			freeblk(t, p->b, p->m->bp);
+			freeblk(t, p->b);
 		dropblk(p->b);
 		dropblk(p->nl);
 		dropblk(p->nr);
@@ -1211,7 +1211,7 @@ fastupsert(Tree *t, Blk *b, Msg *msg, int nmsg)
 	t->dirty = 1;
 	unlock(&t->lk);
 
-	freeblk(t, b, b->bp);
+	freeblk(t, b);
 	dropblk(b);
 	dropblk(r);
 }

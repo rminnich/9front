@@ -623,6 +623,7 @@ getmount(char *name)
 		return fs->snapmnt;
 	}
 
+	qlock(&fs->mountlk);
 	for(mnt = agetp(&fs->mounts); mnt != nil; mnt = mnt->next){
 		if(strcmp(name, mnt->name) == 0){
 			ainc(&mnt->ref);
@@ -633,6 +634,7 @@ getmount(char *name)
 	if((mnt = mallocz(sizeof(*mnt), 1)) == nil)
 		error(Enomem);
 	if(waserror()){
+		qunlock(&fs->mountlk);
 		free(mnt);
 		nexterror();
 	}
@@ -648,6 +650,7 @@ getmount(char *name)
 	poperror();
 
 Out:
+	qunlock(&fs->mountlk);
 	return mnt;
 }
 
@@ -655,21 +658,19 @@ void
 clunkmount(Mount *mnt)
 {
 	Mount *me, **p;
-	Bfree *f;
 
 	if(mnt == nil)
 		return;
 	if(adec(&mnt->ref) == 0){
+		qlock(&fs->mountlk);
 		for(p = &fs->mounts; (me = *p) != nil; p = &me->next){
 			if(me == mnt)
 				break;
 		}
 		assert(me != nil);
-		f = emalloc(sizeof(Bfree), 0);
-		f->op = DFmnt;
-		f->m = mnt;
 		*p = me->next;
-		limbo(f);
+		limbo(DFmnt, me);
+		qunlock(&fs->mountlk);
 	}
 }
 
@@ -2160,7 +2161,7 @@ fswrite(Fmsg *m, int id)
 		if(waserror()){
 			if(!fs->rdonly)
 				for(j = 0; j < i; j++)
-					freeblk(t, nil, bp[j]);
+					freebp(t, bp[j]);
 			nexterror();
 		}
 		n = writeb(f, &kv[i], &bp[i], p, o, c, f->dent->length);
@@ -2400,7 +2401,7 @@ freetree(Bptr rb, vlong pred)
 		}
 	}
 	if(rb.gen > pred)
-		freeblk(nil, nil, rb);
+		freebp(nil, rb);
 	dropblk(b);
 }
 
@@ -2429,7 +2430,7 @@ sweeptree(Tree *t)
 			break;
 		bp = unpackbp(s.kv.v, s.kv.nv);
 		if(bp.gen > t->pred)
-			freeblk(nil, nil, bp);
+			freebp(nil, bp);
 		qlock(&fs->mutlk);
 		epochclean();
 		qunlock(&fs->mutlk);
@@ -2503,7 +2504,7 @@ runsweep(int id, void*)
 					epochstart(id);
 					b = getblk(bp, 0);
 					nb = b->logp;
-					freeblk(nil, b, b->bp);
+					freeblk(nil, b);
 					dropblk(b);
 					epochend(id);
 					epochclean();

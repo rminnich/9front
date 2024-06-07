@@ -189,10 +189,11 @@ freedl(Dlist *dl, int docontents)
 		bp = b->logp;
 		qe.op = Qfree;
 		qe.bp = b->bp;
-		qe.b = b;
+		qe.b = nil;
 		a = getarena(qe.bp.addr);
 		qput(a->sync, qe);
 		traceb("dlfreeb", qe.bp);
+		dropblk(b);
 	}
 }
 
@@ -542,14 +543,9 @@ opensnap(char *label, int *flg)
 void
 closesnap(Tree *t)
 {
-	Bfree *f;
-
 	if(t == nil || adec(&t->memref) != 0)
 		return;
-	f = malloc(sizeof(Bfree));
-	f->op = DFtree;
-	f->t = t;
-	limbo(f);
+	limbo(DFtree, t);
 }
 
 void
