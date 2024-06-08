@@ -14,6 +14,7 @@ struct Cmd {
 	char	*sub;
 	int	minarg;
 	int	maxarg;
+	int	epoch;
 	void	(*fn)(int, char**, int);
 };
 
@@ -391,7 +392,7 @@ help(int fd, char**, int)
 
 Cmd cmdtab[] = {
 	/* admin */
-	{.name="check",		.sub=nil,	.minarg=0, .maxarg=0, .fn=fsckfs},
+	{.name="check",		.sub=nil,	.minarg=0, .maxarg=0, .fn=fsckfs, .epoch=1},
 	{.name="df",		.sub=nil, 	.minarg=0, .maxarg=0, .fn=showdf},
 	{.name="halt",		.sub=nil,	.minarg=0, .maxarg=0, .fn=haltfs},
 	{.name="help",		.sub=nil,	.minarg=0, .maxarg=0, .fn=help},
@@ -403,9 +404,9 @@ Cmd cmdtab[] = {
 
 	/* debugging */
 	{.name="show",		.sub="fid",	.minarg=0, .maxarg=0, .fn=showfid},
-	{.name="show",		.sub="tree",	.minarg=0, .maxarg=1, .fn=showtree},
+	{.name="show",		.sub="tree",	.minarg=0, .maxarg=1, .fn=showtree, .epoch=1},
 	{.name="show",		.sub="users",	.minarg=0, .maxarg=0, .fn=showusers},
-	{.name="show",		.sub="bstate",	.minarg=0, .maxarg=0, .fn=showbstate},
+	{.name="show",		.sub="bstate",	.minarg=0, .maxarg=0, .fn=showbstate, .epoch=1},
 	{.name="show",		.sub="free",	.minarg=0, .maxarg=0, .fn=showfree},
 	{.name="debug",		.sub=nil,	.minarg=0, .maxarg=1, .fn=setdbg},
 	{.name="save",		.sub="trace",	.minarg=0, .maxarg=1, .fn=savetrace},
@@ -424,11 +425,10 @@ runcons(int tid, void *pfd)
 		fprint(fd, "gefs# ");
 		if((n = read(fd, buf, sizeof(buf)-1)) == -1)
 			break;
-		epochstart(tid);
 		buf[n] = 0;
 		nf = tokenize(buf, f, nelem(f));
 		if(nf == 0 || strlen(f[0]) == 0)
-			goto Next;
+			continue;
 		for(c = cmdtab; c->name != nil; c++){
 			ap = f;
 			na = nf;
@@ -444,7 +444,15 @@ runcons(int tid, void *pfd)
 			}
 			if(na < c->minarg || na > c->maxarg)
 				continue;
-			c->fn(fd, ap, na);
+			if(c->epoch)
+				epochstart(tid);
+			if(!waserror()){
+				c->fn(fd, ap, na);
+				poperror();
+			}else
+				fprint(fd, "%s: %s\n", f[0], errmsg());
+			if(c->epoch)
+				epochend(tid);
 			break;
 		}
 		if(c->name == nil){
@@ -453,7 +461,5 @@ runcons(int tid, void *pfd)
 				fprint(fd, " %s", f[i]);
 			fprint(fd, "'\n");
 		}
-Next:
-		epochend(tid);
 	}
 }
