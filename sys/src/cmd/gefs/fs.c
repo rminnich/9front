@@ -2353,8 +2353,8 @@ runmutate(int id, void *)
 		}
 		assert(estacksz() == 0);
 		epochend(id);
-		epochclean();
 		qunlock(&fs->mutlk);
+		epochclean();
 
 		if(a != nil)
 			chsend(fs->admchan, a);
@@ -2396,8 +2396,8 @@ freetree(Bptr rb, vlong pred)
 			bp = unpackbp(kv.v, kv.nv);
 			freetree(bp, pred);
 			qlock(&fs->mutlk);
-			epochclean();
 			qunlock(&fs->mutlk);
+			epochclean();
 		}
 	}
 	if(rb.gen > pred)
@@ -2432,8 +2432,8 @@ sweeptree(Tree *t)
 		if(bp.gen > t->pred)
 			freebp(nil, bp);
 		qlock(&fs->mutlk);
-		epochclean();
 		qunlock(&fs->mutlk);
+		epochclean();
 	}
 	btexit(&s);
 	freetree(t->bp, t->pred);
@@ -2445,12 +2445,12 @@ runsweep(int id, void*)
 	char buf[Kvmax];
 	Msg mb[Kvmax/Offksz];
 	Bptr bp, nb, *oldhd;
+	int i, nm;
 	vlong off;
 	Tree *t;
 	Arena *a;
 	Amsg *am;
 	Blk *b;
-	int i, nm;
 
 	if((oldhd = calloc(fs->narena, sizeof(Bptr))) == nil)
 		sysfatal("malloc log heads");
@@ -2471,31 +2471,31 @@ runsweep(int id, void*)
 
 			if(am->halt)
 				ainc(&fs->rdonly);
-			qlock(&fs->mutlk);
 			for(i = 0; i < fs->narena; i++){
 				a = &fs->arenas[i];
+				oldhd[i].addr = -1;
+				oldhd[i].hash = -1;
+				oldhd[i].gen = -1;
 				qlock(a);
-				if(a->nlog < a->reserve/(10*Blksz)){
-					oldhd[i].addr = -1;
-					oldhd[i].hash = -1;
-					oldhd[i].gen = -1;
-					qunlock(a);
-					continue;
+				/*
+				 * arbitrary heuristic -- 10% of our reserved
+				 * space seems like a fine time to compress.
+				 */
+				if(a->nlog >= a->reserve/(10*Blksz)){
+					oldhd[i] = a->loghd;
+					epochstart(id);
+					if(waserror()){
+						epochend(id);
+						qunlock(a);
+						nexterror();
+					}
+					compresslog(a);
+					epochend(id);
+					poperror();
 				}
-				if(waserror()){
-					qunlock(&fs->mutlk);
-					qunlock(a);
-					nexterror();
-				}
-				oldhd[i] = a->loghd;
-				epochstart(id);
-				compresslog(a);
 				qunlock(a);
-				epochend(id);
 				epochclean();
-				poperror();
 			}
-			qunlock(&fs->mutlk);
 			sync();
 
 			for(i = 0; i < fs->narena; i++){
@@ -2507,8 +2507,8 @@ runsweep(int id, void*)
 					freeblk(nil, b);
 					dropblk(b);
 					epochend(id);
-					epochclean();
 					qunlock(&fs->mutlk);
+					epochclean();
 				}
 			}
 
@@ -2611,8 +2611,8 @@ Justhalt:
 					epochstart(id);
 					upsert(am->mnt, mb, nm);
 					epochend(id);
-					epochclean();
 					qunlock(&fs->mutlk);
+					epochclean();
 					poperror();
 					nm = 0;
 				}
