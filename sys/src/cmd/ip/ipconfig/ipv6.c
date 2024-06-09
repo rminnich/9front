@@ -508,6 +508,13 @@ issueadd6(Conf *cf)
 	free(cfg);
 }
 
+static void
+issuedel6(Conf *cf)
+{
+	/* use "remove6" verb instead of "del6" for older kernels */
+	ewrite(cf->cfd, "remove6");
+}
+
 static int
 masklen(uchar *mask)
 {
@@ -669,7 +676,10 @@ recvrahost(uchar buf[], int pktlen)
 		m++;
 	}
 
-	/* process prefixes */
+	/* remove expired prefixes */
+	issuedel6(&conf);
+
+	/* process new prefixes */
 	m = sizeof *ra;
 	while(pktlen - m >= 8) {
 		n = m;
