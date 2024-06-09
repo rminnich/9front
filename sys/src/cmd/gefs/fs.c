@@ -1604,6 +1604,7 @@ static void
 fscreate(Fmsg *m)
 {
 	char *p, *e, buf[Kvmax], upkbuf[Keymax], upvbuf[Inlmax];
+	int nm, duid, dgid;
 	Dent *de;
 	vlong oldlen;
 	Qid old;
@@ -1611,7 +1612,6 @@ fscreate(Fmsg *m)
 	Msg mb[2];
 	Fid *f;
 	Xdir d;
-	int nm;
 
 	if((e = okname(m->name)) != nil){
 		rerror(m, e);
@@ -1648,8 +1648,8 @@ fscreate(Fmsg *m)
 		runlock(de);
 		goto Out;
 	}
-
-	d.gid = de->gid;
+	duid = de->uid;
+	dgid = de->gid;
 	runlock(de);
 
 	nm = 0;
@@ -1674,7 +1674,7 @@ fscreate(Fmsg *m)
 	d.mtime = d.atime;
 	d.length = 0;
 	d.uid = f->uid;
-	d.gid = de->gid;
+	d.gid = dgid;
 	d.muid = f->uid;
 
 	mb[nm].op = Oinsert;
@@ -1701,6 +1701,8 @@ fscreate(Fmsg *m)
 	f->pqpath = f->qpath;
 	f->qpath = d.qid.path;
 	f->dent = de;
+	f->duid = duid;
+	f->dgid = dgid;
 	if(m->mode & ORCLOSE)
 		f->rclose = emalloc(sizeof(Amsg), 1);
 
