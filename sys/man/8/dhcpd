@@ -334,11 +334,11 @@ with the first column being a regular expression
 (see
 .IR regexp (6))
 that is matched against the requested file name
-and the second column contains a subsitution.
+and the second column contains a substitution.
 Lines starting with
 .B #
 are ignored.
-Occurances in the resulting filename of
+Occurrences in the resulting filename of
 .BR %I ,
 .B %C
 or
