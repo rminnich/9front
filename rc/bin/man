@@ -84,7 +84,6 @@ while(~ $d 0) {
 if(~ $#sec 0) {
 	sec=`{ls -pd $S/[0-9]* }
 }
-ix=$S/$sec/INDEX
 if(~ $#* 1) pat='^'^$1^' '
 if not pat='^('^`{echo $* | sed 's/ /|/g'}^') '
 fils=()
@@ -101,7 +100,9 @@ if(~ $#fils 0) {
 	# nothing in INDEX. try for file of given name
 	for(i) {
 		if(~ $i intro) i=0intro
-		for(n in $sec) {
+		if (/bin/test -f $i)
+			fils=($fils $i)
+		if not for(n in $sec) {
 			try=`{echo $S/$n/$i | tr A-Z a-z}
 			if (/bin/test -f $try)
 				fils=($fils $try)
