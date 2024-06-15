@@ -655,9 +655,10 @@ recvrahost(uchar buf[], int pktlen)
 
 	issuebasera6(&conf);
 
+	now = time(nil);
+
 	/* remove expired default routes */
 	m = 0;
-	now = time(nil);
 	for(rr = &routelist; (r = *rr) != nil;){
 		if(m > 100
 		|| r->prefixlt != ~0UL && r->prefixlt < now-r->time
@@ -671,7 +672,6 @@ recvrahost(uchar buf[], int pktlen)
 			free(r);
 			continue;
 		}
-
 		rr = &r->next;
 		m++;
 	}
@@ -699,8 +699,19 @@ recvrahost(uchar buf[], int pktlen)
 			continue;
 
 		conf.prefixlen = prfo->plen & 127;
+		if(conf.prefixlen < 1
+		|| conf.prefixlen > 64)
+			continue;
+
 		genipmkask(conf.mask, conf.prefixlen);
 		maskip(prfo->pref, conf.mask, conf.v6pref);
+		if(!validip(conf.v6pref)
+		|| isv4(conf.v6pref)
+		|| ipcmp(conf.v6pref, v6loopback) == 0
+		|| ISIPV6MCAST(conf.v6pref)
+		|| ISIPV6LINKLOCAL(conf.v6pref))
+			continue;
+
 		memmove(conf.laddr, conf.v6pref, 8);
 		memmove(conf.laddr+8, conf.lladdr+8, 8);
 		ipmove(conf.gaddr, (prfo->lar & RFMASK) != 0? prfo->pref: ra->src);
@@ -708,61 +719,71 @@ recvrahost(uchar buf[], int pktlen)
 		conf.autoflag = (prfo->lar & AFMASK) != 0;
 		conf.validlt = nhgetl(prfo->validlt);
 		conf.preflt = nhgetl(prfo->preflt);
-
-		seen = 0;
-		sha1((uchar*)&conf, sizeof(conf), hash, nil);
-		for(rr = &routelist; (r = *rr) != nil; rr = &r->next){
-			if(ipcmp(r->src, ra->src) == 0
-			&& ipcmp(r->laddr, conf.laddr) == 0){
-				seen = memcmp(r->hash, hash, SHA1dlen) == 0;
-				*rr = r->next;
-				break;
-			}
-		}
-		if(r == nil)
-			r = malloc(sizeof(*r));
-
-		memmove(r->hash, hash, SHA1dlen);
+		if(conf.preflt > conf.validlt)
+			continue;
 
 		if(conf.routerlt == 0
+		|| conf.preflt == 0
 		|| isula(conf.laddr)
 		|| ipcmp(conf.gaddr, conf.laddr) == 0
 		|| ipcmp(conf.gaddr, conf.lladdr) == 0)
 			ipmove(conf.gaddr, IPnoaddr);
 
+		sha1((uchar*)&conf, sizeof(conf), hash, nil);
+		for(rr = &routelist; (r = *rr) != nil; rr = &r->next){
+			if(ipcmp(r->src, ra->src) == 0
+			&& ipcmp(r->laddr, conf.laddr) == 0){
+				*rr = r->next;
+				break;
+			}
+		}
+		if(r != nil){
+			/* rfc4862, section 5.5.3, e) */
+			ulong remaining = r->prefixlt != ~0UL ? r->time + r->prefixlt : ~0UL;
+			ulong signaled = conf.validlt != ~0UL ? now + conf.validlt : ~0UL;
+			ulong timeout = now + 2*60*60;	/* 2 horus from now */
+			if(signaled <= timeout && signaled <= remaining) {
+				if(remaining <= timeout)
+					conf.validlt = remaining - now;
+				else
+					conf.validlt = timeout - now;
+				if (conf.preflt > conf.validlt)
+					conf.preflt = conf.validlt;
+			}
+			seen = memcmp(r->hash, hash, SHA1dlen) == 0;
+			if(!seen && validip(r->gaddr) && ipcmp(r->gaddr, conf.gaddr) != 0){
+				DEBUG("changing router %I->%I", r->gaddr, conf.gaddr);
+				if(!noconfig)
+					deldefroute(r->gaddr, conf.lladdr, r->laddr, r->mask);
+			}
+		} else {
+			seen = 0;
+			if(conf.preflt == 0)
+				continue;
+			r = malloc(sizeof(*r));
+		}
+		memmove(r->hash, hash, SHA1dlen);
+
+		r->time = now;
+		r->routerlt = conf.routerlt;
+		r->prefixlt = conf.validlt;
 		ipmove(r->src, ra->src);
 		ipmove(r->gaddr, conf.gaddr);
 		ipmove(r->laddr, conf.laddr);
 		ipmove(r->mask, conf.mask);
 
-		r->time = now;
-		r->routerlt = conf.routerlt;
-		r->prefixlt = conf.validlt;
-
 		r->next = routelist;
 		routelist = r;
 	
-		if(conf.prefixlen < 1
-		|| conf.prefixlen > 64
-		|| !validip(conf.v6pref)
-		|| isv4(conf.v6pref)
-		|| ipcmp(conf.v6pref, v6loopback) == 0
-		|| ISIPV6MCAST(conf.v6pref)
-		|| ISIPV6LINKLOCAL(conf.v6pref)){
-			if(!seen)
-				warning("igoring bogus prefix from %I on %s; pfx %I %M",
-					ra->src, conf.dev, conf.v6pref, conf.mask);
-
-			/* keep it arround so we wont comlain again */
-			r->prefixlt = r->routerlt = ~0UL;
-			continue;
-		}
-
 		/* add prefix and update parameters */
 		issueadd6(&conf);
 
-		/* report this prefix configuration only once */
+		/* report only once */
 		if(seen)
+			continue;
+
+		/* must not be deprecated */
+		if(conf.preflt == 0)
 			continue;
 
 		DEBUG("got RA from %I on %s; pfx %I %M",
