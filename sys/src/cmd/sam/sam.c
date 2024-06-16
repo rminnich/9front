@@ -5,7 +5,6 @@ int	io;
 int	panicking;
 int	rescuing;
 String	genstr;
-String	rhs;
 String	curwd;
 String	cmdstr;
 Rune	empty[] = { 0 };
@@ -28,8 +27,6 @@ char	*rsamname = RSAM;
 File	*lastfile;
 Disk	*disk;
 long	seq;
-
-Rune	baddir[] = { '<', 'b', 'a', 'd', 'd', 'i', 'r', '>', '\n'};
 
 void	usage(void);
 
@@ -78,7 +75,6 @@ void main(int argc, char *argv[])
 	Strinit0(&lastpat);
 	Strinit0(&lastregexp);
 	Strinit0(&genstr);
-	Strinit0(&rhs);
 	Strinit0(&curwd);
 	Strinit0(&plan9cmd);
 	home = getenv(HOME);
@@ -538,20 +534,20 @@ cd(String *str)
 }
 
 int
-loadflist(String *s)
+loadflist(String *s, int blank)
 {
 	int c, i;
 
 	c = s->s[0];
-	for(i = 0; s->s[i]==' ' || s->s[i]=='\t'; i++)
+	for(i = 0; i < s->n && (s->s[i]==' ' || s->s[i]=='\t'); i++)
 		;
-	if((c==' ' || c=='\t') && s->s[i]!='\n'){
+	if(blank == 0 || ((c==' ' || c=='\t') && s->s[i]!='\n')){
 		if(s->s[i]=='<'){
 			Strdelete(s, 0L, (long)i+1);
 			readcmd(s);
 		}else{
 			Strzero(&genstr);
-			while((c = s->s[i++]) && c!='\n')
+			while(i < s->n && (c = s->s[i++]) && c!='\n')
 				Straddc(&genstr, c);
 			Straddc(&genstr, '\0');
 		}
@@ -604,13 +600,13 @@ readflist(int readall, int delete)
 }
 
 File *
-tofile(String *s)
+tofile(String *s, int blank)
 {
 	File *f;
 
-	if(s->s[0] != ' ')
+	if(blank && s->s[0] != ' ')
 		error(Eblank);
-	if(loadflist(s) == 0){
+	if(loadflist(s, blank) == 0){
 		f = lookfile(&genstr);	/* empty string ==> nameless file */
 		if(f == 0)
 			error_s(Emenu, genc);
@@ -624,7 +620,7 @@ getfile(String *s)
 {
 	File *f;
 
-	if(loadflist(s) == 0)
+	if(loadflist(s, 1) == 0)
 		logsetname(f = newfile(), &genstr);
 	else if((f=readflist(TRUE, FALSE)) == 0)
 		error(Eblank);
@@ -642,7 +638,7 @@ closefiles(File *f, String *s)
 	}
 	if(s->s[0] != ' ')
 		error(Eblank);
-	if(loadflist(s) == 0)
+	if(loadflist(s, 1) == 0)
 		error(Enewline);
 	readflist(FALSE, TRUE);
 }
