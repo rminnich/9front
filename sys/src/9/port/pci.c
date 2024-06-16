@@ -1019,6 +1019,21 @@ pcihtcap(Pcidev *p, int cap)
 	return pcienumcaps(p, matchhtcap, cap);
 }
 
+enum {
+	MSIXCtrl = 0x02,
+};
+
+static int
+pcimsixdisable(Pcidev *p)
+{
+	int off;
+
+	if((off = pcicap(p, PciCapMSIX)) < 0)
+		return -1;
+	pcicfgw16(p, off + MSIXCtrl, 0);
+	return 0;
+}
+
 static int
 pcigetmsi(Pcidev *p)
 {
@@ -1041,6 +1056,7 @@ pcimsienable(Pcidev *p, uvlong addr, ulong data)
 
 	if((off = pcigetmsi(p)) < 0)
 		return -1;
+	pcimsixdisable(p);	/* make sure MSI-X is off */
 	ok64 = (pcicfgr16(p, off + MSICtrl) & (1<<7)) != 0;
 	pcicfgw32(p, off + MSIAddr, addr);
 	if(ok64) pcicfgw32(p, off + MSIAddr+4, addr >> 32);
@@ -1054,24 +1070,10 @@ pcimsidisable(Pcidev *p)
 {
 	int off;
 
+	pcimsixdisable(p);	/* also disable MSI-X */
 	if((off = pcigetmsi(p)) < 0)
 		return -1;
 	pcicfgw16(p, off + MSICtrl, 0);
-	return 0;
-}
-
-enum {
-	MSIXCtrl = 0x02,
-};
-
-static int
-pcimsixdisable(Pcidev *p)
-{
-	int off;
-
-	if((off = pcicap(p, PciCapMSIX)) < 0)
-		return -1;
-	pcicfgw16(p, off + MSIXCtrl, 0);
 	return 0;
 }
 
@@ -1215,7 +1217,6 @@ pcidisable(Pcidev *p)
 {
 	if(p == nil)
 		return;
-	pcimsixdisable(p);
 	pcimsidisable(p);
 	pciclrbme(p);
 }
