@@ -493,7 +493,7 @@ Plan 9 command.
 Send the range to the standard input of the
 Plan 9 command.
 .TP
-.BI ^ " Plan 9-command
+.BI \*a^ " Plan 9-command
 Send the standard output of the Plan 9 command
 to the command window.
 .TP
