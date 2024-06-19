@@ -823,7 +823,7 @@ nextline(char **str, int *nstr)
 static int
 parseauthor(char **str, int *nstr, char **name, vlong *time)
 {
-	char buf[128];
+	char buf[512];
 	Resub m[4];
 	vlong tz;
 	char *p;
