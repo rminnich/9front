@@ -405,10 +405,11 @@ apply(Kvp *kv, Msg *m, char *buf, int nbuf)
 	Tree t;
 
 	switch(m->op){
-	case Oclearb:
 	case Odelete:
-	case Oclobber:
 		assert(keycmp(kv, m) == 0);
+		return 0;
+	case Oclearb:
+	case Oclobber:
 		return 0;
 	case Oinsert:
 		cpkvp(kv, m, buf, nbuf);
@@ -1359,9 +1360,10 @@ btlookup(Tree *t, Key *k, Kvp *r, char *buf, int nbuf)
 		j = bufsearch(p[i], k, &m, &same);
 		if(j < 0 || !same)
 			continue;
-		if(!(ok || m.op == Oinsert || m.op == Oclearb))
+		if(ok || m.op == Oinsert)
+			ok = apply(r, &m, buf, nbuf);
+		else if(m.op != Oclearb && m.op != Oclobber)
 			fatal("lookup %K << %M missing insert\n", k, &m);
-		ok = apply(r, &m, buf, nbuf);
 		for(j++; j < p[i]->nbuf; j++){
 			getmsg(p[i], j, &m);
 			if(keycmp(k, &m) != 0)
