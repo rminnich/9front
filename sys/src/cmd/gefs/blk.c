@@ -737,7 +737,6 @@ getblk(Bptr bp, int flg)
 	int i;
 
 	i = ihash(bp.addr) % nelem(fs->blklk);
-	tracex("get" , bp, getcallerpc(&bp), -1);
 	qlock(&fs->blklk[i]);
 	if(waserror()){
 		qunlock(&fs->blklk[i]);
