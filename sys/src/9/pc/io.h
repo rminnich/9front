@@ -79,32 +79,6 @@ enum {
 
 #define	BUSUNKNOWN	(-1)
 
-/* SMBus transactions */
-enum
-{
-	SMBquick,		/* sends address only */
-
-	/* write */
-	SMBsend,		/* sends address and cmd */
-	SMBbytewrite,		/* sends address and cmd and 1 byte */
-	SMBwordwrite,		/* sends address and cmd and 2 bytes */
-
-	/* read */
-	SMBrecv,		/* sends address, recvs 1 byte */
-	SMBbyteread,		/* sends address and cmd, recv's byte */
-	SMBwordread,		/* sends address and cmd, recv's 2 bytes */
-};
-
-typedef struct SMBus SMBus;
-struct SMBus {
-	QLock;		/* mutex */
-	Rendez	r;	/* rendezvous point for completion interrupts */
-	void	*arg;	/* implementation dependent */
-	ulong	base;	/* port or memory base of smbus */
-	int	busy;
-	void	(*transact)(SMBus*, int, int, int, uchar*);
-};
-
 /*
  * PCMCIA support code.
  */
