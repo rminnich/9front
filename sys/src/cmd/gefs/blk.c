@@ -473,10 +473,8 @@ compresslog(Arena *a)
 	 */
 	a->loghd = hd;
 	a->logtl = b;
-	for(; i < nblks; i++){
-		cachedel(b->bp.addr);
+	for(; i < nblks; i++)
 		blkdealloc_lk(a, blks[i]);
-	}
 	poperror();
 	free(blks);
 }
