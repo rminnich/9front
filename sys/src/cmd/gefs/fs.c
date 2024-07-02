@@ -2483,6 +2483,7 @@ runsweep(int id, void*)
 				 * arbitrary heuristic -- 10% of our reserved
 				 * space seems like a fine time to compress.
 				 */
+				if(0) /* FIXME: reenable */
 				if(a->nlog >= a->reserve/(10*Blksz)){
 					oldhd[i] = a->loghd;
 					epochstart(id);
