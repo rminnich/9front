@@ -13,6 +13,7 @@ char *key;
 void	rex(int, char*);
 void	rcpu(int, char*);
 void	tcpexec(int, char*, char*);
+void	sshexec(char*, char*);
 int	call(char *, char*, char*, char**);
 char	*buildargs(char*[]);
 int	send(int);
@@ -69,6 +70,14 @@ main(int argc, char *argv[])
 	if(fd >= 0)
 		rex(fd, args);
 	close(fd);
+
+	/* if there's an ssh port, try that */
+	fd = call("tcp", host, "ssh", &addr);
+	if(fd >= 0){
+		close(fd);
+		sshexec(host, args);
+		/* falls through if no ssh */
+	}
 
 	/* specific attempts */
 	fd = call("tcp", host, "shell", &addr);
@@ -203,8 +212,28 @@ tcpexec(int fd, char *addr, char *cmd)
 			error("write error", 0);
 	}
 	sleep(250);
-	postnote(PNPROC, kid, note);/**/
+	postnote(PNPROC, kid, note);
 	exits(0);
+}
+
+void
+sshexec(char *host, char *cmd)
+{
+	char *argv[10];
+	int n;
+
+	n = 0;
+	argv[n++] = "ssh";
+	if(!returns)
+		argv[n++] = "-r";
+	if(ruser){
+		argv[n++] = "-u";
+		argv[n++] = ruser;
+	}
+	argv[n++] = host;
+	argv[n++] = cmd;
+	argv[n] = 0;
+	exec("/bin/ssh", argv);
 }
 
 int
