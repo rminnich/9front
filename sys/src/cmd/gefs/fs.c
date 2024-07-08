@@ -2474,10 +2474,10 @@ runsweep(int id, void*)
 				oldhd[i] = Zb;
 				qlock(a);
 				/*
-				 * arbitrary heuristic -- 10% of our reserved
-				 * space seems like a fine time to compress.
+				 * arbitrary heuristic -- try compressing
+				 * when the log doubles in size.
 				 */
-				if(a->nlog >= a->reserve/(10*Blksz)){
+				if(a->nlog >= 2*a->lastlogsz){
 					oldhd[i] = a->loghd;
 					epochstart(id);
 					if(waserror()){

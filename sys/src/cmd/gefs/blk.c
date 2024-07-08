@@ -483,6 +483,7 @@ compresslog(Arena *a)
 	a->loghd = (Bptr){blks[0], -1, -1};
 	a->logtl = b;	/* written back by sync() later */
 	a->nlog = nlog;
+	a->lastlogsz = nlog;
 
 	/* May add blocks to new log */
 	for(; i < nblks; i++)

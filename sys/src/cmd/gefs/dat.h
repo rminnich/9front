@@ -596,6 +596,7 @@ struct Arena {
 	vlong	used;
 	vlong	reserve;
 	/* allocation log */
+	vlong	lastlogsz;	/* size after last compression */
 	vlong	nlog;		/* number of blocks in log */
 	Bptr	loghd;		/* allocation log */
 	Blk	*logtl;		/* end of the log, open for writing */
