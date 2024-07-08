@@ -115,6 +115,7 @@ enum {
 	Bcached	= 1 << 3,
 	Bqueued	= 1 << 4,
 	Blimbo	= 1 << 5,
+	Bstatic	= 1 << 6,
 };
 
 enum {
@@ -540,7 +541,6 @@ struct Gefs {
 
 	Syncq	syncq[32];
 
-
 	int	fd;
 	long	rdonly;
 	int	noauth;
@@ -587,7 +587,6 @@ struct Arena {
 	Avltree *free;
 	Blk	**queue;
 	int	nqueue;
-	int	lbidx;
 	Blk	*logbuf[2];	/* preallocated log pages */
 	Blk	*h0;		/* arena header */
 	Blk	*h1;		/* arena footer */
@@ -597,7 +596,7 @@ struct Arena {
 	vlong	used;
 	vlong	reserve;
 	/* allocation log */
-	vlong	nlog;		/* logged since last copression */
+	vlong	nlog;		/* number of blocks in log */
 	Bptr	loghd;		/* allocation log */
 	Blk	*logtl;		/* end of the log, open for writing */
 	Syncq	*sync;
@@ -747,6 +746,7 @@ struct Blk {
 	/* debug */
 	uintptr queued;
 	uintptr lasthold;
+	uintptr lasthold0;
 	uintptr lastdrop;
 	uintptr	enqueued;
 	uintptr cached;

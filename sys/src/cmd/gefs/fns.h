@@ -66,7 +66,6 @@ void	freebp(Tree*, Bptr);
 int	logbarrier(Arena *, vlong);
 void	dlappend(Dlist *dl, Bptr);
 void	killblk(Tree*, Bptr);
-void	blkdealloc(vlong);
 ushort	blkfill(Blk*);
 uvlong	blkhash(Blk*);
 uvlong	bufhash(void*, usize);
@@ -88,6 +87,7 @@ void	growfs(char*);
 void	loadarena(Arena*, Bptr);
 void	loadfs(char*);
 void	loadlog(Arena*, Bptr);
+void	flushlog(Arena*);
 int	scandead(Dlist*, int, void(*)(Bptr, void*), void*);
 int	endfs(void);
 void	compresslog(Arena*);
@@ -108,9 +108,8 @@ void	btenter(Tree*, Scan*);
 int	btnext(Scan*, Kvp*);
 void	btexit(Scan*);
 
-int	checkflag(Blk *b, int);
-void	setflag(Blk *b, int);
-void	clrflag(Blk *b, int);
+int	checkflag(Blk *b, int, int);
+void	setflag(Blk *b, int, int);
 
 char*	estrdup(char*);
 

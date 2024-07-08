@@ -32,6 +32,7 @@ lrutop(Blk *b)
 	 * its now in use.
 	 */
 	assert(b->magic == Magic);
+	assert(checkflag(b, 0, Bstatic));
 	if(b->ref != 0){
 		qunlock(&fs->lrulk);
 		return;
@@ -58,6 +59,7 @@ lrubot(Blk *b)
 	 * its now in use.
 	 */
 	assert(b->magic == Magic);
+	assert(checkflag(b, 0, Bstatic));
 	if(b->ref != 0){
 		qunlock(&fs->lrulk);
 		return;
@@ -84,21 +86,18 @@ cacheins(Blk *b)
 	bkt = &fs->bcache[h % fs->cmax];
 	qlock(&fs->lrulk);
 	traceb("cache", b->bp);
-	if(checkflag(b, Bcached)){
-		qunlock(&fs->lrulk);
-		return;
-	}
+	assert(checkflag(b, 0, Bstatic|Bcached));
+	setflag(b, Bcached, 0);
 	assert(b->hnext == nil);
 	for(Blk *bb = bkt->b; bb != nil; bb = bb->hnext)
-		assert(b != bb);
-	setflag(b, Bcached);
+		assert(b != bb && b->bp.addr != bb->bp.addr);
 	b->cached = getcallerpc(&b);
 	b->hnext = bkt->b;
 	bkt->b = b;
 	qunlock(&fs->lrulk);
 }
 
-void
+static void
 cachedel_lk(vlong addr)
 {
 	Bucket *bkt;
@@ -108,16 +107,19 @@ cachedel_lk(vlong addr)
 	if(addr == -1)
 		return;
 
-	tracex("uncache", Zb, addr, getcallerpc(&addr));
+	Bptr bp = {addr, -1, -1};
+	tracex("uncache", bp, -1, getcallerpc(&addr));
 	h = ihash(addr);
 	bkt = &fs->bcache[h % fs->cmax];
 	p = &bkt->b;
 	for(b = bkt->b; b != nil; b = b->hnext){
 		if(b->bp.addr == addr){
+			/* FIXME: Until we clean up snap.c, we can have dirty blocks in cache */
+			assert(checkflag(b, Bcached, Bstatic)); //Bdirty));
 			*p = b->hnext;
-			clrflag(b, Bcached);
 			b->uncached = getcallerpc(&addr);
 			b->hnext = nil;
+			setflag(b, 0, Bcached);
 			break;
 		}
 		p = &b->hnext;
@@ -127,7 +129,8 @@ void
 cachedel(vlong addr)
 {
 	qlock(&fs->lrulk);
-	tracex("uncachelk", Zb, addr, getcallerpc(&addr));
+	Bptr bp = {addr, -1, -1};
+	tracex("uncachelk", bp, -1, getcallerpc(&addr));
 	cachedel_lk(addr);
 	qunlock(&fs->lrulk);
 }
@@ -170,12 +173,12 @@ cachepluck(void)
 	b = fs->ctail;
 	assert(b->magic == Magic);
 	assert(b->ref == 0);
-	if(checkflag(b, Bcached))
+	if(checkflag(b, Bcached, 0))
 		cachedel_lk(b->bp.addr);
-	if(checkflag(b, Bcached))
+	if(checkflag(b, Bcached, 0))
 		fprint(2, "%B cached %#p freed %#p\n", b->bp, b->cached, b->freed);
+	assert(checkflag(b, 0, Bcached));
 	lrudel(b);
-	assert(!checkflag(b, Bcached));
 	b->flag = 0;
 	b->lasthold = 0;
 	b->lastdrop = 0;

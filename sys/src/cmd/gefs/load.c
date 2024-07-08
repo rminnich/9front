@@ -54,6 +54,12 @@ loadarena(Arena *a, Bptr hd)
 	unpackarena(a, b->data, Arenasz);
 	if((a->free = avlcreate(rangecmp)) == nil)
 		error(Enomem);
+	a->logbuf[0] = cachepluck();
+	a->logbuf[1] = cachepluck();
+	a->logbuf[0]->bp = (Bptr){-1, -1, -1};
+	a->logbuf[1]->bp = (Bptr){-1, -1, -1};
+	setflag(a->logbuf[0], Bstatic, 0);
+	setflag(a->logbuf[1], Bstatic, 0);
 	a->h0 = h0;
 	a->h1 = h1;
 	a->used = a->size;
@@ -117,10 +123,6 @@ loadfs(char *dev)
 	}
 	for(i = 0; i < fs->narena; i++){
 		a = &fs->arenas[i];
-		a->logbuf[0] = cachepluck();
-		a->logbuf[1] = cachepluck();
-		a->logbuf[0]->bp = (Bptr){-1, -1, -1};
-		a->logbuf[1]->bp = (Bptr){-1, -1, -1};
 		loadlog(a, a->loghd);
 	}
 

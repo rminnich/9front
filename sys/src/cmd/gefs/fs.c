@@ -73,7 +73,6 @@ sync(void)
 	Dlist dl;
 	int i;
 
-
 	qlock(&fs->synclk);
 	if(waserror()){
 		fprint(2, "failed to sync: %s\n", errmsg());
@@ -119,15 +118,12 @@ sync(void)
 		 * get reused.
 		 */
 		logbarrier(a, fs->qgen);
-		finalize(a->logtl);
-		syncblk(a->logtl);
+		flushlog(a);
 
 		packarena(a->h0->data, Blksz, a);
 		packarena(a->h1->data, Blksz, a);
 		finalize(a->h0);
 		finalize(a->h1);
-		setflag(a->h0, Bdirty);
-		setflag(a->h1, Bdirty);
 		fs->arenabp[i] = a->h0->bp;
 		qunlock(a);
 	}
@@ -137,8 +133,6 @@ sync(void)
 	packsb(fs->sb1->buf, Blksz, fs);
 	finalize(fs->sb0);
 	finalize(fs->sb1);
-	setflag(fs->sb0, Bdirty);
-	setflag(fs->sb1, Bdirty);
 	fs->snap.dirty = 0;
 	qunlock(&fs->mutlk);
 
@@ -2477,15 +2471,12 @@ runsweep(int id, void*)
 				ainc(&fs->rdonly);
 			for(i = 0; i < fs->narena; i++){
 				a = &fs->arenas[i];
-				oldhd[i].addr = -1;
-				oldhd[i].hash = -1;
-				oldhd[i].gen = -1;
+				oldhd[i] = Zb;
 				qlock(a);
 				/*
 				 * arbitrary heuristic -- 10% of our reserved
 				 * space seems like a fine time to compress.
 				 */
-				if(0) /* FIXME: reenable */
 				if(a->nlog >= a->reserve/(10*Blksz)){
 					oldhd[i] = a->loghd;
 					epochstart(id);

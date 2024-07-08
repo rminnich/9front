@@ -158,6 +158,7 @@ checklog(int fd, Bptr hd)
 			fprint(fd, "error loading %B\n", bp);
 			return 0;
 		}
+traceb("chklg", bp);
 		b = getblk(bp, 0);
 		nb = b->logp;
 		dropblk(b);

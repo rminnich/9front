@@ -168,6 +168,7 @@ initarena(Arena *a, uvlong hdaddr, vlong asz)
 	char *p;
 
 	b = cachepluck();
+
 	addr = hdaddr+2*Blksz;	/* leave room for arena hdr */
 
 	a->loghd.addr = -1;
@@ -180,7 +181,7 @@ initarena(Arena *a, uvlong hdaddr, vlong asz)
 	b->logsz = 0;
 	b->logp = (Bptr){-1, -1, -1};
 	b->data = b->buf + Loghdsz;
-	setflag(b, Bdirty);
+	setflag(b, Bdirty, 0);
 
 	p = b->buf + Loghdsz;
 	b->logp = (Bptr){-1, -1, -1};
@@ -206,21 +207,18 @@ initarena(Arena *a, uvlong hdaddr, vlong asz)
 	h0->type = Tarena;
 	h0->bp.addr = hdaddr;
 	h0->data = h0->buf+2;
+	packarena(h0->data, Arenasz, a);
 	finalize(h0);
+	syncblk(h0);
+	a->h0 = h0;
 
 	memset(h1->buf, 0, sizeof(h1->buf));
 	h1->type = Tarena;
 	h1->bp.addr = hdaddr+Blksz;
 	h1->data = h1->buf+2;
-	finalize(h1);
-
-	packarena(h0->data, Arenasz, a);
 	packarena(h1->data, Arenasz, a);
-	finalize(h0);
 	finalize(h1);
-	syncblk(h0);
 	syncblk(h1);
-	a->h0 = h0;
 	a->h1 = h1;
 }
 

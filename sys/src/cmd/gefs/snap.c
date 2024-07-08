@@ -606,7 +606,7 @@ killblk(Tree *t, Bptr bp)
 	}
 	p = dl->ins->data + dl->ins->logsz;
 	dl->ins->logsz += 8;
-	setflag(dl->ins, Bdirty);
+	setflag(dl->ins, Bdirty, 0);
 	PACK64(p, bp.addr);
 	poperror();
 	putdl(dl);
