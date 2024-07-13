@@ -1255,7 +1255,7 @@ fswalk(Fmsg *m)
 		if(strlen(name) > Maxname)
 			error(Elength);
 		if(fsaccess(o, d.mode, d.uid, d.gid, DMEXEC) != 0)
-			error(Eperm);
+			break;
 		if(d.qid.path == Qdump){
 			if((mnt = getmount(m->wname[i])) == nil)
 				error(Esrch);
@@ -1604,7 +1604,7 @@ static void
 fscreate(Fmsg *m)
 {
 	char *p, *e, buf[Kvmax], upkbuf[Keymax], upvbuf[Inlmax];
-	int nm, duid, dgid;
+	int nm, duid, dgid, dmode;
 	Dent *de;
 	vlong oldlen;
 	Qid old;
@@ -1650,6 +1650,7 @@ fscreate(Fmsg *m)
 	}
 	duid = de->uid;
 	dgid = de->gid;
+	dmode = de->mode;
 	runlock(de);
 
 	nm = 0;
@@ -1703,6 +1704,7 @@ fscreate(Fmsg *m)
 	f->dent = de;
 	f->duid = duid;
 	f->dgid = dgid;
+	f->dmode = dmode;
 	if(m->mode & ORCLOSE)
 		f->rclose = emalloc(sizeof(Amsg), 1);
 
