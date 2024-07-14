@@ -12,7 +12,7 @@ Bopen, Bfdopen, Binit, Binits, Brdline, Brdstr, Bgetc, Bgetrune, Bgetd, Bungetc,
 .ft L
 .nf
 .ta \w'    'u +\w'    'u +\w'    'u +\w'    'u +\w'    'u
-typedef struct Biobufhdr	Biobufhdr;
+typedef struct Biobufhdr Biobufhdr;
 struct Biobufhdr {
 	void	*aux;		/* user data */
 	...			/* internals */
