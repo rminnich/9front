@@ -26,6 +26,7 @@ void
 getscreen(int argc, char **argv)
 {
 	char *t;
+	uint tlen;
 
 	ARGBEGIN{
 	case 'a':
@@ -43,8 +44,8 @@ getscreen(int argc, char **argv)
 		threadexitsall("init");
 	}
 	t = getenv("tabstop");
-	if(t != nil)
-		maxtab = strtoul(t, nil, 0);
+	if(t != nil && (tlen = strtoul(t, nil, 0)) > 0)
+		maxtab = tlen;
 	free(t);
 	draw(screen, screen->clipr, display->white, nil, ZP);
 }
