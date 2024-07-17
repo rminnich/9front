@@ -676,6 +676,7 @@ struct Fid {
 	Mount	*mnt;
 	Scan	*scan;	/* in progres scan */
 	Dent	*dent;	/* (pqid, name) ref, modified on rename */
+	Dent	*dir;
 	Amsg	*rclose;	
 	void	*auth;
 
@@ -692,6 +693,7 @@ struct Fid {
 	int	dmode;
 
 	char	permit;
+	char	fromdump;
 };
 
 enum {

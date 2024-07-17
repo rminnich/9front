@@ -36,6 +36,19 @@ walk1(Tree *t, vlong up, char *name, Qid *qid, vlong *len)
 }
 
 static void
+touch(Dent *de, Msg *msg)
+{
+	wlock(de);
+	de->qid.vers++;
+	msg->op = Owstat;
+	msg->k = de->k;
+	msg->nk = de->nk;
+	msg->v = "\0";
+	msg->nv = 1;
+	wunlock(de);
+}
+
+static void
 wrbarrier(void)
 {
 	tracev("barrier", fs->qgen);
@@ -720,6 +733,7 @@ putfid(Fid *f)
 	if(adec(&f->ref) != 0)
 		return;
 	clunkdent(f->mnt, f->dent);
+	clunkdent(f->mnt, f->dir);
 	clunkmount(f->mnt);
 	free(f);
 }
@@ -758,6 +772,7 @@ dupfid(Conn *c, u32int new, Fid *f)
 	if(n->mnt != nil)
 		ainc(&n->mnt->ref);
 	ainc(&n->dent->ref);
+	ainc(&n->dir->ref);
 	setmalloctag(n, getcallerpc(&c));
 	return n;
 }
@@ -989,6 +1004,7 @@ fsauth(Fmsg *m)
 	f.mode = -1;
 	f.iounit = m->conn->iounit;
 	f.dent = de;
+	f.dir = de;
 	f.uid = -1;
 	f.duid = -1;
 	f.dgid = -1;
@@ -1167,6 +1183,7 @@ fsattach(Fmsg *m)
 	f.mode = -1;
 	f.iounit = m->conn->iounit;
 	f.dent = de;
+	f.dir = de;
 	f.uid = uid;
 	f.duid = d.uid;
 	f.dgid = d.gid;
@@ -1176,6 +1193,8 @@ fsattach(Fmsg *m)
 			error(Eperm);
 		f.permit = 1;
 	}
+	if(strcmp(aname, "dump") == 0)
+		f.fromdump = 1;
 	if(dupfid(m->conn, m->fid, &f) == nil)
 		error(Efid);
 
@@ -1190,29 +1209,39 @@ Err:	clunkdent(mnt, de);
 }
 
 static int
-findparent(Tree *t, Fid *f, vlong *qpath, char **name, char *buf, int nbuf)
+findparent(Tree *t, vlong up, vlong *qpath, char **name, char *buf, int nbuf)
 {
 	char *p, kbuf[Keymax];
 	Kvp kv;
 	Key k;
 
-	p = packsuper(kbuf, sizeof(kbuf), f->pqpath);
+	p = packsuper(kbuf, sizeof(kbuf), up);
 	k.k = kbuf;
 	k.nk = p - kbuf;
 	if(!btlookup(t, &k, &kv, buf, nbuf))
-		return 0;
+		error(Esrch);
 	*name = unpackdkey(kv.v, kv.nv, qpath);
 	return 1;
 }
 
 static void
+dkey(Key *k, vlong up, char *name, char *buf, int nbuf)
+{
+	char *p;
+
+	p = packdkey(buf, nbuf, up, name);
+	k->k = buf;
+	k->nk = p - buf;
+}
+
+static void
 fswalk(Fmsg *m)
 {
-	char *p, *name, kbuf[Maxent], kvbuf[Kvmax];
+	char *name, kbuf[Maxent], kvbuf[Kvmax];
 	int duid, dgid, dmode;
-	vlong up, prev;
+	vlong up, upup, prev;
+	Dent *dent, *dir;
 	Fid *o, *f;
-	Dent *dent;
 	Mount *mnt;
 	Amsg *ao;
 	Tree *t;
@@ -1235,7 +1264,7 @@ fswalk(Fmsg *m)
 		error(Einuse);
 	t = o->mnt->root;
 	mnt = o->mnt;
-	up = o->qpath;
+	up = o->pqpath;
 	prev = o->qpath;
 	rlock(o->dent);
 	d = *o->dent;
@@ -1250,41 +1279,30 @@ fswalk(Fmsg *m)
 			error(Elength);
 		if(fsaccess(o, d.mode, d.uid, d.gid, DMEXEC) != 0)
 			break;
-		if(d.qid.path == Qdump){
-			if((mnt = getmount(m->wname[i])) == nil)
-				error(Esrch);
-			if(waserror()){
-				clunkmount(mnt);
-				nexterror();
+		if(strcmp(name, "..") == 0){
+			if(up == -1 && o->fromdump){
+				mnt = fs->snapmnt;
+				filldumpdir(&d);
+				prev = -1ULL;
+				up = -1ULL;
+				r.wqid[i] = d.qid;
+				continue;
 			}
+			findparent(t, up, &prev, &name, kbuf, sizeof(kbuf));
+		}else if(d.qid.path == Qdump){
+			mnt = getmount(m->wname[i]);
+			name = "";
+			prev = -1ULL;
 			t = mnt->root;
-			p = packdkey(kbuf, sizeof(kbuf), -1ULL, "");
-			poperror();
-		}else{
-			if(strcmp(m->wname[i], "..") == 0){
-				if(o->pqpath == Qdump){
-					mnt = fs->snapmnt;
-					filldumpdir(&d);
-					duid = d.uid;
-					dgid = d.gid;
-					dmode = d.mode;
-					goto Found;
-				}
-				if(!findparent(t, o, &prev, &name, kbuf, sizeof(kbuf)))
-					error(Esrch);
-			}
-			p = packdkey(kbuf, sizeof(kbuf), prev, name);
 		}
+		up = prev;
 		duid = d.uid;
 		dgid = d.gid;
 		dmode = d.mode;
-		k.k = kbuf;
-		k.nk = p - kbuf;
+		dkey(&k, prev, name, kbuf, sizeof(kbuf));
 		if(!btlookup(t, &k, &kv, kvbuf, sizeof(kvbuf)))
 			break;
 		kv2dir(&kv, &d);
-Found:
-		up = prev;
 		prev = d.qid.path;
 		r.wqid[i] = d.qid;
 	}
@@ -1299,6 +1317,7 @@ Found:
 	}
 	if(i > 0 && i == m->nwname){
 		lock(f);
+		ao = nil;
 		if(waserror()){
 			if(f != o)
 				clunkfid(m->conn, f, &ao);
@@ -1306,11 +1325,21 @@ Found:
 			unlock(f);
 			nexterror();
 		}
-		if(up == Qdump)
-			dent = getdent(mnt, -1ULL, &d);
-		else
+		if(up == -1ULL){
+			/* the root contains itself, I guess */
 			dent = getdent(mnt, up, &d);
+			dir = getdent(mnt, up, &d);
+		}else{
+			dent = getdent(mnt, up, &d);
+			findparent(t, up, &upup, &name, kbuf, sizeof(kbuf));
+			dkey(&k, upup, name, kbuf, sizeof(kbuf));
+			if(!btlookup(t, &k, &kv, kvbuf, sizeof(kvbuf)))
+				error(Efs);
+			kv2dir(&kv, &d);
+			dir = getdent(mnt, upup, &d);
+		}
 		clunkdent(f->mnt, f->dent);
+		clunkdent(f->mnt, f->dir);
 		if(mnt != f->mnt){
 			clunkmount(f->mnt);
 			ainc(&mnt->ref);
@@ -1319,6 +1348,7 @@ Found:
 		f->qpath = r.wqid[i-1].path;
 		f->pqpath = up;
 		f->dent = dent;
+		f->dir = dir;
 		f->duid = duid;
 		f->dgid = dgid;
 		f->dmode = dmode;
@@ -1369,7 +1399,7 @@ fswstat(Fmsg *m, int id, Amsg **ao)
 	Qid old;
 	Fcall r;
 	Dent *de;
-	Msg mb[3];
+	Msg mb[4];
 	Xdir n;
 	Dir d;
 	Tree *t;
@@ -1552,6 +1582,7 @@ fswstat(Fmsg *m, int id, Amsg **ao)
 			mb[nm].nv = mb[nm-1].nk;
 			nm++;
 		}
+		touch(f->dir, &mb[nm++]);
 	}else{
 		opbuf[0] = op;
 		mb[nm].op = Owstat;
@@ -1603,7 +1634,7 @@ fscreate(Fmsg *m)
 	vlong oldlen;
 	Qid old;
 	Fcall r;
-	Msg mb[2];
+	Msg mb[3];
 	Fid *f;
 	Xdir d;
 
@@ -1688,6 +1719,7 @@ fscreate(Fmsg *m)
 		mb[nm].nv = p - upvbuf;
 		nm++;
 	}
+	touch(f->dent, &mb[nm++]);
 	upsert(f->mnt, mb, nm);
 
 	de = getdent(f->mnt, f->qpath, &d);
@@ -1739,7 +1771,8 @@ fsremove(Fmsg *m, int id, Amsg **ao)
 {
 	char *e, buf[Kvmax];
 	Fcall r;
-	Msg mb[2];
+	int nm;
+	Msg mb[3];
 	Tree *t;
 	Kvp kv;
 	Fid *f;
@@ -1749,6 +1782,8 @@ fsremove(Fmsg *m, int id, Amsg **ao)
 		return;
 	}
 	t = f->mnt->root;
+	nm = 0;
+	*ao = nil;
 	lock(f);
 	clunkfid(m->conn, f, ao);
 	/* rclose files are getting removed here anyways */
@@ -1758,7 +1793,6 @@ fsremove(Fmsg *m, int id, Amsg **ao)
 
 	truncwait(f->dent, id);
 	wlock(f->dent);
-	*ao = nil;
 	if(waserror()){
 		rerror(m, errmsg());
 		free(*ao);
@@ -1783,19 +1817,21 @@ fsremove(Fmsg *m, int id, Amsg **ao)
 	if(fsaccess(f, f->dmode, f->duid, f->dgid, DMWRITE) == -1)
 		error(Eperm);
 	lock(f);
-	mb[0].op = Odelete;
-	mb[0].k = f->dent->k;
-	mb[0].nk = f->dent->nk;
-	mb[0].nv = 0;
+	mb[nm].op = Odelete;
+	mb[nm].k = f->dent->k;
+	mb[nm].nk = f->dent->nk;
+	mb[nm].v = "\0";
+	mb[nm].nv = 1;
+	nm++;
 	unlock(f);
 
 	if(f->dent->qid.type & QTDIR){
 		packsuper(buf, sizeof(buf), f->qpath);
-		mb[1].op = Oclobber;
-		mb[1].k = buf;
-		mb[1].nk = Upksz;
-		mb[1].nv = 0;
-		upsert(f->mnt, mb, 2);
+		mb[nm].op = Oclobber;
+		mb[nm].k = buf;
+		mb[nm].nk = Upksz;
+		mb[nm].nv = 0;
+		nm++;
 	}else{
 		if(*ao == nil)
 			*ao = emalloc(sizeof(Amsg), 1);
@@ -1806,8 +1842,9 @@ fsremove(Fmsg *m, int id, Amsg **ao)
 		(*ao)->off = 0;
 		(*ao)->end = f->dent->length;
 		(*ao)->dent = nil;
-		upsert(f->mnt, mb, 1);
 	}
+	touch(f->dir, &mb[nm++]);
+	upsert(f->mnt, mb, nm);
 	f->dent->gone = 1;
 	r.type = Rremove;
 	respond(m, &r);
