@@ -262,7 +262,7 @@ filldumpdir(Xdir *d)
 	d->qid.path = Qdump;
 	d->qid.vers = fs->nextgen;
 	d->qid.type = QTDIR;
-	d->mode = 0555;
+	d->mode = DMDIR|0555;
 	d->atime = 0;
 	d->mtime = 0;
 	d->length = 0;
@@ -1991,7 +1991,7 @@ readsnap(Fmsg *m, Fid *f, Fcall *r)
 	}
 	p = r->data;
 	n = m->count;
-	d = f->dent->Xdir;
+	filldumpdir(&d);
 	if(s->overflow){
 		memcpy(d.name, s->kv.k+1, s->kv.nk-1);
 		d.name[s->kv.nk-1] = 0;
