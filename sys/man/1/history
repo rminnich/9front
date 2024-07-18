@@ -9,7 +9,10 @@ history \- print file names from the dump
 .B -fu
 ] [
 .B -d
-.I dumpfilesystem
+.I dumpfs
+] [
+.B -t
+.I snaptag
 ] [
 .B -s
 .I yyyymmdd
@@ -63,6 +66,13 @@ The
 .B -d
 option selects some other dump file system such as
 .IR /n/bootesdump .
+.PP
+The
+.B -t
+option selects some other snapshot tag within the file system.
+If not specified, it defaults to the
+.I main
+snapshot tag.
 .PP
 The
 .B -f

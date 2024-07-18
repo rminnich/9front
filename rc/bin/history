@@ -31,7 +31,7 @@ fn ysearch {
 		echo history: warning: $file does not exist >[1=2]
 
 	old=()
-	ls -Qqr /n/$dump/*/*/$file >[2] /dev/null |
+	list $file |
 	sed  's/\(([^ ]*) *([^ ]*) *([^ ]*)\)/\1\2\3/p' |
 	awk '"/n/'$dump/$since'" <= $2 {next}
 	     $1 != qid {
@@ -46,7 +46,7 @@ fn ysearch {
 	}
 }
 
-flagfmt='D,a,b,f,c,e,m,n,w,u,d:dump,s since'
+flagfmt='D,a,b,f,c,e,m,n,w,u,t:tag tag,d:dump,s since'
 args='[ -Dabcemnw ] [ -uf ] [ -d dumpfilesystem ] [ -s yyyymmdd ] files ...'
 if(! ifs=() eval `{aux/getflags $*} || 
    ~ $#* 0 ||
@@ -58,14 +58,23 @@ if(! ifs=() eval `{aux/getflags $*} ||
 
 if(~ $#dump 0)
 	dump=dump
-
+if(~ $#tag 0)
+	tag=main
 if(~ $#flags 0)
 	flags=`{date -f 'YYYYMMDD'}
 
 if(~ $#flagu 1)
 	flagu=-u
 
-since=`{date -f 'YYYY\/MMDD' `{seconds -f 'YYYYMMDD' $flags}}
+# probably gefs
+if(test -e /n/$dump/adm){
+	fn list { ls -Qqr /n/$dump/$tag@day.*/$1  >[2] /dev/null }
+	since=`{date -f '[main@day.]YYYY.MM.DD[_]hh:mm:ss' `{seconds -f 'YYYYMMDD' $flags}}
+}
+if not {
+	fn list { ls -Qqr /n/$dump/*/*/$1  >[2] /dev/null }
+	since=`{date -f 'YYYY\/MMDD' `{seconds -f 'YYYYMMDD' $flags}}
+}
 
 9fs $dump
 
