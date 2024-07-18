@@ -2508,7 +2508,9 @@ runsweep(int id, void*)
 				ainc(&fs->rdonly);
 			for(i = 0; i < fs->narena; i++){
 				a = &fs->arenas[i];
-				oldhd[i] = Zb;
+				oldhd[i].addr = -1;
+				oldhd[i].hash = -1;
+				oldhd[i].gen = -1;
 				qlock(a);
 				/*
 				 * arbitrary heuristic -- try compressing
