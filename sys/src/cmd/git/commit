@@ -119,7 +119,7 @@ files=()
 if(test -f .git/merge-parents)
 	files=`$nl{git/query -c `{cat .git/merge-parents} | sed 's/^..//'}
 if(! ~ $#* 0)
-	files=($files `$nl{git/walk -c `$nl{cleanname -d $gitrel $*}})
+	files=($files `$nl{git/walk -fRMA -c `$nl{cleanname -d $gitrel $*}})
 if(~ $status '' || ~ $#files 0 && ! test -f .git/merge-parents && ~ $#revise 0)
 	die 'nothing to commit'
 @{
