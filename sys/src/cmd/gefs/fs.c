@@ -1334,7 +1334,7 @@ fswalk(Fmsg *m)
 			findparent(t, up, &upup, &name, kbuf, sizeof(kbuf));
 			dkey(&k, upup, name, kbuf, sizeof(kbuf));
 			if(!btlookup(t, &k, &kv, kvbuf, sizeof(kvbuf)))
-				error(Efs);
+				broke("missing parent");
 			kv2dir(&kv, &d);
 			dir = getdent(mnt, upup, &d);
 		}
@@ -1720,6 +1720,7 @@ fscreate(Fmsg *m)
 		nm++;
 	}
 	touch(f->dent, &mb[nm++]);
+	assert(nm <= nelem(mb));
 	upsert(f->mnt, mb, nm);
 
 	de = getdent(f->mnt, f->qpath, &d);
@@ -1844,6 +1845,7 @@ fsremove(Fmsg *m, int id, Amsg **ao)
 		(*ao)->dent = nil;
 	}
 	touch(f->dir, &mb[nm++]);
+	assert(nm <= nelem(mb));
 	upsert(f->mnt, mb, nm);
 	f->dent->gone = 1;
 	r.type = Rremove;

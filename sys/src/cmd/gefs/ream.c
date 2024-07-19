@@ -75,7 +75,7 @@ initroot(Blk *r)
 	dir2kv(-1, &d, &kv, vbuf, sizeof(vbuf));
 	setval(r, &kv);
 
-	p = packsuper(kbuf, sizeof(kbuf), 0);
+	p = packsuper(kbuf, sizeof(kbuf), Qmainroot);
 	kv.k = kbuf;
 	kv.nk = p - kbuf;
 	p = packdkey(vbuf, sizeof(vbuf), -1, "");
