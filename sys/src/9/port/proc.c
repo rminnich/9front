@@ -406,6 +406,19 @@ queueproc(Schedq *rq, Proc *p)
 		return -1;
 	}
 	p->state = Ready;
+
+	/*
+	 * When the priority is very low (process is using
+	 * more than its fair share) or when it has changed,
+	 * reset processor affinity.
+	 *
+	 * Long running processes would otherwise be stuck
+	 * on the same cpu preventing sharing the load.
+	 * When the priority changes, we want to give
+	 * every cpu a chance to pick up the load.
+	 */
+	if(pri < 3 || pri != p->priority)
+		p->mp = nil;
 	p->priority = pri;
 
 	if(pri == PriEdf){
