@@ -362,6 +362,7 @@ txproc(void *arg)
 			d->status = BLEN(b) | TD_OWN | TD_R | TD_L | TD_TC;
 			i++;
 		}
+		coherence();
 		wr(ctlr, ENET_TDAR, TDAR_ACTIVE);
 	}
 }
@@ -453,6 +454,7 @@ rxproc(void *arg)
 			d->status = RD_E;
 			i++;
 		}
+		coherence();
 		wr(ctlr, ENET_RDAR, RDAR_ACTIVE);
 	}
 }
