@@ -351,6 +351,9 @@ reprioritize(Proc *p)
 
 	updatecpu(p);
 
+	if(p->fixedpri)
+		return p->basepri;
+
 	load = MACHP(0)->load;
 	if(load == 0)
 		return p->basepri;

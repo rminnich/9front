@@ -531,9 +531,8 @@ edfready(Proc *p)
 				 * best effort
 				 */
 				DPRINT(">");
-				p->basepri = PriExtra;
-				p->fixedpri = 1;
 				edfunlock();
+				procpriority(p, PriExtra, 1);
 				return 0;	/* Stick on runq[PriExtra] */
 			}
 			DPRINT("%lud edfready %lud[%s] wait release at %lud\n",
