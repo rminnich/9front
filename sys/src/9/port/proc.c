@@ -206,8 +206,6 @@ sched(void)
 		return;
 	}
 	up = runproc();
-	if(up->edf == nil)
-		up->priority = reprioritize(up);
 	if(up != m->readied)
 		m->schedticks = m->ticks + HZ/10;
 	m->readied = nil;
@@ -352,6 +350,7 @@ reprioritize(Proc *p)
 	int fairshare, n, load, ratio;
 
 	updatecpu(p);
+
 	load = MACHP(0)->load;
 	if(load == 0)
 		return p->basepri;
@@ -405,6 +404,7 @@ queueproc(Schedq *rq, Proc *p)
 	}
 	p->state = Ready;
 	p->priority = pri;
+
 	if(pri == PriEdf){
 		Proc *pp, *l;
 
@@ -640,6 +640,8 @@ found:
 	if(edflock(p)){
 		edfrun(p, rq == &runq[PriEdf]);	/* start deadline timer and do admin */
 		edfunlock();
+	} else {
+		p->priority = reprioritize(p);
 	}
 	pt = proctrace;
 	if(pt != nil)
@@ -709,8 +711,9 @@ newproc(void)
 	p->lastlock = nil;
 	p->lastilock = nil;
 	p->nlocks = 0;
-	p->delaysched = 0;
 	p->trace = 0;
+	p->preempted = 0;
+	p->delaysched = 0;
 
 	/* sched params */
 	p->mp = nil;
