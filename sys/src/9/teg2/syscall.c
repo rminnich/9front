@@ -264,10 +264,8 @@ syscall(Ureg* ureg)
 	l1cache->wb();			/* system is more stable with this */
 
 	/* if we delayed sched because we held a lock, sched now */
-	if(up->delaysched){
+	if(up->delaysched)
 		sched();
-		splhi();
-	}
 	kexit(ureg);
 }
 

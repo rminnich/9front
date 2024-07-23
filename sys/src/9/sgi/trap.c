@@ -694,10 +694,8 @@ syscall(Ureg *ur)
 	if(scallnr!=RFORK && (up->procctl || up->nnote))
 		notify(ur);
 	/* if we delayed sched because we held a lock, sched now */
-	if(up->delaysched){
+	if(up->delaysched)
 		sched();
-		splhi();
-	}
 	/* replicate fpstate to ureg status */
 	if(up->fpstate != FPactive)
 		ur->status &= ~CU1;

@@ -170,6 +170,8 @@ procswitch(void)
 void
 sched(void)
 {
+	int s;
+
 	if(m->ilockdepth)
 		panic("cpu%d: ilockdepth %d, last lock %#p at %#p",
 			m->machno,
@@ -199,10 +201,10 @@ sched(void)
  			delayedscheds++;
 			return;
 		}
-		up->delaysched = 0;
-		splhi();
- 		procswitch();
-		spllo();
+		s = splhi();
+ 		up->delaysched = 0;
+		procswitch();
+		splx(s);
 		return;
 	}
 	up = runproc();
@@ -256,12 +258,10 @@ preempted(int clockintr)
 	if(up == nil || up->state != Running || active.exiting)
 		return;
 	if(!clockintr){
-		if(up->preempted || !anyhigher())
+		if(!anyhigher())
 			return;
 		m->readied = nil;	/* avoid cooperative scheduling */
-		up->preempted = 1;
 		sched();
-		up->preempted = 0;
 	} else if(up->delaysched)
 		sched();		/* quantum ended or we held a lock */
 }
@@ -728,7 +728,6 @@ newproc(void)
 	p->lastilock = nil;
 	p->nlocks = 0;
 	p->trace = 0;
-	p->preempted = 0;
 	p->delaysched = 0;
 
 	/* sched params */
@@ -871,7 +870,7 @@ sleep(Rendez *r, int (*f)(void*), void *arg)
 	splx(s);
 }
 
-void
+_Noreturn void
 interrupted(void)
 {
 	if(up->procctl == Proc_exitme && up->closingfgrp != nil)
@@ -1657,7 +1656,6 @@ void
 procctl(void)
 {
 	char *state;
-	ulong s;
 
 	switch(up->procctl) {
 	case Proc_exitbig:
@@ -1679,7 +1677,7 @@ procctl(void)
 		state = up->psstate;
 		up->psstate = statename[Stopped];
 		/* free a waiting debugger */
-		s = spllo();
+		spllo();
 		qlock(&up->debug);
 		if(up->pdbg != nil) {
 			wakeup(&up->pdbg->sleep);
@@ -1690,7 +1688,6 @@ procctl(void)
 		up->state = Stopped;
 		sched();
 		up->psstate = state;
-		splx(s);
 		return;
 	}
 }

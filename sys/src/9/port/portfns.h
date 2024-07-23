@@ -137,7 +137,7 @@ void		hzsched(void);
 Block*		iallocb(int);
 uintptr		ibrk(uintptr, int);
 void		ilock(Lock*);
-void		interrupted(void);
+_Noreturn void	interrupted(void);
 void		iunlock(Lock*);
 ulong		imagecached(void);
 ulong		imagereclaim(int);

@@ -537,10 +537,8 @@ syscall(Ureg* ureg)
 	up->psstate = nil;
 
 	/* if we delayed sched because we held a lock, sched now */
-	if(up->delaysched){
+	if(up->delaysched)
 		sched();
-		splhi();
-	}
 
 	kexit(ureg);
 	fpukexit(ureg, nil);

@@ -106,7 +106,7 @@ lock(Lock *l)
 void
 ilock(Lock *l)
 {
-	ulong x;
+	int x;
 	uintptr pc;
 
 	pc = getcallerpc(&l);

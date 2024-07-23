@@ -769,10 +769,7 @@ struct Proc
 	uchar	fixedpri;	/* priority level doesn't change */
 	ulong	cpu;		/* cpu average */
 	ulong	lastupdate;
-	uchar	yield;		/* non-zero if the process just did a sleep(0) */
-	int	preempted;	/* true if this process hasn't finished the interrupt
-				 *  that last preempted it
-				 */
+
 	Edf	*edf;		/* if non-null, real-time proc, edf contains scheduling params */
 	int	trace;		/* process being traced? */
 

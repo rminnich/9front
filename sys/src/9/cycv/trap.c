@@ -273,10 +273,8 @@ syscall(Ureg *ureg)
 	splhi();
 	if(scallnr != RFORK && (up->procctl || up->nnote))
 		notify(ureg);
-	if(up->delaysched){
+	if(up->delaysched)
 		sched();
-		splhi();
-	}
 	kexit(ureg);
 }
 
