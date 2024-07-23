@@ -170,7 +170,6 @@ main(void)
 		mmu1init();
 		m->ticks = MACHP(0)->ticks;
 		schedinit();
-		return;
 	}
 	uartconsinit();
 	quotefmtinstall();

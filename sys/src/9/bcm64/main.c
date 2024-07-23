@@ -171,7 +171,6 @@ main(uintptr arg0)
 		mmu1init();
 		m->ticks = MACHP(0)->ticks;
 		schedinit();
-		return;
 	}
 	quotefmtinstall();
 	bootargsinit(arg0);

@@ -210,7 +210,6 @@ main(void)
 		synccycles();
 		timersinit();
 		schedinit();
-		return;
 	}
 	uartconsinit();
 	mmuinit();

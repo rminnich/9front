@@ -119,7 +119,6 @@ main(uintptr arg0)
 	launchinit();
 	mmuinit1(0);
 	schedinit();
-	assert(0);			/* shouldn't have returned */
 }
 
 /*

@@ -187,7 +187,6 @@ main(void)
 	chandevreset();
 	userinit();
 	schedinit();
-	panic("schedinit returned");
 }
 
 /*

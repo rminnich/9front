@@ -733,7 +733,6 @@ cpustart(void)
 	if (Debug)
 		iprint("cpu%d: scheding\n", m->machno);
 	schedinit();
-	panic("cpu%d: schedinit returned", m->machno);
 }
 
 /* mainly used to break out of wfi */

@@ -63,8 +63,8 @@ static void pidfree(Proc*);
 /*
  * Always splhi()'ed.
  */
-void
-schedinit(void)		/* never returns */
+_Noreturn void
+schedinit(void)
 {
 	Edf *e;
 

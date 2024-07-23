@@ -147,8 +147,6 @@ main(void)
 	userinit();
 
 	schedinit();
-
-	panic("schedinit returned");
 }
 
 /*

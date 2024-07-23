@@ -267,7 +267,6 @@ uartputc(' ');
 	pageinit();
 	userinit();
 	schedinit();
-	panic("schedinit returned");
 }
 
 void

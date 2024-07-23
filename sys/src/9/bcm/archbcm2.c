@@ -239,5 +239,4 @@ cpustart(int cpu)
 	active.machs[m->machno] = 1;
 	unlock(&startlock[cpu]);
 	schedinit();
-	panic("schedinit returned");
 }

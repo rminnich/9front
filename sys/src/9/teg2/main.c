@@ -408,7 +408,6 @@ main(void)
 	l1diag();
 
 	schedinit();
-	panic("cpu%d: schedinit returned", m->machno);
 }
 
 /*

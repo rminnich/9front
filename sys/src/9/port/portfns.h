@@ -325,7 +325,7 @@ void		runlock(RWlock*);
 Proc*		runproc(void);
 void		savefpregs(FPsave*);
 void		sched(void);
-void		schedinit(void);
+_Noreturn void	schedinit(void);
 void		(*screenputs)(char*, int);
 void*		secalloc(ulong);
 void		secfree(void*);
