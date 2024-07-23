@@ -21,20 +21,45 @@ fail(Conn *c, char *fmt, ...)
 	sysfatal("%s", msg);
 }
 
+char*
+gethead(Hash *h, char *ref, int nref)
+{
+	int fd, n;
+	char *s;
+
+	if((fd = open(".git/HEAD", OREAD)) == -1)
+		return nil;
+	if((n = readn(fd, ref, nref-1)) == -1)
+		return nil;
+	while(n > 0 && ref[n-1] == '\n' || ref[n-1] == '\t' || ref[n-1] == ' ')
+		n--;
+	if(strncmp(ref, "ref: ", 5) != 0)
+		return nil;
+	s = ref+5;
+	if(resolveref(h, s) == -1)
+		return nil;
+	return s;
+}
+
 int
 showrefs(Conn *c)
 {
-	int i, ret, nrefs;
+	char **names, *s, buf[256];
+	int i, r, ret, nrefs;
 	Hash head, *refs;
-	char **names;
 
 	ret = -1;
 	nrefs = 0;
 	refs = nil;
 	names = nil;
-	if(resolveref(&head, "HEAD") != -1)
-		if(fmtpkt(c, "%H HEAD\n", head) == -1)
-			goto error;
+
+	s = gethead(&head,  buf, sizeof(buf));
+	if(s != nil)
+		r = fmtpkt(c, "%H HEAD%csymref=HEAD:%s\n", head, 0, s);
+	else
+		r = fmtpkt(c, "%H HEAD\n", head);
+	if(r == -1)
+		goto error;
 
 	if((nrefs = listrefs(&refs, &names)) == -1)
 		fail(c, "listrefs: %r");

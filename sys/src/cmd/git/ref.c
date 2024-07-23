@@ -386,8 +386,8 @@ readref(Hash *h, char *ref)
 	return -1;
 
 found:
-	if(r == -1 && strstr(s, "ref: ") == s)
-		r = readref(h, s + strlen("ref: "));
+	if(r == -1 && strncmp(s, "ref: ", 5) == 0)
+		r = readref(h, s + 5);
 	return r;
 }
 
