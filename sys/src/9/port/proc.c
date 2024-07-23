@@ -818,15 +818,18 @@ sleep(Rendez *r, int (*f)(void*), void *arg)
 	int s;
 	void (*pt)(Proc*, int, vlong);
 
-	s = splhi();
-
 	if(up->nlocks)
-		print("process %lud sleeps with %d locks held, last lock %#p locked at pc %#p, sleep called from %#p\n",
-			up->pid, up->nlocks, up->lastlock, up->lastlock->pc, getcallerpc(&r));
+		print("process %s %lud sleeps with %d locks held, "
+			"last lock %#p locked at pc %#p, sleep called from %#p\n",
+			up->text, up->pid, up->nlocks,
+			up->lastlock, up->lastlock->pc, getcallerpc(&r));
+
+	s = splhi();
 	lock(r);
 	lock(&up->rlock);
 	if(r->p != nil){
-		print("double sleep called from %#p, %lud %lud\n", getcallerpc(&r), r->p->pid, up->pid);
+		iprint("double sleep called from %#p, %s %lud -> %s %lud\n",
+			getcallerpc(&r), r->p->text, r->p->pid, up->text, up->pid);
 		dumpstack();
 	}
 
