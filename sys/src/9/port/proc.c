@@ -555,20 +555,19 @@ yield(void)
  *  since priorities will otherwise only be recalculated when
  *  the running process blocks.
  */
-ulong balancetime;
-
 static void
 rebalance(void)
 {
+	static ulong lasttime;
 	int pri, npri;
 	Schedq *rq;
 	Proc *p;
 	ulong t;
 
 	t = m->ticks;
-	if(t - balancetime < HZ)
+	if(t - lasttime < HZ)
 		return;
-	balancetime = t;
+	lasttime = t;
 
 	assert(!islo());
 
