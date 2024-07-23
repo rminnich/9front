@@ -662,8 +662,7 @@ recvrahost(uchar buf[], int pktlen)
 	for(rr = &routelist; (r = *rr) != nil;){
 		if(m > 100
 		|| r->prefixlt != ~0UL && r->prefixlt < now-r->time
-		|| r->routerlt != ~0UL && r->routerlt < now-r->time
-		|| ipcmp(r->src, ra->src) == 0 && r->routerlt != 0 && conf.routerlt == 0){
+		|| r->routerlt != ~0UL && r->routerlt < now-r->time){
 			DEBUG("purging RA from %I on %s; pfx %I %M",
 				r->src, conf.dev, r->laddr, r->mask);
 			if(!noconfig && validip(r->gaddr))
@@ -758,7 +757,7 @@ recvrahost(uchar buf[], int pktlen)
 			}
 		} else {
 			seen = 0;
-			if(conf.preflt == 0)
+			if(conf.validlt == 0)
 				continue;
 			r = malloc(sizeof(*r));
 		}
