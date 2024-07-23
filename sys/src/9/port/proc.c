@@ -417,6 +417,7 @@ queueproc(Schedq *rq, Proc *p)
 	 * When the priority changes, we want to give
 	 * every cpu a chance to pick up the load.
 	 */
+	if(p->wired == nil)
 	if(pri < 3 || pri != p->priority)
 		p->mp = nil;
 	p->priority = pri;
