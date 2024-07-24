@@ -9,6 +9,10 @@
 #include	"tos.h"
 #include	"ureg.h"
 
+enum {
+	Scaling = 2,
+};
+
 int	schedgain = 30;	/* units in seconds */
 int	nrdy;
 
@@ -27,13 +31,6 @@ static struct Procalloc
 	Proc	*free;
 	int	nextindex;
 } procalloc;
-
-enum
-{
-	Q=10,
-	DQ=4,
-	Scaling=2,
-};
 
 Schedq	runq[Nrq];
 ulong	runvec;
@@ -212,7 +209,8 @@ sched(void)
 		m->schedticks = m->ticks + HZ/10;
 	m->readied = nil;
 	m->proc = up;
-	up->mach = up->mp = MACHP(m->machno);
+	up->mach = MACHP(m->machno);
+	up->affinity = m->machno;
 	up->state = Running;
 	mmuswitch(up);
 	gotolabel(&up->sched);
@@ -417,9 +415,9 @@ queueproc(Schedq *rq, Proc *p)
 	 * When the priority changes, we want to give
 	 * every cpu a chance to pick up the load.
 	 */
-	if(p->wired == nil)
+	if(!p->wired)
 	if(pri < 3 || pri != p->priority)
-		p->mp = nil;
+		p->affinity = -1;
 	p->priority = pri;
 
 	if(pri == PriEdf){
@@ -469,7 +467,7 @@ ready(Proc *p)
 		splx(s);
 		return;
 	case 0:
-		if(up != p && (p->wired == nil || p->wired == MACHP(m->machno)))
+		if(up != p && (!p->wired || p->affinity == m->machno))
 			m->readied = p;	/* group scheduling */
 		pri = reprioritize(p);
 		break;
@@ -610,7 +608,7 @@ runproc(void)
 
 	/* cooperative scheduling until the clock ticks */
 	if((p = m->readied) != nil && p->mach == nil && p->state == Ready
-	&& (p->wired == nil || p->wired == MACHP(m->machno))
+	&& (!p->wired || p->affinity == m->machno)
 	&& runq[Nrq-1].head == nil && runq[Nrq-2].head == nil){
 		skipscheds++;
 		rq = &runq[p->priority];
@@ -633,8 +631,8 @@ loop:
 		 */
 		for(rq = &runq[Nrq-1]; rq >= runq; rq--){
 			for(p = rq->head; p != nil; p = p->rnext){
-				if(p->mp == nil || p->mp == MACHP(m->machno)
-				|| (p->wired == nil && i > 0))
+				if(p->affinity < 0 || p->affinity == m->machno
+				|| (!p->wired && i > 0))
 					goto found;
 			}
 		}
@@ -731,8 +729,8 @@ newproc(void)
 	p->delaysched = 0;
 
 	/* sched params */
-	p->mp = nil;
-	p->wired = nil;
+	p->wired = 0;
+	p->affinity = -1;
 	procpriority(p, PriNormal, 0);
 	p->cpu = 0;
 	p->lastupdate = MACHP(0)->ticks*Scaling;
@@ -745,33 +743,31 @@ newproc(void)
  * wire this proc to a machine
  */
 void
-procwired(Proc *p, int bm)
+procwired(Proc *p, int a)
 {
+	ushort nwired[MAXMACH];
 	Proc *pp;
 	int i;
-	char nwired[MAXMACH];
-	Mach *wm;
 
-	if(bm < 0){
+	if(a < 0){
 		/* pick a machine to wire to */
 		memset(nwired, 0, sizeof(nwired));
-		p->wired = nil;
+		p->wired = 0;
 		for(i=0; (pp = proctab(i)) != nil; i++){
-			wm = pp->wired;
-			if(wm != nil && pp->pid)
-				nwired[wm->machno]++;
+			a = pp->affinity;
+			if(a >= 0 && pp->wired && pp->pid)
+				nwired[a]++;
 		}
-		bm = 0;
+		a = 0;
 		for(i=0; i<conf.nmach; i++)
-			if(nwired[i] < nwired[bm])
-				bm = i;
+			if(nwired[i] < nwired[a])
+				a = i;
 	} else {
 		/* use the virtual machine requested */
-		bm = bm % conf.nmach;
+		a = a % conf.nmach;
 	}
-
-	p->wired = MACHP(bm);
-	p->mp = p->wired;
+	p->affinity = a;
+	p->wired = 1;
 }
 
 void
@@ -783,11 +779,7 @@ procpriority(Proc *p, int pri, int fixed)
 		pri = 0;
 	p->basepri = pri;
 	p->priority = pri;
-	if(fixed){
-		p->fixedpri = 1;
-	} else {
-		p->fixedpri = 0;
-	}
+	p->fixedpri = fixed != 0;
 }
 
 void
@@ -1824,8 +1816,8 @@ procsetuser(char *new)
 {
 	qlock(&up->debug);
 	kstrdup(&up->user, new);
-	up->basepri = PriNormal;
 	qunlock(&up->debug);
+	procpriority(up, PriNormal, 0);
 }
 
 /*

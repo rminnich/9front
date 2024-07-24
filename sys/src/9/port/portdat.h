@@ -755,9 +755,6 @@ struct Proc
 	short	notified;	/* sysnoted is due */
 	int	(*notify)(void*, char*);
 
-	Mach	*wired;
-	Mach	*mp;		/* machine this process last ran on */
-
 	Lock	*lastlock;	/* debugging */
 	Lock	*lastilock;	/* debugging */
 
@@ -767,6 +764,8 @@ struct Proc
 	ulong	priority;	/* priority level */
 	ulong	basepri;	/* base priority level */
 	uchar	fixedpri;	/* priority level doesn't change */
+	uchar	wired;
+	int	affinity;	/* machno this process last ran on */
 	ulong	cpu;		/* cpu average */
 	ulong	lastupdate;
 

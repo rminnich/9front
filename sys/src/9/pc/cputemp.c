@@ -67,9 +67,8 @@ unsup:
 static long
 intelcputemprd(Chan *c, void *va, long n, vlong offset)
 {
+	int r, t, i, w;
 	char *a;
-	long i, r, t;
-	Mach *w;
 
 	w = up->wired;
 	a = va;

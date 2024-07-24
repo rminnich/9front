@@ -33,7 +33,6 @@ sysrfork(va_list list)
 	Rgrp *org;
 	Egrp *oeg;
 	ulong pid, flag;
-	Mach *wm;
 	char *devs;
 
 	flag = va_arg(list, ulong);
@@ -229,13 +228,11 @@ sysrfork(va_list list)
 	 *  (i.e. has bad properties) and has to be discarded.
 	 */
 	flushmmu();
-	p->basepri = up->basepri;
-	p->priority = up->basepri;
-	p->fixedpri = up->fixedpri;
-	p->mp = up->mp;
-	wm = up->wired;
-	if(wm != nil)
-		procwired(p, wm->machno);
+
+	procpriority(p, up->basepri, up->fixedpri);
+	if(up->wired)
+		procwired(p, up->affinity);
+
 	ready(p);
 	sched();
 	return pid;
@@ -581,13 +578,6 @@ sysexec(va_list list)
 		for(i=0; i<=f->maxfd; i++)
 			fdclose(i, CCEXEC);
 	}
-
-	/*
-	 *  '/' processes are higher priority (hack to make /ip more responsive).
-	 */
-	if(devtab[tc->type]->dc == L'/')
-		up->basepri = PriRoot;
-	up->priority = up->basepri;
 
 	poperror();	/* tc */
 	cclose(tc);
