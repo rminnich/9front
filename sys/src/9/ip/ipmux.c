@@ -212,7 +212,7 @@ parsemux(char *p)
 		goto parseerror;
 
 	/* parse mask */
-	mask = follows(p, '&');
+	mask = follows(val, '&');
 	if(mask != nil){
 		switch(f->type){
 		case Tsrc:
