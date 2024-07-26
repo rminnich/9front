@@ -35,6 +35,34 @@ emptydir(void)
 }
 
 int
+entcmp(void *pa, void *pb)
+{
+	char abuf[256], bbuf[256], *ae, *be;
+	Dirent *a, *b;
+	int r;
+
+	a = pa;
+	b = pb;
+	/*
+	 * If the files have the same name, they're equal.
+	 * Otherwise, If they're trees, they sort as thoug
+	 * there was a trailing slash.
+	 *
+	 * Wat.
+	 */
+	r = strcmp(a->name, b->name);
+	if(r == 0 || (a->mode&DMDIR) == 0 && (b->mode&DMDIR) == 0)
+		return r;
+	ae = seprint(abuf, abuf + sizeof(abuf) - 1, a->name);
+	be = seprint(bbuf, bbuf + sizeof(bbuf) - 1, b->name);
+	if(a->mode & DMDIR)
+		*ae = '/';
+	if(b->mode & DMDIR)
+		*be = '/';
+	return strcmp(abuf, bbuf);
+}
+
+int
 hasheq(Hash *a, Hash *b)
 {
 	return memcmp(a->h, b->h, sizeof(a->h)) == 0;

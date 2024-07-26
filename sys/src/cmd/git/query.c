@@ -78,7 +78,7 @@ difftrees(Object *a, Object *b)
 		be = bp + b->tree->nent;
 	}
 	while(ap != ae && bp != be){
-		c = strcmp(ap->name, bp->name);
+		c = entcmp(ap, bp);
 		if(c == 0){
 			if(ap->mode == bp->mode && hasheq(&ap->h, &bp->h))
 				goto next;

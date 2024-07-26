@@ -282,6 +282,7 @@ Object	*ref(Object *);
 void	unref(Object *);
 void	cache(Object *);
 Object	*emptydir(void);
+int	entcmp(void*, void*);
 
 /* object sets */
 void	osinit(Objset *);

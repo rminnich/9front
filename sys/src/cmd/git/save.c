@@ -54,33 +54,6 @@ idxcmp(void *pa, void *pb)
 	return a-> order < b->order ? -1 : 1;
 }
 
-int
-entcmp(void *pa, void *pb)
-{
-	char abuf[256], bbuf[256], *ae, *be;
-	Dirent *a, *b;
-
-	a = pa;
-	b = pb;
-	/*
-	 * If the files have the same name, they're equal.
-	 * Otherwise, If they're trees, they sort as thoug
-	 * there was a trailing slash.
-	 *
-	 * Wat.
-	 */
-	if(strcmp(a->name, b->name) == 0)
-		return 0;
-
-	ae = seprint(abuf, abuf + sizeof(abuf) - 1, a->name);
-	be = seprint(bbuf, bbuf + sizeof(bbuf) - 1, b->name);
-	if(a->mode & DMDIR)
-		*ae = '/';
-	if(b->mode & DMDIR)
-		*be = '/';
-	return strcmp(abuf, bbuf);
-}
-
 static int
 bwrite(void *p, void *buf, int nbuf)
 {
