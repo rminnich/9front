@@ -338,7 +338,7 @@ etherread4(void *a)
 		rlock(ifc);
 		if(waserror()){
 			runlock(ifc);
-			nexterror();
+			continue;
 		}
 		ifc->in++;
 		if(ifc->lifc == nil || BLEN(bp) <= ETHERHDRSIZE)
@@ -379,7 +379,7 @@ etherread6(void *a)
 		rlock(ifc);
 		if(waserror()){
 			runlock(ifc);
-			nexterror();
+			continue;
 		}
 		ifc->in++;
 		if(ifc->lifc == nil || BLEN(bp) <= ETHERHDRSIZE)
