@@ -33,16 +33,17 @@ emptydir(void)
 	cache(e);
 	return e;
 }
-
 int
 entcmp(void *pa, void *pb)
 {
-	char abuf[256], bbuf[256], *ae, *be;
-	Dirent *a, *b;
-	int r;
+	Dirent *ae, *be;
+	char *a, *b;
+	int ca, cb;
 
-	a = pa;
-	b = pb;
+	ae = pa;
+	be = pb;
+	a = ae->name;
+	b = be->name;
 	/*
 	 * If the files have the same name, they're equal.
 	 * Otherwise, If they're trees, they sort as thoug
@@ -50,16 +51,25 @@ entcmp(void *pa, void *pb)
 	 *
 	 * Wat.
 	 */
-	r = strcmp(a->name, b->name);
-	if(r == 0 || (a->mode&DMDIR) == 0 && (b->mode&DMDIR) == 0)
-		return r;
-	ae = seprint(abuf, abuf + sizeof(abuf) - 1, a->name);
-	be = seprint(bbuf, bbuf + sizeof(bbuf) - 1, b->name);
-	if(a->mode & DMDIR)
-		*ae = '/';
-	if(b->mode & DMDIR)
-		*be = '/';
-	return strcmp(abuf, bbuf);
+	while(1){
+		ca = *a++;
+		cb = *b++;
+		/*
+		 * because these are dir entries in a tree,
+		 * the only '/' allowable is the virtual '/'
+		 * at the end of the file name.
+		 */
+		assert(ca != '/' && cb != '/');
+		if(ca != cb){
+			if(ca == 0 && (ae->mode & DMDIR))
+				ca = '/';
+			if(cb == 0 && (be->mode & DMDIR))
+				cb = '/';
+			return (ca > cb) ? 1 : -1;
+		}
+		if(ca == 0)
+			return 0;
+	}
 }
 
 int
