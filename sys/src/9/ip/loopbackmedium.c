@@ -90,7 +90,7 @@ loopbackread(void *a)
 		rlock(ifc);
 		if(waserror()){
 			runlock(ifc);
-			nexterror();
+			continue;
 		}
 		ifc->in++;
 		if(ifc->lifc == nil)
