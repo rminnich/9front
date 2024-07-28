@@ -815,6 +815,18 @@ ipmuxstats(Proto *p, char *buf, int len)
 	return n;
 }
 
+static char*
+ipmuxctl(Conv *c, char **f, int n)
+{
+	if(n == 1 && strcmp(f[0], "hangup") == 0){
+		/* hangup and flush the queues, but keep the filter around */
+		qclose(c->rq);
+		qclose(c->wq);
+		return nil;
+	}
+	return "unknown control request";
+}
+
 void
 ipmuxinit(Fs *f)
 {
@@ -829,7 +841,7 @@ ipmuxinit(Fs *f)
 	ipmux->create = ipmuxcreate;
 	ipmux->close = ipmuxclose;
 	ipmux->rcv = ipmuxiput;
-	ipmux->ctl = nil;
+	ipmux->ctl = ipmuxctl;
 	ipmux->advise = nil;
 	ipmux->stats = ipmuxstats;
 	ipmux->ipproto = -1;
