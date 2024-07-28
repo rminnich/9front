@@ -129,10 +129,13 @@ ipoput4(Fs *f, Block *bp, Ipifc *gating, int ttl, int tos, Routehint *rh)
 	}
 	if(waserror()){
 		runlock(ifc);
-		nexterror();
+		/* bp is freed by m->bwrite() called from ipifcoput() */
+		return -1;
 	}
-	if(ifc->m == nil || ifc->ifcid != r->ifcid)
+	if(ifc->m == nil || ifc->ifcid != r->ifcid){
+		rv = -1;
 		goto raise;
+	}
 
 	medialen = ifc->maxtu - ifc->m->hsize;
 	if(gating != nil) {
