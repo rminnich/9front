@@ -130,7 +130,7 @@ sync(void)
 		 * block out synchronously, or it may
 		 * get reused.
 		 */
-		logbarrier(a, fs->qgen);
+		logbarrier(a, agetv(&fs->qgen));
 		flushlog(a);
 
 		packarena(a->h0->data, Blksz, a);
