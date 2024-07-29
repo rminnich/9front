@@ -2218,7 +2218,7 @@ fswrite(Fmsg *m, int id)
 		sbuf[0] |= Owsize;
 		PACK64(p, o);
 		p += 8;
-		f->dent->length = m->offset+m->count;
+		f->dent->length = o;
 	}
 	sbuf[0] |= Owmtime;
 	f->dent->mtime = nsec();
