@@ -230,7 +230,7 @@ apply(char *state, char *name, char *lp, char *rp, char *ap, Workdir *)
 			else if(ld->qid.type & QTDIR)
 				print("# conflict # rm -r %s\n", lp);
 			else
-				print("# conflict # ape/diff3 %s %s %s >%s\n", lp, ap, rp, lp);
+				print("# conflict # merge3 %s %s %s >%s\n", lp, ap, rp, lp);
 		}
 	}
 	else if(strcmp(state, "md!") == 0){
