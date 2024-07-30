@@ -117,7 +117,7 @@ merge(Diff *l, Diff *r)
 			rx = (rc->oldx < rc->oldy) ? rc->oldx : rc->oldy;
 			ry = (rc->oldx < rc->oldy) ? rc->oldy : rc->oldx;
 		}
-		if(l != nil && r != nil && overlaps(lx, ly, rx, ry)){
+		if(lc != nil && rc != nil && overlaps(lx, ly, rx, ry)){
 			/*
 			 * align the edges of the chunks
 			 */
@@ -160,12 +160,12 @@ merge(Diff *l, Diff *r)
 			ln = y+1;
 			il++;
 			ir++;
-		}else if(rc == nil || (lc != nil && lx < rx)){
+		}else if(lc != nil && (rc == nil || lx < rx)){
 			fetch(l, l->ixold, ln, lc->oldx-1, l->input[0], "");
 			fetch(l, l->ixnew, lc->newx, lc->newy, l->input[1], "");
 			ln = lc->oldy+1;
 			il++;
-		}else if(lc == nil || (rc != nil && rx < lx)){
+		}else if(rc != nil && (lc == nil || rx < lx)){
 			fetch(l, l->ixold, ln, rc->oldx-1, l->input[0], "");
 			fetch(r, r->ixnew, rc->newx, rc->newy, r->input[1], "");
 			ln = rc->oldy+1;
