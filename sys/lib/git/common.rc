@@ -87,7 +87,7 @@ fn merge1 {@{
 
 	if(mergeperm $ours $base $theirs){
 		mkdir -p `{basename -d $tmp}
-		if(! ape/diff3 -3 -m $ours $base $theirs > $tmp)
+		if(! merge3 $ours $base $theirs > $tmp)
 			echo merge needed: $out >[1=2]
 		mv $tmp $out
 		git/add $out
