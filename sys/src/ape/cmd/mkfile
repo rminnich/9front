@@ -9,7 +9,6 @@ TARG=basename\
 DIRS=\
 	expr\
 	make\
-	patch\
 	pdksh\
 	sed\
 
