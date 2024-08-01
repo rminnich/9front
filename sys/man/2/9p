@@ -416,7 +416,7 @@ to handle them is suggested (see
 .PP
 .I Srvrelease
 temporarily releases the calling process from the server
-loop and if neccesary spawns a new process to handle 9p 
+loop and if necessary spawns a new process to handle 9p 
 requests. When released, the process can do blocking work
 that would otherwise halt processing of 9p requests.
 .I Srvacquire
@@ -746,10 +746,10 @@ to be called asynchronously.
 .I Flush
 should cause the request
 .IB r -> oldreq
-to be cancelled or hurried along.
+to be canceled or hurried along.
 If
 .I oldreq
-is cancelled, this should be signalled by calling
+is canceled, this should be signaled by calling
 .I respond
 on
 .I oldreq
@@ -849,7 +849,7 @@ will return 0 if the session has properly
 authenticated or will return -1 and
 call
 .I respond
-with an apropiate error.
+with an appropriate error.
 .I Authread
 and
 .I authwrite
