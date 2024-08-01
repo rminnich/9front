@@ -239,15 +239,7 @@ tcp=ncpu port=17010
 tcp=cpu port=17013
 tcp=rcpu port=17019
 tcp=t9fs port=17020
-tcp=glenglenda2 port=17021
-tcp=glenglenda3 port=17022
-tcp=glenglenda4 port=17023
-tcp=glenglenda5 port=17024
-tcp=glenglenda6 port=17025
-tcp=glenglenda7 port=17026
-tcp=glenglenda8 port=17027
-tcp=glenglenda9 port=17028
-tcp=glenglenda10 port=17029
+tcp=hjgit port=17021
 tcp=nupasimap port=17030
 tcp=nupasimaps port=17031
 tcp=flyboy port=17032
