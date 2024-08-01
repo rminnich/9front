@@ -153,7 +153,7 @@ frtick(Frame *f, Point pt, int ticked)
 		r.max.x = f->r.max.x;
 	if(ticked){
 		draw(f->tickback, f->tickback->r, f->b, nil, pt);
-		draw(f->b, r, f->tick, nil, ZP);
+		draw(f->b, r, f->cols[TEXT], f->tick, ZP);
 	}else
 		draw(f->b, r, f->tickback, nil, ZP);
 	f->ticked = ticked;

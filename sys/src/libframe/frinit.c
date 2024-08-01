@@ -48,12 +48,12 @@ frinittick(Frame *f)
 		return;
 	}
 	/* background color */
-	draw(f->tick, f->tick->r, f->cols[BACK], nil, ZP);
+	draw(f->tick, f->tick->r, display->black, nil, ZP);
 	/* vertical line */
-	draw(f->tick, Rect(FRTICKW/2, 0, FRTICKW/2+1, ft->height), f->cols[TEXT], nil, ZP);
+	draw(f->tick, Rect(FRTICKW/2, 0, FRTICKW/2+1, ft->height), display->white, nil, ZP);
 	/* box on each end */
-	draw(f->tick, Rect(0, 0, FRTICKW, FRTICKW), f->cols[TEXT], nil, ZP);
-	draw(f->tick, Rect(0, ft->height-FRTICKW, FRTICKW, ft->height), f->cols[TEXT], nil, ZP);
+	draw(f->tick, Rect(0, 0, FRTICKW, FRTICKW), display->white, nil, ZP);
+	draw(f->tick, Rect(0, ft->height-FRTICKW, FRTICKW, ft->height), display->white, nil, ZP);
 }
 
 void
