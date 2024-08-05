@@ -72,9 +72,11 @@ char *qroot[] = {
 
 #define Eperm	"permission denied"
 #define Eexist	"file does not exist"
+#define Enotdir	"is not a directory"
 #define E2long	"path too long"
 #define Enodir	"not a directory"
 #define Erepo	"unable to read repo"
+#define Eimpl	"not implemented"
 #define Egreg	"wat"
 #define Ebadobj	"invalid object"
 
@@ -472,7 +474,11 @@ objwalk1(Qid *q, Object *o, Crumb *p, Crumb *c, char *name, vlong qdir, Gitaux *
 	e = nil;
 	if(!o)
 		return Eexist;
-	if(o->type == GTree){
+	switch(o->type){
+	case GBlob:
+		e = Enotdir;
+		break;
+	case GTree:
 		q->type = 0;
 		for(i = 0; i < o->tree->nent; i++){
 			if(strcmp(o->tree->ent[i].name, name) != 0)
@@ -495,7 +501,8 @@ objwalk1(Qid *q, Object *o, Crumb *p, Crumb *c, char *name, vlong qdir, Gitaux *
 		}
 		if(!w)
 			e = Eexist;
-	}else if(o->type == GCommit){
+		break;
+	case  GCommit:
 		q->type = 0;
 		c->mtime = o->commit->mtime;
 		c->mode = 0644;
@@ -521,8 +528,10 @@ objwalk1(Qid *q, Object *o, Crumb *p, Crumb *c, char *name, vlong qdir, Gitaux *
 		}
 		else
 			e = Eexist;
-	}else if(o->type == GTag){
-		e = "tag walk unimplemented";
+		break;
+	case GTag:
+		e = Eimpl;
+		break;
 	}
 	return e;
 }
