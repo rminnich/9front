@@ -564,6 +564,9 @@ main(int argc, char **argv)
 	size = 0;
 	nflag = 0;
 	ARGBEGIN{
+	case 'D':
+		chatty9p = 1;
+		break;
 	case 'm':
 		mntpt = EARGF(usage());
 		break;
