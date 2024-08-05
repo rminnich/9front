@@ -843,7 +843,7 @@ emulate(void)
 						break;
 					case '>':	/* Set/reset key modifier options (XTMODKEYS), xterm. */
 						number(buf, nil);
-						if(buf[0] != 'm')
+						if(buf[0] != 'm' && buf[0] != 'M')
 							number(buf, nil);
 						break;
 				}
