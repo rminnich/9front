@@ -105,9 +105,11 @@ The second in unpadded or padded form, respectively
 .TP
 .B t, tt, ttt
 The milliseconds in unpadded and padded form, respectively.
+.TP
 .B u, uu, uuu, uuuu
 The microseconds in unpadded. padded form modulo milliseconds,
 or unpadded, padded forms of the complete value, respectively.
+.TP
 .B n, nn, nnn, nnnn, nnnnn, nnnnnn
 The nanoseconds in unpadded and padded form modulo milliseconds,
 the unpadded and padded form modulo microseconds,
