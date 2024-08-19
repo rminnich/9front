@@ -216,3 +216,35 @@ normvec3(Point3 v)
 		return Pt3(0,0,0,0);
 	return Pt3(v.x/len, v.y/len, v.z/len, 0);
 }
+
+int
+lineXsphere(Point3 *rp, Point3 p0, Point3 p1, Point3 c, double r, int isaray)
+{
+	Point3 u, dp;
+	double u·dp, Δ, d;
+
+	u = normvec3(subpt3(p1, p0));
+	dp = subpt3(p1, c);
+	u·dp = dotvec3(u, dp);
+	if(isaray && u·dp > 0)	/* ignore what's behind */
+		return 0;
+
+	Δ = u·dp*u·dp - dotvec3(dp, dp) + r*r;
+	if(Δ < 0)		/* no intersection */
+		return 0;
+	else if(Δ == 0){	/* tangent */
+		if(rp != nil){
+			d = -u·dp;
+			rp[0] = addpt3(p0, mulpt3(u, d));
+		}
+		return 1;
+	}else{			/* secant */
+		if(rp != nil){
+			d = -u·dp + sqrt(Δ);
+			rp[0] = addpt3(p0, mulpt3(u, d));
+			d = -u·dp - sqrt(Δ);
+			rp[1] = addpt3(p0, mulpt3(u, d));
+		}
+		return 2;
+	}
+}

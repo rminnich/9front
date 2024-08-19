@@ -88,6 +88,8 @@ double dotvec3(Point3 a, Point3 b);
 Point3 crossvec3(Point3 a, Point3 b);
 double vec3len(Point3 v);
 Point3 normvec3(Point3 v);
+int lineXsphere(Point3 *rp, Point3 p0, Point3 p1,
+		Point3 c, double rad, int isaray);
 .PB
 /* Matrix */
 void identity(Matrix m);
@@ -366,6 +368,25 @@ Computes the length—magnitude—of vector
 Normalizes the vector
 .I v
 and returns a new 3D point.
+.TP
+.B lineXsphere(\fIrp\fP,\fIp0\fP,\fIp1\fP,\fIc\fP,\fIrad\fP,\fIisaray\fP)
+Finds the intersection between the line defined by
+.I p0
+and
+.I p1
+and the circle with center at
+.I c
+and a radius of
+.IR rad .
+If
+.I isaray
+is not zero, the line will be interpreted as a ray directed from
+.I p0
+to
+.IR p1 .
+The function returns the number of intersections (up to two) and, if
+.I rp
+is not nil, it is filled with the resulting points.
 .SS Matrices
 .TP
 Name

@@ -77,6 +77,7 @@ double dotvec3(Point3, Point3);
 Point3 crossvec3(Point3, Point3);
 double vec3len(Point3);
 Point3 normvec3(Point3);
+int lineXsphere(Point3*, Point3, Point3, Point3, double, int);
 
 /* Matrix */
 void identity(Matrix);
