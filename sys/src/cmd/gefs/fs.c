@@ -2721,21 +2721,21 @@ runtasks(int, void *)
 			if(now.yday != then.yday){
 				snprint(buf, sizeof(buf),
 					"%s@day.%τ", mnt->name, tmfmt(&now, "YYYY.MM.DD[_]hh:mm:ss"));
-				snapmsg("main", buf, Lauto);
+				snapmsg(mnt->name, buf, Lauto);
 			}
 			if(now.hour != then.hour){
 				if(mnt->hourly[h][0] != 0)
 					snapmsg(mnt->hourly[h], nil, 0);
 				snprint(mnt->hourly[h], sizeof(mnt->hourly[h]),
 					"%s@hour.%τ", mnt->name, tmfmt(&now, "YYYY.MM.DD[_]hh:mm:ss"));
-				snapmsg("main", mnt->hourly[h], Lauto);
+				snapmsg(mnt->name, mnt->hourly[h], Lauto);
 			}
 			if(now.min != then.min){
 				if(mnt->minutely[m][0] != 0)
 					snapmsg(mnt->minutely[m], nil, 0);
 				snprint(mnt->minutely[m], sizeof(mnt->minutely[m]),
 					"%s@minute.%τ", mnt->name, tmfmt(&now, "YYYY.MM.DD[_]hh:mm:ss"));
-				snapmsg("main", mnt->minutely[m], Lauto);
+				snapmsg(mnt->name, mnt->minutely[m], Lauto);
 			}
 		}
 		if(now.hour != then.hour)
