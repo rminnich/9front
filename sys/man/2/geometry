@@ -374,7 +374,7 @@ Finds the intersection between the line defined by
 .I p0
 and
 .I p1
-and the circle with center at
+and the sphere with center at
 .I c
 and a radius of
 .IR rad .
