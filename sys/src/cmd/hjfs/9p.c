@@ -11,7 +11,8 @@ extern Fs *fsmain;
 static void
 tauth(Req *req)
 {
-	if((fsmain->flags & FSNOAUTH) != 0)
+	if((fsmain->flags & FSNOAUTH) != 0
+	|| strcmp(req->ifcall.uname, "none") == 0)
 		respond(req, "no authentication required");
 	else if(*req->ifcall.aname == 0 || strcmp(req->ifcall.aname, "dump") == 0)
 		auth9p(req);
@@ -26,17 +27,32 @@ tattach(Req *req)
 	int flags;
 	short uid;
 
-	if((fsmain->flags & FSNOAUTH) == 0 && authattach(req) < 0)
-		return;
+	if((fsmain->flags & FSNOAUTH) == 0){
+		if(strcmp(req->ifcall.uname, "none") == 0){
+			if(!req->srv->authok){
+				respond(req, "require prior authentication for 'none'");
+				return;
+			}
+		} else {
+			if(authattach(req) < 0)
+				return;
+			req->srv->authok = 1;	/* none attaches allowed now */
+		}
+	}
 	if(name2uid(fsmain, req->ifcall.uname, &uid) <= 0){
 		respond(req, "no such user");
 		return;
 	}
 	if(*req->ifcall.aname == 0)
 		flags = 0;
-	else if(strcmp(req->ifcall.aname, "dump") == 0)
+	else if(strcmp(req->ifcall.aname, "dump") == 0){
+		if(uid == 0){
+			/* dont give "none" access to dump */
+			respond(req, Eperm);
+			return;
+		}
 		flags = CHFDUMP|CHFRO;
-	else{
+	} else {
 		respond(req, Ebadspec);
 		return;
 	}
