@@ -233,6 +233,7 @@ struct Srv {
 	Ref	rref;	/* requests in flight */
 
 	int	spid;	/* pid of srv() caller */
+	int	authok;	/* auth was done on this channel (for none) */
 
 	void	(*forker)(void (*)(void*), void*, int);
 	void	(*free)(Srv*);

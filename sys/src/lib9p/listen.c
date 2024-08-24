@@ -30,6 +30,7 @@ listensrv(Srv *os, char *addr)
 	memset(&s->sref, 0, sizeof(s->sref));
 	memset(&s->rref, 0, sizeof(s->rref));
 	s->spid = 0;
+	s->authok = 0;
 	s->free = nil;
 
 	if(s->forker == nil)
