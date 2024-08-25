@@ -659,6 +659,7 @@ struct Conn {
 	int	wfd;
 	int	iounit;
 	int	versioned;
+	int	authok;
 
 	/* fid hash table */
 	Lock	fidtablk[Nfidtab];

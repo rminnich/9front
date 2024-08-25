@@ -1158,10 +1158,15 @@ fsattach(Fmsg *m)
 		putfid(af);
 		if(af->uid != uid)
 			error(Ebadu);
-	}else if(!fs->noauth && strcmp(m->uname, "none") != 0)
-		error(Ebadu);
+		m->conn->authok = 1;	/* none attach allowed now */
+	}else if(!fs->noauth){
+		if(uid != noneid || !m->conn->authok)
+			error(Ebadu);
+	}
 
 	if(strcmp(m->aname, "dump") == 0){
+		if(uid == noneid)
+			error(Eperm);
 		memset(&d, 0, sizeof(d));
 		filldumpdir(&d);
 	}else{
