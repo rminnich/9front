@@ -8,5 +8,6 @@
 int
 hangup(int ctl)
 {
-	return write(ctl, "hangup", sizeof("hangup")-1) != sizeof("hangup")-1;
+	static char msg[] = "hangup";
+	return write(ctl, msg, sizeof(msg)-1) != sizeof(msg)-1;
 }
