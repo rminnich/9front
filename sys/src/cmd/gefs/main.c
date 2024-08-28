@@ -257,21 +257,22 @@ runannounce(int, void *arg)
 		sysfatal("announce %s: %r", ann);
 	while(1){
 		if((lctl = listen(adir, ldir)) < 0){
-			fprint(2, "listen %s: %r", adir);
+			fprint(2, "listen %s: %r\n", adir);
 			break;
 		}
 		fd = accept(lctl, ldir);
-		close(lctl);
 		if(fd < 0){
-			fprint(2, "accept %s: %r", ldir);
+			fprint(2, "accept %s: %r\n", ldir);
+			close(lctl);
 			continue;
 		}
-		if(!(c = newconn(fd, fd))){
+		c = newconn(fd, fd, lctl);
+		if(c == nil){
+			fprint(2, "newconn: %r\n");
+			close(lctl);
 			close(fd);
-			fprint(2, "%r");
 			continue;
 		}
-
 		launch(runfs, c, "netio");
 	}
 	close(actl);
@@ -440,12 +441,12 @@ main(int argc, char **argv)
 	for(i = 0; i < nann; i++)
 		launch(runannounce, ann[i], "announce");
 	if(srvfd != -1){
-		if((c = newconn(srvfd, srvfd)) == nil)
+		if((c = newconn(srvfd, srvfd, -1)) == nil)
 			sysfatal("%r");
 		launch(runfs, c, "srvio");
 	}
 	if(stdio){
-		if((c = newconn(0, 1)) == nil)
+		if((c = newconn(0, 1, -1)) == nil)
 			sysfatal("%r");
 		launch(runfs, c, "stdio");
 	}

@@ -94,7 +94,8 @@ void	compresslog(Arena*);
 void	dlsync(void);
 void	setval(Blk*, Kvp*);
 
-Conn*	newconn(int, int);
+Conn*	newconn(int, int, int);
+void	putconn(Conn*);
 
 int	walk1(Tree*, vlong, char*, Qid*, vlong*);
 void	loadusers(int, Tree*);

@@ -654,12 +654,18 @@ struct Mount {
 
 struct Conn {
 	Conn	*next;
+
 	QLock	wrlk;
+
 	int	rfd;
 	int	wfd;
+	int	cfd;
 	int	iounit;
 	int	versioned;
 	int	authok;
+	int	hangup;
+
+	long	ref;
 
 	/* fid hash table */
 	Lock	fidtablk[Nfidtab];
