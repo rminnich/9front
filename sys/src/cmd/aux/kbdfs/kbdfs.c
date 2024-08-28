@@ -552,9 +552,14 @@ Nextmsg:
 			if(kbtabs[Lnone][i] == k.r || kbtabs[Lshift][i] == k.r || (i >= 16 && kbtabs[Lctl][i] == k.r)){
 				/* assign button from kbtab */
 				k.b = kbtabs[Lnone][i];
+
 				/* handle ^X forms */
 				if(k.r == kbtabs[Lnone][i] && kbtabs[Lctl][i] && !a->shift && !a->altgr && a->ctl)
 					k.r = kbtabs[Lctl][i];
+				break;
+			} else if(kbtabs[Lesc1][i] == k.r || kbtabs[Lshiftesc1][i] == k.r){
+				/* check escaped scancodes too */
+				k.b = kbtabs[Lesc1][i];
 				break;
 			}
 		}
