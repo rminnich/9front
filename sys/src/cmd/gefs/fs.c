@@ -769,11 +769,18 @@ dupfid(Conn *c, u32int new, Fid *f)
 	return n;
 }
 
+/*
+ * clunkfid() removes a fid from the
+ * connection fid tab and drops reference.
+ * Fid must be locked.
+ */
 static void
 clunkfid(Conn *c, Fid *fid, Amsg **ao)
 {
 	Fid *f, **pf;
 	u32int h;
+
+	assert(!canlock(fid));
 
 	h = ihash(fid->fid) % Nfidtab;
 	lock(&c->fidtablk[h]);
@@ -786,6 +793,8 @@ clunkfid(Conn *c, Fid *fid, Amsg **ao)
 		}
 		pf = &f->next;
 	}
+	unlock(&c->fidtablk[h]);
+
 	assert(f != nil);
 	if(f->scan != nil){
 		free(f->scan);
@@ -811,7 +820,6 @@ clunkfid(Conn *c, Fid *fid, Amsg **ao)
 		(*ao)->end = f->dent->length;
 		(*ao)->dent = f->dent;
 	}
-	unlock(&c->fidtablk[h]);
 }
 
 static int
@@ -1796,8 +1804,8 @@ fsremove(Fmsg *m, int id, Amsg **ao)
 	}
 	t = f->mnt->root;
 	nm = 0;
-	*ao = nil;
 	lock(f);
+	*ao = nil;
 	clunkfid(m->conn, f, ao);
 	/* rclose files are getting removed here anyways */
 	if(*ao != nil)
@@ -2291,7 +2299,7 @@ putconn(Conn *c)
 {
 	Conn **pp;
 	Amsg *a;
-	Fid *f, *nf;
+	Fid *f;
 	int i;
 
 	if(adec(&c->ref) != 0)
@@ -2313,19 +2321,25 @@ putconn(Conn *c)
 		close(c->cfd);
 
 	for(i = 0; i < Nfidtab; i++){
-		lock(&c->fidtablk[i]);
-		for(f = c->fidtab[i]; f != nil; f = nf){
-			nf = f->next;
+		for(;;){
+			lock(&c->fidtablk[i]);
+			f = c->fidtab[i];
+			if(f == nil){
+				unlock(&c->fidtablk[i]);
+				break;
+			}
 			ainc(&f->ref);
+			unlock(&c->fidtablk[i]);
+			
 			lock(f);
 			a = nil;
 			clunkfid(c, f, &a);
 			unlock(f);
 			putfid(f);
+
 			if(a != nil)
 				chsend(fs->admchan, a);
 		}
-		unlock(&c->fidtablk[i]);
 	}
 	free(c);
 }
