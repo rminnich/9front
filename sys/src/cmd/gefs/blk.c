@@ -806,7 +806,7 @@ limbo(int op, Limbo *l)
 		p = agetp(&fs->limbo[ge]);
 		l->next = p;
 		if(acasp(&fs->limbo[ge], p, l)){
-			aincl(&fs->nlimbo, 1);
+			ainc(&fs->nlimbo);
 			break;
 		}
 	}
@@ -955,7 +955,7 @@ epochclean(void)
 		default:
 			abort();
 		}
-		aincl(&fs->nlimbo, -1);
+		adec(&fs->nlimbo);
 	}
 }
 
@@ -1082,7 +1082,7 @@ runsync(int, void *p)
 
 	q = p;
 	if(waserror()){
-		aincl(&fs->rdonly, 1);
+		ainc(&fs->rdonly);
 		fprint(2, "error syncing: %s\n", errmsg());
 		return;
 	}

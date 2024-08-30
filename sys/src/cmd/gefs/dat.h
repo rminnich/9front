@@ -629,7 +629,10 @@ struct Dent {
 	char	gone;
 	char	trunc;
 
-	char	buf[Maxent];
+	union {
+		char	buf[Maxent];
+		void	*auth;
+	};
 };
 
 struct Mount {
@@ -685,7 +688,6 @@ struct Fid {
 	Dent	*dent;	/* (pqid, name) ref, modified on rename */
 	Dent	*dir;
 	Amsg	*rclose;	
-	void	*auth;
 
 	u32int	fid;
 	vlong	qpath;

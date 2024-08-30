@@ -255,7 +255,7 @@ checkfs(int fd)
 	Blk *b;
 
 	ok = 1;
-	aincl(&fs->rdonly, 1);
+	ainc(&fs->rdonly);
 	epochwait();
 	if(waserror()){
 		fprint(fd, "error checking %s\n", errmsg());
@@ -300,7 +300,7 @@ checkfs(int fd)
 		poperror();
 	}
 	btexit(&s);
-	aincl(&fs->rdonly, -1);
+	adec(&fs->rdonly);
 	poperror();
 	return ok;
 }

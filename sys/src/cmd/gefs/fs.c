@@ -12,6 +12,8 @@ static void	respond(Fmsg*, Fcall*);
 static void	rerror(Fmsg*, char*, ...);
 static void	clunkfid(Conn*, Fid*, Amsg**);
 
+static void	authfree(AuthRpc*);
+
 int
 walk1(Tree *t, vlong up, char *name, Qid *qid, vlong *len)
 {
@@ -228,7 +230,7 @@ snapfs(Amsg *a, Tree **tp)
 			return;
 		}
 		if(t->nlbl == 1 && t->nref <= 1 && t->succ == -1){
-			aincl(&t->memref, 1);
+			ainc(&t->memref);
 			*tp = t;
 		}
 		delsnap(t, t->succ, a->old);
@@ -676,8 +678,11 @@ clunkdent(Mount *mnt, Dent *de)
 
 	if(de == nil)
 		return;
-	if(de->qid.type & QTAUTH && adec(&de->ref) == 0){
-		free(de);
+	if(de->qid.type & QTAUTH){
+		if(adec(&de->ref) == 0){
+			authfree(de->auth);
+			free(de);
+		}
 		return;
 	}
 	lock(&mnt->dtablk);
@@ -797,8 +802,8 @@ clunkfid(Conn *c, Fid *fid, Amsg **ao)
 		f->dent->gone = 1;
 		wunlock(f->dent);
 
-		aincl(&f->dent->ref, 1);
-		aincl(&f->mnt->ref, 1);
+		ainc(&f->dent->ref);
+		ainc(&f->mnt->ref);
 		(*ao)->op = AOrclose;
 		(*ao)->mnt = f->mnt;
 		(*ao)->qpath = f->qpath;
@@ -837,7 +842,7 @@ readmsg(Conn *c, Fmsg **pm)
 		free(m);
 		return -1;
 	}
-	aincl(&c->ref, 1);
+	ainc(&c->ref);
 	m->conn = c;
 	m->sz = sz;
 	PBIT32(m->buf, sz);
@@ -870,7 +875,7 @@ fsversion(Fmsg *m)
 	respond(m, &r);
 }
 
-void
+static void
 authfree(AuthRpc *auth)
 {
 	AuthRpc *rpc;
@@ -911,7 +916,7 @@ authread(Fid *f, Fcall *r, void *data, vlong count)
 	AuthRpc *rpc;
 	User *u;
 
-	if((rpc = f->auth) == nil)
+	if((f->dir->qid.type & QTAUTH) == 0 || (rpc = f->dir->auth) == nil)
 		error(Etype);
 
 	switch(auth_rpc(rpc, "read", nil, 0)){
@@ -947,7 +952,7 @@ authwrite(Fid *f, Fcall *r, void *data, vlong count)
 {
 	AuthRpc *rpc;
 
-	if((rpc = f->auth) == nil)
+	if((f->dir->qid.type & QTAUTH) == 0 || (rpc = f->dir->auth) == nil)
 		error(Etype);
 	if(auth_rpc(rpc, "write", data, count) != ARok)
 		error(Ebotch);
@@ -961,7 +966,7 @@ fsauth(Fmsg *m)
 {
 	Dent *de;
 	Fcall r;
-	Fid f;
+	Fid f, *nf;
 
 	if(fs->noauth){
 		rerror(m, Eauth);
@@ -976,6 +981,11 @@ fsauth(Fmsg *m)
 		return;
 	}
 	memset(de, 0, sizeof(Dent));
+	de->auth = authnew();
+	if(de->auth == nil){
+		rerror(m, errmsg());
+		return;
+	}
 	de->ref = 0;
 	de->qid.type = QTAUTH;
 	de->qid.path = aincv(&fs->nextqid, 1);
@@ -997,15 +1007,17 @@ fsauth(Fmsg *m)
 	f.duid = -1;
 	f.dgid = -1;
 	f.dmode = 0600;
-	f.auth = authnew();
-	if(dupfid(m->conn, m->afid, &f) == nil){
+	nf = dupfid(m->conn, m->afid, &f);
+	if(nf == nil){
 		rerror(m, Efid);
+		authfree(de->auth);
 		free(de);
 		return;
 	}
 	r.type = Rauth;
 	r.aqid = de->qid;
 	respond(m, &r);
+	putfid(nf);
 }
 
 static int
@@ -1105,7 +1117,7 @@ fsattach(Fmsg *m)
 	Xdir d;
 	Kvp kv;
 	Key dk;
-	Fid f, *af;
+	Fid f, *af, *nf;
 	int uid;
 
 	de = nil;
@@ -1188,12 +1200,13 @@ fsattach(Fmsg *m)
 	}
 	if(strcmp(aname, "dump") == 0)
 		f.fromdump = 1;
-	if(dupfid(m->conn, m->fid, &f) == nil)
+	nf = dupfid(m->conn, m->fid, &f);
+	if(nf == nil)
 		error(Efid);
-
 	r.type = Rattach;
 	r.qid = d.qid;
 	respond(m, &r);
+	putfid(nf);
 	poperror();
 
 
@@ -1307,6 +1320,12 @@ fswalk(Fmsg *m)
 		if((f = dupfid(m->conn, m->newfid, o)) == nil)
 			error(Efid);
 		putfid(o);
+		poperror();
+		if(waserror()){
+			rerror(m, errmsg());
+			putfid(f);
+			return;
+		}
 	}
 	if(i > 0 && i == m->nwname){
 		lock(f);
@@ -1349,8 +1368,8 @@ fswalk(Fmsg *m)
 		unlock(f);
 	}
 	respond(m, &r);
-	poperror();
 	putfid(f);
+	poperror();
 }
 
 static void
@@ -1457,8 +1476,8 @@ fswstat(Fmsg *m, int id, Amsg **ao)
 				qlock(&de->trunclk);
 				de->trunc = 1;
 				qunlock(&de->trunclk);
-				aincl(&de->ref, 1);
-				aincl(&f->mnt->ref, 1);
+				ainc(&de->ref);
+				ainc(&f->mnt->ref);
 				(*ao)->op = AOclear;
 				(*ao)->mnt = f->mnt;
 				(*ao)->qpath = f->qpath;
@@ -1829,7 +1848,7 @@ fsremove(Fmsg *m, int id, Amsg **ao)
 	}else{
 		if(*ao == nil)
 			*ao = emalloc(sizeof(Amsg), 1);
-		aincl(&f->mnt->ref, 1);
+		ainc(&f->mnt->ref);
 		(*ao)->op = AOclear;
 		(*ao)->mnt = f->mnt;
 		(*ao)->qpath = f->qpath;
@@ -1922,8 +1941,8 @@ fsopen(Fmsg *m, int id, Amsg **ao)
 		qlock(&f->dent->trunclk);
 		f->dent->trunc = 1;
 		qunlock(&f->dent->trunclk);
-		aincl(&f->dent->ref, 1);
-		aincl(&f->mnt->ref, 1);
+		ainc(&f->dent->ref);
+		ainc(&f->mnt->ref);
 		(*ao)->op = AOclear;
 		(*ao)->mnt = f->mnt;
 		(*ao)->qpath = f->qpath;
@@ -2275,7 +2294,7 @@ putconn(Conn *c)
 	Fid *f;
 	int i;
 
-	if(aincl(&c->ref, -1))
+	if(adec(&c->ref) != 0)
 		return;
 
 	lock(&fs->connlk);
@@ -2297,16 +2316,12 @@ putconn(Conn *c)
 		lock(&c->fidtablk[i]);
 		for(f = c->fidtab[i]; f != nil; f = f->next){
 			lock(f);
-			if(waserror()){
-				unlock(f);
-				continue;
-			}
 			a = nil;
 			clunkfid(c, f, &a);
 			unlock(f);
+			putfid(f);
 			if(a != nil)
 				chsend(fs->admchan, a);
-			nexterror();
 		}
 		unlock(&c->fidtablk[i]);
 	}
@@ -2414,9 +2429,11 @@ runmutate(int id, void *)
 					rerror(m, Enofid);
 					continue;
 				}
+				lock(f);
 				clunkfid(m->conn, f, &a);
 				/* read only: ignore rclose */
 				f->rclose = nil;
+				unlock(f);
 				free(a);
 				putfid(f);
 			}

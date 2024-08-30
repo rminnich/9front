@@ -119,7 +119,7 @@ broke(char *fmt, ...)
 {
 	va_list ap;
 
-	aincl(&fs->rdonly, 1);
+	ainc(&fs->rdonly);
 	va_start(ap, fmt);
 	errorv(fmt, ap, 1);
 }
