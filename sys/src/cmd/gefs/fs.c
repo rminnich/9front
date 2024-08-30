@@ -2291,7 +2291,7 @@ putconn(Conn *c)
 {
 	Conn **pp;
 	Amsg *a;
-	Fid *f;
+	Fid *f, *nf;
 	int i;
 
 	if(adec(&c->ref) != 0)
@@ -2314,7 +2314,9 @@ putconn(Conn *c)
 
 	for(i = 0; i < Nfidtab; i++){
 		lock(&c->fidtablk[i]);
-		for(f = c->fidtab[i]; f != nil; f = f->next){
+		for(f = c->fidtab[i]; f != nil; f = nf){
+			nf = f->next;
+			ainc(&f->ref);
 			lock(f);
 			a = nil;
 			clunkfid(c, f, &a);
