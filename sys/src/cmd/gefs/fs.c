@@ -800,8 +800,9 @@ clunkfid(Conn *c, Fid *fid, Amsg **ao)
 		free(f->scan);
 		f->scan = nil;
 	}
-	if(f->rclose != nil){
-		*ao = f->rclose;
+
+	if((*ao = f->rclose) != nil){
+		f->rclose = nil;
 
 		qlock(&f->dent->trunclk);
 		f->dent->trunc = 1;
@@ -1805,11 +1806,7 @@ fsremove(Fmsg *m, int id, Amsg **ao)
 	t = f->mnt->root;
 	nm = 0;
 	lock(f);
-	*ao = nil;
 	clunkfid(m->conn, f, ao);
-	/* rclose files are getting removed here anyways */
-	if(*ao != nil)
-		f->rclose = nil;
 	unlock(f);
 
 	truncwait(f->dent, id);
@@ -2332,7 +2329,6 @@ putconn(Conn *c)
 			unlock(&c->fidtablk[i]);
 			
 			lock(f);
-			a = nil;
 			clunkfid(c, f, &a);
 			unlock(f);
 			putfid(f);
@@ -2447,11 +2443,13 @@ runmutate(int id, void *)
 				}
 				lock(f);
 				clunkfid(m->conn, f, &a);
-				/* read only: ignore rclose */
-				f->rclose = nil;
 				unlock(f);
-				free(a);
 				putfid(f);
+				if(a != nil){
+					clunkdent(a->mnt, a->dent);
+					clunkmount(a->mnt);
+					free(a);
+				}
 			}
 			rerror(m, Erdonly);
 			continue;
