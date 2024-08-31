@@ -65,7 +65,8 @@ dnserver(DNSmsg *reqp, DNSmsg *repp, Request *req, uchar *srcip, int rcode)
 		if(cfg.nonrecursive
 		|| cfg.localrecursive && !localip(srcip)){
 			/* we don't recurse and we're not authoritative */
-			neg = nil;
+			setercode(repp, Rrefused);
+			return;
 		} else {
 			repp->flags |= Fcanrec;
 			if(reqp->flags & Frecurse){
