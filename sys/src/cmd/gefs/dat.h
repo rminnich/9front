@@ -676,7 +676,7 @@ struct Conn {
 };
 
 struct Fid {
-	Lock;
+	RWLock;
 	Fid	*next;
 	/*
 	 * if opened with OEXEC, we want to use a snapshot,
