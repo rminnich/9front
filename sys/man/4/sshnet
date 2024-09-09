@@ -1,6 +1,6 @@
 .TH SSHNET 4
 .SH NAME
-sshnet - secure file transfer protocol client
+sshnet - secure tcp port forwarding
 .SH SYNOPSIS
 .B sshnet
 [
