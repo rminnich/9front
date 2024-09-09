@@ -20,8 +20,8 @@ scrlresize(void)
 {
 	freeimage(vscrtmp);
 	freeimage(hscrtmp);
-	vscrtmp = eallocimage(display, Rect(0, 0, 32, screen->r.max.y), screen->chan, 0, DNofill);
-	hscrtmp = eallocimage(display, Rect(0, 0, screen->r.max.x, 32), screen->chan, 0, DNofill);
+	vscrtmp = eallocimage(display, Rect(0, 0, 32, 3*Dy(screen->r)), screen->chan, 0, DNofill);
+	hscrtmp = eallocimage(display, Rect(0, 0, 3*Dx(screen->r), 32), screen->chan, 0, DNofill);
 }
 
 static
@@ -69,6 +69,9 @@ textscrdraw(Text *t)
 	r2 = scrpos(r1, t->org, t->org+t->nchars, t->rs.nr);
 	if(!eqrect(r2, t->lastsr)){
 		t->lastsr = r2;
+		/* move r1, r2 to (0,0) to avoid clipping */
+		r2 = rectsubpt(r2, r1.min);
+		r1 = rectsubpt(r1, r1.min);
 		draw(b, r1, t->cols[BORD], nil, ZP);
 		draw(b, r2, t->cols[BACK], nil, ZP);
 		r2.min.x = r2.max.x-1;
