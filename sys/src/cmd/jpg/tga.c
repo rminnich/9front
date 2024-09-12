@@ -166,6 +166,9 @@ show(int fd, char *name)
 		if(outchan==GREY8 || (r->chandesc==CY && threeflag==0)){
 			c = totruecolor(r, CY);
 			outchan = GREY8;
+		}else if(r->chandesc==CRGBA){
+			c = totruecolor(r, CRGBA32);
+			outchan = RGBA32;
 		}else
 			c = totruecolor(r, CRGB24);
 	}

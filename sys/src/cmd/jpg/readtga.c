@@ -238,7 +238,7 @@ cmap_rle(Biobuf *bp, uchar *l, int num)
 }
 
 static int
-rgba(Biobuf *bp, int bpp, uchar *r, uchar *g, uchar *b, int num)
+rgba(Biobuf *bp, int bpp, uchar *r, uchar *g, uchar *b, uchar *a, int num)
 {
 	int i;
 	uchar buf[4], tmp;
@@ -275,6 +275,7 @@ rgba(Biobuf *bp, int bpp, uchar *r, uchar *g, uchar *b, int num)
 			*b++ = buf[0];
 			*g++ = buf[1];
 			*r++ = buf[2];
+			*a++ = buf[3];
 		}
 		break;
 	default:
@@ -285,7 +286,7 @@ rgba(Biobuf *bp, int bpp, uchar *r, uchar *g, uchar *b, int num)
 }
 
 static int
-rgba_rle(Biobuf *bp, int bpp, uchar *r, uchar *g, uchar *b, int num)
+rgba_rle(Biobuf *bp, int bpp, uchar *r, uchar *g, uchar *b, uchar *a, int num)
 {
 	uchar len;
 	int i, got;
@@ -296,23 +297,27 @@ rgba_rle(Biobuf *bp, int bpp, uchar *r, uchar *g, uchar *b, int num)
 		if(len & 0x80){
 			len &= 0x7f;
 			len += 1;	/* run of zero is meaningless */
-			if(rgba(bp, bpp, r, g, b, 1) != 1)
+			if(rgba(bp, bpp, r, g, b, a, 1) != 1)
 				break;
 			for(i = 1; i < len && got+i < num; i++){
 				r[i] = *r;
 				g[i] = *g;
 				b[i] = *b;
+				if(bpp == 32)
+					a[i] = *a;
 			}
 			len = i;
 		}
 		else{
 			len += 1;	/* raw block of zero is meaningless */
-			if(rgba(bp, bpp, r, g, b, len) != len)
+			if(rgba(bp, bpp, r, g, b, a, len) != len)
 				break;
 		}
 		r += len;
 		g += len;
 		b += len;
+		if(bpp == 32)
+			a += len;
 	}
 	return got;
 }
@@ -380,7 +385,7 @@ Breadtga(Biobuf *bp)
 {
 	Tga *h;
 	int n, c, num;
-	uchar *r, *g, *b;
+	uchar *r, *g, *b, *a;
 	Rawimage *ar, **array;
 
 	if((h = rdhdr(bp)) == nil){
@@ -429,8 +434,8 @@ Breadtga(Biobuf *bp)
 		ar->chandesc = (h->cmapbpp == 32) ? CRGBV : CRGB1;
 	}
 	else{
-		ar->nchans = 3;
-		ar->chandesc = CRGB;
+		ar->nchans = (h->bpp == 32) ? 4: 3;
+		ar->chandesc = (h->bpp == 32) ? CRGBA: CRGB;
 	}
 
 	ar->cmap = h->cmap;
@@ -445,6 +450,7 @@ Breadtga(Biobuf *bp)
 	r = ar->chans[0];
 	g = ar->chans[1];
 	b = ar->chans[2];
+	a = ar->chans[3];
 
 	num = h->width*h->height;
 	switch(h->datatype){
@@ -452,7 +458,7 @@ Breadtga(Biobuf *bp)
 		n = cmap(bp, r, num);
 		break;
 	case 2:
-		n = rgba(bp, h->bpp, r, g, b, num);
+		n = rgba(bp, h->bpp, r, g, b, a, num);
 		break;
 	case 3:
 		n = luma(bp, h->bpp, r, num);
@@ -461,7 +467,7 @@ Breadtga(Biobuf *bp)
 		n = cmap_rle(bp, r, num);
 		break;
 	case 10:
-		n = rgba_rle(bp, h->bpp, r, g, b, num);
+		n = rgba_rle(bp, h->bpp, r, g, b, a, num);
 		break;
 	case 11:
 		n = luma_rle(bp, h->bpp, r, num);

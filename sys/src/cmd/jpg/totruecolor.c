@@ -17,10 +17,11 @@ totruecolor(Rawimage *i, int chandesc)
 	int j, k;
 	Rawimage *im;
 	char err[ERRMAX];
-	uchar *rp, *gp, *bp, *cmap, *inp, *outp, cmap1[4*256];
+	uchar *rp, *gp, *bp, *ap, *cmap, *inp, *outp, cmap1[4*256];
 	int r, g, b, Y, Cr, Cb, psize;
+	double a;
 
-	if(chandesc!=CY && chandesc!=CRGB24)
+	if(chandesc!=CY && chandesc!=CRGB24 && chandesc!=CRGBA32)
 		return _remaperror("remap: can't convert to chandesc %d", chandesc);
 
 	err[0] = '\0';
@@ -31,8 +32,10 @@ totruecolor(Rawimage *i, int chandesc)
 	memset(im, 0, sizeof(Rawimage));
 	if(chandesc == CY)
 		im->chanlen = i->chanlen;
-	else
+	else if(chandesc == CRGB24)
 		im->chanlen = 3*i->chanlen;
+	else
+		im->chanlen = 4*i->chanlen;
 	im->chandesc = chandesc;
 	im->chans[0] = malloc(im->chanlen);
 	if(im->chans[0] == nil){
@@ -101,11 +104,13 @@ totruecolor(Rawimage *i, int chandesc)
 		break;
 
 	case CRGB:
-		if(i->nchans != 3)
+	case CRGBA:
+		if(i->nchans != 3 && i->nchans != 4)
 			return _remaperror("remap: can't handle nchans %d", i->nchans);
 		rp = i->chans[0];
 		gp = i->chans[1];
 		bp = i->chans[2];
+		ap = i->chans[3];
 		if(chandesc == CY){
 			for(j=0; j<i->chanlen; j++){
 				r = *bp++;
@@ -116,6 +121,15 @@ totruecolor(Rawimage *i, int chandesc)
 			}
 		}else
 			for(j=0; j<i->chanlen; j++){
+				if(i->nchans == 4){
+					*outp++ = *ap++;
+					/* pre-multiply alpha */
+					a = (double)ap[-1]/0xFF;
+					*outp++ = *bp++ * a;
+					*outp++ = *gp++ * a;
+					*outp++ = *rp++ * a;
+					continue;
+				}
 				*outp++ = *bp++;
 				*outp++ = *gp++;
 				*outp++ = *rp++;

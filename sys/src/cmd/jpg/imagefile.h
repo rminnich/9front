@@ -29,6 +29,7 @@ enum
 	CRGBA32	= 6,	/* one channel in correct data order for loadimage(RGBA32) */
 	CYA16	= 7,	/* one channel in correct data order for loadimage(Grey8+Alpha8) */
 	CRGBVA16= 8,	/* one channel in correct data order for loadimage(CMAP8+Alpha8) */
+	CRGBA	= 9,	/* four channels, no map */
 
 	/* GIF flags */
 	TRANSP	= 1,
