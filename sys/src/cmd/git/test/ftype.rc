@@ -1,0 +1,41 @@
+#!/bin/rc
+
+. util.rc
+
+rm -fr scratch
+mkdir -p scratch/repo1
+
+echo @@ file-type change @@
+@{
+	rfork ne
+	cd scratch/repo1
+	repo1=`{pwd}
+	$G/init
+	echo A > A
+	mkdir B
+	echo B > B/B
+	$G/add A
+	$G/commit -m 1 A
+
+	cd ..
+	$G/clone $repo1 repo2
+	cd repo2
+	repo2=`{pwd}
+
+	cd $repo1
+	rm A
+	rm -rf B
+	mkdir A
+	echo B > A/B
+	echo B > B
+	$G/add A/B
+	$G/add B
+	$G/commit -m 2 A/B B
+
+	# pull repo2 after file changed to directory in repo1
+	cd $repo2
+	$G/pull
+
+	# make sure A is the same in both repos
+	diff -r $repo1/A $repo2/A || echo fuck
+}

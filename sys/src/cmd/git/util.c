@@ -67,8 +67,15 @@ entcmp(void *pa, void *pb)
 				cb = '/';
 			return (ca > cb) ? 1 : -1;
 		}
-		if(ca == 0)
-			return 0;
+		if(ca == 0){
+			if(ae->mode & DMDIR)
+				ca = '/';
+			if(be->mode & DMDIR)
+				cb = '/';
+			if(ca == cb)
+				return 0;
+			return (ca > cb) ? 1 : -1;
+		}
 	}
 }
 

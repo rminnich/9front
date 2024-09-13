@@ -4,6 +4,7 @@ TEST=\
 	add\
 	basic\
 	export\
+	ftype\
 	lca\
 	merge\
 	range

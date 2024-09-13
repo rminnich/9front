@@ -84,6 +84,14 @@ if not {
 }
 
 echo $commit > .git/$new
+
+for(d in $deleted){
+	if(! test -d $d){
+		rm -f $d
+		echo R NOQID 0 $d >> .git/INDEX9
+	}
+}
+
 for(m in $cleanpaths){
 	d=`$nl{basename -d $m}
 	mkdir -p $d
@@ -112,13 +120,6 @@ for(ours in $dirtypaths){
 	common=$gitfs/object/$orig/tree/$ours
 	theirs=$gitfs/object/$base/tree/$ours
 	merge1 $ours $ours $common $theirs
-}
-
-for(d in $deleted){
-	if(! test -d $d){
-		rm -f $d
-		echo R NOQID 0 $d >> .git/INDEX9
-	}
 }
 
 echo ref: $new > .git/HEAD
