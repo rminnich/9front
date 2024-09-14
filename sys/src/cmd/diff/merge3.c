@@ -16,6 +16,8 @@ addchange(Diff *df, int a, int b, int c, int d)
 
 	if (a > b && c > d)
 		return;
+	if(c > d)
+		d = c;
 	if(df->nchanges%1024 == 0)
 		df->changes = erealloc(df->changes, (df->nchanges+1024)*sizeof(df->changes[0]));
 	ch = &df->changes[df->nchanges++];
@@ -45,7 +47,7 @@ collect(Diff *d)
 		addchange(d, i1 , i0, j1, j0);
 	}
 	if (m == 0)
-		change(d, 1, 0, 1, d->len[1]);
+		addchange(d, 1, 0, 1, d->len[1]);
 	qsort(d->changes, d->nchanges, sizeof(Change), changecmp);
 }
 
@@ -70,8 +72,8 @@ same(Diff *l, Change *lc, Diff *r, Change *rc)
 	ry = rc->newy;
 	if(ly - lx != ry - rx)
 		return 0;
-	assert(lx <= ly && ly < l->len[1]);
-	assert(rx <= ry && ry < r->len[1]);
+	assert(lx <= ly && ly <= l->len[1]);
+	assert(rx <= ry && ry <= r->len[1]);
 	Bseek(l->input[1], l->ixnew[lx-1], 0);
 	Bseek(r->input[1], r->ixnew[rx-1], 0);
 	for(i = 0; i <= (ly - lx); i++){
