@@ -11,31 +11,42 @@ echo @@ file-type change @@
 	cd scratch/repo1
 	repo1=`{pwd}
 	$G/init
+
+	# in repo1:
+	#	create A as a file
+	#	create B as a directory
 	echo A > A
 	mkdir B
-	echo B > B/B
-	$G/add A
-	$G/commit -m 1 A
+	echo C > B/C
+	$G/add A B/C
+	$G/commit -m 1 A B/C
 
 	cd ..
 	$G/clone $repo1 repo2
 	cd repo2
 	repo2=`{pwd}
 
+	diff -r $repo1/A $repo2/A || exit 'clone fail A'
+	diff -r $repo1/B $repo2/B || exit 'clone fail B'
+
 	cd $repo1
-	rm A
-	rm -rf B
+
+	# in repo1:
+	#	make A into a directory
+	#	make B into a file
+	rm -r A B
 	mkdir A
 	echo B > A/B
 	echo B > B
-	$G/add A/B
-	$G/add B
+	$G/add A/B B
 	$G/commit -m 2 A/B B
 
 	# pull repo2 after file changed to directory in repo1
 	cd $repo2
 	$G/pull
 
-	# make sure A is the same in both repos
-	diff -r $repo1/A $repo2/A || echo fuck
+	diff -r $repo1/A $repo2/A || exit 'pull fail A'
+	diff -r $repo1/B $repo2/B || exit 'pull fail B'
+
+	exit ''
 }
