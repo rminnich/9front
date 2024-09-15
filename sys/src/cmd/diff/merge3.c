@@ -16,8 +16,6 @@ addchange(Diff *df, int a, int b, int c, int d)
 
 	if (a > b && c > d)
 		return;
-	if(c > d)
-		d = c;
 	if(df->nchanges%1024 == 0)
 		df->changes = erealloc(df->changes, (df->nchanges+1024)*sizeof(df->changes[0]));
 	ch = &df->changes[df->nchanges++];
@@ -72,8 +70,7 @@ same(Diff *l, Change *lc, Diff *r, Change *rc)
 	ry = rc->newy;
 	if(ly - lx != ry - rx)
 		return 0;
-	assert(lx <= ly && ly <= l->len[1]);
-	assert(rx <= ry && ry <= r->len[1]);
+	assert(ly <= l->len[1] && ry <= r->len[1]);
 	Bseek(l->input[1], l->ixnew[lx-1], 0);
 	Bseek(r->input[1], r->ixnew[rx-1], 0);
 	for(i = 0; i <= (ly - lx); i++){
@@ -159,7 +156,7 @@ merge(Diff *l, Diff *r)
 				Bprint(&stdout, ">>>>>>>>>>\n");
 				status = "conflict";
 			}
-			ln = y+1;
+			ln = (y > x) ? y+1 : x+1;
 			il++;
 			ir++;
 		}else if(lc != nil && (rc == nil || lx < rx)){
@@ -175,7 +172,7 @@ merge(Diff *l, Diff *r)
 		}else
 			abort();
 	}
-	if(ln < l->len[0])
+	if(ln <= l->len[0])
 		fetch(l, l->ixold, ln, l->len[0], l->input[0], "");
 	return status;
 }
