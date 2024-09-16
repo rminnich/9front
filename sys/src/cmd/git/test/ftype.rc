@@ -10,7 +10,7 @@ echo @@ file-type change @@
 	rfork ne
 	cd scratch/repo1
 	repo1=`{pwd}
-	$G/init
+	git/init
 
 	# in repo1:
 	#	create A as a file
@@ -18,11 +18,11 @@ echo @@ file-type change @@
 	echo A > A
 	mkdir B
 	echo C > B/C
-	$G/add A B/C
-	$G/commit -m 1 A B/C
+	git/add A B/C
+	git/commit -m 1 A B/C
 
 	cd ..
-	$G/clone $repo1 repo2
+	git/clone $repo1 repo2
 	cd repo2
 	repo2=`{pwd}
 
@@ -38,12 +38,12 @@ echo @@ file-type change @@
 	mkdir A
 	echo B > A/B
 	echo B > B
-	$G/add A/B B
-	$G/commit -m 2 A/B B
+	git/add A/B B
+	git/commit -m 2 A/B B
 
 	# pull repo2 after file changed to directory in repo1
 	cd $repo2
-	$G/pull
+	git/pull
 
 	diff -r $repo1/A $repo2/A || exit 'pull fail A'
 	diff -r $repo1/B $repo2/B || exit 'pull fail B'

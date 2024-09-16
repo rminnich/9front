@@ -8,36 +8,36 @@ cd scratch
 
 echo @@ test lca @@
 @{
-	q $G/init a
+	q git/init a
 
 	cd a
 
 	echo 'first' > f
-	q $G/add f
-	q $G/commit -m base f
-	r=`{$G/$O.query HEAD}
+	q git/add f
+	q git/commit -m base f
+	r=`{git/query HEAD}
 
 	echo 0 > f
-	q $G/commit -m a.0 .
-	a=`{$G/$O.query HEAD}
+	q git/commit -m a.0 .
+	a=`{git/query HEAD}
 
 	for(i in `{seq 10}){
 		echo $i > f
-		q $G/commit -m a.$i .
+		q git/commit -m a.$i .
 	}
 
-	q $G/branch -nb $r merge
+	q git/branch -nb $r merge
 	echo x > f
-	q $G/commit -m b.0 .
-	b=`{$G/$O.query HEAD}
+	q git/commit -m b.0 .
+	b=`{git/query HEAD}
 
-	qq $G/merge front
-	q $G/commit -m merge .
-	m=`{$G/$O.query HEAD}
+	qq git/merge front
+	q git/commit -m merge .
+	m=`{git/query HEAD}
 
-~ `{$G/$O.query $a $m @} $a || die lca a-m
-~ `{$G/$O.query $a $b @} $r || die lca a-b
-~ `{$G/$O.query $a $r @} $r || die lca a-r
+~ `{git/query $a $m @} $a || die lca a-m
+~ `{git/query $a $b @} $r || die lca a-b
+~ `{git/query $a $r @} $r || die lca a-r
 }
 
 #       a
@@ -47,13 +47,13 @@ echo @@ test lca @@
 # date order (oldest to newest): f d c b e a
 echo @@ test lca rebase @@
 @{
-	q $G/init b
+	q git/init b
 	cd b
 
 	touch f
 
 	fn commit {
-		$G/$O.save -n regress -e regress $* f
+		git/save -n regress -e regress $* f
 	}
 
 	f=`{commit -m f -d 1}
@@ -63,6 +63,6 @@ echo @@ test lca rebase @@
 	b=`{commit -m b -d 4 -p $c}
 	a=`{commit -m a -d 6 -p $e}
 
-~ `{$G/$O.query $a $b @} $e || die lca a-b
-~ `{$G/$O.query $b $a @} $e || die lca b-a
+~ `{git/query $a $b @} $e || die lca a-b
+~ `{git/query $b $a @} $e || die lca b-a
 }

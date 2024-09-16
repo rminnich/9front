@@ -10,7 +10,7 @@ echo @@ abs paths @@
 	rfork ne
 	cd scratch/repo
 	pwd=`{pwd}
-	$G/init
+	git/init
 	mkdir dir
 	mkdir another
 	mkdir more
@@ -20,15 +20,15 @@ echo @@ abs paths @@
 	touch another/^(a b c)
 	touch more/^(a b c)
 	touch extra/^(a b c)
-	$G/add a
-	$G/add $pwd/b
-	$G/add dir/a
-	$G/add $pwd/dir/b
-	$G/add more
-	@{cd more && $G/add ../extra/a}
-	@{cd more && $G/add $pwd/extra/b}
-	$G/$O.fs
-	$G/$O.walk > ../added
+	git/add a
+	git/add $pwd/b
+	git/add dir/a
+	git/add $pwd/dir/b
+	git/add more
+	@{cd more && git/add ../extra/a}
+	@{cd more && git/add $pwd/extra/b}
+	git/fs
+	git/walk > ../added
 }
 
 diff -c scratch/added add.expected >/dev/null || die wrong files

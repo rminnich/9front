@@ -13,18 +13,18 @@ baz
 # setup test repo
 @{
 	rfork ne
-	q $G/init a
+	q git/init a
 
 	cd a
 	echo hello > a
 	echo goodbye > b
 	echo -n $c > c
 	chmod +x a
-	q $G/add a b c
-	q $G/commit -m v1 .
+	q git/add a b c
+	q git/commit -m v1 .
 	cd ..
 	pwd
-	q $G/clone `{pwd}^/a b
+	q git/clone `{pwd}^/a b
 }
 
 echo @@ merge different files @@
@@ -33,19 +33,19 @@ echo @@ merge different files @@
 	@{
 		cd a
 		echo x > a
-		q $G/commit -m diverge1a a
+		q git/commit -m diverge1a a
 	}
 	@{
 		cd b
 		echo y > b
-		q $G/commit -m diverge1b b
+		q git/commit -m diverge1b b
 	}
 
 	@{
 		cd b
-		qq $G/pull
-		$G/merge origin/front || status=''
-		q $G/commit -m merged
+		qq git/pull
+		git/merge origin/front || status=''
+		q git/commit -m merged
 	}
 }
 
@@ -66,17 +66,17 @@ echo @@ merge concurent edits @@
 		chmod -x a
 		chmod +x b
 		echo quux >>c
-		q $G/commit -m diverge2a a b c
+		q git/commit -m diverge2a a b c
 	}
 	@{
 		cd b
 		sed s/foo/FOO/ <c >c.new
 		mv c.new c
-		q $G/commit -m diverge2b c
+		q git/commit -m diverge2b c
 
-		qq $G/pull
-		qq $G/merge origin/front
-		q $G/commit -m merge c
+		qq git/pull
+		qq git/merge origin/front
+		q git/commit -m merge c
 	}
 }
 

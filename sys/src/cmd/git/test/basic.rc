@@ -9,15 +9,15 @@ mkdir -p scratch/upstream
 echo @@ version1 @@
 @{
 	cd scratch/upstream
-	q $G/init
+	q git/init
 	echo version1 > file.txt
-	q $G/add file.txt
-	q $G/commit -m version1 file.txt
+	q git/add file.txt
+	q git/commit -m version1 file.txt
 }
 
 @{
 	cd scratch
-	$G/clone $wrkdir/scratch/upstream downstream
+	git/clone $wrkdir/scratch/upstream downstream
 }
 
 diff -c scratch/upstream/file.txt scratch/downstream/file.txt || die mismatch
@@ -26,11 +26,11 @@ echo @@ version2 @@
 @{
 	cd scratch/upstream
 	echo version2 > file.txt
-	q $G/commit -m version2 file.txt
+	q git/commit -m version2 file.txt
 }
 @{
 	cd scratch/downstream
-	q $G/pull
+	q git/pull
 }
 q diff -c scratch/upstream/file.txt scratch/downstream/file.txt || die mismatch
 
@@ -38,12 +38,12 @@ echo @@ version3 @@
 @{
 	cd scratch/upstream
 	echo version3 > file2.txt
-	$G/add file2.txt
-	q $G/commit -m version3 file2.txt
+	git/add file2.txt
+	q git/commit -m version3 file2.txt
 }
 @{
 	cd scratch/downstream
-	q $G/pull
+	q git/pull
 }
 q diff -c scratch/upstream/file.txt scratch/downstream/file.txt || die mismatch
 q diff -c scratch/upstream/file2.txt scratch/downstream/file2.txt || die mismatch
@@ -52,14 +52,14 @@ echo @@ version4 @@
 @{
 	cd scratch/upstream
 	echo version4 > file.txt
-	$G/rm file2.txt
+	git/rm file2.txt
 	rm file2.txt
-	q $G/commit -m version4 file.txt file2.txt
+	q git/commit -m version4 file.txt file2.txt
 }
 
 @{
 	cd scratch/downstream
-	q $G/pull
+	q git/pull
 }
 q diff -c scratch/upstream/file.txt scratch/downstream/file.txt || die mismatch
 ! test -e scratch/upstream/file2.txt || die mismatch

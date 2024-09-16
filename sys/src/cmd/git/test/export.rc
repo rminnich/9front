@@ -9,16 +9,16 @@ cd scratch
 # setup test repo
 @{
 	rfork ne
-	q $G/init a
+	q git/init a
 
 	cd a
 	echo hello > a
 	echo goodbye > b
-	q $G/add a b
-	q $G/commit -m v1 .
+	q git/add a b
+	q git/commit -m v1 .
 	cd ..
 	pwd
-	q $G/clone `{pwd}^/a b
+	q git/clone `{pwd}^/a b
 }
 
 echo @@ export and apply @@
@@ -27,14 +27,14 @@ echo @@ export and apply @@
 	@{
 		cd b
 		echo hihi > b
-		q $G/commit -m export1 b
-		$G/export > ../export1.patch
+		q git/commit -m export1 b
+		git/export > ../export1.patch
 	}
 
 	@{
 		cd a
-		q $G/import ../export1.patch
+		q git/import ../export1.patch
 	}
 }
 
-~ `{cd a && $G/$O.query HEAD} `{cd b && $G/$O.query HEAD} || die 'mismatched export'
+~ `{cd a && git/query HEAD} `{cd b && git/query HEAD} || die 'mismatched export'

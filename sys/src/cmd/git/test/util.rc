@@ -14,4 +14,5 @@ fn die {
 	}
 }
 
-G=`{cleanname `{pwd}^/..}
+rfork n
+bind $cputype.git /bin/git
