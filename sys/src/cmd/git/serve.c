@@ -55,9 +55,9 @@ showrefs(Conn *c)
 
 	s = gethead(&head,  buf, sizeof(buf));
 	if(s != nil)
-		r = fmtpkt(c, "%H HEAD%csymref=HEAD:%s\n", head, 0, s);
+		r = fmtpkt(c, "%H HEAD%csymref=HEAD:%s no-thin\n", head, 0, s);
 	else
-		r = fmtpkt(c, "%H HEAD\n", head);
+		r = fmtpkt(c, "%H HEAD%cno-thin\n", head, 0);
 	if(r == -1)
 		goto error;
 
