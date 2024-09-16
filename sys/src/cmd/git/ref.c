@@ -159,7 +159,7 @@ paint(Hash *head, int nhead, Hash *tail, int ntail, Object ***res, int *nres, in
 	}
 
 	dprint(1, "finding twixt commits\n");
-	while(nskip != objq.nheap && qpop(&objq, &e)){
+	while(objq.nheap != 0 && qpop(&objq, &e)){
 		if(e.color == Skip)
 			nskip--;
 		if(oshas(&skip, e.o->hash))
