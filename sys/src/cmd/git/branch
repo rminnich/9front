@@ -10,7 +10,8 @@ eval `''{aux/getflags $*} || exec aux/usage
 
 modified=()
 deleted=()
-
+idxchange=.git/INDEX9.changes
+touch $idxchange
 if(~ $#* 0){
 	if(~ $#listall 0)
 		awk '$1=="branch"{print $2}' < $gitfs/ctl
@@ -64,12 +65,6 @@ if(~ $delete 1){
 	exit
 }
 commit=`{git/query $base} || die 'branch does not exist:' $base
-if(~ $new */*)
-	mkdir -p .git/`{basename -d $new}
-if(! ~ $#stay 0){
-	echo $commit > .git/$new
-	exit
-}
 basedir=`{git/query -p $base}
 dirtypaths=()
 if(! ~ $#modified 0 || ! ~ $#deleted 0)
@@ -88,7 +83,7 @@ echo $commit > .git/$new
 for(d in $deleted){
 	if(! test -d $d){
 		rm -f $d
-		echo R NOQID 0 $d >> .git/INDEX9
+		echo R NOQID 0 $d >> $idxchange
 	}
 }
 
@@ -107,11 +102,11 @@ for(m in $cleanpaths){
 		b=file
 	if(! ~ $a $b){
 		rm -rf $m
-		echo R NOQID 0 $m >> .git/INDEX9
+		echo R NOQID 0 $m >> $idxchange
 	}
 	if(~ $b file){
 		cp -x -- $basedir/tree/$m $m
-		echo T NOQID 0 $m >> .git/INDEX9
+		echo T NOQID 0 $m >> $idxchange
 		touch $m
 	}
 }
@@ -119,9 +114,19 @@ for(m in $cleanpaths){
 for(ours in $dirtypaths){
 	common=$gitfs/object/$orig/tree/$ours
 	theirs=$gitfs/object/$base/tree/$ours
-	merge1 $ours $ours $common $theirs
+	merge1 $ours $ours $common $theirs || st=$status
+	if(! ~ $#st 1)
+		>[1=2] echo merge failed $ours: $st
+}
+if(~ $new */*)
+	mkdir -p .git/`{basename -d $new}
+if(! ~ $#stay 0){
+	echo $commit > .git/$new
+	exit
 }
 
+cat $idxchange >> .git/INDEX9
 echo ref: $new > .git/HEAD
 echo $new: `{git/query $new}
+rm -f $idxchange
 exit ''
