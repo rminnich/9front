@@ -78,7 +78,6 @@ fn commit{
 	if(! ~ $#parents 0)
 		pflags='-p'^$parents
 	hash=`{git/save -n $"name -e $"email -m $"msg $pflags $files || die $status}
-	rm -f .git/merge-parents
 }
 
 fn update{
@@ -86,6 +85,7 @@ fn update{
 	# Paranoia: let's not mangle the repo.
 	if(~ $#hash 0)
 		die 'botched commit'
+	rm -f .git/merge-parents
 	echo $branch: $hash
 	echo $hash > $refpath
 	for(f in $files){
