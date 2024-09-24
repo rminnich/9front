@@ -233,7 +233,10 @@ DPRINT(2, "cddb %s\n", p);
 				t->artist = estrdup(p);
 				p = a;
 			}
-			t->title = estrdup(p);
+			if(t->title != nil)
+				t->title = smprint("%s%s", t->title, p);
+			else
+				t->title = estrdup(p);
 		}
 		else if(strncmp(p, "DYEAR=", 6) == 0) {
 			t->year = estrdup(p+6);
