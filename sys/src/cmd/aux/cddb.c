@@ -105,10 +105,10 @@ split(char *s)
 {
 	char *p;
 
-	if((p = strchr(s, '/')) == nil)
+	if((p = strstr(s, " / ")) == nil)
 		return nil;
-	p[-1] = 0;
-	return p+2;
+	*p = 0;
+	return p+3;
 }
 
 static int
