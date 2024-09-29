@@ -16,7 +16,6 @@
 #define	tolower(r)	((r)-'A'+'a')
 
 #define	sgn(v)		((v) < 0 ? -1 : ((v) > 0 ? 1 : 0))
-#define	notcase(v)	(v != L'a'-L'A' && v != L'A'-L'a')
 
 #define	WORDSIZ	4000
 char	*filename = "/lib/words";
@@ -86,6 +85,8 @@ main(int argc, char *argv[])
 	ARGBEGIN{
 	case 'b':
 		base = atoi(EARGF(usage()));
+		if(base > 10)
+			fold++;
 		compare = ncomp;
 		break;
 	case 'd':
@@ -305,7 +306,7 @@ ncomp(Rune *s, Rune *t)
 	a = 0;
 	if(ssgn == tsgn)
 		while(it>t && is>s)
-			if((b = *--it - *--is) && notcase(b))
+			if(b = *--it - *--is)
 				a = b;
 	while(is > s)
 		if(*--is != '0')
@@ -321,7 +322,7 @@ ncomp(Rune *s, Rune *t)
 		t++;
 	if(ssgn == tsgn)
 		while(isdigit(*s) && isdigit(*t))
-			if((a = *t++ - *s++) && notcase(a))
+			if(a = *t++ - *s++)
 				return sgn(a)*ssgn;
 	while(isdigit(*s))
 		if(*s++ != '0')
@@ -361,8 +362,6 @@ isdigit(Rune r)
 		v = r - L'0';
 	else if(L'a'<=r && r<=L'z')
 		v = r - L'a' + 10;
-	else if(L'A'<=r && r<=L'Z')
-		v = r - L'A' + 10;
 	if(v < base)
 		return 1;
 	return 0;

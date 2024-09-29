@@ -35,6 +35,10 @@ ascii, unicode \- interpret ASCII, Unicode characters
 .I characters
 .PP
 .B look
+.B -t
+.I ';'
+.B -b
+.I 16
 .I hex
 .B /lib/ucd/UnicodeData.txt
 .SH DESCRIPTION
