@@ -807,7 +807,7 @@ recvrahost(uchar buf[], int pktlen)
 static int
 recvra6(void)
 {
-	int fd, n, sendrscnt, recvracnt, sleepfor;
+	int fd, n, sendrscnt, gotra, pktcnt, sleepfor;
 	uchar buf[4096];
 
 	fd = dialicmpv6(v6allnodesL, ICMP6_RA);
@@ -829,13 +829,14 @@ recvra6(void)
 	procsetname("recvra6 on %s %I", conf.dev, conf.lladdr);
 	notify(catch);
 
-	recvracnt = 0;
 	sendrscnt = 0;
 	if(recvra6on(myifc) == IsHostRecv){
 		sendrs(fd, v6allroutersL);
 		sendrscnt = Maxv6rss;
 	}
 
+	gotra = 0;
+	pktcnt = 0;
 	sleepfor = Minv6interradelay;
 
 	for (;;) {
@@ -844,16 +845,20 @@ recvra6(void)
 		sleepfor = alarm(0);
 
 		/* wait for alarm to expire */
-		if(recvracnt >= Maxv6initras && sleepfor > 100)
-			continue;
-
+		if(sleepfor > 100){
+			if(pktcnt > 100)
+				continue;
+			pktcnt++;
+		} else {
+			pktcnt = 1;
+		}
 		sleepfor = Maxv6radelay;
 
 		myifc = readipifc(conf.mpoint, myifc, myifc->index);
 		if(myifc == nil) {
 			warning("recvra6: can't read router params on %s, quitting on %s",
 				conf.mpoint, conf.dev);
-			if(recvracnt == 0)
+			if(!gotra)
 				rendezvous(recvra6, (void*)-1);
 			exits(nil);
 		}
@@ -863,7 +868,7 @@ recvra6(void)
 			break;
 		default:
 			warning("recvra6: recvra off, quitting on %s", conf.dev);
-			if(recvracnt == 0)
+			if(!gotra)
 				rendezvous(recvra6, (void*)-1);
 			exits(nil);
 		}
@@ -873,11 +878,11 @@ recvra6(void)
 				sendrscnt--;
 				sendrs(fd, v6allroutersL);
 				sleepfor = V6rsintvl + nrand(100);
-			} else if(recvracnt == 0) {
+			} else if(!gotra) {
+				gotra = 1;
 				warning("recvra6: no router advs after %d sols on %s",
 					Maxv6rss, conf.dev);
 				rendezvous(recvra6, (void*)0);
-				recvracnt = 1;
 			}
 			continue;
 		}
@@ -886,7 +891,8 @@ recvra6(void)
 			continue;
 
 		/* got at least initial ra; no whining */
-		if(recvracnt == 0){
+		if(!gotra){
+			gotra = 1;
 			if(dodhcp && conf.mflag){
 				dhcpv6query();
 				if(noconfig || !validip(conf.laddr))
@@ -903,11 +909,6 @@ recvra6(void)
 			}
 			rendezvous(recvra6, (void*)1);
 		}
-
-		if(recvracnt < Maxv6initras)
-			recvracnt++;
-		else
-			recvracnt = 1;
 	}
 }
 
