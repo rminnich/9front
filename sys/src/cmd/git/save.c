@@ -191,21 +191,6 @@ tracked(char *path)
 	return 0; 
 }
 
-int
-pathelt(char *buf, int nbuf, char *p, int *isdir)
-{
-	char *b;
-
-	b = buf;
-	if(*p == '/')
-		p++;
-	while(*p && *p != '/' && b != buf + nbuf)
-		*b++ = *p++;
-	*b = '\0';
-	*isdir = (*p == '/');
-	return b - buf;
-}
-
 Dirent*
 dirent(Dirent **ent, int *nent, char *name)
 {
@@ -225,37 +210,64 @@ dirent(Dirent **ent, int *nent, char *name)
 int
 treeify(Object *t, char **path, char **epath, int off, Hash *h)
 {
-	int r, n, ne, nsub, nent, isdir;
-	char **p, **ep;
-	char elt[256];
-	Object **sub;
+	int nent, ne, slash;
+	char *s, **p, **ep;
 	Dirent *e, *ent;
+	Object *o;
 	Dir *d;
 
-	r = -1;
-	nsub = 0;
 	nent = t->tree->nent;
 	ent = eamalloc(nent, sizeof(*ent));
-	sub = eamalloc((epath - path), sizeof(Object*));
 	memcpy(ent, t->tree->ent, nent*sizeof(*ent));
 	for(p = path; p != epath; p = ep){
-		ne = pathelt(elt, sizeof(elt), *p + off, &isdir);
-		for(ep = p; ep != epath; ep++){
-			if(strncmp(elt, *ep + off, ne) != 0)
+		s = *p;
+
+		/*
+		 * paths have been normalized already,
+		 * no leading or double-slashes allowed.
+		 */
+		assert(s[off] != '\0' && s[off] != '/');
+
+		/* get next path element length (from off until '/' or nul) */
+		for(ne = 1; s[off+ne] != '\0' && s[off+ne] != '/'; ne++)
+			ne++;
+
+		/* truncate at '/' or nul */
+		slash = s[off + ne];
+		s[off + ne] = '\0';
+
+		/* skip over children (having s as prefix) */
+		for(ep = p + 1; ep != epath; ep++){
+			if(strncmp(s, *ep, off + ne) != 0)
 				break;
 			if((*ep)[off+ne] != '\0' && (*ep)[off+ne] != '/')
 				break;
 		}
-		e = dirent(&ent, &nent, elt);
+
+		e = dirent(&ent, &nent, s + off);
+
+		d = dirstat(s);
+		if(d == nil){
+			/* delete */
+			e->name = nil;
+
+			s[off + ne] = slash;
+			continue;
+		}
+
 		if(e->islink)
-			sysfatal("symlinks may not be modified: %s", *path);
+			sysfatal("symlinks may not be modified: %s", s);
 		if(e->ismod)
-			sysfatal("submodules may not be modified: %s", *path);
-		if(isdir){
+			sysfatal("submodules may not be modified: %s", s);
+
+		s[off + ne] = slash;
+
+		if(slash && (d->mode & DMDIR) != 0){
+			free(d);
 			e->mode = DMDIR | 0755;
-			sub[nsub] = readobject(e->h);
-			if(sub[nsub] == nil || sub[nsub]->type != GTree)
-				sub[nsub] = emptydir();
+			o = readobject(e->h);
+			if(o == nil || o->type != GTree)
+				o = emptydir();
 			/*
 			 * if after processing deletions, a tree is empty,
 			 * mark it for removal from the parent.
@@ -264,29 +276,21 @@ treeify(Object *t, char **path, char **epath, int off, Hash *h)
 			 * but this is fine -- and ensures that an empty
 			 * repository will continue to work.
 			 */
-			n = treeify(sub[nsub], p, ep, off + ne + 1, &e->h);
-			if(n == 0)
+			if(treeify(o, p, ep, off + ne + 1, &e->h) == 0)
 				e->name = nil;
-			else if(n == -1)
-				goto err;
 		}else{
-			d = dirstat(*p);
-			if(d != nil && tracked(*p))
-				blobify(d, *p, &e->mode, &e->h);
+			if((d->mode & DMDIR) == 0 && tracked(s))
+				blobify(d, s, &e->mode, &e->h);
 			else
 				e->name = nil;
 			free(d);
 		}
 	}
-	if(nent == 0){
-		werrstr("%.*s: empty directory", off, *path);
-		goto err;
-	}
-
-	r = writetree(ent, nent, h);
-err:
-	free(sub);
-	return r;		
+	if(nent == 0)
+		sysfatal("%.*s: refusing to update empty directory", off, *path);
+	nent = writetree(ent, nent, h);
+	free(ent);
+	return nent;		
 }
 
 
