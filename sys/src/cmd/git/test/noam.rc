@@ -1,0 +1,21 @@
+#!/bin/rc
+
+. util.rc
+
+rm -fr scratch
+mkdir -p scratch/noam
+
+echo @@ noam test @@
+@{
+	cd scratch/noam
+	git/init
+	touch a
+	git/add a
+	git/commit -m 'add a' a
+	rm a
+	mkdir a
+	touch a/b
+
+	git/add a/b
+	git/commit -m 'switch to folder' a a/b
+}
