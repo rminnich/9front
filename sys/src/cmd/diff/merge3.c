@@ -3,6 +3,9 @@
 #include <bio.h>
 #include "diff.h"
 
+#define min(a, b) ((a)<(b)?(a):(b))
+#define max(a, b) ((a)>(b)?(a):(b))
+
 static int
 changecmp(void *a, void *b)
 {
@@ -118,29 +121,31 @@ merge(Diff *l, Diff *r)
 		}
 		if(lc != nil && rc != nil && overlaps(lx, ly, rx, ry)){
 			/*
-			 * align the edges of the chunks
+			 * align the edges of the chunks, expanding them
+			 * so that when we compare for sameness, we are
+			 * comparing same-sized chunks.
 			 */
 			if(lc->oldx < rc->oldx){
 				x = lc->newx;
 				δ = rc->oldx - lc->oldx;
-				rc->oldx -= δ;
-				rc->newx -= δ;
+				rc->oldx = max(rc->oldx-δ, 1);
+				rc->newx = max(rc->newx-δ, 1);
 			}else{
 				x = rc->newx;
 				δ = lc->oldx - rc->oldx;
-				lc->oldx -= δ;
-				lc->newx -= δ;
+				lc->oldx = max(lc->oldx-δ, 1);
+				lc->newx = max(lc->newx-δ, 1);
 			}
 			if(lc->oldy > rc->oldy){
 				y = lc->newy;
 				δ = lc->oldy - rc->oldy;
-				rc->oldy += δ;
-				rc->newy += δ;
+				rc->oldy = min(rc->oldy+δ, r->len[0]);
+				rc->newy = min(rc->newy+δ, r->len[1]);
 			}else{
 				y = rc->newy;
 				δ = rc->oldy - lc->oldy;
-				lc->oldy += δ;
-				lc->newy += δ;
+				lc->oldy = min(lc->oldy+δ, l->len[0]);
+				lc->newy = min(lc->newy+δ, l->len[1]);
 			}
 			if(same(l, lc, r, rc)){
 				fetch(l, l->ixold, ln, x-1, l->input[0], "");
@@ -150,7 +155,7 @@ merge(Diff *l, Diff *r)
 				Bprint(&stdout, "<<<<<<<<<< %s\n", l->file2);
 				fetch(l, l->ixnew, lc->newx, lc->newy, l->input[1], "");
 				Bprint(&stdout, "========== original\n");
-				fetch(l, l->ixold, x, y, l->input[0], "");
+				fetch(l, l->ixold, lc->oldx, lc->oldy, l->input[0], "");
 				Bprint(&stdout, "========== %s\n", r->file2);
 				fetch(r, r->ixnew, rc->newx, rc->newy, r->input[1], "");
 				Bprint(&stdout, ">>>>>>>>>>\n");
