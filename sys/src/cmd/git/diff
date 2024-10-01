@@ -29,7 +29,10 @@ showed=()
 mntgen /mnt/scratch
 bind $branch/tree/ /mnt/scratch/a
 bind . /mnt/scratch/b
-for(f in `$nl{git/walk -c -f$filt $cparam $files}){
+bparam=()
+if(~ $#commit 1)
+	bparam=(-b $commit)
+for(f in `$nl{git/walk $bparam -c -f$filt $cparam $files}){
 	if(~ $#showed 0){
 		echo diff `{git/query $commit} uncommitted
 		showed=1
