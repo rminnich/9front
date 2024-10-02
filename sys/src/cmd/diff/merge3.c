@@ -126,27 +126,25 @@ merge(Diff *l, Diff *r)
 			 * comparing same-sized chunks.
 			 */
 			if(lc->oldx < rc->oldx){
-				x = lc->newx;
 				δ = rc->oldx - lc->oldx;
 				rc->oldx = max(rc->oldx-δ, 1);
 				rc->newx = max(rc->newx-δ, 1);
 			}else{
-				x = rc->newx;
 				δ = lc->oldx - rc->oldx;
 				lc->oldx = max(lc->oldx-δ, 1);
 				lc->newx = max(lc->newx-δ, 1);
 			}
 			if(lc->oldy > rc->oldy){
-				y = lc->newy;
 				δ = lc->oldy - rc->oldy;
 				rc->oldy = min(rc->oldy+δ, r->len[0]);
 				rc->newy = min(rc->newy+δ, r->len[1]);
 			}else{
-				y = rc->newy;
 				δ = rc->oldy - lc->oldy;
 				lc->oldy = min(lc->oldy+δ, l->len[0]);
 				lc->newy = min(lc->newy+δ, l->len[1]);
 			}
+			x = lc->oldx;
+			y = lc->oldy;
 			if(same(l, lc, r, rc)){
 				fetch(l, l->ixold, ln, x-1, l->input[0], "");
 				fetch(l, l->ixnew, lc->newx, lc->newy, l->input[1], "");
@@ -161,7 +159,7 @@ merge(Diff *l, Diff *r)
 				Bprint(&stdout, ">>>>>>>>>>\n");
 				status = "conflict";
 			}
-			ln = (y > x) ? y+1 : x+1;
+			ln = y+1;
 			il++;
 			ir++;
 		}else if(lc != nil && (rc == nil || lx < rx)){
@@ -170,7 +168,7 @@ merge(Diff *l, Diff *r)
 			ln = lc->oldy+1;
 			il++;
 		}else if(rc != nil && (lc == nil || rx < lx)){
-			fetch(l, l->ixold, ln, rc->oldx-1, l->input[0], "");
+			fetch(l, r->ixold, ln, rc->oldx-1, r->input[0], "");
 			fetch(r, r->ixnew, rc->newx, rc->newy, r->input[1], "");
 			ln = rc->oldy+1;
 			ir++;
