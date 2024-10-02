@@ -91,7 +91,7 @@ char*
 merge(Diff *l, Diff *r)
 {
 	int lx, ly, rx, ry;
-	int il, ir, x, y, δ;
+	int il, ir, δ;
 	Change *lc, *rc;
 	char *status;
 	vlong ln;
@@ -143,13 +143,11 @@ merge(Diff *l, Diff *r)
 				lc->oldy = min(lc->oldy+δ, l->len[0]);
 				lc->newy = min(lc->newy+δ, l->len[1]);
 			}
-			x = lc->oldx;
-			y = lc->oldy;
 			if(same(l, lc, r, rc)){
-				fetch(l, l->ixold, ln, x-1, l->input[0], "");
+				fetch(l, l->ixold, ln, lc->oldx-1, l->input[0], "");
 				fetch(l, l->ixnew, lc->newx, lc->newy, l->input[1], "");
 			}else{
-				fetch(l, l->ixold, ln, x-1, l->input[0], "");
+				fetch(l, l->ixold, ln, lc->oldx-1, l->input[0], "");
 				Bprint(&stdout, "<<<<<<<<<< %s\n", l->file2);
 				fetch(l, l->ixnew, lc->newx, lc->newy, l->input[1], "");
 				Bprint(&stdout, "========== original\n");
@@ -159,7 +157,7 @@ merge(Diff *l, Diff *r)
 				Bprint(&stdout, ">>>>>>>>>>\n");
 				status = "conflict";
 			}
-			ln = y+1;
+			ln = lc->oldy+1;
 			il++;
 			ir++;
 		}else if(lc != nil && (rc == nil || lx < rx)){
