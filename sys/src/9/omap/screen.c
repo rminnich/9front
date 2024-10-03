@@ -459,9 +459,10 @@ omapscreenputs(char *s, int n)
 		/* don't deadlock trying to print in interrupt */
 		if (!canlock(&screenlock))
 			return;			/* discard s */
-	} else
-		lock(&screenlock);
-
+	} else {
+		while(!canlock(&screenlock))
+			;
+	}
 	while (n > 0) {
 		i = chartorune(&r, s);
 		if (i == 0) {

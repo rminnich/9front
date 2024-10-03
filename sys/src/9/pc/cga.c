@@ -153,8 +153,10 @@ cgascreenputs(char* s, int n)
 		if(!canlock(&cgascreenlock))
 			return;
 	}
-	else
-		lock(&cgascreenlock);
+	else {
+		while(!canlock(&cgascreenlock))
+			;
+	}
 
 	e = s + n;
 	while(s < e){

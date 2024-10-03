@@ -135,8 +135,10 @@ vgascreenputs(char* s, int n)
 		if(!canlock(&vgascreenlock))
 			return;
 	}
-	else
-		lock(&vgascreenlock);
+	else {
+		while(!canlock(&vgascreenlock))
+			;
+	}
 
 	/*
 	 * Be nice to hold this, but not going to deadlock

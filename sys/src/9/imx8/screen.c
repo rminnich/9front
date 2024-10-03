@@ -201,8 +201,10 @@ myscreenputs(char *s, int n)
 		if(!canlock(&screenlock))
 			return;	
 	}
-	else
-		lock(&screenlock);
+	else {
+		while(!canlock(&screenlock))
+			;
+	}
 
 	while(n > 0){
 		i = chartorune(&r, s);
