@@ -48,8 +48,8 @@ The names are self-explanatory.
 .PP
 The case-conversion routines return the character unchanged if it has no case.
 .PP
-If a rune contains a value that is not a valid codepoint (ie, values less than
-zero, or greater than Runemax), these routines return 0.
+If a rune contains a value that is not a valid codepoint (ie, greater than Runemax),
+these routines return 0.
 .SH SOURCE
 .B /sys/src/libc/port/mkrunetype.c
 .br
