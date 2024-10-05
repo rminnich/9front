@@ -6,7 +6,7 @@
 int
 isspacerune(Rune c)
 {
-	if(c < 0 || c > Runemax)
+	if(c > Runemax)
 		return 0;
 	return (mergedlkup(c) & Lspace) == Lspace;
 }
@@ -14,7 +14,7 @@ isspacerune(Rune c)
 int
 isalpharune(Rune c)
 {
-	if(c < 0 || c > Runemax)
+	if(c > Runemax)
 		return 0;
 	return (mergedlkup(c) & Lalpha) == Lalpha;
 }
@@ -22,7 +22,7 @@ isalpharune(Rune c)
 int
 isdigitrune(Rune c)
 {
-	if(c < 0 || c > Runemax)
+	if(c > Runemax)
 		return 0;
 	return (mergedlkup(c) & Ldigit) == Ldigit;
 }
@@ -30,7 +30,7 @@ isdigitrune(Rune c)
 int
 isupperrune(Rune c)
 {
-	if(c < 0 || c > Runemax)
+	if(c > Runemax)
 		return 0;
 	return (mergedlkup(c) & Lupper) == Lupper;
 }
@@ -38,7 +38,7 @@ isupperrune(Rune c)
 int
 islowerrune(Rune c)
 {
-	if(c < 0 || c > Runemax)
+	if(c > Runemax)
 		return 0;
 	return (mergedlkup(c) & Llower) == Llower;
 }
@@ -46,7 +46,7 @@ islowerrune(Rune c)
 int
 istitlerune(Rune c)
 {
-	if(c < 0 || c > Runemax)
+	if(c > Runemax)
 		return 0;
 	return (mergedlkup(c) & Ltitle) == Ltitle;
 }
