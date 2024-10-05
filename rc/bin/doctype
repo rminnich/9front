@@ -21,7 +21,7 @@ while(~ $1 -*){
 		dev=-T$2
 		shift
 	case -*
-		opt=$opt' $1'
+		opt=$opt' '$1
 	}
 	shift
 }
