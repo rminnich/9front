@@ -6,8 +6,8 @@ msg=()
 for(f in /adm/timezone/*){
 	if(! ~ $f /adm/timezone/README){
 		cat $f >/env/timezone
-		tm=`{../$O.date -f'WW, DD MMM YYYY hh:mm:ss Z'}
 		x=`{../$O.date -n}
+		tm=`{../$O.date -f'WW, DD MMM YYYY hh:mm:ss Z' $x}
 		y=`{../$O.seconds $"tm}
 		if(! ~ $x $y){
 			echo $f $tm $x $y are not equal
