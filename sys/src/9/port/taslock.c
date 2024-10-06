@@ -16,13 +16,6 @@ uintptr maxilockpc;
 uintptr ilockpcs[0x100] = { [0xff] = 1 };
 #endif
 
-struct
-{
-	ulong	locks;
-	ulong	glare;
-	ulong	inglare;
-} lockstats;
-
 void
 lockloop(Lock *l, uintptr pc)
 {
@@ -39,7 +32,7 @@ lockloop(Lock *l, uintptr pc)
 		dumpaproc(p);
 }
 
-int
+void
 lock(Lock *l)
 {
 	int i;
@@ -47,7 +40,6 @@ lock(Lock *l)
 
 	pc = getcallerpc(&l);
 
-	lockstats.locks++;
 	if(up)
 		up->nlocks++;	/* prevent being scheded */
 	if(tas(&l->key) == 0){
@@ -60,14 +52,12 @@ lock(Lock *l)
 #ifdef LOCKCYCLES
 		l->lockcycles = -lcycles();
 #endif
-		return 0;
+		return;
 	}
 	if(up)
 		up->nlocks--;
 
-	lockstats.glare++;
 	for(;;){
-		lockstats.inglare++;
 		i = 0;
 		while(l->key){
 			if(conf.nmach < 2 && up && up->edf && (up->edf->flags & Admitted)){
@@ -96,7 +86,7 @@ lock(Lock *l)
 #ifdef LOCKCYCLES
 			l->lockcycles = -lcycles();
 #endif
-			return 1;
+			return;
 		}
 		if(up)
 			up->nlocks--;
@@ -110,18 +100,15 @@ ilock(Lock *l)
 	uintptr pc;
 
 	pc = getcallerpc(&l);
-	lockstats.locks++;
 
 	x = splhi();
 	if(tas(&l->key) != 0){
-		lockstats.glare++;
 		/*
 		 * Cannot also check l->pc, l->m, or l->isilock here
 		 * because they might just not be set yet, or
 		 * (for pc and m) the lock might have just been unlocked.
 		 */
 		for(;;){
-			lockstats.inglare++;
 			splx(x);
 			while(l->key)
 				;

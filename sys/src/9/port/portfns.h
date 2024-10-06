@@ -166,7 +166,7 @@ void		(*kproftimer)(uintptr);
 void		ksetenv(char*, char*, int);
 void		kstrcpy(char*, char*, int);
 void		kstrdup(char**, char*);
-int		lock(Lock*);
+void		lock(Lock*);
 void		logopen(Log*);
 void		logclose(Log*);
 char*		logctl(Log*, int, char**, Logflag*);
