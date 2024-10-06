@@ -71,6 +71,9 @@ main(int argc, char *argv[])
 	if(argc == 0)
 		usage();
 
+	/* don't pollute the parents environment / namespace */
+	rfork(RFENVG|RFNAMEG);
+
 	if(becomeuser(argv[0]) < 0)
 		sysfatal("can't change uid for %s: %r", argv[0]);
 
