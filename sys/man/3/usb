@@ -514,9 +514,6 @@ the entire driver and not to particular endpoints:
 .B "debug \fIn\fP
 Sets the global debug flag to
 .IR n .
-.TP
-.B dump
-Dumps data structures for inspection.
 .SH FILES
 .TF #u/usb
 .TP

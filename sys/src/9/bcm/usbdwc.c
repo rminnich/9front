@@ -1062,7 +1062,6 @@ reset(Hci *hp)
 	hp->highspeed = 1;
 
 	hp->init = init;
-	hp->dump = dump;
 	hp->interrupt = fiqintr;
 	hp->epopen = epopen;
 	hp->epclose = epclose;

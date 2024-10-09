@@ -2596,7 +2596,6 @@ reset(Hci *hp)
 	 * Linkage to the generic HCI driver.
 	 */
 	hp->init = init;
-	hp->dump = dump;
 	hp->interrupt = interrupt;
 	hp->epopen = epopen;
 	hp->epclose = epclose;

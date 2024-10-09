@@ -108,7 +108,6 @@ struct Hciimpl
 {
 	void	*aux;				/* for controller info */
 	void	(*init)(Hci*);			/* init. controller */
-	void	(*dump)(Hci*);			/* debug */
 	void	(*interrupt)(Ureg*, void*);	/* service interrupt */
 	void	(*epopen)(Ep*);			/* prepare ep. for I/O */
 	void	(*epclose)(Ep*);		/* terminate I/O on ep. */

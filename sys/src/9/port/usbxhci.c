@@ -669,11 +669,6 @@ recover(void *arg)
 }
 
 static void
-dump(Hci *)
-{
-}
-
-static void
 queuetd(Ring *r, u32int c, u32int s, u64int p, Wait *w)
 {
 	u32int *td, x;
@@ -1824,7 +1819,6 @@ xhcilinkage(Hci *hp, Xhci *ctlr)
 	hp->init = xhciinit;
 	hp->shutdown = xhcishutdown;
 
-	hp->dump = dump;
 	hp->interrupt = interrupt;
 	hp->epopen = epopen;
 	hp->epclose = epclose;
