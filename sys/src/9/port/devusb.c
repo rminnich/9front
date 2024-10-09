@@ -69,7 +69,6 @@ enum
 
 	/* Usb ctls. */
 	CMdebug = 0,		/* debug on|off */
-	CMdump,			/* dump (data structures for debug) */
 
 	/* Ep. ctls */
 	CMnew = 0,		/* new nb ctl|bulk|intr|iso r|w|rw (endpoint) */
@@ -685,10 +684,14 @@ hciprobe(int cardno, int ctlrno)
 {
 	Hci *hp;
 	char *type;
-	static int epnb = 1;	/* guess the endpoint nb. for the controller */
 
 	ddprint("hciprobe %d %d\n", cardno, ctlrno);
-	hp = smalloc(sizeof(Hci));
+	hp = malloc(sizeof(Hci));
+	if(hp == nil){
+		print("hciprobe: out of memory\n");
+		return nil;
+	}
+
 	hp->ctlrno = ctlrno;
 	hp->tbdf = BUSUNKNOWN;
 
@@ -713,18 +716,10 @@ hciprobe(int cardno, int ctlrno)
 		return nil;
 	}
 	dprint("%s...", hcitypes[cardno].type);
-	if(hcitypes[cardno].reset(hp) < 0){
+	if((*hcitypes[cardno].reset)(hp) < 0){
 		free(hp);
 		return nil;
 	}
-
-	/*
-	 * modern machines have too many usb controllers to list on
-	 * the console.
-	 */
-	dprint("#u/usb/ep%d.0: %s: port 0x%lluX irq %d\n",
-		epnb, hcitypes[cardno].type, (uvlong)hp->port, hp->irq);
-	epnb++;
 	return hp;
 }
 
@@ -1232,7 +1227,7 @@ epctl(Ep *ep, Chan *c, void *a, long n)
 	}
 	ct = lookupcmd(cb, epctls, nelem(epctls));
 	i = ct->index;
-	if(i == CMnew || i == CMspeed || i == CMhub || i == CMpreset)
+	if(i == CMnew || i == CMspeed || i == CMhub || i == CMpreset || i == CMaddress)
 		if(ep != ep->ep0)
 			error("allowed only on a setup endpoint");
 	if(i != CMclrhalt && i != CMdetach && i != CMdebugep && i != CMname)
@@ -1284,18 +1279,22 @@ epctl(Ep *ep, Chan *c, void *a, long n)
 		break;
 	case CMhub:
 		deprint("usb epctl %s\n", cb->f[0]);
+		qlock(ep);
 		d->ishub = 1;
+		qunlock(ep);
 		break;
 	case CMspeed:
 		l = name2speed(cb->f[1]);
 		deprint("usb epctl %s %d\n", cb->f[0], l);
 		if(l == Nospeed)
 			error("speed must be full|low|high|super");
-		if(l != d->speed && (l == Superspeed || d->speed == Superspeed))
+		qlock(ep);
+		if(l != d->speed && (l == Superspeed || d->speed == Superspeed)){
+			qunlock(ep);
 			error("cannot change speed on superspeed device");
-		qlock(ep->ep0);
+		}
 		d->speed = l;
-		qunlock(ep->ep0);
+		qunlock(ep);
 		break;
 	case CMmaxpkt:
 		l = strtoul(cb->f[1], nil, 0);
@@ -1394,16 +1393,27 @@ epctl(Ep *ep, Chan *c, void *a, long n)
 		break;
 	case CMaddress:
 		deprint("usb epctl %s\n", cb->f[0]);
+		qlock(ep);
+		if(d->state != Dconfig){
+			qunlock(ep);
+			error("address already set");
+		}
 		if(d->addr == 0)
 			d->addr = d->nb;
 		d->state = Denabled;
+		qunlock(ep);
 		break;
 	case CMdetach:
+		deprint("usb epctl %s ep%d.%d\n", cb->f[0], d->nb, ep->nb);
 		if(ep->dev->isroot != 0)
 			error("can't detach a root hub");
-		deprint("usb epctl %s ep%d.%d\n",
-			cb->f[0], d->nb, ep->nb);
+		qlock(ep->ep0);
+		if(d->state == Ddetach){
+			qunlock(ep->ep0);
+			break;	/* already detached */
+		}
 		d->state = Ddetach;
+		qunlock(ep->ep0);
 		/* Release file system ref. for its endpoints */
 		for(i = 0; i < nelem(d->eps); i++)
 			putep(d->eps[i]);
@@ -1439,9 +1449,13 @@ epctl(Ep *ep, Chan *c, void *a, long n)
 		deprint("usb epctl %s\n", cb->f[0]);
 		if(ep->ttype != Tctl)
 			error("not a control endpoint");
-		if(d->state != Denabled)
+		qlock(ep->ep0);
+		if(d->state != Denabled){
+			qunlock(ep->ep0);
 			error("forbidden on devices not enabled");
+		}
 		d->state = Dreset;
+		qunlock(ep->ep0);
 		break;
 	default:
 		panic("usb: unknown epctl %d", ct->index);
