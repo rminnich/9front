@@ -262,6 +262,7 @@ struct Dtcc {
 enum {						/* Variants */
 	Rtl8100e	= (0x8136<<16)|0x10EC,	/* RTL810[01]E: pci -e */
 	Rtl8169c	= (0x0116<<16)|0x16EC,	/* RTL8169C+ (USR997902) */
+	Rtl8111b	= (0x8161<<16)|0x10EC,	/* RTL8111/8168/8411: pci-e */
 	Rtl8169sc	= (0x8167<<16)|0x10EC,	/* RTL8169SC */
 	Rtl8168b	= (0x8168<<16)|0x10EC,	/* RTL8168B: pci-e */
 	Rtl8169		= (0x8169<<16)|0x10EC,	/* RTL8169 */
@@ -1151,6 +1152,7 @@ rtl8169pci(void)
 			continue;
 		case Rtl8100e:			/* RTL810[01]E ? */
 		case Rtl8168b:			/* RTL8168B */
+		case Rtl8111b:			/* RTL8111/8168/8411 */
 			pcie = 1;
 			break;
 		case Rtl8169c:			/* RTL8169C */
