@@ -598,7 +598,7 @@ search(Fbuf *f, Hunk *h, char *fname)
 				return p;
 		}
 	}
-	sysfatal("%s:%d: unable to find hunk offset in %s", fname, h->lnum, h->oldpath);
+	sysfatal("%s:%d: unable to find hunk offset near %s:%d", fname, h->lnum, h->oldpath, h->oldln);
 }
 
 char*
