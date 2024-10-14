@@ -90,6 +90,8 @@ double vec3len(Point3 v)
 Point3 normvec3(Point3 v)
 int lineXsphere(Point3 *rp, Point3 p0, Point3 p1,
 		Point3 c, double rad, int isaray)
+int ptincylinder(Point3 p, Point3 p0, Point3 p1, double r)
+int ptincone(Point3 p, Point3 p0, Point3 p1, double br)
 .PB
 /* Matrix */
 void identity(Matrix m)
@@ -389,6 +391,24 @@ to
 The function returns the number of intersections (up to two) and, if
 .I rp
 is not nil, it is filled with the resulting points.
+.TP
+.B ptincylinder(\fIp\fP,\fIp0\fP,\fIp1\fP,\fIr\fP)
+Tests if the point
+.I p
+is inside a cylinder with an axis defined by the line between
+.I p0
+and
+.IR p1 ,
+and a radius r.
+.TP
+.B ptincone(\fIp\fP,\fIp0\fP,\fIp1\fP,\fIbr\fP)
+Tests if the point
+.I p
+is inside a cone with its apex at
+.I p0
+and its base centered at
+.IR p1 ,
+with a radius of br.
 .SS Matrices
 .TP
 Name
