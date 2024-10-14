@@ -795,21 +795,22 @@ RFrame worldrf;
 Point2
 toworld(Point p)
 {
-	return rframexform(p, worldrf);
+	return rframexform(Pt2(p.x,p.y,1), worldrf);
 }
 
 /* ...to screen */
 Point
 fromworld(Point2 p)
 {
-	p = invrframexform(Pt2(p.x,p.y,1), worldrf);
+	p = invrframexform(p, worldrf);
 	return Pt(p.x,p.y);
 }
 
 void
 main(void)
 	⋯
-	worldrf.p = Pt2(screen->r.min.x+Dx(screen->r)/2,screen->r.max.y-Dy(screen->r)/2,1);
+	worldrf.p = Pt2(screen->r.min.x+Dx(screen->r)/2,
+			screen->r.min.y+Dy(screen->r)/2, 1);
 	worldrf.bx = Vec2(1, 0);
 	worldrf.by = Vec2(0,-1);
 	⋯
