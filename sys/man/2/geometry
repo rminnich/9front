@@ -56,107 +56,109 @@ struct Triangle3 {
 };
 .PB
 /* utils */
-double flerp(double a, double b, double t);
-double fberp(double a, double b, double c, Point3 bc);
-double fclamp(double n, double min, double max);
+double flerp(double a, double b, double t)
+double fberp(double a, double b, double c, Point3 bc)
+double fclamp(double n, double min, double max)
 .PB
 /* Point2 */
-Point2 Pt2(double x, double y, double w);
-Point2 Vec2(double x, double y);
-Point2 addpt2(Point2 a, Point2 b);
-Point2 subpt2(Point2 a, Point2 b);
-Point2 mulpt2(Point2 p, double s);
-Point2 divpt2(Point2 p, double s);
-Point2 lerp2(Point2 a, Point2 b, double t);
-Point2 berp2(Point2 a, Point2 b, Point2 c, Point3 bc);
-double dotvec2(Point2 a, Point2 b);
-double vec2len(Point2 v);
-Point2 normvec2(Point2 v);
-int edgeptcmp(Point2 e0, Point2 e1, Point2 p);
+Point2 Pt2(double x, double y, double w)
+Point2 Vec2(double x, double y)
+Point2 addpt2(Point2 a, Point2 b)
+Point2 subpt2(Point2 a, Point2 b)
+Point2 mulpt2(Point2 p, double s)
+Point2 divpt2(Point2 p, double s)
+Point2 lerp2(Point2 a, Point2 b, double t)
+Point2 berp2(Point2 a, Point2 b, Point2 c, Point3 bc)
+double dotvec2(Point2 a, Point2 b)
+double vec2len(Point2 v)
+Point2 normvec2(Point2 v)
+int edgeptcmp(Point2 e0, Point2 e1, Point2 p)
 int ptinpoly(Point2 p, Point2 *pts, ulong npts)
 .PB
 /* Point3 */
-Point3 Pt3(double x, double y, double z, double w);
-Point3 Vec3(double x, double y, double z);
-Point3 addpt3(Point3 a, Point3 b);
-Point3 subpt3(Point3 a, Point3 b);
-Point3 mulpt3(Point3 p, double s);
-Point3 divpt3(Point3 p, double s);
-Point3 lerp3(Point3 a, Point3 b, double t);
-Point3 berp3(Point3 a, Point3 b, Point3 c, Point3 bc);
-double dotvec3(Point3 a, Point3 b);
-Point3 crossvec3(Point3 a, Point3 b);
-double vec3len(Point3 v);
-Point3 normvec3(Point3 v);
+Point3 Pt3(double x, double y, double z, double w)
+Point3 Vec3(double x, double y, double z)
+Point3 addpt3(Point3 a, Point3 b)
+Point3 subpt3(Point3 a, Point3 b)
+Point3 mulpt3(Point3 p, double s)
+Point3 divpt3(Point3 p, double s)
+Point3 lerp3(Point3 a, Point3 b, double t)
+Point3 berp3(Point3 a, Point3 b, Point3 c, Point3 bc)
+double dotvec3(Point3 a, Point3 b)
+Point3 crossvec3(Point3 a, Point3 b)
+double vec3len(Point3 v)
+Point3 normvec3(Point3 v)
 int lineXsphere(Point3 *rp, Point3 p0, Point3 p1,
-		Point3 c, double rad, int isaray);
+		Point3 c, double rad, int isaray)
 .PB
 /* Matrix */
-void identity(Matrix m);
-void addm(Matrix a, Matrix b);
-void subm(Matrix a, Matrix b);
-void mulm(Matrix a, Matrix b);
-void smulm(Matrix m, double s);
-void transposem(Matrix m);
-double detm(Matrix m);
-double tracem(Matrix m);
-double minorm(Matrix m, int row, int col);
-double cofactorm(Matrix m, int row, int col);
-void adjm(Matrix m);
-void invm(Matrix m);
-Point2 xform(Point2 p, Matrix m);
+void identity(Matrix m)
+void addm(Matrix a, Matrix b)
+void subm(Matrix a, Matrix b)
+void mulm(Matrix a, Matrix b)
+void smulm(Matrix m, double s)
+void transposem(Matrix m)
+double detm(Matrix m)
+double tracem(Matrix m)
+double minorm(Matrix m, int row, int col)
+double cofactorm(Matrix m, int row, int col)
+void adjm(Matrix m)
+void invm(Matrix m)
+Point2 xform(Point2 p, Matrix m)
 .PB
 /* Matrix3 */
-void identity3(Matrix3 m);
-void addm3(Matrix3 a, Matrix3 b);
-void subm3(Matrix3 a, Matrix3 b);
-void mulm3(Matrix3 a, Matrix3 b);
-void smulm3(Matrix3 m, double s);
-void transposem3(Matrix3 m);
-double detm3(Matrix3 m);
-double tracem3(Matrix3 m);
-double minorm3(Matrix3 m, int row, int col);
-double cofactorm3(Matrix3 m, int row, int col);
-void adjm3(Matrix3 m);
-void invm3(Matrix3 m);
-Point3 xform3(Point3 p, Matrix3 m);
+void identity3(Matrix3 m)
+void addm3(Matrix3 a, Matrix3 b)
+void subm3(Matrix3 a, Matrix3 b)
+void mulm3(Matrix3 a, Matrix3 b)
+void smulm3(Matrix3 m, double s)
+void transposem3(Matrix3 m)
+double detm3(Matrix3 m)
+double tracem3(Matrix3 m)
+double minorm3(Matrix3 m, int row, int col)
+double cofactorm3(Matrix3 m, int row, int col)
+void adjm3(Matrix3 m)
+void invm3(Matrix3 m)
+Point3 xform3(Point3 p, Matrix3 m)
 .PB
 /* Quaternion */
-Quaternion Quat(double r, double i, double j, double k);
-Quaternion Quatvec(double r, Point3 v);
-Quaternion addq(Quaternion a, Quaternion b);
-Quaternion subq(Quaternion a, Quaternion b);
-Quaternion mulq(Quaternion q, Quaternion r);
-Quaternion smulq(Quaternion q, double s);
-Quaternion sdivq(Quaternion q, double s);
-double dotq(Quaternion q, Quaternion r);
-Quaternion invq(Quaternion q);
-double qlen(Quaternion q);
-Quaternion normq(Quaternion q);
-Quaternion slerp(Quaternion q, Quaternion r, double t);
-Point3 qrotate(Point3 p, Point3 axis, double θ);
+Quaternion Quat(double r, double i, double j, double k)
+Quaternion Quatvec(double r, Point3 v)
+Quaternion addq(Quaternion a, Quaternion b)
+Quaternion subq(Quaternion a, Quaternion b)
+Quaternion mulq(Quaternion q, Quaternion r)
+Quaternion smulq(Quaternion q, double s)
+Quaternion sdivq(Quaternion q, double s)
+double dotq(Quaternion q, Quaternion r)
+Quaternion invq(Quaternion q)
+double qlen(Quaternion q)
+Quaternion normq(Quaternion q)
+Quaternion slerp(Quaternion q, Quaternion r, double t)
+Quaternion qsandwich(Quaternion q, Quaternion r)
+Point3 qsandwichpt3(Quaternion q, Point3 p)
+Point3 qrotate(Point3 p, Point3 axis, double θ)
 .PB
 /* RFrame */
-void rframematrix(Matrix, RFrame);
-void rframematrix3(Matrix3, RFrame3);
-Point2 rframexform(Point2 p, RFrame rf);
-Point3 rframexform3(Point3 p, RFrame3 rf);
-Point2 invrframexform(Point2 p, RFrame rf);
-Point3 invrframexform3(Point3 p, RFrame3 rf);
+void rframematrix(Matrix, RFrame)
+void rframematrix3(Matrix3, RFrame3)
+Point2 rframexform(Point2 p, RFrame rf)
+Point3 rframexform3(Point3 p, RFrame3 rf)
+Point2 invrframexform(Point2 p, RFrame rf)
+Point3 invrframexform3(Point3 p, RFrame3 rf)
 .PB
 /* Triangle2 */
-Point2 centroid(Triangle2 t);
-Point3 barycoords(Triangle2 t, Point2 p);
+Point2 centroid(Triangle2 t)
+Point3 barycoords(Triangle2 t, Point2 p)
 .PB
 /* Triangle3 */
-Point3 centroid3(Triangle3 t);
+Point3 centroid3(Triangle3 t)
 .PB
 /* Fmt */
 #pragma varargck type "v" Point2
 #pragma varargck type "V" Point3
-int vfmt(Fmt*);
-int Vfmt(Fmt*);
-void GEOMfmtinstall(void);
+int vfmt(Fmt*)
+int Vfmt(Fmt*)
+void GEOMfmtinstall(void)
 .SH DESCRIPTION
 This library provides routines to operate with homogeneous coordinates
 in 2D and 3D projective spaces by means of points, matrices,
@@ -628,6 +630,21 @@ and
 by a factor of
 .IR t ,
 and returns the result.
+.TP
+.B qsandwich(\fIq\fP,\fIr\fP)
+Returns the result of "sandwiching"
+.I q
+with
+.IR r ,
+i.e. r' = qrq⁻¹.
+.TP
+.B qsandwichpt3(\fIq\fP,\fIp\fP)
+Same as
+.IR qsandwich (2),
+but treating
+.I p
+as a pure quaternion when computing the product, and keeping its
+projective coordinate (w) intact.
 .TP
 .B qrotate(\fIp\fP,\fIaxis\fP,\fIθ\fP)
 Returns the result of rotating the point

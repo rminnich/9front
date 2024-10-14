@@ -122,6 +122,8 @@ Quaternion invq(Quaternion);
 double qlen(Quaternion);
 Quaternion normq(Quaternion);
 Quaternion slerp(Quaternion, Quaternion, double);
+Quaternion qsandwich(Quaternion, Quaternion);
+Point3 qsandwichpt3(Quaternion, Point3);
 Point3 qrotate(Point3, Point3, double);
 
 /* RFrame */

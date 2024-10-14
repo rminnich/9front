@@ -96,13 +96,27 @@ slerp(Quaternion q, Quaternion r, double t)
 	return addq(smulq(q, cos(θ)), smulq(v, sin(θ))); /* q cos(θ) + v sin(θ) */
 }
 
+Quaternion
+qsandwich(Quaternion q, Quaternion p)
+{
+	return mulq(mulq(q, p), invq(q)); /* qpq⁻¹ */
+}
+
+Point3
+qsandwichpt3(Quaternion q, Point3 p)
+{
+	Quaternion r;
+
+	r = qsandwich(q, Quatvec(0, p));
+	return Pt3(r.i, r.j, r.k, p.w);
+}
+
 Point3
 qrotate(Point3 p, Point3 axis, double θ)
 {
-	Quaternion qaxis, qr;
+	Quaternion qaxis;
 
 	θ /= 2;
 	qaxis = Quatvec(cos(θ), mulpt3(axis, sin(θ)));
-	qr = mulq(mulq(qaxis, Quatvec(0, p)), invq(qaxis)); /* qpq⁻¹ */
-	return Pt3(qr.i, qr.j, qr.k, p.w);
+	return qsandwichpt3(qaxis, p);
 }
