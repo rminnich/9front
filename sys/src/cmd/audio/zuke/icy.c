@@ -73,25 +73,29 @@ int
 icyget(Meta *m, int outfd, Channel **newtitle)
 {
 	char *s, *e, *p, *path, *d;
-	int f, r, n;
+	int f, r, n, loc;
 	Icyaux *aux;
 	Biobuf *b;
 
+	loc = 0;
 	path = strdup(m->path);
+nextloc:
 	s = strchr(path, ':')+3;
 	if((e = strchr(s, '/')) != nil)
 		*e++ = 0;
 	if((p = strchr(s, ':')) != nil)
 		*p = '!';
 	p = smprint("tcp!%s", s);
-	free(path);
 	f = -1;
 	if((d = netmkaddr(p, "tcp", "80")) != nil)
 		f = dial(d, nil, nil, nil);
 	free(p);
-	if(f < 0)
+	if(f < 0){
+		free(path);
 		return -1;
-	fprint(f, "GET /%s HTTP/0.9\r\nIcy-MetaData: 1\r\n\r\n", e ? e : "");
+	}
+	fprint(f, "GET /%s HTTP/1.1\r\nHost: %s\r\nIcy-MetaData: 1\r\n\r\n", e ? e : "", s);
+	free(path);
 	b = Bfdopen(f, OREAD);
 	aux = mallocz(sizeof(*aux), 1);
 	aux->outfd = outfd;
@@ -106,7 +110,17 @@ icyget(Meta *m, int outfd, Channel **newtitle)
 			break;
 		}
 		s[n-2] = 0;
-		if(strncmp(s, "icy-name:", 9) == 0){
+		if(strncmp(s, "Location: ", 10) == 0){
+			if(++loc >= 10){
+				werrstr("too many links to follow");
+				r = -1;
+				break;
+			}
+			Bterm(b);
+			chanclose(aux->newtitle);
+			path = strdup(s+10);
+			goto nextloc;
+		}else if(strncmp(s, "icy-name:", 9) == 0){
 			s += 9;
 			if(newtitle != nil)
 				sendp(aux->newtitle, strdup(s));
@@ -123,6 +137,7 @@ icyget(Meta *m, int outfd, Channel **newtitle)
 	if(r < 0 || outfd < 0){
 		Bterm(b);
 		b = nil;
+		chanclose(aux->newtitle);
 		free(aux);
 	}
 	if(b != nil){
