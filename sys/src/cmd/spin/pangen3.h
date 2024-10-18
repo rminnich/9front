@@ -1093,7 +1093,7 @@ static const char *Proto[] = {
 	"void dot_crack(int, int, Trans *);",
 	"void do_reach(void);",
 	"void pan_exit(int);",
-	"void exit(int);",
+	"_Noreturn void exit(int);",
 	"#ifdef BFS_PAR",
 	"	void bfs_setup_mem(void);",
 	"#endif",
