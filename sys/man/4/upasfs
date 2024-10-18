@@ -1,6 +1,6 @@
 .TH UPASFS 4
 .SH NAME
-upasfs \- mail file server
+upas/fs \- mail file server
 .SH SYNOPSIS
 .B upas/fs
 [
