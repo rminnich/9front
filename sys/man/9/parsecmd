@@ -67,6 +67,14 @@ is allocated by
 .IR malloc (9)),
 and the caller is responsible for freeing it using
 .IR free .
+To prevent denial of service to the kernel,
+.I parsecmd
+will error out if
+.I n
+exceeds
+.B READSTR
+bytes.
+.PP
 .I Cmderror
 prepends the given format with the original command,
 then calls

@@ -36,9 +36,12 @@ ncmdfield(char *p, int n)
 Cmdbuf*
 parsecmd(char *p, int n)
 {
-	Cmdbuf *volatile cb;
+	Cmdbuf *cb;
 	int nf;
 	char *sp;
+
+	if(up!=nil && (uint)n > READSTR)
+		error("control message too big");
 
 	nf = ncmdfield(p, n);
 
