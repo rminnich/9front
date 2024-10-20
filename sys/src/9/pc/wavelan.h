@@ -320,7 +320,7 @@ int	w_inltv(Ctlr*, Wltv*);
 void	w_attach(Ether*);
 void	w_interrupt(Ureg*,void*);
 void	w_transmit(Ether*);
-long	w_ifstat(Ether*, void*, long, ulong);
+char*	w_ifstat(void*, char*, char*);
 long	w_ctl(Ether*, void*, long);
 void	w_promiscuous(void*, int);
 void	w_multicast(void*, uchar*, int);
