@@ -624,8 +624,8 @@ multicast(void* arg, uchar *addr, int on)
 	iunlock(ctlr);
 }
 
-static long
-ifstat(Ether* ether, void* a, long n, ulong offset)
+static char*
+ifstat(void *a, char *p, char *e)
 {
 	static char *chiprev[] = {
 		[3] 	"92",
@@ -635,14 +635,15 @@ ifstat(Ether* ether, void* a, long n, ulong offset)
 		[9]	"110",
 	};
 
+	Ether* ether;
 	Smc91xx* ctlr;
-	char* p;
-	int r, len;
 	char* s;
-	
-	if (n == 0)
-		return 0;
+	int r;
 
+	if (p >= e)
+		return p;
+
+	ether = a;
 	ctlr = ether->ctlr;
 
 	s = 0;
@@ -659,21 +660,16 @@ ifstat(Ether* ether, void* a, long n, ulong offset)
 		}
 	}
 
-	p = smalloc(READSTR);
-	len = snprint(p, READSTR, "rev: 91c%s\n", (s) ? s : "???");
-	len += snprint(p + len, READSTR - len, "rxovrn: %uld\n", ctlr->rovrn);
-	len += snprint(p + len, READSTR - len, "lcar: %uld\n", ctlr->lcar);
-	len += snprint(p + len, READSTR - len, "col: %uld\n", ctlr->col);
-	len += snprint(p + len, READSTR - len, "16col: %uld\n", ctlr->scol);
-	len += snprint(p + len, READSTR - len, "mcol: %uld\n", ctlr->mcol);
-	len += snprint(p + len, READSTR - len, "lcol: %uld\n", ctlr->lcol);
-	len += snprint(p + len, READSTR - len, "dfr: %uld\n", ctlr->dfr);
-	USED(len);
+	p = seprint(p, e, "rev: 91c%s\n", (s) ? s : "???");
+	p = seprint(p, e, "rxovrn: %uld\n", ctlr->rovrn);
+	p = seprint(p, e, "lcar: %uld\n", ctlr->lcar);
+	p = seprint(p, e, "col: %uld\n", ctlr->col);
+	p = seprint(p, e, "16col: %uld\n", ctlr->scol);
+	p = seprint(p, e, "mcol: %uld\n", ctlr->mcol);
+	p = seprint(p, e, "lcol: %uld\n", ctlr->lcol);
+	p = seprint(p, e, "dfr: %uld\n", ctlr->dfr);
 
-	n = readstr(offset, a, n, p);
-	free(p);
-	
-	return n;
+	return p;
 }
 
 static int
@@ -766,9 +762,9 @@ reset(Ether* ether)
 
 	ether->attach = attach;
 	ether->transmit = transmit;
-	ether->ifstat = ifstat;
 	ether->promiscuous = promiscuous;
 	ether->multicast = multicast;
+	ether->ifstat = ifstat;
 	ether->arg = ether;
 
 	iunlock(ctlr);

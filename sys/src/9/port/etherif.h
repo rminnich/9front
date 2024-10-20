@@ -36,7 +36,6 @@ struct Ether {
 
 	void	(*attach)(Ether*);	/* filled in by reset routine */
 	void	(*transmit)(Ether*);
-	long	(*ifstat)(Ether*, void*, long, ulong);
 	long 	(*ctl)(Ether*, void*, long); /* custom ctl messages */
 	void	(*power)(Ether*, int);	/* power on/off */
 	void	(*shutdown)(Ether*);	/* shutdown hardware before reboot */

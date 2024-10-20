@@ -826,15 +826,16 @@ iprint("w_power %d\n", on);
 	iunlock(ctlr);
 }
 
-#define PRINTSTAT(fmt,val)	l += snprint(p+l, READSTR-l, (fmt), (val))
-#define PRINTSTR(fmt)		l += snprint(p+l, READSTR-l, (fmt))
+#define PRINTSTAT(fmt,val)	p = seprint(p, e, (fmt), (val))
+#define PRINTSTR(fmt)		p = seprint(p, e, (fmt))
 
-long
-w_ifstat(Ether* ether, void* a, long n, ulong offset)
+char*
+w_ifstat(void *arg, char *p, char *e)
 {
+	Ether* ether = (Ether*) arg;
 	Ctlr *ctlr = (Ctlr*) ether->ctlr;
-	char *k, *p;
-	int i, l, txid;
+	char *k;
+	int i, txid;
 
 	ether->oerrs = ctlr->ntxerr;
 	ether->crcs = ctlr->nrxfcserr;
@@ -842,15 +843,8 @@ w_ifstat(Ether* ether, void* a, long n, ulong offset)
 	ether->buffs = ctlr->nrxdropnobuf;
 	ether->overflows = 0;
 
-	//
-	// Offset must be zero or there's a possibility the
-	// new data won't match the previous read.
-	//
-	if(n == 0 || offset != 0)
-		return 0;
-
-	p = smalloc(READSTR);
-	l = 0;
+	if(p >= e)
+		return p;
 
 	PRINTSTAT("Signal: %d\n", ctlr->signal-149);
 	PRINTSTAT("Noise: %d\n", ctlr->noise-149);
@@ -910,7 +904,7 @@ w_ifstat(Ether* ether, void* a, long n, ulong offset)
 		ltv.len = 4;
 		if(w_inltv(ctlr, &ltv))
 			print("#l%d: unable to read base station mac addr\n", ether->ctlrno);
-		l += snprint(p+l, READSTR-l, "Base station: %2.2x%2.2x%2.2x%2.2x%2.2x%2.2x\n",
+		p = seprint(p, e, "Base station: %2.2x%2.2x%2.2x%2.2x%2.2x%2.2x\n",
 			ltv.addr[0], ltv.addr[1], ltv.addr[2], ltv.addr[3], ltv.addr[4], ltv.addr[5]);
 	}
 	PRINTSTAT("Net name: %s\n", ltv_inname(ctlr, WTyp_WantName));
@@ -951,10 +945,8 @@ w_ifstat(Ether* ether, void* a, long n, ulong offset)
 	PRINTSTAT("nrxcantdecrypt: %lud\n", ctlr->nrxcantdecrypt);
 	PRINTSTAT("nrxmsgfrag: %lud\n", ctlr->nrxmsgfrag);
 	PRINTSTAT("nrxmsgbadfrag: %lud\n", ctlr->nrxmsgbadfrag);
-	USED(l);
-	n = readstr(offset, a, n, p);
-	free(p);
-	return n;
+
+	return p;
 }
 #undef PRINTSTR
 #undef PRINTSTAT
@@ -1235,12 +1227,12 @@ wavelanreset(Ether* ether, Ctlr *ctlr)
 	ether->mbps = 10;
 	ether->attach = w_attach;
 	ether->transmit = w_transmit;
-	ether->ifstat = w_ifstat;
 	ether->ctl = w_ctl;
 	ether->power = w_power;
 	ether->promiscuous = w_promiscuous;
 	ether->multicast = w_multicast;
 	ether->scanbs = w_scanbs;
+	ether->ifstat = w_ifstat;
 	ether->arg = ether;
 
 	intrenable(ether->irq, w_interrupt, ether, ether->tbdf, ether->name);

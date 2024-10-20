@@ -308,69 +308,53 @@ attach(Ether* ether)
 	iunlock(&ctlr->lock);
 }
 
-static long
-ifstat(Ether* ether, void* a, long n, ulong offset)
+static char*
+ifstat(void *arg, char* p, char* e)
 {
-	Ctlr *ctlr;
-	char *buf, *p;
-	int i, l, len;
-
-	ctlr = ether->ctlr;
+	Ether *ether = arg;
+	Ctlr *ctlr = ether->ctlr;
+	int i;
 
 	ether->crcs = ctlr->ce;
 	ether->frames = ctlr->rf+ctlr->cs;
 	ether->buffs = ctlr->de+ctlr->tl;
 	ether->overflows = ctlr->of;
 
-	if(n == 0)
-		return 0;
+	if(p >= e)
+		return p;
 
-	p = smalloc(READSTR);
-	l = snprint(p, READSTR, "Overflow: %lud\n", ctlr->of);
-	l += snprint(p+l, READSTR-l, "Ru: %lud\n", ctlr->ru);
-	l += snprint(p+l, READSTR-l, "Rps: %lud\n", ctlr->rps);
-	l += snprint(p+l, READSTR-l, "Rwt: %lud\n", ctlr->rwt);
-	l += snprint(p+l, READSTR-l, "Tps: %lud\n", ctlr->tps);
-	l += snprint(p+l, READSTR-l, "Tu: %lud\n", ctlr->tu);
-	l += snprint(p+l, READSTR-l, "Tjt: %lud\n", ctlr->tjt);
-	l += snprint(p+l, READSTR-l, "Unf: %lud\n", ctlr->unf);
-	l += snprint(p+l, READSTR-l, "CRC Error: %lud\n", ctlr->ce);
-	l += snprint(p+l, READSTR-l, "Collision Seen: %lud\n", ctlr->cs);
-	l += snprint(p+l, READSTR-l, "Frame Too Long: %lud\n", ctlr->tl);
-	l += snprint(p+l, READSTR-l, "Runt Frame: %lud\n", ctlr->rf);
-	l += snprint(p+l, READSTR-l, "Descriptor Error: %lud\n", ctlr->de);
-	l += snprint(p+l, READSTR-l, "Underflow Error: %lud\n", ctlr->uf);
-	l += snprint(p+l, READSTR-l, "Excessive Collisions: %lud\n", ctlr->ec);
-	l += snprint(p+l, READSTR-l, "Late Collision: %lud\n", ctlr->lc);
-	l += snprint(p+l, READSTR-l, "No Carrier: %lud\n", ctlr->nc);
-	l += snprint(p+l, READSTR-l, "Loss of Carrier: %lud\n", ctlr->lo);
-	l += snprint(p+l, READSTR-l, "Transmit Jabber Timeout: %lud\n",
-		ctlr->to);
-	l += snprint(p+l, READSTR-l, "csr6: %luX %uX\n", csr32r(ctlr, 6),
-		ctlr->csr6);
-	snprint(p+l, READSTR-l, "ntqmax: %d\n", ctlr->ntqmax);
+	p = seprint(p, e, "Overflow: %lud\n", ctlr->of);
+	p = seprint(p, e, "Ru: %lud\n", ctlr->ru);
+	p = seprint(p, e, "Rps: %lud\n", ctlr->rps);
+	p = seprint(p, e, "Rwt: %lud\n", ctlr->rwt);
+	p = seprint(p, e, "Tps: %lud\n", ctlr->tps);
+	p = seprint(p, e, "Tu: %lud\n", ctlr->tu);
+	p = seprint(p, e, "Tjt: %lud\n", ctlr->tjt);
+	p = seprint(p, e, "Unf: %lud\n", ctlr->unf);
+	p = seprint(p, e, "CRC Error: %lud\n", ctlr->ce);
+	p = seprint(p, e, "Collision Seen: %lud\n", ctlr->cs);
+	p = seprint(p, e, "Frame Too Long: %lud\n", ctlr->tl);
+	p = seprint(p, e, "Runt Frame: %lud\n", ctlr->rf);
+	p = seprint(p, e, "Descriptor Error: %lud\n", ctlr->de);
+	p = seprint(p, e, "Underflow Error: %lud\n", ctlr->uf);
+	p = seprint(p, e, "Excessive Collisions: %lud\n", ctlr->ec);
+	p = seprint(p, e, "Late Collision: %lud\n", ctlr->lc);
+	p = seprint(p, e, "No Carrier: %lud\n", ctlr->nc);
+	p = seprint(p, e, "Loss of Carrier: %lud\n", ctlr->lo);
+	p = seprint(p, e, "Transmit Jabber Timeout: %lud\n", ctlr->to);
+	p = seprint(p, e, "csr6: %luX %uX\n", csr32r(ctlr, 6), ctlr->csr6);
+	p = seprint(p, e, "ntqmax: %d\n", ctlr->ntqmax);
 	ctlr->ntqmax = 0;
-	buf = a;
-	len = readstr(offset, buf, n, p);
-	if(offset > l)
-		offset -= l;
-	else
-		offset = 0;
-	buf += len;
-	n -= len;
 
-	l = snprint(p, READSTR, "srom:");
+	p = seprint(p, e, "srom:");
 	for(i = 0; i < (1<<(ctlr->sromsz)*sizeof(ushort)); i++){
 		if(i && ((i & 0x0F) == 0))
-			l += snprint(p+l, READSTR-l, "\n     ");
-		l += snprint(p+l, READSTR-l, " %2.2uX", ctlr->srom[i]);
+			p = seprint(p, e, "\n     ");
+		p = seprint(p, e, " %2.2uX", ctlr->srom[i]);
 	}
+	p = seprint(p, e, "\n");
 
-	snprint(p+l, READSTR-l, "\n");
-	len += readstr(offset, buf, n, p);
-	free(p);
-
-	return len;
+	return p;
 }
 
 static void
@@ -1833,12 +1817,12 @@ reset(Ether* ether)
 	 */
 	ether->attach = attach;
 	ether->transmit = transmit;
-	ether->ifstat = ifstat;
 
 	ether->arg = ether;
 	ether->shutdown = shutdown;
 	ether->multicast = multicast;
 	ether->promiscuous = promiscuous;
+	ether->ifstat = ifstat;
 
 	intrenable(ether->irq, interrupt, ether, ether->tbdf, ether->name);
 

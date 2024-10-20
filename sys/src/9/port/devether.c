@@ -98,22 +98,7 @@ etherclose(Chan* chan)
 static long
 etherread(Chan* chan, void* buf, long n, vlong off)
 {
-	Ether *ether;
-	ulong offset = off;
-
-	ether = etherxx[chan->dev];
-	if((chan->qid.type & QTDIR) == 0 && ether->ifstat){
-		/*
-		 * With some controllers it is necessary to reach
-		 * into the chip to extract statistics.
-		 */
-		if(NETTYPE(chan->qid.path) == Nifstatqid)
-			return ether->ifstat(ether, buf, n, offset);
-		else if(NETTYPE(chan->qid.path) == Nstatqid)
-			ether->ifstat(ether, buf, 0, offset);
-	}
-
-	return netifread(ether, chan, buf, n, offset);
+	return netifread(etherxx[chan->dev], chan, buf, n, (ulong)off);
 }
 
 static Block*

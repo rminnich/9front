@@ -587,16 +587,19 @@ static char* statistics[Nstatistics] = {
 	"TCP Segmentation Context Fail",
 };
 
-static long
-igbeifstat(Ether* edev, void* a, long n, ulong offset)
+static char*
+igbeifstat(void *arg, char *p, char *e)
 {
+	Ether *edev;
 	Ctlr *ctlr;
-	char *p, *s;
-	int i, l, r;
+	char *s;
+	int i, r;
 	uvlong tuvl, ruvl;
 
-	p = smalloc(READSTR);
-	l = 0;
+	if(p >= e)
+		return p;
+
+	edev = arg;
 	ctlr = edev->ctlr;
 	qlock(&ctlr->slock);
 	for(i = 0; i < Nstatistics; i++){
@@ -617,8 +620,7 @@ igbeifstat(Ether* edev, void* a, long n, ulong offset)
 				continue;
 			ctlr->statistics[i] = tuvl;
 			ctlr->statistics[i+1] = tuvl>>32;
-			l += snprint(p+l, READSTR-l, "%s: %llud %llud\n",
-				s, tuvl, ruvl);
+			p = seprint(p, e, "%s: %llud %llud\n", s, tuvl, ruvl);
 			i++;
 			break;
 
@@ -626,46 +628,39 @@ igbeifstat(Ether* edev, void* a, long n, ulong offset)
 			ctlr->statistics[i] += r;
 			if(ctlr->statistics[i] == 0)
 				continue;
-			l += snprint(p+l, READSTR-l, "%s: %ud %ud\n",
-				s, ctlr->statistics[i], r);
+			p = seprint(p, e, "%s: %ud %ud\n", s, ctlr->statistics[i], r);
 			break;
 		}
 	}
 
-	l += snprint(p+l, READSTR-l, "lintr: %ud %ud\n",
-		ctlr->lintr, ctlr->lsleep);
-	l += snprint(p+l, READSTR-l, "rintr: %ud %ud\n",
-		ctlr->rintr, ctlr->rsleep);
-	l += snprint(p+l, READSTR-l, "tintr: %ud %ud\n",
-		ctlr->tintr, ctlr->txdw);
-	l += snprint(p+l, READSTR-l, "ixcs: %ud %ud %ud\n",
-		ctlr->ixsm, ctlr->ipcs, ctlr->tcpcs);
-	l += snprint(p+l, READSTR-l, "rdtr: %ud\n", ctlr->rdtr);
-	l += snprint(p+l, READSTR-l, "Ctrlext: %08x\n", csr32r(ctlr, Ctrlext));
+	p = seprint(p, e, "lintr: %ud %ud\n", ctlr->lintr, ctlr->lsleep);
+	p = seprint(p, e,  "rintr: %ud %ud\n", ctlr->rintr, ctlr->rsleep);
+	p = seprint(p, e, "tintr: %ud %ud\n", ctlr->tintr, ctlr->txdw);
+	p = seprint(p, e, "ixcs: %ud %ud %ud\n", ctlr->ixsm, ctlr->ipcs, ctlr->tcpcs);
+	p = seprint(p, e, "rdtr: %ud\n", ctlr->rdtr);
+	p = seprint(p, e, "Ctrlext: %08x\n", csr32r(ctlr, Ctrlext));
 
-	l += snprint(p+l, READSTR-l, "eeprom:");
+	p = seprint(p, e, "eeprom:");
 	for(i = 0; i < 0x40; i++){
 		if(i && ((i & 0x07) == 0))
-			l += snprint(p+l, READSTR-l, "\n       ");
-		l += snprint(p+l, READSTR-l, " %4.4uX", ctlr->eeprom[i]);
+			p = seprint(p, e, "\n       ");
+		p = seprint(p, e, " %4.4uX", ctlr->eeprom[i]);
 	}
-	l += snprint(p+l, READSTR-l, "\n");
+	p = seprint(p, e, "\n");
 
 	if(ctlr->mii != nil && ctlr->mii->curphy != nil){
-		l += snprint(p+l, READSTR-l, "phy:   ");
+		p = seprint(p, e, "phy:   ");
 		for(i = 0; i < NMiiPhyr; i++){
 			if(i && ((i & 0x07) == 0))
-				l += snprint(p+l, READSTR-l, "\n       ");
+				p = seprint(p, e, "\n       ");
 			r = miimir(ctlr->mii, i);
-			l += snprint(p+l, READSTR-l, " %4.4uX", r);
+			p = seprint(p, e, " %4.4uX", r);
 		}
-		snprint(p+l, READSTR-l, "\n");
+		p = seprint(p, e, "\n");
 	}
-	n = readstr(offset, a, n, p);
-	free(p);
 	qunlock(&ctlr->slock);
 
-	return n;
+	return p;
 }
 
 enum {
@@ -2021,13 +2016,13 @@ igbepnp(Ether* edev)
 	 */
 	edev->attach = igbeattach;
 	edev->transmit = igbetransmit;
-	edev->ifstat = igbeifstat;
 	edev->ctl = igbectl;
 
 	edev->arg = edev;
 	edev->promiscuous = igbepromiscuous;
 	edev->shutdown = igbeshutdown;
 	edev->multicast = igbemulticast;
+	edev->ifstat = igbeifstat;
 
 	intrenable(edev->irq, igbeinterrupt, edev, edev->tbdf, edev->name);
 

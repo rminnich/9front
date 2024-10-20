@@ -190,41 +190,34 @@ attach(Ether*)
 {
 }
 
-static long
-ifstat(Ether* ether, void* a, long n, ulong offset)
+static char*
+ifstat(void *arg, char *p, char *e)
 {
-	char *p;
-	int len;
-	Ctlr *ctlr;
-
-	ctlr = ether->ctlr;
+	Ether *ether = arg;
+	Ctlr *ctlr = ether->ctlr;
 
 	ether->crcs = ctlr->crc;
 	ether->frames = ctlr->fram;
 	ether->buffs = ctlr->rxbuff+ctlr->txbuff;
 	ether->overflows = ctlr->oflo;
 
-	if(n == 0)
-		return 0;
+	if(p >= e)
+		return p;
 
-	p = smalloc(READSTR);
-	len = snprint(p, READSTR, "Rxbuff: %ld\n", ctlr->rxbuff);
-	len += snprint(p+len, READSTR-len, "Crc: %ld\n", ctlr->crc);
-	len += snprint(p+len, READSTR-len, "Oflo: %ld\n", ctlr->oflo);
-	len += snprint(p+len, READSTR-len, "Fram: %ld\n", ctlr->fram);
-	len += snprint(p+len, READSTR-len, "Rtry: %ld\n", ctlr->rtry);
-	len += snprint(p+len, READSTR-len, "Lcar: %ld\n", ctlr->lcar);
-	len += snprint(p+len, READSTR-len, "Lcol: %ld\n", ctlr->lcol);
-	len += snprint(p+len, READSTR-len, "Uflo: %ld\n", ctlr->uflo);
-	len += snprint(p+len, READSTR-len, "Txbuff: %ld\n", ctlr->txbuff);
-	len += snprint(p+len, READSTR-len, "Merr: %ld\n", ctlr->merr);
-	len += snprint(p+len, READSTR-len, "Miss: %ld\n", ctlr->miss);
-	snprint(p+len, READSTR-len, "Babl: %ld\n", ctlr->babl);
+	p = seprint(p, e, "Rxbuff: %ld\n", ctlr->rxbuff);
+	p = seprint(p, e, "Crc: %ld\n", ctlr->crc);
+	p = seprint(p, e, "Oflo: %ld\n", ctlr->oflo);
+	p = seprint(p, e, "Fram: %ld\n", ctlr->fram);
+	p = seprint(p, e, "Rtry: %ld\n", ctlr->rtry);
+	p = seprint(p, e, "Lcar: %ld\n", ctlr->lcar);
+	p = seprint(p, e, "Lcol: %ld\n", ctlr->lcol);
+	p = seprint(p, e, "Uflo: %ld\n", ctlr->uflo);
+	p = seprint(p, e, "Txbuff: %ld\n", ctlr->txbuff);
+	p = seprint(p, e, "Merr: %ld\n", ctlr->merr);
+	p = seprint(p, e, "Miss: %ld\n", ctlr->miss);
+	p = seprint(p, e, "Babl: %ld\n", ctlr->babl);
 
-	n = readstr(offset, a, n, p);
-	free(p);
-
-	return n;
+	return p;
 }
 
 static void
@@ -673,12 +666,12 @@ reset(Ether* ether)
 	 */
 	ether->attach = attach;
 	ether->transmit = transmit;
-	ether->ifstat = ifstat;
 
 	ether->arg = ether;
 	ether->promiscuous = promiscuous;
 	ether->multicast = multicast;
 //	ether->shutdown = shutdown;
+	ether->ifstat = ifstat;
 
 	intrenable(ether->irq, interrupt, ether, ether->tbdf, ether->name);
 

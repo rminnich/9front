@@ -1488,15 +1488,12 @@ wpictl(Ether *edev, void *buf, long n)
 	return 0;
 }
 
-static long
-wpiifstat(Ether *edev, void *buf, long n, ulong off)
+static char*
+wpiifstat(void *a, char *s, char *e)
 {
-	Ctlr *ctlr;
-
-	ctlr = edev->ctlr;
-	if(ctlr->wifi)
-		return wifistat(ctlr->wifi, buf, n, off);
-	return 0;
+	Ether *edev = a;
+ 	Ctlr *ctlr = edev->ctlr;
+	return wifistat(ctlr->wifi, s, e);
 }
 
 static void
@@ -1848,11 +1845,11 @@ again:
 	edev->tbdf = ctlr->pdev->tbdf;
 	edev->arg = edev;
 	edev->attach = wpiattach;
-	edev->ifstat = wpiifstat;
 	edev->ctl = wpictl;
 	edev->shutdown = wpishutdown;
 	edev->promiscuous = wpipromiscuous;
 	edev->multicast = wpimulticast;
+	edev->ifstat = wpiifstat;
 	edev->mbps = 54;
 
 	pcienable(ctlr->pdev);

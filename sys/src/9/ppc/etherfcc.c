@@ -453,52 +453,49 @@ interrupt(Ureg*, void *arg)
 #endif
 }
 
-static long
-ifstat(Ether* ether, void* a, long n, ulong offset)
+static char*
+ifstat(void *arg, char *p, char *e)
 {
-	char *p;
-	int len, i, r;
+	Ether *ether;
 	Ctlr *ctlr;
 	MiiPhy *phy;
+	int i, r;
 
-	if(n == 0)
-		return 0;
+	if(p >= e)
+		return p;
 
+	ether = arg;
 	ctlr = ether->ctlr;
 
-	p = malloc(READSTR);
-	len = snprint(p, READSTR, "interrupts: %lud\n", ctlr->interrupts);
-	len += snprint(p+len, READSTR-len, "carrierlost: %lud\n", ctlr->carrierlost);
-	len += snprint(p+len, READSTR-len, "heartbeat: %lud\n", ctlr->heartbeat);
-	len += snprint(p+len, READSTR-len, "retrylimit: %lud\n", ctlr->retrylim);
-	len += snprint(p+len, READSTR-len, "retrycount: %lud\n", ctlr->retrycount);
-	len += snprint(p+len, READSTR-len, "latecollisions: %lud\n", ctlr->latecoll);
-	len += snprint(p+len, READSTR-len, "rxoverruns: %lud\n", ctlr->overrun);
-	len += snprint(p+len, READSTR-len, "txunderruns: %lud\n", ctlr->underrun);
-	len += snprint(p+len, READSTR-len, "framesdeferred: %lud\n", ctlr->deferred);
+	p = seprint(p, e, "interrupts: %lud\n", ctlr->interrupts);
+	p = seprint(p, e, "carrierlost: %lud\n", ctlr->carrierlost);
+	p = seprint(p, e, "heartbeat: %lud\n", ctlr->heartbeat);
+	p = seprint(p, e, "retrylimit: %lud\n", ctlr->retrylim);
+	p = seprint(p, e, "retrycount: %lud\n", ctlr->retrycount);
+	p = seprint(p, e, "latecollisions: %lud\n", ctlr->latecoll);
+	p = seprint(p, e, "rxoverruns: %lud\n", ctlr->overrun);
+	p = seprint(p, e, "txunderruns: %lud\n", ctlr->underrun);
+	p = seprint(p, e, "framesdeferred: %lud\n", ctlr->deferred);
 	miistatus(ctlr->mii);
 	phy = ctlr->mii->curphy;
-	len += snprint(p+len, READSTR-len, "phy: link=%d, tfc=%d, rfc=%d, speed=%d, fd=%d\n",
+	p = seprint(p, e, "phy: link=%d, tfc=%d, rfc=%d, speed=%d, fd=%d\n",
 		phy->link, phy->tfc, phy->rfc, phy->speed, phy->fd);
 
 #ifdef DBG
 	if(ctlr->mii != nil && ctlr->mii->curphy != nil){
-		len += snprint(p+len, READSTR, "phy:   ");
+		p = seprint(p, e, "phy:   ");
 		for(i = 0; i < NMiiPhyr; i++){
 			if(i && ((i & 0x07) == 0))
-				len += snprint(p+len, READSTR-len, "\n       ");
+				p = seprint(p, e, "\n       ");
 			r = miimir(ctlr->mii, i);
-			len += snprint(p+len, READSTR-len, " %4.4uX", r);
+			p = seprint(p, e, " %4.4uX", r);
 		}
-		snprint(p+len, READSTR-len, "\n");
+		p = seprint(p, e, "\n");
 	}
 #endif
-	snprint(p+len, READSTR-len, "\n");
+	p = seprint(p, e, "\n");
 
-	n = readstr(offset, a, n, p);
-	free(p);
-
-	return n;
+	return p;
 }
 
 /*
@@ -719,9 +716,9 @@ reset(Ether* ether)
 	ether->mbps = 100;	/* TO DO: could be 10mbps */
 	ether->attach = attach;
 	ether->transmit = transmit;
-	ether->ifstat = ifstat;
 
 	ether->arg = ether;
+	ether->ifstat = ifstat;
 	ether->promiscuous = promiscuous;
 	ether->multicast = multicast;
 

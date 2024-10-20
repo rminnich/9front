@@ -484,32 +484,27 @@ attach(Ether* edev)
 	kproc(name, txproc, edev);
 }
 
-static long
-ifstat(Ether *edev, void *a, long n, ulong offset)
+static char*
+ifstat(void *a, char *s, char *e)
 {
-	int i, l;
-	char *p;
+	Ether *edev;
 	Ctlr *ctlr;
 	Vqueue *q;
+	int i;
 
+	if(s >= e)
+		return s;
+	edev = a;
 	ctlr = edev->ctlr;
-
-	p = smalloc(READSTR);
-
-	l = snprint(p, READSTR, "devfeat %32.32lub %32.32lub\n", ctlr->feat[1], ctlr->feat[0]);
-	l += snprint(p+l, READSTR-l, "devstatus %8.8ub\n", ctlr->cfg->status);
-
+	s = seprint(s, e, "devfeat %32.32lub %32.32lub\n", ctlr->feat[1], ctlr->feat[0]);
+	s = seprint(s, e, "devstatus %8.8ub\n", ctlr->cfg->status);
 	for(i = 0; i < ctlr->nqueue; i++){
 		q = &ctlr->queue[i];
-		l += snprint(p+l, READSTR-l,
+		s = seprint(s, e,
 			"vq%d %#p size %d avail->idx %d used->idx %d lastused %hud nintr %ud nnote %ud\n",
 			i, q, q->qsize, q->avail->idx, q->used->idx, q->lastused, q->nintr, q->nnote);
 	}
-
-	n = readstr(offset, a, n, p);
-	free(p);
-
-	return n;
+	return s;
 }
 
 static void

@@ -403,14 +403,15 @@ attach(Ether* ether)
 	}
 }
 
-static long
-ifstat(Ether* ether, void* a, long n, ulong offset)
+static char*
+ifstat(void *a, char *p, char *e)
 {
-	char *p;
-	int i, len, phyaddr;
+	Ether *ether;
 	Ctlr *ctlr;
+	int i, phyaddr;
 	ulong dump[17];
 
+	ether = a;
 	ctlr = ether->ctlr;
 	lock(&ctlr->dlock);
 	if(waserror()){
@@ -441,56 +442,51 @@ ifstat(Ether* ether, void* a, long n, ulong offset)
 	poperror();
 	unlock(&ctlr->dlock);
 
-	if(n == 0)
-		return 0;
+	if(p >= e)
+		return p;
 
-	p = smalloc(READSTR);
-	len = snprint(p, READSTR, "transmit good frames: %lud\n", dump[0]);
-	len += snprint(p+len, READSTR-len, "transmit maximum collisions errors: %lud\n", dump[1]);
-	len += snprint(p+len, READSTR-len, "transmit late collisions errors: %lud\n", dump[2]);
-	len += snprint(p+len, READSTR-len, "transmit underrun errors: %lud\n", dump[3]);
-	len += snprint(p+len, READSTR-len, "transmit lost carrier sense: %lud\n", dump[4]);
-	len += snprint(p+len, READSTR-len, "transmit deferred: %lud\n", dump[5]);
-	len += snprint(p+len, READSTR-len, "transmit single collisions: %lud\n", dump[6]);
-	len += snprint(p+len, READSTR-len, "transmit multiple collisions: %lud\n", dump[7]);
-	len += snprint(p+len, READSTR-len, "transmit total collisions: %lud\n", dump[8]);
-	len += snprint(p+len, READSTR-len, "receive good frames: %lud\n", dump[9]);
-	len += snprint(p+len, READSTR-len, "receive CRC errors: %lud\n", dump[10]);
-	len += snprint(p+len, READSTR-len, "receive alignment errors: %lud\n", dump[11]);
-	len += snprint(p+len, READSTR-len, "receive resource errors: %lud\n", dump[12]);
-	len += snprint(p+len, READSTR-len, "receive overrun errors: %lud\n", dump[13]);
-	len += snprint(p+len, READSTR-len, "receive collision detect errors: %lud\n", dump[14]);
-	len += snprint(p+len, READSTR-len, "receive short frame errors: %lud\n", dump[15]);
-	len += snprint(p+len, READSTR-len, "nop: %d\n", ctlr->nop);
+	p = seprint(p, e, "transmit good frames: %lud\n", dump[0]);
+	p = seprint(p, e, "transmit maximum collisions errors: %lud\n", dump[1]);
+	p = seprint(p, e, "transmit late collisions errors: %lud\n", dump[2]);
+	p = seprint(p, e, "transmit underrun errors: %lud\n", dump[3]);
+	p = seprint(p, e, "transmit lost carrier sense: %lud\n", dump[4]);
+	p = seprint(p, e, "transmit deferred: %lud\n", dump[5]);
+	p = seprint(p, e, "transmit single collisions: %lud\n", dump[6]);
+	p = seprint(p, e, "transmit multiple collisions: %lud\n", dump[7]);
+	p = seprint(p, e, "transmit total collisions: %lud\n", dump[8]);
+	p = seprint(p, e, "receive good frames: %lud\n", dump[9]);
+	p = seprint(p, e, "receive CRC errors: %lud\n", dump[10]);
+	p = seprint(p, e, "receive alignment errors: %lud\n", dump[11]);
+	p = seprint(p, e, "receive resource errors: %lud\n", dump[12]);
+	p = seprint(p, e, "receive overrun errors: %lud\n", dump[13]);
+	p = seprint(p, e, "receive collision detect errors: %lud\n", dump[14]);
+	p = seprint(p, e, "receive short frame errors: %lud\n", dump[15]);
+	p = seprint(p, e, "nop: %d\n", ctlr->nop);
 	if(ctlr->cbqmax > ctlr->cbqmaxhw)
 		ctlr->cbqmaxhw = ctlr->cbqmax;
-	len += snprint(p+len, READSTR-len, "cbqmax: %d\n", ctlr->cbqmax);
+	p = seprint(p, e, "cbqmax: %d\n", ctlr->cbqmax);
 	ctlr->cbqmax = 0;
-	len += snprint(p+len, READSTR-len, "threshold: %d\n", ctlr->threshold);
+	p = seprint(p, e, "threshold: %d\n", ctlr->threshold);
 
-	len += snprint(p+len, READSTR-len, "eeprom:");
+	p = seprint(p, e, "eeprom:");
 	for(i = 0; i < (1<<ctlr->eepromsz); i++){
 		if(i && ((i & 0x07) == 0))
-			len += snprint(p+len, READSTR-len, "\n       ");
-		len += snprint(p+len, READSTR-len, " %4.4ux", ctlr->eeprom[i]);
+			p = seprint(p, e, "\n       ");
+		p = seprint(p, e, " %4.4ux", ctlr->eeprom[i]);
 	}
 
 	if((ctlr->eeprom[6] & 0x1F00) && !(ctlr->eeprom[6] & 0x8000)){
 		phyaddr = ctlr->eeprom[6] & 0x00FF;
-		len += snprint(p+len, READSTR-len, "\nphy %2d:", phyaddr);
+		p = seprint(p, e, "\nphy %2d:", phyaddr);
 		for(i = 0; i < 6; i++){
 			static int miir(Ctlr*, int, int);
-
-			len += snprint(p+len, READSTR-len, " %4.4ux",
-				miir(ctlr, phyaddr, i));
+			p = seprint(p, e, " %4.4ux", miir(ctlr, phyaddr, i));
 		}
 	}
 
-	snprint(p+len, READSTR-len, "\n");
-	n = readstr(offset, a, n, p);
-	free(p);
+	p = seprint(p, e, "\n");
 
-	return n;
+	return p;
 }
 
 static void
@@ -1324,11 +1320,11 @@ reset(Ether* ether)
 	 */
 	ether->attach = attach;
 	ether->transmit = transmit;
-	ether->ifstat = ifstat;
 	ether->shutdown = shutdown;
 
 	ether->promiscuous = promiscuous;
 	ether->multicast = multicast;
+	ether->ifstat = ifstat;
 	ether->arg = ether;
 
 	intrenable(ether->irq, interrupt, ether, ether->tbdf, ether->name);

@@ -902,13 +902,14 @@ dp83820interrupt(Ureg*, void* arg)
 	}
 }
 
-static long
-dp83820ifstat(Ether* edev, void* a, long n, ulong offset)
+static char*
+dp83820ifstat(void *a, char *p, char *e)
 {
-	char *p;
+	Ether *edev;
 	Ctlr *ctlr;
-	int i, l, r;
+	int i, r;
 
+	edev = a;
 	ctlr = edev->ctlr;
 
 	edev->crcs = ctlr->mibd[Mibd+(1*sizeof(int))];
@@ -916,49 +917,44 @@ dp83820ifstat(Ether* edev, void* a, long n, ulong offset)
 	edev->buffs = ctlr->mibd[Mibd+(5*sizeof(int))];
 	edev->overflows = ctlr->mibd[Mibd+(2*sizeof(int))];
 
-	if(n == 0)
-		return 0;
+	if(p >= e)
+		return p;
 
-	p = smalloc(READSTR);
-	l = 0;
 	for(i = 0; i < Nmibd; i++){
 		r = csr32r(ctlr, Mibd+(i*sizeof(int)));
 		ctlr->mibd[i] += r & 0xFFFF;
 		if(ctlr->mibd[i] != 0 && dp83820mibs[i] != nil)
-			l += snprint(p+l, READSTR-l, "%s: %ud %ud\n",
+			p = seprint(p, e, "%s: %ud %ud\n",
 				dp83820mibs[i], ctlr->mibd[i], r);
 	}
-	l += snprint(p+l, READSTR-l, "rxidle %d\n", ctlr->rxidle);
-	l += snprint(p+l, READSTR-l, "ec %d\n", ctlr->ec);
-	l += snprint(p+l, READSTR-l, "owc %d\n", ctlr->owc);
-	l += snprint(p+l, READSTR-l, "ed %d\n", ctlr->ed);
-	l += snprint(p+l, READSTR-l, "crs %d\n", ctlr->crs);
-	l += snprint(p+l, READSTR-l, "tfu %d\n", ctlr->tfu);
-	l += snprint(p+l, READSTR-l, "txa %d\n", ctlr->txa);
+	p = seprint(p, e, "rxidle %d\n", ctlr->rxidle);
+	p = seprint(p, e, "ec %d\n", ctlr->ec);
+	p = seprint(p, e, "owc %d\n", ctlr->owc);
+	p = seprint(p, e, "ed %d\n", ctlr->ed);
+	p = seprint(p, e, "crs %d\n", ctlr->crs);
+	p = seprint(p, e, "tfu %d\n", ctlr->tfu);
+	p = seprint(p, e, "txa %d\n", ctlr->txa);
 
-	l += snprint(p+l, READSTR-l, "rom:");
+	p = seprint(p, e, "rom:");
 	for(i = 0; i < 0x10; i++){
 		if(i && ((i & 0x07) == 0))
-			l += snprint(p+l, READSTR-l, "\n    ");
-		l += snprint(p+l, READSTR-l, " %4.4uX", ctlr->eeprom[i]);
+			p = seprint(p, e, "\n    ");
+		p = seprint(p, e, " %4.4uX", ctlr->eeprom[i]);
 	}
-	l += snprint(p+l, READSTR-l, "\n");
+	p = seprint(p, e, "\n");
 
 	if(ctlr->mii != nil && ctlr->mii->curphy != nil){
-		l += snprint(p+l, READSTR-l, "phy:");
+		p = seprint(p, e, "phy:");
 		for(i = 0; i < NMiiPhyr; i++){
 			if(i && ((i & 0x07) == 0))
-				l += snprint(p+l, READSTR-l, "\n    ");
+				p = seprint(p, e, "\n    ");
 			r = miimir(ctlr->mii, i);
-			l += snprint(p+l, READSTR-l, " %4.4uX", r);
+			p = seprint(p, e, " %4.4uX", r);
 		}
-		snprint(p+l, READSTR-l, "\n");
+		p = seprint(p, e, "\n");
 	}
 
-	n = readstr(offset, a, n, p);
-	free(p);
-
-	return n;
+	return p;
 }
 
 static void
@@ -1235,9 +1231,9 @@ dp83820pnp(Ether* edev)
 
 	edev->attach = dp83820attach;
 	edev->transmit = dp83820transmit;
-	edev->ifstat = dp83820ifstat;
 
 	edev->arg = edev;
+	edev->ifstat = dp83820ifstat;
 	edev->promiscuous = dp83820promiscuous;
 	edev->multicast = dp83820multicast;
 	edev->shutdown = dp83820shutdown;

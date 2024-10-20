@@ -3966,15 +3966,12 @@ iwlctl(Ether *edev, void *buf, long n)
 	return 0;
 }
 
-static long
-iwlifstat(Ether *edev, void *buf, long n, ulong off)
+static char*
+iwlifstat(void *a, char *s, char *e)
 {
-	Ctlr *ctlr;
-
-	ctlr = edev->ctlr;
-	if(ctlr->wifi)
-		return wifistat(ctlr->wifi, buf, n, off);
-	return 0;
+	Ether *edev = a;
+ 	Ctlr *ctlr = edev->ctlr;
+	return wifistat(ctlr->wifi, s, e);
 }
 
 static void
@@ -4545,11 +4542,11 @@ again:
 	edev->tbdf = ctlr->pdev->tbdf;
 	edev->arg = edev;
 	edev->attach = iwlattach;
-	edev->ifstat = iwlifstat;
 	edev->ctl = iwlctl;
 	edev->shutdown = iwlshutdown;
 	edev->promiscuous = iwlpromiscuous;
 	edev->multicast = iwlmulticast;
+	edev->ifstat = iwlifstat;
 	edev->mbps = 54;
 
 	pcienable(ctlr->pdev);

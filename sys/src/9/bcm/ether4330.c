@@ -2060,12 +2060,12 @@ wlinit(Ether *edev, Ctlr *ctlr)
  * Plan 9 driver interface
  */
 
-static long
-etherbcmifstat(Ether* edev, void* a, long n, ulong offset)
+static char*
+etherbcmifstat(void *arg, char *p, char *e)
 {
-	Ctlr *ctl;
-	char *p;
-	int l;
+	Ether *edev = arg;
+	Ctlr *ctl = edev->ctlr;
+
 	static char *cryptoname[4] = {
 		[0]	"off",
 		[Wep]	"wep",
@@ -2079,29 +2079,23 @@ etherbcmifstat(Ether* edev, void* a, long n, ulong offset)
 		[Connected] = "associated",
 	};
 
-	ctl = edev->ctlr;
-	if(ctl == nil)
-		return 0;
-	p = malloc(READSTR);
-	l = 0;
+	if(ctl == nil || p >= e)
+		return p;
 
-	l += snprint(p+l, READSTR-l, "channel: %d\n", ctl->chanid);
-	l += snprint(p+l, READSTR-l, "essid: %s\n", ctl->essid);
-	l += snprint(p+l, READSTR-l, "crypt: %s\n", cryptoname[ctl->cryptotype]);
-	l += snprint(p+l, READSTR-l, "oq: %d\n", qlen(edev->oq));
-	l += snprint(p+l, READSTR-l, "txwin: %d\n", ctl->txwindow);
-	l += snprint(p+l, READSTR-l, "txseq: %d\n", ctl->txseq);
+	p = seprint(p, e, "channel: %d\n", ctl->chanid);
+	p = seprint(p, e, "essid: %s\n", ctl->essid);
+	p = seprint(p, e, "crypt: %s\n", cryptoname[ctl->cryptotype]);
+	p = seprint(p, e, "oq: %d\n", qlen(edev->oq));
+	p = seprint(p, e, "txwin: %d\n", ctl->txwindow);
+	p = seprint(p, e, "txseq: %d\n", ctl->txseq);
 	/*
 	 * hack: prevent aux/wpa from trying to connect while bypassed
 	 * as wljoin() generates spurious traffic which poisons the
 	 * switch port tables.
 	 */
 	if(edev->bypass == nil)
-		l += snprint(p+l, READSTR-l, "status: %s\n", connectstate[ctl->status]);
-	USED(l);
-	n = readstr(offset, a, n, p);
-	free(p);
-	return n;
+		p = seprint(p, e, "status: %s\n", connectstate[ctl->status]);
+	return p;
 }
 
 static void
@@ -2380,12 +2374,12 @@ etherbcmpnp(Ether* edev)
 	edev->ctlr = ctlr;
 	edev->attach = etherbcmattach;
 	edev->transmit = etherbcmtransmit;
-	edev->ifstat = etherbcmifstat;
 	edev->ctl = etherbcmctl;
 	edev->scanbs = etherbcmscan;
 	edev->shutdown = etherbcmshutdown;
 	edev->promiscuous = etherbcmprom;
 	edev->multicast = etherbcmmulti;
+	edev->ifstat = etherbcmifstat;
 	edev->arg = edev;
 
 	return 0;

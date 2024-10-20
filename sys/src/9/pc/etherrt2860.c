@@ -1287,15 +1287,12 @@ rt2860ctl(Ether *edev, void *buf, long n)
 	return 0;
 }
 
-static long
-rt2860ifstat(Ether *edev, void *buf, long n, ulong off)
+static char*
+rt2860ifstat(void *a, char *s, char *e)
 {
-	Ctlr *ctlr;
-
-	ctlr = edev->ctlr;
-	if(ctlr->wifi)
-		return wifistat(ctlr->wifi, buf, n, off);
-	return 0;
+	Ether *edev = a;
+	Ctlr *ctlr = edev->ctlr;
+	return wifistat(ctlr->wifi, s, e);
 }
 
 static void
@@ -3543,8 +3540,8 @@ again:
 	edev->tbdf = ctlr->pdev->tbdf;
 	edev->arg = edev;
 	edev->attach = rt2860attach;
-	edev->ifstat = rt2860ifstat;
 	edev->ctl = rt2860ctl;
+	edev->ifstat = rt2860ifstat;
 	edev->promiscuous = rt2860promiscuous;
 	edev->multicast = rt2860multicast;
 	edev->mbps = 10;

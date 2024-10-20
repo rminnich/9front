@@ -213,7 +213,18 @@ netifread(Netif *nif, Chan *c, void *a, long n, ulong offset)
 	case Nctlqid:
 		return readnum(offset, a, n, NETID(c->qid.path), NUMSIZE);
 	case Nstatqid:
+		if(offset >= READSTR)
+			return 0;
 		p = smalloc(READSTR);
+		if(waserror()){
+			free(p);
+			nexterror();
+		}
+		p[0] = '\0';
+		if(nif->ifstat != nil && !waserror()){
+			(*nif->ifstat)(nif->arg, p, p);
+			poperror();
+		}
 		j = snprint(p, READSTR, "in: %llud\n", nif->inpackets);
 		j += snprint(p+j, READSTR-j, "link: %d\n", nif->link);
 		j += snprint(p+j, READSTR-j, "out: %llud\n", nif->outpackets);
@@ -231,20 +242,30 @@ netifread(Netif *nif, Chan *c, void *a, long n, ulong offset)
 		snprint(p+j, READSTR-j, "\n");
 		n = readstr(offset, a, n, p);
 		free(p);
+		poperror();
 		return n;
 	case Naddrqid:
-		p = smalloc(READSTR);
 		j = 0;
 		for(i = 0; i < nif->alen; i++)
-			j += snprint(p+j, READSTR-j, "%2.2ux", nif->addr[i]);
-		n = readstr(offset, a, n, p);
-		free(p);
-		return n;
+			j += snprint(up->genbuf+j, sizeof(up->genbuf)-j, "%2.2ux", nif->addr[i]);
+		return readstr(offset, a, n, up->genbuf);
 	case Ntypeqid:
 		f = nif->f[NETID(c->qid.path)];
 		return readnum(offset, a, n, f->type, NUMSIZE);
 	case Nifstatqid:
-		return 0;
+		if(nif->ifstat == nil || offset >= READSTR)
+			return 0;
+		p = smalloc(READSTR);
+		if(waserror()){
+			free(p);
+			nexterror();
+		}
+		p[0] = '\0';
+		(*nif->ifstat)(nif->arg, p, p + READSTR);
+		n = readstr(offset, a, n, p);
+		free(p);
+		poperror();
+		return n;
 	}
 	error(Ebadarg);
 }

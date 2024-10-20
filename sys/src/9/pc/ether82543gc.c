@@ -500,19 +500,21 @@ static char* statistics[Nstatistics] = {
 	"TCP Segmentation Context Fail",
 };
 
-static long
-gc82543ifstat(Ether* edev, void* a, long n, ulong offset)
+static char*
+gc82543ifstat(void *arg, char *p, char *e)
 {
+	Ether *edev;
 	Ctlr *ctlr;
-	char *p, *s;
-	int i, l, r;
+	char *s;
+	int i, r;
 	uvlong tuvl, ruvl;
 
-	p = smalloc(READSTR);
+	if(p >= e)
+		return p;
 
+	edev = arg;
 	ctlr = edev->ctlr;
 	lock(&ctlr->slock);
-	l = 0;
 	for(i = 0; i < Nstatistics; i++){
 		r = csr32r(ctlr, Statistics+i*4);
 		if((s = statistics[i]) == nil)
@@ -531,7 +533,7 @@ gc82543ifstat(Ether* edev, void* a, long n, ulong offset)
 				continue;
 			ctlr->statistics[i] = tuvl;
 			ctlr->statistics[i+1] = tuvl>>32;
-			l += snprint(p+l, READSTR-l, "%s: %llud %llud\n",
+			p = seprint(p, e, "%s: %llud %llud\n",
 				s, tuvl, ruvl);
 			i++;
 			break;
@@ -540,25 +542,23 @@ gc82543ifstat(Ether* edev, void* a, long n, ulong offset)
 			ctlr->statistics[i] += r;
 			if(ctlr->statistics[i] == 0)
 				continue;
-			l += snprint(p+l, READSTR-l, "%s: %ud %ud\n",
+			p = seprint(p, e, "%s: %ud %ud\n",
 				s, ctlr->statistics[i], r);
 			break;
 		}
 	}
 
-	l += snprint(p+l, READSTR-l, "eeprom:");
+	p = seprint(p, e, "eeprom:");
 	for(i = 0; i < 0x40; i++){
 		if(i && ((i & 0x07) == 0))
-			l += snprint(p+l, READSTR-l, "\n       ");
-		l += snprint(p+l, READSTR-l, " %4.4uX", ctlr->eeprom[i]);
+			p = seprint(p, e, "\n       ");
+		p = seprint(p, e, " %4.4uX", ctlr->eeprom[i]);
 	}
 
-	snprint(p+l, READSTR-l, "\ntxstalled %d\n", ctlr->txstalled);
-	n = readstr(offset, a, n, p);
-	free(p);
+	p = seprint(p, e, "\ntxstalled %d\n", ctlr->txstalled);
 	unlock(&ctlr->slock);
 
-	return n;
+	return p;
 }
 
 static void
@@ -1360,10 +1360,10 @@ gc82543pnp(Ether* edev)
 	edev->attach = gc82543attach;
 	edev->transmit = gc82543transmit;
 	edev->interrupt = gc82543interrupt;
-	edev->ifstat = gc82543ifstat;
 	edev->shutdown = gc82543shutdown;
 	edev->ctl = gc82543ctl;
 	edev->arg = edev;
+	edev->ifstat = gc82543ifstat;
 	edev->promiscuous = gc82543promiscuous;
 	edev->multicast = gc82543multicast;
 

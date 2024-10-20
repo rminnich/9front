@@ -1162,54 +1162,41 @@ interrupt(Ureg*, void* arg)
 	iunlock(&ctlr->wlock);
 }
 
-static long
-ifstat(Ether* ether, void* a, long n, ulong offset)
+static char*
+ifstat(void *a, char *p, char *e)
 {
-	char *p;
-	int len;
+	Ether *ether;
 	Ctlr *ctlr;
 
-	if(n == 0)
-		return 0;
+	if(p >= e)
+		return p;
 
+	ether = a;
 	ctlr = ether->ctlr;
 
 	ilock(&ctlr->wlock);
 	statistics(ether);
 	iunlock(&ctlr->wlock);
 
-	p = smalloc(READSTR);
-	len = snprint(p, READSTR, "interrupts: %lud\n", ctlr->interrupts);
-	len += snprint(p+len, READSTR-len, "bogusinterrupts: %lud\n", ctlr->bogusinterrupts);
-	len += snprint(p+len, READSTR-len, "timer: %lud %lud\n",
-		ctlr->timer[0], ctlr->timer[1]);
-	len += snprint(p+len, READSTR-len, "carrierlost: %lud\n",
-		ctlr->stats[CarrierLost]);
-	len += snprint(p+len, READSTR-len, "sqeerrors: %lud\n",
-		ctlr->stats[SqeErrors]);
-	len += snprint(p+len, READSTR-len, "multiplecolls: %lud\n",
-		ctlr->stats[MultipleColls]);
-	len += snprint(p+len, READSTR-len, "singlecollframes: %lud\n",
-		ctlr->stats[SingleCollFrames]);
-	len += snprint(p+len, READSTR-len, "latecollisions: %lud\n",
-		ctlr->stats[LateCollisions]);
-	len += snprint(p+len, READSTR-len, "rxoverruns: %lud\n",
-		ctlr->stats[RxOverruns]);
-	len += snprint(p+len, READSTR-len, "framesxmittedok: %lud\n",
-		ctlr->stats[FramesXmittedOk]);
-	len += snprint(p+len, READSTR-len, "framesrcvdok: %lud\n",
-		ctlr->stats[FramesRcvdOk]);
-	len += snprint(p+len, READSTR-len, "framesdeferred: %lud\n",
-		ctlr->stats[FramesDeferred]);
-	len += snprint(p+len, READSTR-len, "bytesrcvdok: %lud\n",
-		ctlr->stats[BytesRcvdOk]);
-	len += snprint(p+len, READSTR-len, "bytesxmittedok: %lud\n",
-		ctlr->stats[BytesRcvdOk+1]);
+	p = seprint(p, e, "interrupts: %lud\n", ctlr->interrupts);
+	p = seprint(p, e, "bogusinterrupts: %lud\n", ctlr->bogusinterrupts);
+	p = seprint(p, e, "timer: %lud %lud\n",	ctlr->timer[0], ctlr->timer[1]);
+	p = seprint(p, e, "carrierlost: %lud\n", ctlr->stats[CarrierLost]);
+	p = seprint(p, e, "sqeerrors: %lud\n", ctlr->stats[SqeErrors]);
+	p = seprint(p, e, "multiplecolls: %lud\n", ctlr->stats[MultipleColls]);
+	p = seprint(p, e, "singlecollframes: %lud\n", ctlr->stats[SingleCollFrames]);
+	p = seprint(p, e, "latecollisions: %lud\n", ctlr->stats[LateCollisions]);
+	p = seprint(p, e, "rxoverruns: %lud\n", ctlr->stats[RxOverruns]);
+	p = seprint(p, e, "framesxmittedok: %lud\n", ctlr->stats[FramesXmittedOk]);
+	p = seprint(p, e, "framesrcvdok: %lud\n", ctlr->stats[FramesRcvdOk]);
+	p = seprint(p, e, "framesdeferred: %lud\n", ctlr->stats[FramesDeferred]);
+	p = seprint(p, e, "bytesrcvdok: %lud\n", ctlr->stats[BytesRcvdOk]);
+	p = seprint(p, e, "bytesxmittedok: %lud\n", ctlr->stats[BytesRcvdOk+1]);
 
 	if(ctlr->upenabled){
 		if(ctlr->upqmax > ctlr->upqmaxhw)
 			ctlr->upqmaxhw = ctlr->upqmax;
-		len += snprint(p+len, READSTR-len, "up: q %lud i %lud m %d h %d s %lud\n",
+		p = seprint(p, e, "up: q %lud i %lud m %d h %d s %lud\n",
 			ctlr->upqueued, ctlr->upinterrupts,
 			ctlr->upqmax, ctlr->upqmaxhw, ctlr->upstalls);
 		ctlr->upqmax = 0;
@@ -1217,17 +1204,14 @@ ifstat(Ether* ether, void* a, long n, ulong offset)
 	if(ctlr->dnenabled){
 		if(ctlr->dnqmax > ctlr->dnqmaxhw)
 			ctlr->dnqmaxhw = ctlr->dnqmax;
-		len += snprint(p+len, READSTR-len, "dn: q %lud i %lud m %d h %d\n",
+		p = seprint(p, e, "dn: q %lud i %lud m %d h %d\n",
 			ctlr->dnqueued, ctlr->dninterrupts, ctlr->dnqmax, ctlr->dnqmaxhw);
 		ctlr->dnqmax = 0;
 	}
 
-	snprint(p+len, READSTR-len, "badssd: %lud\n", ctlr->stats[BytesRcvdOk+2]);
+	p = seprint(p, e, "badssd: %lud\n", ctlr->stats[BytesRcvdOk+2]);
 
-	n = readstr(offset, a, n, p);
-	free(p);
-
-	return n;
+	return p;
 }
 
 static void
@@ -2125,11 +2109,11 @@ etherelnk3reset(Ether* ether)
 	 */
 	ether->attach = attach;
 	ether->transmit = transmit;
-	ether->ifstat = ifstat;
 
 	ether->promiscuous = promiscuous;
 	ether->multicast = multicast;
 	ether->shutdown = shutdown;
+	ether->ifstat = ifstat;
 	ether->arg = ether;
 
 	intrenable(ether->irq, interrupt, ether, ether->tbdf, ether->name);

@@ -105,6 +105,7 @@ struct Netif
 	void	(*promiscuous)(void*, int);
 	void	(*multicast)(void*, uchar*, int);
 	void	(*scanbs)(void*, uint);	/* scan for base stations */
+	char*	(*ifstat)(void*, char*, char*);
 };
 
 void	netifinit(Netif*, char*, int, ulong);

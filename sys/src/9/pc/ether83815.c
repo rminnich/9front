@@ -345,13 +345,14 @@ attach(Ether* ether)
 	iunlock(&ctlr->lock);
 }
 
-static long
-ifstat(Ether* ether, void* a, long n, ulong offset)
+static char*
+ifstat(void *a, char *p, char *e)
 {
+	Ether *ether;
 	Ctlr *ctlr;
-	char *buf, *p;
-	int i, l, len;
+	int i;
 
+	ether = a;
 	ctlr = ether->ctlr;
 
 	ether->crcs = ctlr->crce;
@@ -359,54 +360,43 @@ ifstat(Ether* ether, void* a, long n, ulong offset)
 	ether->buffs = ctlr->rxorn+ctlr->tfu;
 	ether->overflows = ctlr->rxsovr;
 
-	if(n == 0)
-		return 0;
+	if(p >= e)
+		return p;
 
-	p = smalloc(READSTR);
-	l = snprint(p, READSTR, "Rxa: %lud\n", ctlr->rxa);
-	l += snprint(p+l, READSTR-l, "Rxo: %lud\n", ctlr->rxo);
-	l += snprint(p+l, READSTR-l, "Rlong: %lud\n", ctlr->rlong);
-	l += snprint(p+l, READSTR-l, "Runt: %lud\n", ctlr->runt);
-	l += snprint(p+l, READSTR-l, "Ise: %lud\n", ctlr->ise);
-	l += snprint(p+l, READSTR-l, "Fae: %lud\n", ctlr->fae);
-	l += snprint(p+l, READSTR-l, "Lbp: %lud\n", ctlr->lbp);
-	l += snprint(p+l, READSTR-l, "Tfu: %lud\n", ctlr->tfu);
-	l += snprint(p+l, READSTR-l, "Txa: %lud\n", ctlr->txa);
-	l += snprint(p+l, READSTR-l, "CRC Error: %lud\n", ctlr->crce);
-	l += snprint(p+l, READSTR-l, "Collision Seen: %lud\n", ctlr->col);
-	l += snprint(p+l, READSTR-l, "Frame Too Long: %lud\n", ctlr->rlong);
-	l += snprint(p+l, READSTR-l, "Runt Frame: %lud\n", ctlr->runt);
-	l += snprint(p+l, READSTR-l, "Rx Underflow Error: %lud\n", ctlr->rxorn);
-	l += snprint(p+l, READSTR-l, "Tx Underrun: %lud\n", ctlr->txurn);
-	l += snprint(p+l, READSTR-l, "Excessive Collisions: %lud\n", ctlr->ec);
-	l += snprint(p+l, READSTR-l, "Late Collision: %lud\n", ctlr->owc);
-	l += snprint(p+l, READSTR-l, "Loss of Carrier: %lud\n", ctlr->crs);
-	l += snprint(p+l, READSTR-l, "Parity: %lud\n", ctlr->dperr);
-	l += snprint(p+l, READSTR-l, "Aborts: %lud\n", ctlr->rmabt+ctlr->rtabt);
-	l += snprint(p+l, READSTR-l, "RX Status overrun: %lud\n", ctlr->rxsover);
-	snprint(p+l, READSTR-l, "ntqmax: %d\n", ctlr->ntqmax);
+	p = seprint(p, e, "Rxa: %lud\n", ctlr->rxa);
+	p = seprint(p, e, "Rxo: %lud\n", ctlr->rxo);
+	p = seprint(p, e, "Rlong: %lud\n", ctlr->rlong);
+	p = seprint(p, e, "Runt: %lud\n", ctlr->runt);
+	p = seprint(p, e, "Ise: %lud\n", ctlr->ise);
+	p = seprint(p, e, "Fae: %lud\n", ctlr->fae);
+	p = seprint(p, e, "Lbp: %lud\n", ctlr->lbp);
+	p = seprint(p, e, "Tfu: %lud\n", ctlr->tfu);
+	p = seprint(p, e, "Txa: %lud\n", ctlr->txa);
+	p = seprint(p, e, "CRC Error: %lud\n", ctlr->crce);
+	p = seprint(p, e, "Collision Seen: %lud\n", ctlr->col);
+	p = seprint(p, e, "Frame Too Long: %lud\n", ctlr->rlong);
+	p = seprint(p, e, "Runt Frame: %lud\n", ctlr->runt);
+	p = seprint(p, e, "Rx Underflow Error: %lud\n", ctlr->rxorn);
+	p = seprint(p, e, "Tx Underrun: %lud\n", ctlr->txurn);
+	p = seprint(p, e, "Excessive Collisions: %lud\n", ctlr->ec);
+	p = seprint(p, e, "Late Collision: %lud\n", ctlr->owc);
+	p = seprint(p, e, "Loss of Carrier: %lud\n", ctlr->crs);
+	p = seprint(p, e, "Parity: %lud\n", ctlr->dperr);
+	p = seprint(p, e, "Aborts: %lud\n", ctlr->rmabt+ctlr->rtabt);
+	p = seprint(p, e, "RX Status overrun: %lud\n", ctlr->rxsover);
+	p = seprint(p, e, "ntqmax: %d\n", ctlr->ntqmax);
 	ctlr->ntqmax = 0;
-	buf = a;
-	len = readstr(offset, buf, n, p);
-	if(offset > l)
-		offset -= l;
-	else
-		offset = 0;
-	buf += len;
-	n -= len;
 
-	l = snprint(p, READSTR, "srom:");
+	p = seprint(p, e, "srom:");
 	for(i = 0; i < nelem(ctlr->srom); i++){
 		if(i && ((i & 0x0F) == 0))
-			l += snprint(p+l, READSTR-l, "\n     ");
-		l += snprint(p+l, READSTR-l, " %4.4uX", ctlr->srom[i]);
+			p = seprint(p, e, "\n     ");
+		p = seprint(p, e, " %4.4uX", ctlr->srom[i]);
 	}
 
-	snprint(p+l, READSTR-l, "\n");
-	len += readstr(offset, buf, n, p);
-	free(p);
+	p = seprint(p, e, "\n");
 
-	return len;
+	return p;
 }
 
 static void
@@ -1216,9 +1206,9 @@ reset(Ether* ether)
 	 */
 	ether->attach = attach;
 	ether->transmit = transmit;
-	ether->ifstat = ifstat;
 
 	ether->arg = ether;
+	ether->ifstat = ifstat;
 	ether->promiscuous = promiscuous;
 	ether->multicast = multicast;
 	ether->shutdown = shutdown;

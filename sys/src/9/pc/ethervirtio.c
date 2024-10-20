@@ -436,35 +436,34 @@ attach(Ether* edev)
 	kproc(name, txproc, edev);
 }
 
-static long
-ifstat(Ether *edev, void *a, long n, ulong offset)
+static char*
+ifstat(void *a, char *p, char *e)
 {
-	int i, l;
-	char *p;
+	int i;
+	Ether *edev;
 	Ctlr *ctlr;
 	Vqueue *q;
 
+	if(p >= e)
+		return p;
+
+	edev = a;
 	ctlr = edev->ctlr;
 
-	p = smalloc(READSTR);
-
-	l = snprint(p, READSTR, "devfeat %32.32lub\n", ctlr->feat);
-	l += snprint(p+l, READSTR-l, "drvfeat %32.32lub\n", inl(ctlr->port+Qdrvfeat));
-	l += snprint(p+l, READSTR-l, "devstatus %8.8ub\n", inb(ctlr->port+Qstatus));
+	p = seprint(p, e, "devfeat %32.32lub\n", ctlr->feat);
+	p = seprint(p, e, "drvfeat %32.32lub\n", inl(ctlr->port+Qdrvfeat));
+	p = seprint(p, e, "devstatus %8.8ub\n", inb(ctlr->port+Qstatus));
 	if(ctlr->feat & Fstatus)
-		l += snprint(p+l, READSTR-l, "netstatus %8.8ub\n",  inb(ctlr->port+Qnetstatus));
+		p = seprint(p, e, "netstatus %8.8ub\n",  inb(ctlr->port+Qnetstatus));
 
 	for(i = 0; i < ctlr->nqueue; i++){
 		q = &ctlr->queue[i];
-		l += snprint(p+l, READSTR-l,
+		p = seprint(p, e,
 			"vq%d %#p size %d avail->idx %d used->idx %d lastused %hud nintr %ud nnote %ud\n",
 			i, q, q->qsize, q->avail->idx, q->used->idx, q->lastused, q->nintr, q->nnote);
 	}
 
-	n = readstr(offset, a, n, p);
-	free(p);
-
-	return n;
+	return p;
 }
 
 static void

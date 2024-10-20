@@ -332,39 +332,36 @@ ga620attach(Ether* edev)
 	USED(ctlr);
 }
 
-static long
-ga620ifstat(Ether* edev, void* a, long n, ulong offset)
+static char*
+ga620ifstat(void *arg, char *p, char *e)
 {
-	char *p;
+	Ether *edev;
 	Ctlr *ctlr;
-	int i, l, r;
+	int i, r;
 
+	if(p >= e)
+		return p;
+
+	edev = arg;
 	ctlr = edev->ctlr;
 
-	if(n == 0)
-		return 0;
-	p = smalloc(READSTR);
-	l = 0;
 	for(i = 0; i < 256; i++){
 		if((r = ctlr->gib->statistics[i]) == 0)
 			continue;
-		l += snprint(p+l, READSTR-l, "%d: %ud\n", i, r);
+		p = seprint(p, e, "%d: %ud\n", i, r);
 	}
 
-	l += snprint(p+l, READSTR-l, "interrupts: %ud\n", ctlr->interrupts);
-	l += snprint(p+l, READSTR-l, "mi: %ud\n", ctlr->mi);
-	l += snprint(p+l, READSTR-l, "ticks: %llud\n", ctlr->ticks);
-	l += snprint(p+l, READSTR-l, "coalupdateonly: %d\n", ctlr->coalupdateonly);
-	l += snprint(p+l, READSTR-l, "hardwarecksum: %d\n", ctlr->hardwarecksum);
-	l += snprint(p+l, READSTR-l, "rct: %d\n", ctlr->rct);
-	l += snprint(p+l, READSTR-l, "sct: %d\n", ctlr->sct);
-	l += snprint(p+l, READSTR-l, "smcbd: %d\n", ctlr->smcbd);
-	snprint(p+l, READSTR-l, "rmcbd: %d\n", ctlr->rmcbd);
+	p = seprint(p, e, "interrupts: %ud\n", ctlr->interrupts);
+	p = seprint(p, e, "mi: %ud\n", ctlr->mi);
+	p = seprint(p, e, "ticks: %llud\n", ctlr->ticks);
+	p = seprint(p, e, "coalupdateonly: %d\n", ctlr->coalupdateonly);
+	p = seprint(p, e, "hardwarecksum: %d\n", ctlr->hardwarecksum);
+	p = seprint(p, e, "rct: %d\n", ctlr->rct);
+	p = seprint(p, e, "sct: %d\n", ctlr->sct);
+	p = seprint(p, e, "smcbd: %d\n", ctlr->smcbd);
+	p = seprint(p, e, "rmcbd: %d\n", ctlr->rmcbd);
 
-	n = readstr(offset, a, n, p);
-	free(p);
-
-	return n;
+	return p;
 }
 
 static long
@@ -1266,10 +1263,10 @@ ga620pnp(Ether* edev)
 	 */
 	edev->attach = ga620attach;
 	edev->transmit = ga620transmit;
-	edev->ifstat = ga620ifstat;
 	edev->ctl = ga620ctl;
 
 	edev->arg = edev;
+	edev->ifstat = ga620ifstat;
 	edev->promiscuous = ga620promiscuous;
 	edev->multicast = ga620multicast;
 	edev->shutdown = ga620shutdown;

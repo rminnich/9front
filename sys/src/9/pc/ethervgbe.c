@@ -454,28 +454,25 @@ vgbemiir(Mii* mii, int phy, int addr)
 	return r;
 }
 
-static long
-vgbeifstat(Ether* edev, void* a, long n, ulong offset)
+static char*
+vgbeifstat(void *a, char *p, char *e)
 {
-	char* p;
+	Ether* edev;
 	Ctlr* ctlr;
-	int l;
 
+	if(p >= e)
+		return p;
+
+	edev = a;
 	ctlr = edev->ctlr;
 
-	p = smalloc(READSTR);
-	l = 0;
-	l += snprint(p+l, READSTR-l, "tx: %uld\n", ctlr->stats.tx);
-	l += snprint(p+l, READSTR-l, "tx [errs]: %uld\n", ctlr->stats.txe);
-	l += snprint(p+l, READSTR-l, "tx [no entry]: %uld\n", ctlr->stats.txentry);
-	l += snprint(p+l, READSTR-l, "rx: %uld\n", ctlr->stats.rx);
-	l += snprint(p+l, READSTR-l, "intr: %uld\n", ctlr->stats.intr);
-	snprint(p+l, READSTR-l, "\n");
+	p = seprint(p, e, "tx: %uld\n", ctlr->stats.tx);
+	p = seprint(p, e, "tx [errs]: %uld\n", ctlr->stats.txe);
+	p = seprint(p, e, "tx [no entry]: %uld\n", ctlr->stats.txentry);
+	p = seprint(p, e, "rx: %uld\n", ctlr->stats.rx);
+	p = seprint(p, e, "intr: %uld\n", ctlr->stats.intr);
 
-	n = readstr(offset, a, n, p);
-	free(p);
-
-	return n;
+	return p;
 }
 
 static char* vgbeisr_info[] = {
@@ -1267,10 +1264,10 @@ vgbepnp(Ether* edev)
 	memmove(edev->ea, ctlr->ea, Eaddrlen);
 	edev->attach = vgbeattach;
 	edev->transmit = vgbetransmit;
-	edev->ifstat = vgbeifstat;
 	edev->promiscuous = vgbepromiscuous;
 	edev->multicast = vgbemulticast;
 //	edev->shutdown = vgbeshutdown;
+	edev->ifstat = vgbeifstat;
 	edev->ctl = vgbectl;
 	edev->arg = edev;
 

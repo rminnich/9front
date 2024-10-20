@@ -332,29 +332,28 @@ static int speedtab[] = {
 	10000,
 };
 
-static long
-ifstat(Ether *e, void *a, long n, ulong offset)
+static char*
+ifstat(void *a, char *p, char *q)
 {
 	uint i, *t;
-	char *s, *p, *q;
+	Ether *e;
 	Ctlr *c;
 
-	p = s = smalloc(READSTR);
-	q = p + READSTR;
+	if(p >= q)
+		return p;
 
+	e = a;
 	c = e->ctlr;
 	readstats(c);
 	for(i = 0; i < nelem(stattab); i++)
 		if(c->stats[i] > 0)
-			p = seprint(p, q, "%.10s  %uld\n", stattab[i].name,					c->stats[i]);
+			p = seprint(p, q, "%.10s  %uld\n", stattab[i].name, c->stats[i]);
 	t = c->speeds;
 	p = seprint(p, q, "speeds: 0:%d 1000:%d 10000:%d\n", t[0], t[1], t[2]);
 	seprint(p, q, "rdfree %d rdh %d rdt %d\n", c->rdfree, c->reg[Rdt],
 		c->reg[Rdh]);
-	n = readstr(offset, a, n, s);
-	free(s);
 
-	return n;
+	return p;
 }
 
 static void

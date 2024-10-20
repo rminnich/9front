@@ -413,30 +413,23 @@ etherxenmulticast(void* arg, uchar* addr, int on)
 	USED(arg, addr, on);
 }
 
-static long
-ifstat(Ether* ether, void* a, long n, ulong offset)
+static char*
+ifstat(void *arg, char *p, char *e)
 {
-	Ctlr *ctlr;
-	char *buf, *p;
-	int l, len;
+	Ether *ether = arg;
+	Ctlr *ctlr = ether->ctlr;
 
-	ctlr = ether->ctlr;
-	if(n == 0)
-		return 0;
-	if((p = malloc(READSTR)) == nil)
-		error(Enomem);
-	l = snprint(p, READSTR, "intr: %lud\n", ctlr->interrupts);
-	l += snprint(p+l, READSTR-l, "transmits: %lud\n", ctlr->transmits);
-	l += snprint(p+l, READSTR-l, "receives: %lud\n", ctlr->receives);
-	l += snprint(p+l, READSTR-l, "txerrors: %lud\n", ctlr->txerrors);
-	l += snprint(p+l, READSTR-l, "rxerrors: %lud\n", ctlr->rxerrors);
-	snprint(p+l, READSTR-l, "rxoverflows: %lud\n", ctlr->rxoverflows);
+	if(p >= e)
+		return p;
 
-	buf = a;
-	len = readstr(offset, buf, n, p);
-	free(p);
+	p = seprint(p, e, "intr: %lud\n", ctlr->interrupts);
+	p = seprint(p, e, "transmits: %lud\n", ctlr->transmits);
+	p = seprint(p, e, "receives: %lud\n", ctlr->receives);
+	p = seprint(p, e, "txerrors: %lud\n", ctlr->txerrors);
+	p = seprint(p, e, "rxerrors: %lud\n", ctlr->rxerrors);
+	p = seprint(p, e, "rxoverflows: %lud\n", ctlr->rxoverflows);
 
-	return len;
+	return p;
 }
 
 static int
@@ -476,10 +469,10 @@ pnp(Ether* ether)
 	ether->transmit = etherxentransmit;
 	ether->irq = -1;
 	ether->tbdf = BUSUNKNOWN;
-	ether->ifstat = ifstat;
 	ether->ctl = etherxenctl;
 	ether->promiscuous = nil;
 	ether->multicast = etherxenmulticast;
+	ether->ifstat = ifstat;
 	ether->arg = ether;
 
 	intrenable(ether->irq, etherxenintr, ether, ether->tbdf, ether->name);

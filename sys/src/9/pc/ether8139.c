@@ -302,46 +302,45 @@ rtl8139multicast(void* ether, uchar *eaddr, int add)
 	iunlock(&ctlr->ilock);
 }
 
-static long
-rtl8139ifstat(Ether* edev, void* a, long n, ulong offset)
+static char*
+rtl8139stat(void *ether, char *p, char *e)
 {
-	int l;
-	char *p;
+	Ether *edev = ether;
 	Ctlr *ctlr;
 
+	if(p >= e)
+		return p;
+
 	ctlr = edev->ctlr;
-	p = smalloc(READSTR);
-	l = snprint(p, READSTR, "rcr %#8.8ux\n", ctlr->rcr);
-	l += snprint(p+l, READSTR-l, "multicast %ud\n", ctlr->mcast);
-	l += snprint(p+l, READSTR-l, "ierrs %d\n", ctlr->ierrs);
-	l += snprint(p+l, READSTR-l, "etxth %d\n", ctlr->etxth);
-	l += snprint(p+l, READSTR-l, "taligned %d\n", ctlr->taligned);
-	l += snprint(p+l, READSTR-l, "tunaligned %d\n", ctlr->tunaligned);
+	p = seprint(p, e, "rcr %#8.8ux\n", ctlr->rcr);
+	p = seprint(p, e, "multicast %ud\n", ctlr->mcast);
+	p = seprint(p, e, "ierrs %d\n", ctlr->ierrs);
+	p = seprint(p, e, "etxth %d\n", ctlr->etxth);
+	p = seprint(p, e, "taligned %d\n", ctlr->taligned);
+	p = seprint(p, e, "tunaligned %d\n", ctlr->tunaligned);
 	ctlr->dis += csr16r(ctlr, Dis);
-	l += snprint(p+l, READSTR-l, "dis %d\n", ctlr->dis);
+	p = seprint(p, e, "dis %d\n", ctlr->dis);
 	ctlr->fcsc += csr16r(ctlr, Fcsc);
-	l += snprint(p+l, READSTR-l, "fcscnt %d\n", ctlr->fcsc);
+	p = seprint(p, e, "fcscnt %d\n", ctlr->fcsc);
 	ctlr->rec += csr16r(ctlr, Rec);
-	l += snprint(p+l, READSTR-l, "rec %d\n", ctlr->rec);
+	p = seprint(p, e, "rec %d\n", ctlr->rec);
 
-	l += snprint(p+l, READSTR-l, "Tcr %#8.8lux\n", csr32r(ctlr, Tcr));
-	l += snprint(p+l, READSTR-l, "Config0 %#2.2ux\n", csr8r(ctlr, Config0));
-	l += snprint(p+l, READSTR-l, "Config1 %#2.2ux\n", csr8r(ctlr, Config1));
-	l += snprint(p+l, READSTR-l, "Msr %#2.2ux\n", csr8r(ctlr, Msr));
-	l += snprint(p+l, READSTR-l, "Config3 %#2.2ux\n", csr8r(ctlr, Config3));
-	l += snprint(p+l, READSTR-l, "Config4 %#2.2ux\n", csr8r(ctlr, Config4));
+	p = seprint(p, e, "Tcr %#8.8lux\n", csr32r(ctlr, Tcr));
+	p = seprint(p, e, "Config0 %#2.2ux\n", csr8r(ctlr, Config0));
+	p = seprint(p, e, "Config1 %#2.2ux\n", csr8r(ctlr, Config1));
+	p = seprint(p, e, "Msr %#2.2ux\n", csr8r(ctlr, Msr));
+	p = seprint(p, e, "Config3 %#2.2ux\n", csr8r(ctlr, Config3));
+	p = seprint(p, e, "Config4 %#2.2ux\n", csr8r(ctlr, Config4));
 
-	l += snprint(p+l, READSTR-l, "Bmcr %#4.4ux\n", csr16r(ctlr, Bmcr));
-	l += snprint(p+l, READSTR-l, "Bmsr %#4.4ux\n", csr16r(ctlr, Bmsr));
-	l += snprint(p+l, READSTR-l, "Anar %#4.4ux\n", csr16r(ctlr, Anar));
-	l += snprint(p+l, READSTR-l, "Anlpar %#4.4ux\n", csr16r(ctlr, Anlpar));
-	l += snprint(p+l, READSTR-l, "Aner %#4.4ux\n", csr16r(ctlr, Aner));
-	l += snprint(p+l, READSTR-l, "Nwaytr %#4.4ux\n", csr16r(ctlr, Nwaytr));
-	snprint(p+l, READSTR-l, "Cscr %#4.4ux\n", csr16r(ctlr, Cscr));
-	n = readstr(offset, a, n, p);
-	free(p);
+	p = seprint(p, e, "Bmcr %#4.4ux\n", csr16r(ctlr, Bmcr));
+	p = seprint(p, e, "Bmsr %#4.4ux\n", csr16r(ctlr, Bmsr));
+	p = seprint(p, e, "Anar %#4.4ux\n", csr16r(ctlr, Anar));
+	p = seprint(p, e, "Anlpar %#4.4ux\n", csr16r(ctlr, Anlpar));
+	p = seprint(p, e, "Aner %#4.4ux\n", csr16r(ctlr, Aner));
+	p = seprint(p, e, "Nwaytr %#4.4ux\n", csr16r(ctlr, Nwaytr));
+	p = seprint(p, e, "Cscr %#4.4ux\n", csr16r(ctlr, Cscr));
 
-	return n;
+	return p;
 }
 
 static int
@@ -807,12 +806,12 @@ rtl8139pnp(Ether* edev)
 
 	edev->attach = rtl8139attach;
 	edev->transmit = rtl8139transmit;
-	edev->ifstat = rtl8139ifstat;
 
 	edev->arg = edev;
 	edev->promiscuous = rtl8139promiscuous;
 	edev->multicast = rtl8139multicast;
 //	edev->shutdown = rtl8139shutdown;
+	edev->ifstat = rtl8139stat;
 
 	intrenable(edev->irq, rtl8139interrupt, edev, edev->tbdf, edev->name);
 

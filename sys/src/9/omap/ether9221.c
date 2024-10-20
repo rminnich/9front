@@ -336,17 +336,18 @@ macwr(Regs *regs, uchar index, ulong val)
 }
 
 
-static long
-smcifstat(Ether* edev, void* a, long n, ulong offset)
+static char*
+smcifstat(void *arg, char *p, char *e)
 {
-	Ctlr *ctlr;
-	char *p, *s;
-	int i, l, r;
+	Ether *edev = arg;
+	Ctlr *ctlr = edev->ctlr;
+	char *s;
+	int i, r;
 
-	ctlr = edev->ctlr;
+	if(p >= e)
+		return p;
+
 	qlock(&ctlr->slock);
-	p = malloc(READSTR);
-	l = 0;
 	for(i = 0; i < Nstatistics; i++){
 		// read regs->rxdrop TODO
 		r = 0;
@@ -357,33 +358,26 @@ smcifstat(Ether* edev, void* a, long n, ulong offset)
 			ctlr->statistics[i] += r;
 			if(ctlr->statistics[i] == 0)
 				continue;
-			l += snprint(p+l, READSTR-l, "%s: %ud %ud\n",
+			p = seprint(p, e, "%s: %ud %ud\n",
 				s, ctlr->statistics[i], r);
 			break;
 		}
 	}
 
-	l += snprint(p+l, READSTR-l, "lintr: %ud %ud\n",
-		ctlr->lintr, ctlr->lsleep);
-	l += snprint(p+l, READSTR-l, "rintr: %ud %ud\n",
-		ctlr->rintr, ctlr->rsleep);
-	l += snprint(p+l, READSTR-l, "tintr: %ud %ud\n",
-		ctlr->tintr, ctlr->tsleep);
+	p = seprint(p, e, "lintr: %ud %ud\n", ctlr->lintr, ctlr->lsleep);
+	p = seprint(p, e, "rintr: %ud %ud\n", ctlr->rintr, ctlr->rsleep);
+	p = seprint(p, e, "tintr: %ud %ud\n", ctlr->tintr, ctlr->tsleep);
 
-	l += snprint(p+l, READSTR-l, "eeprom:");
+	p = seprint(p, e, "eeprom:");
 	for(i = 0; i < 0x40; i++){
 		if(i && ((i & 0x07) == 0))
-			l += snprint(p+l, READSTR-l, "\n       ");
-		l += snprint(p+l, READSTR-l, " %4.4uX", ctlr->eeprom[i]);
+			p = seprint(p, e, "\n       ");
+		p = seprint(p, e, " %4.4uX", ctlr->eeprom[i]);
 	}
-	l += snprint(p+l, READSTR-l, "\n");
-	USED(l);
-
-	n = readstr(offset, a, n, p);
-	free(p);
+	p = seprint(p, e, "\n");
 	qunlock(&ctlr->slock);
 
-	return n;
+	return p;
 }
 
 static void
@@ -942,10 +936,10 @@ smcpnp(Ether* edev)
 	 */
 	edev->attach = smcattach;
 	edev->transmit = smctransmitcall;
-	edev->ifstat = smcifstat;
 /*	edev->ctl = smcctl;			/* no ctl msgs supported */
 
 	edev->arg = edev;
+	edev->ifstat = smcifstat;
 	edev->promiscuous = smcpromiscuous;
 	edev->multicast = smcmulticast;
 	edev->shutdown = smcshutdown;

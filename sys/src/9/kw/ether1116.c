@@ -1641,15 +1641,15 @@ getmibstats(Ctlr *ctlr)
 	ctlr->latecoll	+= reg->latecoll;
 }
 
-long
-ifstat(Ether *ether, void *a, long n, ulong off)
+static char*
+ifstat(void *arg, char *p, char *e)
 {
+	Ether *ether = arg;
 	Ctlr *ctlr = ether->ctlr;
 	Gbereg *reg = ctlr->reg;
-	char *buf, *p, *e;
 
-	buf = p = malloc(READSTR);
-	e = p + READSTR;
+	if(p >= e)
+		return p;
 
 	ilock(ctlr);
 	getmibstats(ctlr);
@@ -1702,12 +1702,9 @@ ifstat(Ether *ether, void *a, long n, ulong off)
 	p = seprint(p, e, "crc errors: %lud\n", ctlr->crcerr);
 	p = seprint(p, e, "collisions: %lud\n", ctlr->collisions);
 	p = seprint(p, e, "late collisions: %lud\n", ctlr->latecoll);
-	USED(p);
 	iunlock(ctlr);
 
-	n = readstr(off, a, n, buf);
-	free(buf);
-	return n;
+	return p;
 }
 
 
@@ -1764,11 +1761,11 @@ iprint("ether1116: reset: zero ether->ea\n");
 
 	ether->attach = attach;
 	ether->transmit = transmit;
-	ether->ifstat = ifstat;
 	ether->shutdown = shutdown;
 	ether->ctl = ctl;
 
 	ether->arg = ether;
+	ether->ifstat = ifstat;
 	ether->promiscuous = promiscuous;
 	ether->multicast = multicast;
 

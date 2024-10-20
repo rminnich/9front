@@ -791,8 +791,6 @@ dp8390reset(Ether* ether)
 	 */
 	ether->attach = attach;
 	ether->transmit = transmit;
-	ether->ifstat = 0;
-
 	ether->promiscuous = promiscuous;
 	ether->multicast = multicast;
 	ether->arg = ether;

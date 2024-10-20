@@ -738,48 +738,42 @@ multi(void*, uchar*, int)
 }
 
 
-static long
-ifstat(Ether* edev, void* a, long n, ulong offset)
+static char*
+ifstat(void *arg, char *p, char *e)
 {
-	char* p;
-	Ctlr* ctlr;
-	int l;
+	Ether *edev = arg;
+	Ctlr* ctlr = edev->ctlr;
 
-	ctlr = edev->ctlr;
+	if(p >= e)
+		return p;
 
-	p = smalloc(READSTR);
-	l = 0;
 	qlock(ctlr);
-	l += snprint(p+l, READSTR-l, "tx: %d\n", ctlr->txstat);
-	l += snprint(p+l, READSTR-l, "rx: %d\n", ctlr->rxstat);
-	l += snprint(p+l, READSTR-l, "txintr: %d\n", ctlr->txintr);
-	l += snprint(p+l, READSTR-l, "rxintr: %d\n", ctlr->rxintr);
-	l += snprint(p+l, READSTR-l, "nointr: %d\n", ctlr->nointr);
-	l += snprint(p+l, READSTR-l, "bad rx: %d\n", ctlr->badrx);
-	l += snprint(p+l, READSTR-l, "\n");
-	l += snprint(p+l, READSTR-l, "dma errs: tx: %d rx: %d\n", ctlr->txdmaerr, ctlr->rxdmaerr);
-	l += snprint(p+l, READSTR-l, "\n");
-	l += snprint(p+l, READSTR-l, "txptr: %08uX\n", ethrd(PDMA_TX0_PTR));
-	l += snprint(p+l, READSTR-l, "txcnt: %uX\n", ethrd(PDMA_TX0_COUNT));
-	l += snprint(p+l, READSTR-l, "txidx: %uX\n", ethrd(PDMA_TX0_CPU_IDX));
-	l += snprint(p+l, READSTR-l, "txdtx: %uX\n", ethrd(PDMA_TX0_DMA_IDX));
-	l += snprint(p+l, READSTR-l, "\n");
-	l += snprint(p+l, READSTR-l, "rxptr: %08uX\n", ethrd(PDMA_RX0_PTR));
-	l += snprint(p+l, READSTR-l, "rxcnt: %uX\n", ethrd(PDMA_RX0_COUNT));
-	l += snprint(p+l, READSTR-l, "rxidx: %uX\n", ethrd(PDMA_RX0_CPU_IDX));
-	l += snprint(p+l, READSTR-l, "rxdtx: %uX\n", ethrd(PDMA_RX0_DMA_IDX));
-	l += snprint(p+l, READSTR-l, "\n");
-	l += snprint(p+l, READSTR-l, "GLOBAL CFG: %08uX\n", ethrd(PDMA_GLOBAL_CFG));
-	l += snprint(p+l, READSTR-l, "INT STATUS: %08uX\n", ethrd(INT_STATUS));
-	l += snprint(p+l, READSTR-l, "INT   MASK: %08uX\n", ethrd(INT_MASK));
-	snprint(p+l, READSTR-l, "\n");
-
-	n = readstr(offset, a, n, p);
-	free(p);
-
+	p = seprint(p, e, "tx: %d\n", ctlr->txstat);
+	p = seprint(p, e, "rx: %d\n", ctlr->rxstat);
+	p = seprint(p, e, "txintr: %d\n", ctlr->txintr);
+	p = seprint(p, e, "rxintr: %d\n", ctlr->rxintr);
+	p = seprint(p, e, "nointr: %d\n", ctlr->nointr);
+	p = seprint(p, e, "bad rx: %d\n", ctlr->badrx);
+	p = seprint(p, e, "\n");
+	p = seprint(p, e, "dma errs: tx: %d rx: %d\n", ctlr->txdmaerr, ctlr->rxdmaerr);
+	p = seprint(p, e, "\n");
+	p = seprint(p, e, "txptr: %08uX\n", ethrd(PDMA_TX0_PTR));
+	p = seprint(p, e, "txcnt: %uX\n", ethrd(PDMA_TX0_COUNT));
+	p = seprint(p, e, "txidx: %uX\n", ethrd(PDMA_TX0_CPU_IDX));
+	p = seprint(p, e, "txdtx: %uX\n", ethrd(PDMA_TX0_DMA_IDX));
+	p = seprint(p, e, "\n");
+	p = seprint(p, e, "rxptr: %08uX\n", ethrd(PDMA_RX0_PTR));
+	p = seprint(p, e, "rxcnt: %uX\n", ethrd(PDMA_RX0_COUNT));
+	p = seprint(p, e, "rxidx: %uX\n", ethrd(PDMA_RX0_CPU_IDX));
+	p = seprint(p, e, "rxdtx: %uX\n", ethrd(PDMA_RX0_DMA_IDX));
+	p = seprint(p, e, "\n");
+	p = seprint(p, e, "GLOBAL CFG: %08uX\n", ethrd(PDMA_GLOBAL_CFG));
+	p = seprint(p, e, "INT STATUS: %08uX\n", ethrd(INT_STATUS));
+	p = seprint(p, e, "INT   MASK: %08uX\n", ethrd(INT_MASK));
+	p = seprint(p, e, "\n");
 	qunlock(ctlr);
 
-	return n;
+	return p;
 }
 
 /* set Ether and Ctlr */
@@ -810,8 +804,8 @@ pnp(Ether *edev)
 
 	edev->attach = attach;
 	edev->shutdown = shutdown;
-	edev->ifstat = ifstat;
 //	edev->ctl = ctl;
+	edev->ifstat = ifstat;
 	edev->promiscuous = prom;
 	edev->multicast = multi;
 

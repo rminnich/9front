@@ -105,6 +105,6 @@ void wifiiq(Wifi*, Block*);
 int wifihdrlen(Wifipkt*);
 void wifitxfail(Wifi*, Block*);
 
-long wifistat(Wifi*, void*, long, ulong);
+char *wifistat(Wifi*, char*, char*);
 long wifictl(Wifi*, void*, long);
 void wificfg(Wifi*, char*);

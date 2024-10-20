@@ -1348,18 +1348,19 @@ lstcount(Block *b)
 	return i;
 }
 
-static long
-m10gifstat(Ether *e, void *v, long n, ulong off)
+static char*
+m10gifstat(void *arg, char *p, char *e)
 {
-	char *p;
-	Ctlr *c;
+	Ether *edev = arg;
+	Ctlr *c = edev->ctlr;
 	Stats s;
 
-	c = e->ctlr;
-	p = smalloc(READSTR);
+	if(p >= e)
+		return p;
+
 	/* no point in locking this because this is done via dma. */
 	memmove(&s, c->stats, sizeof s);
-	snprint(p, READSTR,
+	return seprint(p, e,
 		"txcnt = %lud\n"  "linkstat = %lud\n" 	"dlink = %lud\n"
 		"derror = %lud\n" "drunt = %lud\n" 	"doverrun = %lud\n"
 		"dnosm = %lud\n"  "dnobg = %lud\n"	"nrdma = %lud\n"
@@ -1381,10 +1382,6 @@ m10gifstat(Ether *e, void *v, long n, ulong off)
 		c->sm.cnt, c->sm.i, c->sm.pool->n, lstcount(c->sm.pool->head),
 		c->bg.cnt, c->bg.i, c->bg.pool->n, lstcount(c->bg.pool->head),
 		c->tx.segsz, gbit32((uchar*)c->coal));
-
-	n = readstr(off, v, n, p);
-	free(p);
-	return n;
 }
 
 //static void
@@ -1604,12 +1601,12 @@ m10gpnp(Ether *e)
 	e->attach = m10gattach;
 	e->transmit = m10gtransmit;
 	e->interrupt = m10ginterrupt;
-	e->ifstat = m10gifstat;
 	e->ctl = m10gctl;
 //	e->power = m10gpower;
 	e->shutdown = m10gshutdown;
 
 	e->arg = e;
+	e->ifstat = m10gifstat;
 	e->promiscuous = m10gpromiscuous;
 	e->multicast = m10gmulticast;
 

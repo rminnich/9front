@@ -518,22 +518,18 @@ rtl8169multicast(void* ether, uchar *eaddr, int add)
 	iunlock(ctlr);
 }
 
-static long
-rtl8169ifstat(Ether* edev, void* a, long n, ulong offset)
+static char*
+rtl8169ifstat(void *arg, char *p, char *e)
 {
-	char *p;
+	Ether *edev = arg;
 	Ctlr *ctlr;
 	Dtcc *dtcc;
-	int i, l, r, timeo;
-
-	p = smalloc(READSTR);
+	int i, r, timeo;
 
 	ctlr = edev->ctlr;
 	qlock(&ctlr->slock);
-
 	if(waserror()){
 		qunlock(&ctlr->slock);
-		free(p);
 		nexterror();
 	}
 
@@ -554,61 +550,57 @@ rtl8169ifstat(Ether* edev, void* a, long n, ulong offset)
 	edev->buffs = dtcc->misspkt;
 	edev->overflows = ctlr->txdu+ctlr->rdu;
 
-	if(n == 0){
+	if(p >= e){
 		qunlock(&ctlr->slock);
 		poperror();
-		free(p);
-		return 0;
+		return p;
 	}
 
-	l = snprint(p, READSTR, "TxOk: %llud\n", dtcc->txok);
-	l += snprint(p+l, READSTR-l, "RxOk: %llud\n", dtcc->rxok);
-	l += snprint(p+l, READSTR-l, "TxEr: %llud\n", dtcc->txer);
-	l += snprint(p+l, READSTR-l, "RxEr: %ud\n", dtcc->rxer);
-	l += snprint(p+l, READSTR-l, "MissPkt: %ud\n", dtcc->misspkt);
-	l += snprint(p+l, READSTR-l, "FAE: %ud\n", dtcc->fae);
-	l += snprint(p+l, READSTR-l, "Tx1Col: %ud\n", dtcc->tx1col);
-	l += snprint(p+l, READSTR-l, "TxMCol: %ud\n", dtcc->txmcol);
-	l += snprint(p+l, READSTR-l, "RxOkPh: %llud\n", dtcc->rxokph);
-	l += snprint(p+l, READSTR-l, "RxOkBrd: %llud\n", dtcc->rxokbrd);
-	l += snprint(p+l, READSTR-l, "RxOkMu: %ud\n", dtcc->rxokmu);
-	l += snprint(p+l, READSTR-l, "TxAbt: %ud\n", dtcc->txabt);
-	l += snprint(p+l, READSTR-l, "TxUndrn: %ud\n", dtcc->txundrn);
+	p = seprint(p, e, "TxOk: %llud\n", dtcc->txok);
+	p = seprint(p, e, "RxOk: %llud\n", dtcc->rxok);
+	p = seprint(p, e, "TxEr: %llud\n", dtcc->txer);
+	p = seprint(p, e, "RxEr: %ud\n", dtcc->rxer);
+	p = seprint(p, e, "MissPkt: %ud\n", dtcc->misspkt);
+	p = seprint(p, e, "FAE: %ud\n", dtcc->fae);
+	p = seprint(p, e, "Tx1Col: %ud\n", dtcc->tx1col);
+	p = seprint(p, e, "TxMCol: %ud\n", dtcc->txmcol);
+	p = seprint(p, e, "RxOkPh: %llud\n", dtcc->rxokph);
+	p = seprint(p, e, "RxOkBrd: %llud\n", dtcc->rxokbrd);
+	p = seprint(p, e, "RxOkMu: %ud\n", dtcc->rxokmu);
+	p = seprint(p, e, "TxAbt: %ud\n", dtcc->txabt);
+	p = seprint(p, e, "TxUndrn: %ud\n", dtcc->txundrn);
 
-	l += snprint(p+l, READSTR-l, "serr: %ud\n", ctlr->serr);
-	l += snprint(p+l, READSTR-l, "fovw: %ud\n", ctlr->fovw);
+	p = seprint(p, e, "serr: %ud\n", ctlr->serr);
+	p = seprint(p, e, "fovw: %ud\n", ctlr->fovw);
 
-	l += snprint(p+l, READSTR-l, "txdu: %ud\n", ctlr->txdu);
-	l += snprint(p+l, READSTR-l, "tcpf: %ud\n", ctlr->tcpf);
-	l += snprint(p+l, READSTR-l, "udpf: %ud\n", ctlr->udpf);
-	l += snprint(p+l, READSTR-l, "ipf: %ud\n", ctlr->ipf);
-	l += snprint(p+l, READSTR-l, "fovf: %ud\n", ctlr->fovf);
-	l += snprint(p+l, READSTR-l, "rer: %ud\n", ctlr->rer);
-	l += snprint(p+l, READSTR-l, "rdu: %ud\n", ctlr->rdu);
-	l += snprint(p+l, READSTR-l, "punlc: %ud\n", ctlr->punlc);
+	p = seprint(p, e, "txdu: %ud\n", ctlr->txdu);
+	p = seprint(p, e, "tcpf: %ud\n", ctlr->tcpf);
+	p = seprint(p, e, "udpf: %ud\n", ctlr->udpf);
+	p = seprint(p, e, "ipf: %ud\n", ctlr->ipf);
+	p = seprint(p, e, "fovf: %ud\n", ctlr->fovf);
+	p = seprint(p, e, "rer: %ud\n", ctlr->rer);
+	p = seprint(p, e, "rdu: %ud\n", ctlr->rdu);
+	p = seprint(p, e, "punlc: %ud\n", ctlr->punlc);
 
-	l += snprint(p+l, READSTR-l, "tcr: %#8.8ux\n", ctlr->tcr);
-	l += snprint(p+l, READSTR-l, "rcr: %#8.8ux\n", ctlr->rcr);
-	l += snprint(p+l, READSTR-l, "multicast: %ud\n", ctlr->mcast);
+	p = seprint(p, e, "tcr: %#8.8ux\n", ctlr->tcr);
+	p = seprint(p, e, "rcr: %#8.8ux\n", ctlr->rcr);
+	p = seprint(p, e, "multicast: %ud\n", ctlr->mcast);
 
 	if(ctlr->mii != nil && ctlr->mii->curphy != nil){
-		l += snprint(p+l, READSTR-l, "phy:   ");
+		p = seprint(p, e, "phy:   ");
 		for(i = 0; i < NMiiPhyr; i++){
 			if(i && ((i & 0x07) == 0))
-				l += snprint(p+l, READSTR-l, "\n       ");
+				p = seprint(p, e, "\n       ");
 			r = miimir(ctlr->mii, i);
-			l += snprint(p+l, READSTR-l, " %4.4ux", r);
+			p = seprint(p, e, " %4.4ux", r);
 		}
-		snprint(p+l, READSTR-l, "\n");
+		p = seprint(p, e, "\n");
 	}
-
-	n = readstr(offset, a, n, p);
 
 	qunlock(&ctlr->slock);
 	poperror();
-	free(p);
 
-	return n;
+	return p;
 }
 
 static void

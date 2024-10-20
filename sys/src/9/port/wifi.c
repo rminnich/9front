@@ -1084,19 +1084,18 @@ wifictl(Wifi *wifi, void *buf, long n)
 	return n;
 }
 
-long
-wifistat(Wifi *wifi, void *buf, long n, ulong off)
+char*
+wifistat(Wifi *wifi, char *p, char *e)
 {
 	static uchar zeros[Eaddrlen];
 	char essid[Essidlen+1];
-	char *s, *p, *e;
 	Wnode *wn;
 	Wkey *k;
 	long now;
 	int i;
 
-	p = s = smalloc(4096);
-	e = s + 4096;
+	if(wifi == nil || p >= e)
+		return p;
 
 	wn = wifi->bss;
 	if(wn != nil){
@@ -1141,9 +1140,7 @@ wifistat(Wifi *wifi, void *buf, long n, ulong off)
 		p = seprint(p, e, "node: %E %.4x %-11ld %.2d %s\n",
 			wn->bssid, wn->cap, TK2MS(now - wn->lastseen), wn->channel, essid);
 	}
-	n = readstr(off, buf, n, s);
-	free(s);
-	return n;
+	return p;
 }
 
 static void tkipencrypt(Wkey *k, Wifipkt *w, Block *b, uvlong tsc);

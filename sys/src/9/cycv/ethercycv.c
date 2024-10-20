@@ -402,8 +402,8 @@ ethmcast(void *arg, uchar *ea, int on)
 	}
 }
 
-static long
-ethifstat(Ether *edev, void *a, long n, ulong offset)
+static char*
+ethifstat(void *arg, char *p, char *e)
 {
 	static char *names[] = {
 		"txoctetcount_gb", "txframecount_gb", "txbroadcastframes_g", "txmulticastframes_g",
@@ -420,18 +420,15 @@ ethifstat(Ether *edev, void *a, long n, ulong offset)
 		"rxlengtherror", "rxoutofrangetype", "rxpauseframes", "rxfifooverflow",
 		"rxvlanframes_gb", "rxwatchdogerror", "rxrcverror", "rxctrlframes_g",
 	};
+	Ether *edev = arg;
+	Ctlr *c = edev->ctlr;
 	int i;
-	char *buf, *p, *e;
-	Ctlr *c;
-	
-	p = buf = smalloc(READSTR);
-	e = p + READSTR;
-	c = edev->ctlr;
-	for(i = 0; i < nelem(names); i++)
-		p = seprint(p, e, "%s: %lud\n", names[i], c->r[0x114/4 + i]);
-	n = readstr(offset, a, n, buf);
-	free(buf);
-	return n;
+
+	if(p < e){
+		for(i = 0; i < nelem(names); i++)
+			p = seprint(p, e, "%s: %lud\n", names[i], c->r[0x114/4 + i]);
+	}
+	return p;
 }
 
 static int

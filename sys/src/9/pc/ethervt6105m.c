@@ -431,17 +431,19 @@ static char* txstats[Ntxstats] = {
 	"Excessive Collisions",
 };
 
-static long
-vt6105Mifstat(Ether* edev, void* a, long n, ulong offset)
+static char*
+vt6105Mifstat(void *arg, char *p, char *e)
 {
-	int i, r;
+	Ether *edev;
 	Ctlr *ctlr;
-	char *alloc, *e, *p;
+	int i, r;
 
+	if(p >= e)
+		return p;
+
+	edev = arg;
 	ctlr = edev->ctlr;
 	
-	p = alloc = smalloc(READSTR);
-	e = p + READSTR;
 	for(i = 0; i < Nrxstats; i++){
 		p = seprint(p, e, "%s: %ud\n", rxstats[i], ctlr->rxstats[i]);
 	}
@@ -486,13 +488,10 @@ vt6105Mifstat(Ether* edev, void* a, long n, ulong offset)
 			r = miimir(ctlr->mii, i);
 			p = seprint(p, e, " %4.4uX", r);
 		}
-		seprint(p, e, "\n");
+		p = seprint(p, e, "\n");
 	}
 
-	n = readstr(offset, a, n, alloc);
-	free(alloc);
-
-	return n;
+	return p;
 }
 
 static void
@@ -1199,10 +1198,10 @@ vt6105Mpnp(Ether* edev)
 	 */
 	edev->attach = vt6105Mattach;
 	edev->transmit = vt6105Mtransmit;
-	edev->ifstat = vt6105Mifstat;
 	edev->ctl = nil;
 
 	edev->arg = edev;
+	edev->ifstat = vt6105Mifstat;
 	edev->promiscuous = vt6105Mpromiscuous;
 	edev->multicast = vt6105Mmulticast;
 

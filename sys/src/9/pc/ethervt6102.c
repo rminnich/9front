@@ -337,55 +337,54 @@ static char* txstats[Ntxstats] = {
 	"Excessive Collisions",
 };
 
-static long
-vt6102ifstat(Ether* edev, void* a, long n, ulong offset)
+static char*
+vt6102ifstat(void *arg, char *p, char *e)
 {
-	char *p;
+	Ether *edev;
 	Ctlr *ctlr;
-	int i, l, r;
+	int i, r;
 
+	if(p >= e)
+		return p;
+
+	edev = arg;
 	ctlr = edev->ctlr;
 
-	p = smalloc(READSTR);
-	l = 0;
 	for(i = 0; i < Nrxstats; i++){
-		l += snprint(p+l, READSTR-l, "%s: %ud\n",
+		p = seprint(p, e, "%s: %ud\n",
 			rxstats[i], ctlr->rxstats[i]);
 	}
 	for(i = 0; i < Ntxstats; i++){
 		if(txstats[i] == nil)
 			continue;
-		l += snprint(p+l, READSTR-l, "%s: %ud\n",
+		p = seprint(p, e, "%s: %ud\n",
 			txstats[i], ctlr->txstats[i]);
 	}
-	l += snprint(p+l, READSTR-l, "cls: %ud\n", ctlr->cls);
-	l += snprint(p+l, READSTR-l, "intr: %ud\n", ctlr->intr);
-	l += snprint(p+l, READSTR-l, "lintr: %ud\n", ctlr->lintr);
-	l += snprint(p+l, READSTR-l, "lsleep: %ud\n", ctlr->lsleep);
-	l += snprint(p+l, READSTR-l, "rintr: %ud\n", ctlr->rintr);
-	l += snprint(p+l, READSTR-l, "tintr: %ud\n", ctlr->tintr);
-	l += snprint(p+l, READSTR-l, "taligned: %ud\n", ctlr->taligned);
-	l += snprint(p+l, READSTR-l, "tsplit: %ud\n", ctlr->tsplit);
-	l += snprint(p+l, READSTR-l, "tcopied: %ud\n", ctlr->tcopied);
-	l += snprint(p+l, READSTR-l, "txdw: %ud\n", ctlr->txdw);
-	l += snprint(p+l, READSTR-l, "tft: %ud\n", ctlr->tft);
+	p = seprint(p, e, "cls: %ud\n", ctlr->cls);
+	p = seprint(p, e, "intr: %ud\n", ctlr->intr);
+	p = seprint(p, e, "lintr: %ud\n", ctlr->lintr);
+	p = seprint(p, e, "lsleep: %ud\n", ctlr->lsleep);
+	p = seprint(p, e, "rintr: %ud\n", ctlr->rintr);
+	p = seprint(p, e, "tintr: %ud\n", ctlr->tintr);
+	p = seprint(p, e, "taligned: %ud\n", ctlr->taligned);
+	p = seprint(p, e, "tsplit: %ud\n", ctlr->tsplit);
+	p = seprint(p, e, "tcopied: %ud\n", ctlr->tcopied);
+	p = seprint(p, e, "txdw: %ud\n", ctlr->txdw);
+	p = seprint(p, e, "tft: %ud\n", ctlr->tft);
 
 	if(ctlr->mii != nil && ctlr->mii->curphy != nil){
-		l += snprint(p+l, READSTR-l, "phy:   ");
+		p = seprint(p, e, "phy:   ");
 		for(i = 0; i < NMiiPhyr; i++){
 			if(i && ((i & 0x07) == 0))
-				l += snprint(p+l, READSTR-l, "\n       ");
+				p = seprint(p, e, "\n       ");
 			r = miimir(ctlr->mii, i);
-			l += snprint(p+l, READSTR-l, " %4.4uX", r);
+			p = seprint(p, e, " %4.4uX", r);
 		}
-		snprint(p+l, READSTR-l, "\n");
+		p = seprint(p, e, "\n");
 	}
-	snprint(p+l, READSTR-l, "\n");
+	p = seprint(p, e, "\n");
 
-	n = readstr(offset, a, n, p);
-	free(p);
-
-	return n;
+	return p;
 }
 
 static void
@@ -1031,10 +1030,10 @@ vt6102pnp(Ether* edev)
 	 */
 	edev->attach = vt6102attach;
 	edev->transmit = vt6102transmit;
-	edev->ifstat = vt6102ifstat;
 	edev->ctl = nil;
 
 	edev->arg = edev;
+	edev->ifstat = vt6102ifstat;
 	edev->promiscuous = vt6102promiscuous;
 	edev->multicast = vt6102multicast;
 

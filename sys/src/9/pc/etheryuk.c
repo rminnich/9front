@@ -1742,17 +1742,20 @@ attach(Ether *e)
  	c->reg[Ism] |= Ibmu | Iport<<Iphy2base*c->portno;
 }
 
-static long
-ifstat(Ether *e0, void *a, long n, ulong offset)
+static char*
+ifstat(void *a, char *p, char *e)
 {
-	char *s, *e, *p;
 	int i;
 	uint u;
 	Ctlr *c;
+	Ether *e0;
 
+	if(p >= e)
+		return p;
+
+	e0 = a;
 	c = e0->ctlr;
-	p = s = malloc(READSTR);
-	e = p + READSTR;
+
 	for(i = 0; i < nelem(stattab); i++){
 		u = gmacread32(c, Stats + stattab[i].offset/4);
 		if(u > 0)
@@ -1768,9 +1771,7 @@ ifstat(Ether *e0, void *a, long n, ulong offset)
 	}
 	seprint(p, e, "%s rev %d phy %s\n", idtab[c->type].name,
 		c->rev, c->feat&Ffiber? "fiber": "copper");
-	n = readstr(offset, a, n, s);
-	free(s);
-	return n;
+	return p;
 }
 
 static Cmdtab ctltab[] = {
