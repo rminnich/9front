@@ -273,33 +273,6 @@ dobreak(Uart*, int)
 {
 }
 
-static long
-status(Uart *uart, void *buf, long n, long offset)
-{
-	char *p;
-
-	p = malloc(READSTR);
-	if(p == nil)
-		error(Enomem);
-	snprint(p, READSTR,
-		"b%d\n"
-		"dev(%d) type(%d) framing(%d) overruns(%d) "
-		"berr(%d) serr(%d)\n",
-
-		uart->baud,
-		uart->dev,
-		uart->type,
-		uart->ferr,
-		uart->oerr,
-		uart->berr,
-		uart->serr
-	);
-	n = readstr(offset, buf, n, p);
-	free(p);
-
-	return n;
-}
-
 static void
 interrupt(Ureg*, void *arg)
 {
@@ -393,7 +366,6 @@ PhysUart imxphysuart = {
 	.modemctl	= donothing,
 	.rts		= rts,
 	.dtr		= donothing,
-	.status		= status,
 	.fifo		= donothing,
 	.getc		= getc,
 	.putc		= putc,

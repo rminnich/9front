@@ -212,14 +212,13 @@ smcenable(Uart *uart, int intenb)
 	ud->enabled = 1;
 }
 
-static long
-smcstatus(Uart* uart, void* buf, long n, long offset)
+static char*
+smcstatus(Uart* uart, char *p, char *e)
 {
 	SMC *sp;
-	char p[128];
 
 	sp = ((UartData*)uart->regs)->smc;
-	snprint(p, sizeof p, "b%d c%d e%d l%d m0 p%c s%d i1\n"
+	return seprint(p, e, "b%d c%d e%d l%d m0 p%c s%d i1\n"
 		"dev(%d) type(%d) framing(%d) overruns(%d)\n",
 
 		uart->baud,
@@ -234,10 +233,6 @@ smcstatus(Uart* uart, void* buf, long n, long offset)
 		uart->ferr,
 		uart->oerr 
 	);
-	n = readstr(offset, buf, n, p);
-	free(p);
-
-	return n;
 }
 
 static void

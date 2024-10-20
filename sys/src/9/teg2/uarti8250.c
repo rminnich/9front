@@ -145,20 +145,18 @@ static Uart i8250uart[] = {
 #define csr8w(c, r, v)	((c)->io[r] = (c)->sticky[r] | (v), coherence())
 #define csr8o(c, r, v)	((c)->io[r] = (v), coherence())
 
-static long
-i8250status(Uart* uart, void* buf, long n, long offset)
+static char*
+i8250status(Uart* uart, char *p, char *e)
 {
-	char *p;
 	Ctlr *ctlr;
 	uchar ier, lcr, mcr, msr;
 
 	ctlr = uart->regs;
-	p = malloc(READSTR);
 	mcr = ctlr->sticky[Mcr];
 	msr = csr8r(ctlr, Msr);
 	ier = ctlr->sticky[Ier];
 	lcr = ctlr->sticky[Lcr];
-	snprint(p, READSTR,
+	return seprint(p, e,
 		"b%d c%d d%d e%d l%d m%d p%c r%d s%d i%d\n"
 		"dev(%d) type(%d) framing(%d) overruns(%d) "
 		"berr(%d) serr(%d)%s%s%s%s\n",
@@ -185,10 +183,6 @@ i8250status(Uart* uart, void* buf, long n, long offset)
 		(msr & Dcd) ? " dcd": "",
 		(msr & Ri) ? " ring": ""
 	);
-	n = readstr(offset, buf, n, p);
-	free(p);
-
-	return n;
 }
 
 static void

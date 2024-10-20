@@ -399,6 +399,7 @@ static long
 uartread(Chan *c, void *buf, long n, vlong off)
 {
 	Uart *p;
+	char *s;
 	ulong offset = off;
 
 	if(c->qid.type & QTDIR){
@@ -413,7 +414,29 @@ uartread(Chan *c, void *buf, long n, vlong off)
 	case Nctlqid:
 		return readnum(offset, buf, n, NETID(c->qid.path), NUMSIZE);
 	case Nstatqid:
-		return (*p->phys->status)(p, buf, n, offset);
+		if(off >= READSTR)
+			return 0;
+		s = smalloc(READSTR);
+		if(waserror()){
+			free(s);
+			nexterror();
+		}
+		if(p->phys->status == nil)
+			seprint(s, s + READSTR,
+				"b%d\n"
+				"dev(%d) type(%d) framing(%d) overruns(%d) "
+				"berr(%d) serr(%d)\n",
+				p->baud,
+				p->dev, p->type, p->ferr, p->oerr,
+				p->berr, p->serr);
+		else {
+			s[0] = '\0';
+			(*p->phys->status)(p, s, s + READSTR);
+		}
+		n = readstr(offset, buf, n, s);
+		free(s);
+		poperror();
+		return n;
 	}
 
 	return 0;

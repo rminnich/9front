@@ -881,7 +881,7 @@ struct PhysUart
 	void	(*modemctl)(Uart*, int);
 	void	(*rts)(Uart*, int);
 	void	(*dtr)(Uart*, int);
-	long	(*status)(Uart*, void*, long, long);
+	char*	(*status)(Uart*, char*, char*);
 	void	(*fifo)(Uart*, int);
 	void	(*power)(Uart*, int);
 	int	(*getc)(Uart*);	/* polling versions, for iprint, rdb */

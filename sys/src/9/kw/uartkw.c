@@ -255,13 +255,6 @@ kw_dtr(Uart* uart, int on)
 	USED(uart, on);
 }
 
-static long
-kw_status(Uart* uart, void* buf, long n, long offset)
-{
-	USED(uart, buf, n, offset);
-	return 0;
-}
-
 static void
 kw_fifo(Uart* uart, int level)
 {
@@ -318,7 +311,6 @@ PhysUart kwphysuart = {
 	.modemctl	= kw_modemctl,
 	.rts		= kw_rts,
 	.dtr		= kw_dtr,
-	.status		= kw_status,
 	.fifo		= kw_fifo,
 	.getc		= kw_getc,
 	.putc		= kw_putc,

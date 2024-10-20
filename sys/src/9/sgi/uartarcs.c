@@ -159,12 +159,6 @@ parity(Uart *uart, int n)
 	return 0;
 }
 
-static long
-status(Uart *, void *, long, long)
-{
-	return 0;
-}
-
 void
 uartarcsputc(Uart*, int c)
 {
@@ -192,7 +186,6 @@ PhysUart arcsphysuart = {
 	.modemctl	= donothing,
 	.rts		= donothing,
 	.dtr		= donothing,
-	.status		= status,
 	.fifo		= donothing,
 
 	.getc		= uartarcsgetc,

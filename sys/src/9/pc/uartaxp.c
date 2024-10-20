@@ -254,21 +254,19 @@ axpcc(Cc* cc, int cmd)
 	}
 }
 
-static long
-axpstatus(Uart* uart, void* buf, long n, long offset)
+static char*
+axpstatus(Uart* uart, char *p, char *e)
 {
-	char *p;
 	Ccb *ccb;
 	u16int bs, fstat, ms;
 
 	ccb = ((Cc*)(uart->regs))->ccb;
 
-	p = smalloc(READSTR);
 	bs = ccb->bs;
 	fstat = ccb->df;
 	ms = ccb->ms;
 
-	snprint(p, READSTR,
+	return seprint(p, e,
 		"b%d c%d d%d e%d l%d m%d p%c r%d s%d i%d\n"
 		"dev(%d) type(%d) framing(%d) overruns(%d) "
 		"berr(%d) serr(%d)%s%s%s%s\n",
@@ -295,10 +293,6 @@ axpstatus(Uart* uart, void* buf, long n, long offset)
 		(ms & Sdcd) ? " dcd"  : "",
 		(ms & Sri) ? " ring" : ""
 	);
-	n = readstr(offset, buf, n, p);
-	free(p);
-
-	return n;
 }
 
 static void
