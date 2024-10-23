@@ -495,23 +495,10 @@ assignhname(Dev *dev)
 		dev->hname = smprint("%s%d", buf, col);
 }
 
-int
-attachdev(Port *p)
+void
+attachdev(Dev *d)
 {
-	Dev *d = p->dev;
 	int id;
-
-	if(d->usb->class == Clhub){
-		/*
-		 * Hubs are handled directly by this process avoiding
-		 * concurrent operation so that at most one device
-		 * has the config address in use.
-		 * We cancel kernel debug for these eps. too chatty.
-		 */
-		if((p->hub = newhub(d->dir, d)) == nil)
-			return -1;
-		return 0;
-	}
 
 	/*
 	 * create all endpoint files for default conf #1
@@ -529,30 +516,12 @@ attachdev(Port *p)
 				closedev(epd);
 		}
 	}
-
-	/* close control endpoint so driver can open it */
-	close(d->dfd);
-	d->dfd = -1;
-
-	/* assign stable name based on device descriptor */
-	assignhname(d);
-
-	/* set device info for ctl file */
-	devctl(d, "info %s csp %#08lux vid %#.4ux did %#.4ux %q %q %s",
-		classname(Class(d->usb->csp)), d->usb->csp, d->usb->vid, d->usb->did,
-		d->usb->vendor, d->usb->product, d->hname);
-
 	pushevent(d, formatdev(d, 0));
-	return 0;
 }
 
 void
-detachdev(Port *p)
+detachdev(Dev *d)
 {
-	Dev *d = p->dev;
-
-	if(d->usb->class == Clhub)
-		return;
 	pushevent(d, formatdev(d, 1));
 }
 

@@ -51,7 +51,7 @@ enum
 	/* port/device state */
 	Pdisabled = 0,		/* must be 0 */
 	Pattached,
-	Pconfiged,
+	Pconfigured,
 
 	/* Delays, timeouts (ms) */
 	Resetdelay	= 20,		/* how much to wait after a reset */
@@ -77,12 +77,13 @@ struct Hub
 	uchar	compound;
 	uchar	pwrms;		/* time to wait in ms */
 	uchar	maxcurrent;	/*    after powering port*/
+	uchar	ttt;		/* tt think-time */
+	uchar	mtt;		/* muti tt enabled */
 	int	leds;		/* has port indicators? */
 	int	maxpkt;
 	uchar	nport;
 	Port	*port;
 	int	failed;		/* I/O error while enumerating */
-	int	isroot;		/* set if root hub */
 	Dev	*dev;		/* for this hub */
 	Hub	*next;		/* in list of hubs */
 };

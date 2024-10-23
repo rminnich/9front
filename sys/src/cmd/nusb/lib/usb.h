@@ -163,7 +163,7 @@ struct Dev
 	int	dfd;		/* descriptor for the data file */
 	int	cfd;		/* descriptor for the control file */
 	int	isusb3;		/* this is a usb3 device */
-	int	depth;		/* hub depth for usb3 hubs */
+	int	depth;		/* hub depth from roothub -1 */
 	int	maxpkt;		/* cached from usb description */
 	Usbdev*	usb;		/* USB description */
 	Ep*	ep;		/* endpoint from epopen() */

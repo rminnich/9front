@@ -207,8 +207,7 @@ parsedesc(Usbdev *d, Conf *c, uchar *b, int n)
 		if(d->ddesc[nd] == nil)
 			break;
 
-	while(n > 2 && b[0] != 0 && b[0] <= n){
-		len = b[0];
+	while(n > 2 && (len = b[0]) != 0 && len <= n){
 		if(usbdebug>1){
 			hd = hexstr(b, len);
 			fprint(2, "%s:\t\tparsedesc %s %x[%d] %s\n",
@@ -245,7 +244,7 @@ parsedesc(Usbdev *d, Conf *c, uchar *b, int n)
 					argv0, d->vendor, d->product);
 				break;
 			}
-			d->ddesc[nd] = emallocz(sizeof(Desc)+b[0], 0);
+			d->ddesc[nd] = emallocz(sizeof(Desc)+len, 0);
 			d->ddesc[nd]->iface = ip;
 			d->ddesc[nd]->ep = ep;
 			d->ddesc[nd]->conf = c;

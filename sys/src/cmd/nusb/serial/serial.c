@@ -590,8 +590,8 @@ openeps(Serialport *p, Ep *epin, Ep *epout, Ep *epintr)
 			closedev(p->epout);
 			return -1;
 		}
-		opendevdata(p->epintr, OREAD);
 		devctl(p->epintr, "timeout 1000");
+		opendevdata(p->epintr, OREAD);
 	}
 
 	if(ser->seteps != nil)

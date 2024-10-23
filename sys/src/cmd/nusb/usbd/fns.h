@@ -1,5 +1,5 @@
-int	attachdev(Port*);
-void	detachdev(Port*);
+void	attachdev(Dev*);
+void	detachdev(Dev*);
 void	work(void);
 Hub*	newhub(char *, Dev*);
 int	hname(char *);
