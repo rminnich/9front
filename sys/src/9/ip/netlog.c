@@ -189,8 +189,6 @@ netlogctl(Fs *f, char* s, int n)
 
 	ct = lookupcmd(cb, routecmd, nelem(routecmd));
 
-	SET(set);
-
 	switch(ct->index){
 	case CMset:
 		set = 1;

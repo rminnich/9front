@@ -37,7 +37,7 @@ void		closefgrp(Fgrp*);
 void		closepgrp(Pgrp*);
 void		closergrp(Rgrp*);
 long		clrfpintr(void);
-void		cmderror(Cmdbuf*, char*);
+_Noreturn void	cmderror(Cmdbuf*, char*);
 int		cmount(Chan*, Chan*, int, char*);
 void		confinit(void);
 int		consactive(void);

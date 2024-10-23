@@ -463,7 +463,6 @@ static int
 aoewctl(SDunit *, Cmdbuf *cmd)
 {
 	cmderror(cmd, Ebadarg);
-	return 0;
 }
 
 static SDev*
@@ -503,7 +502,6 @@ aoewtopctl(SDev *, Cmdbuf *cmd)
 	default:
 		cmderror(cmd, Ebadarg);
 	}
-	return 0;
 }
 
 SDifc sdaoeifc = {

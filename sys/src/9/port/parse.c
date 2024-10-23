@@ -73,7 +73,7 @@ parsecmd(char *p, int n)
 /*
  * Reconstruct original message, for error diagnostic
  */
-void
+_Noreturn void
 cmderror(Cmdbuf *cb, char *s)
 {
 	int i;
@@ -113,5 +113,4 @@ lookupcmd(Cmdbuf *cb, Cmdtab *ctab, int nctab)
 	}
 
 	cmderror(cb, "unknown control message");
-	return nil;
 }

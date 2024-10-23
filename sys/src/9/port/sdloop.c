@@ -337,7 +337,6 @@ static int
 loopwctl(SDunit *, Cmdbuf *cmd)
 {
 	cmderror(cmd, Ebadarg);
-	return 0;
 }
 
 static SDev*
@@ -376,7 +375,6 @@ loopwtopctl(SDev *, Cmdbuf *cmd)
 	default:
 		cmderror(cmd, Ebadarg);
 	}
-	return 0;
 }
 
 SDifc sdloopifc = {

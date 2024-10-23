@@ -2487,7 +2487,6 @@ iawtopctl(SDev *, Cmdbuf *cmd)
 	char **f;
 
 	f = cmd->f;
-	v = 0;
 
 	if(strcmp(f[0], "debug") == 0)
 		v = &debug;
