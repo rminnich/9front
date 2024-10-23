@@ -960,7 +960,6 @@ floppyformat(FDrive *dp, Cmdbuf *cb)
 		t = dp->t;
 	} else {
 		cmderror(cb, "invalid floppy format command");
-		SET(t);
 	}
 
 	/*
