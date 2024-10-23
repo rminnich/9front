@@ -241,17 +241,19 @@ umsreset(void)
 	return 0;
 }
 
-static int
+static void
 umsrecover(void)
 {
-	if(umsreset() < 0)
-		return -1;
+	if(umsreset() < 0){
+		/* kill the 9p procs */
+		postnote(PNGROUP, getpid(), "shutdown");
+		sysfatal("umsrecover: %r");
+	}
 	if(unstall(dev, ums->epin, Ein) < 0)
 		dprint(2, "%s: unstall epin: %r\n", argv0);
 	/* do we need this when epin == epout? */
 	if(unstall(dev, ums->epout, Eout) < 0)
 		dprint(2, "%s: unstall epout: %r\n", argv0);
-	return 0;
 }
 
 static int
@@ -500,14 +502,10 @@ umsrequest(Umsc *umsc, ScsiPtr *cmd, ScsiPtr *data, int *status)
 		dprint(2, "%s: phase error\n", argv0);
 		goto Fail;
 	}
-	ums->nerrs = 0;
 	return data->count - csw.dataresidue;
 
 Fail:
 	*status = STharderr;
-	if(ums->nerrs++ > 15)
-		sysfatal("%s: too many errors", dev->dir);
-	umsrecover();
 	return -1;
 }
 
@@ -765,6 +763,7 @@ dread(Req *req)
 			if(count < 0){
 				lun->lbsize = 0;  /* medium may have changed */
 				responderror(req);
+				umsrecover();
 			}else{
 				req->ofcall.count = count;
 				respond(req, nil);
@@ -878,6 +877,7 @@ dwrite(Req *req)
 			if(count < 0){
 				lun->lbsize = 0;  /* medium may have changed */
 				responderror(req);
+				umsrecover();
 			}else{
 				req->ofcall.count = count;
 				respond(req, nil);
@@ -997,6 +997,15 @@ Found:
 		closedev(ums->epin);
 		return -1;
 	}
+
+	devctl(ums->epin, "timeout 2000");
+	devctl(ums->epout, "timeout 2000");
+	if(usbdebug > 1 || diskdebug > 2){
+		devctl(ums->epin, "debug 1");
+		devctl(ums->epout, "debug 1");
+		devctl(dev, "debug 1");
+	}
+
 	if(ums->epin == ums->epout)
 		opendevdata(ums->epin, ORDWR);
 	else{
@@ -1009,15 +1018,6 @@ Found:
 		return -1;
 	}
 	dprint(2, "%s: ep in %s out %s\n", argv0, ums->epin->dir, ums->epout->dir);
-
-	devctl(ums->epin, "timeout 2000");
-	devctl(ums->epout, "timeout 2000");
-
-	if(usbdebug > 1 || diskdebug > 2){
-		devctl(ums->epin, "debug 1");
-		devctl(ums->epout, "debug 1");
-		devctl(dev, "debug 1");
-	}
 	return 0;
 }
 

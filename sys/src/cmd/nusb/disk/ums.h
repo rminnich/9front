@@ -96,7 +96,6 @@ struct Ums
 	Umsc	*lun;
 	uchar	maxlun;
 	int	seq;
-	int	nerrs;
 	int	wrongresidues;
 };
 
