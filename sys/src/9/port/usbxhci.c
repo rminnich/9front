@@ -68,6 +68,8 @@ enum {
 	DCBAAP		= 0x30/4,	// 8
 
 	CONFIG		= 0x38/4,	/* Configure Register (MaxSlotEn[7:0]) */
+		U3E	= 1<<8,
+		CIE	= 1<<9,
 
 	/* Port Register Set */
 	PORTSC		= 0x00/4,	/* Port status and Control Register */
@@ -198,10 +200,6 @@ struct Ring
 struct Slot
 {
 	int	id;
-
-	int	confval; // bConfigurationValue of SET_CONFIGURATION
-	int	iface;	// bInterfaceNumber of SET_INTERFACE
-	int	altc;	// bAlternateSetting of SET_INTERFACE
 
 	Ctlr	*ctlr;
 	Udev	*dev;
@@ -546,7 +544,7 @@ xhciinit(Hci *hp)
 	for(i=1; i<=ctlr->nslots; i++)
 		ctlr->dcba[i] = 0;
 
-	ctlr->opr[CONFIG] = (ctlr->opr[CONFIG] & 0xFFFFFC00) | ctlr->nslots;	/* MaxSlotsEn */
+	ctlr->opr[CONFIG] = (ctlr->opr[CONFIG] & ~(CIE|U3E|0xFF)) | ctlr->nslots;	/* MaxSlotsEn */
 
 	dmaflush(1, ctlr->dcba, (1+ctlr->nslots)*sizeof(ctlr->dcba[0]));
 	setrptr(&ctlr->opr[DCBAAP], (*ctlr->dmaaddr)(ctlr->dcba));
@@ -973,10 +971,6 @@ allocslot(Ctlr *ctlr, Udev *dev)
 	slot->nep = 0;
 	slot->id = 0;
 
-	slot->confval = 0;
-	slot->iface = 0;
-	slot->altc = 0;
-
 	qlock(&ctlr->slotlock);
 	if(waserror()){
 		qunlock(&ctlr->slotlock);
@@ -1004,7 +998,6 @@ allocslot(Ctlr *ctlr, Udev *dev)
 	dmaflush(1, &ctlr->dcba[slot->id], sizeof(ctlr->dcba[0]));
 
 	ctlr->slot[slot->id] = slot;
-
 	qunlock(&ctlr->slotlock);
 
 	return slot;
@@ -1015,6 +1008,67 @@ setdebug(Hci *, int)
 {
 }
 
+static int
+speedid(int speed)
+{
+	switch(speed){
+	case Fullspeed:		return 1;
+	case Lowspeed:		return 2;
+	case Highspeed:		return 3;
+	case Superspeed:	return 4;
+	}
+	return 0;
+}
+
+/* initialize input control and slot context */
+static u32int*
+initdevctx(Ctlr *ctlr, Slot *slot)
+{
+	Udev *dev = slot->dev;
+	u32int *w;
+	int i;
+
+	/* (input) control context */
+	w = slot->ibase;
+	memset(w, 0, 2*32<<ctlr->csz);
+
+	/* (input) slot context */
+	w += 8<<ctlr->csz;
+	w[0] = dev->routestr | speedid(dev->speed)<<20 | slot->nep<<27;
+	w[1] = dev->rootport<<16;
+	w[2] = w[3] = 0;
+
+	if(dev->nports > 0){
+		w[0] |= dev->mtt<<25 | 1<<26;	// Hub flag
+		w[1] |= dev->nports<<24;
+		w[2] |= dev->ttt<<16;
+	}
+
+	if(dev->speed < Highspeed && dev->tthub != 0 && dev->ttport != 0){
+		qlock(&ctlr->slotlock);
+		for(i=1; i<=ctlr->nslots; i++){
+			Slot *hub = ctlr->slot[i];
+
+			if(hub == nil || hub->dev == nil || hub->dev->aux != hub)
+				continue;
+			if(hub == slot || hub->dev == dev)
+				continue;
+
+			if(hub->dev->addr != dev->tthub)
+				continue;
+			if(hub->dev->rootport != dev->rootport)
+				continue;
+
+			w[0] |= hub->dev->mtt<<25;
+			w[2] |= hub->id | dev->ttport<<8;
+			break;
+		}
+		qunlock(&ctlr->slotlock);
+	}
+
+	return slot->ibase;
+}
+
 static void
 epclose(Ep *ep)
 {
@@ -1022,8 +1076,9 @@ epclose(Ep *ep)
 	Slot *slot;
 	Ring *ring;
 	Epio *io;
+	u32int *w;
 
-	if(ep->dev->isroot)
+	if(ep->dev->depth < 0)
 		return;
 
 	io = ep->aux;
@@ -1035,12 +1090,9 @@ epclose(Ep *ep)
 	slot = ep->dev->aux;
 
 	if(ep->nb > 0 && (io[OREAD].ring != nil || io[OWRITE].ring != nil)){
-		u32int *w;
-
-		/* input control context */
-		w = slot->ibase;
-		memset(w, 0, 32<<ctlr->csz);
-		w[1] = 1;
+		/* (input) control context */
+		w = initdevctx(ctlr, slot);
+		w[1] = 1;	/* modify slot context (for nep) */	
 		if((ring = io[OREAD].ring) != nil){
 			w[0] |= 1 << ring->id;
 			if(ring->id == slot->nep)
@@ -1053,6 +1105,10 @@ epclose(Ep *ep)
 				slot->nep--;
 			ctlrcmd(ctlr, CR_STOPEP | (ring->id<<16) | (slot->id<<24), 0, 0, nil);
 		}
+
+		/* find largest index still in use */ 
+		while(slot->nep > 1 && slot->epr[slot->nep-1].base == nil)
+			slot->nep--;
 
 		/* (input) slot context */
 		w += 8<<ctlr->csz;
@@ -1087,6 +1143,7 @@ initepctx(Ctlr *ctlr, u32int *w, Ring *r, Ep *ep)
 		for(ival=0; ival < 15 && (1<<ival) < ep->pollival; ival++)
 			;
 	}
+	memset(w, 0, 32<<ctlr->csz);
 	w[0] = ival<<16;
 	w[1] = ((ep->ttype-Tctl) | (r->id&1)<<2)<<3 | (ep->ntds-1)<<8 | ep->maxpkt<<16;
 	if(ep->ttype != Tiso)
@@ -1130,18 +1187,37 @@ initep(Ep *ep)
 	ctlr = ep->hp->aux;
 	slot = ep->dev->aux;
 
-	io[OREAD].ring = io[OWRITE].ring = nil;
+	/* (input) control context */
+	w = initdevctx(ctlr, slot);
+	w[1] = 1;		/* update slot (for nep, hub) */
 	if(ep->nb == 0){
-		io[OWRITE].ring = &slot->epr[0];
+		u32int cmd;
+		w[1] |= 2;	/* update ep0 (for packet size) */
+
+		/* (input) ep context 0 */
+		w += 16<<ctlr->csz;
+		initepctx(ctlr, w, io[OWRITE].ring = &slot->epr[0], ep);
+
+		/*
+		 * if this is a hub, the HUB, TTT and MTT fields
+		 * are only updated with the Configure Endpoint
+		 * command.
+		 */
+		if(ep->dev->nports > 0)
+			cmd = CR_CONFIGEP;
+		else
+			cmd = CR_EVALCTX;
+
+		dmaflush(1, slot->ibase, 32*33 << ctlr->csz);
+		err = ctlrcmd(ctlr, cmd | (slot->id<<24), 0,
+			(*ctlr->dmaaddr)(slot->ibase), nil);
+		dmaflush(0, slot->obase, 32*32 << ctlr->csz);
+		if(err != nil)
+			error(err);
 		return;
 	}
 
-	/* (input) control context */
-	w = slot->ibase;
-	memset(w, 0, 32<<ctlr->csz);
-	w[1] = 1;
-	w[31] = slot->altc<<16 | slot->iface<<8 | slot->confval;
-
+	io[OREAD].ring = io[OWRITE].ring = nil;
 	if(waserror()){
 		freering(io[OWRITE].ring), io[OWRITE].ring = nil;
 		freering(io[OREAD].ring), io[OREAD].ring = nil;
@@ -1171,21 +1247,15 @@ initep(Ep *ep)
 	/* (input) slot context */
 	w += 8<<ctlr->csz;
 	w[0] = (w[0] & ~(0x1F<<27)) | slot->nep<<27;
-	if(!ep->dev->ishub)
-		w[0] &= ~(1<<25);	// MTT
 
 	/* (input) ep context */
 	w += (ep->nb&Epmax)*2*8<<ctlr->csz;
-	if(io[OWRITE].ring != nil){
-		memset(w, 0, 5*4);
+	if(io[OWRITE].ring != nil)
 		initepctx(ctlr, w, io[OWRITE].ring, ep);
-	}
 
 	w += 8<<ctlr->csz;
-	if(io[OREAD].ring != nil){
-		memset(w, 0, 5*4);
+	if(io[OREAD].ring != nil)
 		initepctx(ctlr, w, io[OREAD].ring, ep);
-	}
 
 	dmaflush(1, slot->ibase, 32*33 << ctlr->csz);
 	err = ctlrcmd(ctlr, CR_CONFIGEP | (slot->id<<24), 0,
@@ -1201,31 +1271,18 @@ initep(Ep *ep)
 	poperror();
 }
 
-static int
-speedid(int speed)
-{
-	switch(speed){
-	case Fullspeed:		return 1;
-	case Lowspeed:		return 2;
-	case Highspeed:		return 3;
-	case Superspeed:	return 4;
-	}
-	return 0;
-}
-
 static void
 epopen(Ep *ep)
 {
 	Ctlr *ctlr = ep->hp->aux;
-	Slot *slot, *hub;
+	Slot *slot;
 	Ring *ring;
 	Epio *io;
 	Udev *dev;
 	char *err;
 	u32int *w;
-	int i;
 
-	if(ep->dev->isroot)
+	if(ep->dev->depth < 0)
 		return;
 	if(needrecover(ctlr))
 		error(Erecover);
@@ -1264,43 +1321,11 @@ epopen(Ep *ep)
 	ring->ctx = &slot->obase[8<<ctlr->csz];
 
 	/* (input) control context */
-	w = slot->ibase;
-	memset(w, 0, 3*32<<ctlr->csz);
-	w[1] = 3;	/* A0, A1 */
-		
-	/* (input) slot context */
-	w += 8<<ctlr->csz;
-	w[2] = w[3] = 0;
-	w[0] = dev->routestr | speedid(dev->speed)<<20 |
-		(dev->speed == Highspeed && dev->ishub != 0)<<25 |	// MTT
-		(dev->ishub != 0)<<26 | slot->nep<<27;
-	w[1] = dev->rootport<<16;
-
-	/* find the parent hub that this device is conected to */
-	qlock(&ctlr->slotlock);
-	for(i=1; i<=ctlr->nslots; i++){
-		hub = ctlr->slot[i];
-		if(hub == nil || hub->dev == nil || hub->dev->aux != hub)
-			continue;
-		if(hub == slot || hub->dev == dev)
-			continue;
-		if(!hub->dev->ishub)
-			continue;
-		if(hub->dev->addr != dev->hub)
-			continue;
-		if(hub->dev->rootport != dev->rootport)
-			continue;
-
-		if(dev->speed < Highspeed && hub->dev->speed == Highspeed){
-			w[0] |= 1<<25;	// MTT
-			w[2] = hub->id | dev->port<<8;
-		}
-		break;
-	}
-	qunlock(&ctlr->slotlock);
+	w = initdevctx(ctlr, slot);
+	w[1] = 3;	/* adding slot and ep0 */
 
 	/* (input) ep context 0 */
-	w += 8<<ctlr->csz;
+	w += 16<<ctlr->csz;
 	initepctx(ctlr, w, io[OWRITE].ring, ep);
 
 	dmaflush(1, slot->ibase, 32*33 << ctlr->csz);
@@ -1502,7 +1527,7 @@ epread(Ep *ep, void *va, long n)
 	char *err;
 	Wait w[1];
 
-	if(ep->dev->isroot)
+	if(ep->dev->depth < 0)
 		error(Egreg);
 
 	p = va;
@@ -1575,14 +1600,13 @@ epwrite(Ep *ep, void *va, long n)
 	uchar *p;
 	char *err;
 
-	if(ep->dev->isroot)
+	if(ep->dev->depth < 0)
 		error(Egreg);
 
 	p = va;
 	if(ep->ttype == Tctl){
 		int dir, len;
 		Ring *ring;
-		Slot *slot;
 
 		if(n < 8)
 			error(Eshort);
@@ -1593,7 +1617,6 @@ epwrite(Ep *ep, void *va, long n)
 		ctlr = (Ctlr*)ep->hp->aux;
 		io = (Epio*)ep->aux + OREAD;
 		ring = io[OWRITE-OREAD].ring;
-		slot = ring->slot;
 		qlock(io);
 		if(waserror()){
 			ilock(ring);
@@ -1607,13 +1630,14 @@ epwrite(Ep *ep, void *va, long n)
 			freeb(io->b);
 			io->b = nil;
 		}
-		len = GET2(&p[6]);
+		len = GET2(&p[6]);			
 		dir = (p[0] & Rd2h) != 0;
 		if(len > 0){
 			io->b = allocb(len);		
 			if(dir == 0){	/* out */
-				assert(len >= n-8);
-				memmove(io->b->wp, p+8, n-8);
+				if(n - 8 < len)
+					error(Eshort);
+				memmove(io->b->wp, p+8, len);
 			} else {
 				memset(io->b->wp, 0, len);
 				io->b->wp += len;
@@ -1621,20 +1645,6 @@ epwrite(Ep *ep, void *va, long n)
 		}
 		if((err = unstall(ep, ring)) != nil)
 			error(err);
-
-		if((ring->ctx[1]>>16) != ep->maxpkt){
-			u32int *w = slot->ibase;
-			w[0] = 0;
-			w[1] = 1<<ring->id;
-			w += (ring->id+1)*8<<ctlr->csz;
-			initepctx(ctlr, w, ring, ep);
-			dmaflush(1, slot->ibase, 32*33 << ctlr->csz);
-			err = ctlrcmd(ctlr, CR_EVALCTX | (slot->id<<24), 0,
-				(*ctlr->dmaaddr)(slot->ibase), nil);
-			dmaflush(0, slot->obase, 32*32 << ctlr->csz);
-			if(err != nil)
-				error(err);
-		}
 
 		queuetd(ring, TR_SETUPSTAGE | (len > 0 ? 2+dir : 0)<<16 | TR_IDT | TR_IOC, 8,
 			p[0] | p[1]<<8 | GET2(&p[2])<<16 | (u64int)(GET2(&p[4]) | len<<16)<<32, &w[0]);
@@ -1659,14 +1669,6 @@ epwrite(Ep *ep, void *va, long n)
 		}
 		if((err = waittd(&w[2], ep->tmout)) != nil)
 			error(err);
-
-		if(p[0] == 0x00 && p[1] == 0x09){
-			slot->confval = GET2(&p[2]);
-		} else if(p[0] == 0x01 && p[1] == 0x0d){
-			slot->altc = GET2(&p[2]);
-			slot->iface = GET2(&p[4]);
-		}
-
 		qunlock(io);
 		poperror();
 

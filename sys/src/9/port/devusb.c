@@ -73,23 +73,22 @@ enum
 	/* Ep. ctls */
 	CMnew = 0,		/* new nb ctl|bulk|intr|iso r|w|rw (endpoint) */
 	CMnewdev,		/* newdev full|low|high|super portnb (allocate new devices) */
+	CMdetach,		/* detach (abort I/O forever on this ep). */
+	CMpreset,		/* reset the port */
+	CMdebugep,		/* debug n (set/clear debug for this ep) */
+	CMclrhalt,		/* clrhalt (halt was cleared on endpoint) */
+	CMaddress,		/* address (address is assigned) */
 	CMhub,			/* hub (set the device as a hub) */
-	CMspeed,		/* speed full|low|high|no */
 	CMmaxpkt,		/* maxpkt size */
 	CMntds,			/* ntds nb (max nb. of tds per µframe) */
-	CMclrhalt,		/* clrhalt (halt was cleared on endpoint) */
 	CMpollival,		/* pollival interval (interrupt/iso) */
+	CMtmout,		/* timeout n (activate timeouts for ep) */
 	CMhz,			/* hz n (samples/sec; iso) */
 	CMsamplesz,		/* samplesz n (sample size; iso) */
-	CMinfo,			/* info infostr (ke.ep info for humans) */
-	CMdetach,		/* detach (abort I/O forever on this ep). */
-	CMaddress,		/* address (address is assigned) */
-	CMdebugep,		/* debug n (set/clear debug for this ep) */
-	CMname,			/* name str (show up as #u/name as well) */
-	CMtmout,		/* timeout n (activate timeouts for ep) */
 	CMsampledelay,		/* maximum delay introduced by buffering (iso) */
-	CMpreset,		/* reset the port */
 	CMuframes,		/* set uframe mode (iso) */
+	CMname,			/* name str (show up as #u/name as well) */
+	CMinfo,			/* info infostr (ke.ep info for humans) */
 
 	/* Hub feature selectors */
 	Rportenable	= 1,
@@ -106,7 +105,12 @@ struct Hcitype
 #define QID(q)	((int)(q).path)
 
 static char Edetach[] = "device is detached";
+static char Edisabled[] = "device is not enabled";
 static char Enotconf[] = "endpoint not configured";
+static char Ebadtype[] = "bad endpoint type";
+static char Ebadport[] = "bad hub port number";
+static char Enotahub[] = "not a hub";
+
 char Estalled[] = "endpoint stalled";
 
 static Cmdtab usbctls[] =
@@ -118,23 +122,22 @@ static Cmdtab epctls[] =
 {
 	{CMnew,		"new",		4},
 	{CMnewdev,	"newdev",	3},
-	{CMhub,		"hub",		1},
-	{CMspeed,	"speed",	2},
+	{CMdetach,	"detach",	1},
+	{CMpreset,	"reset",	1},
+	{CMdebugep,	"debug",	2},
+	{CMclrhalt,	"clrhalt",	1},
+	{CMaddress,	"address",	1},
+	{CMhub,		"hub",		0},
 	{CMmaxpkt,	"maxpkt",	2},
 	{CMntds,	"ntds",		2},
 	{CMpollival,	"pollival",	2},
-	{CMsamplesz,	"samplesz",	2},
-	{CMhz,		"hz",		2},
-	{CMinfo,	"info",		0},
-	{CMdetach,	"detach",	1},
-	{CMaddress,	"address",	1},
-	{CMdebugep,	"debug",	2},
-	{CMclrhalt,	"clrhalt",	1},
-	{CMname,	"name",		2},
 	{CMtmout,	"timeout",	2},
+	{CMhz,		"hz",		2},
+	{CMsamplesz,	"samplesz",	2},
 	{CMsampledelay,	"sampledelay",	2},
-	{CMpreset,	"reset",	1},
 	{CMuframes,	"uframes",	2},
+	{CMname,	"name",		2},
+	{CMinfo,	"info",		0},
 };
 
 static Dirtab usbdir[] =
@@ -266,6 +269,34 @@ addhcitype(char* t, int (*r)(Hci*))
 	ntype++;
 }
 
+static int
+rootport(Ep *ep, int port)
+{
+	Hci *hp;
+	Udev *hub;
+	uint mask;
+	int rootport;
+
+	hp = ep->hp;
+	hub = ep->dev;
+	if(hub->depth >= 0)
+		return hub->rootport;
+
+	mask = hp->superspeed;
+	if(hub->speed != Superspeed)
+		mask = (1<<hp->nports)-1 & ~mask;
+
+	for(rootport = 1; mask != 0; rootport++){
+		if(mask & 1){
+			if(--port == 0)
+				return rootport;
+		}
+		mask >>= 1;
+	}
+
+	return 0;
+}
+
 static char*
 seprintep(char *s, char *se, Ep *ep, int all)
 {
@@ -276,7 +307,7 @@ seprintep(char *s, char *se, Ep *ep, int all)
 
 	d = ep->dev;
 
-	qlock(ep);
+	eqlock(ep);
 	if(waserror()){
 		qunlock(ep);
 		nexterror();
@@ -365,8 +396,11 @@ getep(int i)
 		return nil;
 	qlock(&epslck);
 	ep = eps[i];
-	if(ep != nil)
-		incref(ep);
+	if(ep != nil && incref(ep) == 1){
+		/* race with putep() below, its dead. */
+		decref(ep);
+		ep = nil;
+	}
 	qunlock(&epslck);
 	return ep;
 }
@@ -439,10 +473,11 @@ newusbid(Hci *)
 }
 
 /*
- * Create endpoint 0 for a new device
+ * Create endpoint 0 for a new device on hub.
+ * hub must be locked.
  */
 static Ep*
-newdev(Hci *hp, int ishub, int isroot)
+newdev(Hci *hp, Ep *hub, int port, int speed)
 {
 	Ep *ep;
 	Udev *d;
@@ -450,20 +485,49 @@ newdev(Hci *hp, int ishub, int isroot)
 	d = malloc(sizeof(Udev));
 	if(d == nil)
 		error(Enomem);
+	if(waserror()){
+		free(d);
+		nexterror();
+	}
 
-	d->addr = 0;
-	d->ishub = ishub;
-	d->isroot = isroot;
-	d->rootport = 0;
-	d->routestr = 0;
-	d->depth = -1;
-	d->speed = Fullspeed;
 	d->state = Dconfig;		/* address not yet set */
+	d->addr = 0;
+	d->port = port;
+	d->speed = speed;
 
-	qlock(&epslck);
+	d->nports = 0;
+	d->rootport = d->routestr = 0;
+	d->tthub = d->ttport = d->ttt = d->mtt = 0;
+
+	if(hub != nil){
+		d->hub = hub->dev->addr;
+		d->hubnb = hub->dev->nb;
+		d->depth = hub->dev->depth+1;
+		if(d->depth > 0){
+			assert(d->depth <= 5);
+			d->routestr = hub->dev->routestr | (d->port<15? d->port: 15) << 4*(d->depth-1);
+			if(speed < Highspeed){
+				if(hub->dev->speed == Highspeed){
+					d->tthub = hub->dev->addr;
+					d->ttport = port;
+				}else {
+					d->tthub = hub->dev->tthub;
+					d->ttport = hub->dev->ttport;
+				}
+			}
+		}
+		d->rootport = rootport(hub, port);
+		if(d->rootport == 0)
+			error(Ebadport);
+	} else {
+		d->hub = 0;
+		d->hubnb = 0;
+		d->depth = -1;
+	}
+
+	eqlock(&epslck);
 	if(waserror()){
 		qunlock(&epslck);
-		free(d);
 		nexterror();
 	}
 	d->nb = newusbid(hp);
@@ -473,6 +537,13 @@ newdev(Hci *hp, int ishub, int isroot)
 	ep->ttype = Tctl;
 	ep->tmout = Xfertmout;
 
+	if(speed == Superspeed)
+		ep->maxpkt = 512;
+	else if(speed != Lowspeed)
+		ep->maxpkt = 64;	/* assume full speed */
+	else
+		ep->maxpkt = 8;
+
 	ep->nb = 0;
 	ep->ep0 = ep;			/* no ref counted here */
 	ep->dev = d;
@@ -480,6 +551,7 @@ newdev(Hci *hp, int ishub, int isroot)
 	incref(ep);
 
 	qunlock(&epslck);
+	poperror();
 	poperror();
 
 	dprint("newdev %#p ep%d.%d %#p\n", d, d->nb, ep->nb, ep);
@@ -489,25 +561,22 @@ newdev(Hci *hp, int ishub, int isroot)
 /*
  * Create a new endpoint for the device
  * accessed via the given endpoint 0.
+ * ep0 must be locked.
  */
 static Ep*
-newdevep(Ep *ep0, int i, int tt, int mode)
+newdevep(Ep *ep0, int nb, int tt, int mode)
 {
 	Ep *ep;
 	Udev *d;
 
-	qlock(ep0);
-	qlock(&epslck);
+	eqlock(&epslck);
 	if(waserror()){
 		qunlock(&epslck);
-		qunlock(ep0);
 		nexterror();
 	}
-
 	d = ep0->dev;
-	if(d->eps[i] != nil)
-		error("endpoint already in use");
-
+	if(d->eps[nb] != nil)
+		error(Einuse);
 	ep = epalloc(ep0->hp);
 	ep->mode = mode;
 	ep->ttype = tt;
@@ -523,20 +592,15 @@ newdevep(Ep *ep0, int i, int tt, int mode)
 		ep->tmout = Xfertmout;
 		ep->pollival = 10;
 		ep->samplesz = 1;
-		ep->hz = 0;
-		ep->uframes = 0;
 		break;
 	}
-
-	ep->nb = i;
+	ep->nb = nb;
 	ep->ep0 = ep0;
 	ep->dev = d;
-	d->eps[i] = ep;
+	d->eps[nb] = ep;
 	incref(ep0);
 	incref(ep);
-
 	qunlock(&epslck);
-	qunlock(ep0);
 	poperror();
 
 	deprint("newdevep ep%d.%d %#p\n", d->nb, ep->nb, ep);
@@ -603,7 +667,8 @@ usbgen(Chan *c, char *, Dirtab*, int, int s, Dir *dp)
 			nexterror();
 		}
 		mkqid(&q, Qep0io+s*4, 0, QTFILE);
-		devdir(c, q, ep->name, 0, eve, epdataperm(ep->mode), dp);
+		snprint(up->genbuf, sizeof(up->genbuf), "%s", ep->name);
+		devdir(c, q, up->genbuf, 0, eve, epdataperm(ep->mode), dp);
 		putep(ep);
 		poperror();
 		if(0)ddprint("ok\n");
@@ -765,47 +830,42 @@ static void
 usbinit(void)
 {
 	Hci *hp;
-	int ctlrno;
 	Ep *d;
-	char info[40];
+	int ctlrno, n;
 
 	dprint("usbinit\n");
 	for(ctlrno = 0; ctlrno < Nhcis; ctlrno++){
 		hp = hcis[ctlrno];
-		if(hp != nil){
-			int n;
+		if(hp == nil)
+			continue;
 
-			if(hp->init != nil){
-				if(waserror()){
-					print("usbinit: %s: %s\n", hp->type, up->errstr);
-					continue;
-				}
-				(*hp->init)(hp);
-				poperror();
+		if(hp->init != nil){
+			if(waserror()){
+				print("usbinit: %s: %s\n", hp->type, up->errstr);
+				continue;
 			}
+			(*hp->init)(hp);
+			poperror();
+		}
 
-			hp->superspeed &= (1<<hp->nports)-1;
-			n = hp->nports - numbits(hp->superspeed);
-			if(n > 0){
-				d = newdev(hp, 1, 1);		/* new LS/FS/HS root hub */
-				d->maxpkt = 64;
-				if(hp->highspeed != 0)
-					d->dev->speed = Highspeed;
-				d->dev->state = Denabled;	/* although addr == 0 */
-				snprint(info, sizeof(info), "roothub ports %d", n);
-				kstrdup(&d->info, info);
-				putep(d);
-			}
-			n = numbits(hp->superspeed);
-			if(n > 0){
-				d = newdev(hp, 1, 1);		/* new SS root hub */
-				d->maxpkt = 512;
-				d->dev->speed = Superspeed;
-				d->dev->state = Denabled;	/* although addr == 0 */
-				snprint(info, sizeof(info), "roothub ports %d", n);
-				kstrdup(&d->info, info);
-				putep(d);
-			}
+		hp->superspeed &= (1<<hp->nports)-1;
+		n = hp->nports - numbits(hp->superspeed);
+		if(n > 0){
+			d = newdev(hp, nil, 0, hp->highspeed?Highspeed:Fullspeed);		/* new LS/FS/HS root hub */
+			d->dev->nports = n;
+			d->dev->state = Denabled;	/* although addr == 0 */
+			snprint(up->genbuf, sizeof(up->genbuf), "roothub ports %d", n);
+			kstrdup(&d->info, up->genbuf);
+			putep(d);
+		}
+		n = numbits(hp->superspeed);
+		if(n > 0){
+			d = newdev(hp, nil, 0, Superspeed);	/* new SS root hub */
+			d->dev->nports = n;
+			d->dev->state = Denabled;	/* although addr == 0 */
+			snprint(up->genbuf, sizeof(up->genbuf), "roothub ports %d", n);
+			kstrdup(&d->info, up->genbuf);
+			putep(d);
 		}
 	}
 }
@@ -916,18 +976,15 @@ isotiming(Ep *ep)
 static Chan*
 usbopen(Chan *c, int omode)
 {
-	int q;
+	int q, mode;
 	Ep *ep;
-	int mode;
 
 	mode = openmode(omode);
 	q = QID(c->qid);
-
 	if(q >= Qep0dir && qid2epidx(q) < 0)
 		error(Eio);
 	if(q < Qep0dir || isqtype(q, Qepctl) || isqtype(q, Qepdir))
 		return devopen(c, omode, nil, 0, usbgen);
-
 	ep = getep(qid2epidx(q));
 	if(ep == nil)
 		error(Eio);
@@ -936,33 +993,31 @@ usbopen(Chan *c, int omode)
 		putep(ep);
 		nexterror();
 	}
-	qlock(ep);
-	if(ep->inuse){
-		qunlock(ep);
-		error(Einuse);
-	}
-	ep->inuse = 1;
-	qunlock(ep);
+	eqlock(ep);
 	if(waserror()){
-		ep->inuse = 0;
+		qunlock(ep);
 		nexterror();
 	}
+	if(ep->ttype == Tnone)
+		error(Enotconf);
 	if(mode != OREAD && ep->mode == OREAD)
 		error(Eperm);
 	if(mode != OWRITE && ep->mode == OWRITE)
 		error(Eperm);
-	if(ep->ttype == Tnone)
-		error(Enotconf);
+	if(ep->inuse)
+		error(Einuse);
+	if(ep->dev->state == Ddetach)
+		error(Edetach);
 	ep->clrhalt = 0;
 	ep->rhrepl = -1;
-
 	if(ep->ttype == Tiso)
 		isotiming(ep);
 	if(ep->load == 0 && ep->dev->speed != Superspeed)
 		ep->load = usbload(ep->dev->speed, ep->maxpkt);
 	(*ep->hp->epopen)(ep);
-
-	poperror();	/* ep->inuse */
+	ep->inuse = 1;
+	qunlock(ep);
+	poperror();	/* ep */
 	poperror();	/* don't putep(): ref kept for fid using the ep. */
 
 	c->mode = mode;
@@ -970,20 +1025,6 @@ usbopen(Chan *c, int omode)
 	c->offset = 0;
 	c->aux = nil;	/* paranoia */
 	return c;
-}
-
-static void
-epclose(Ep *ep)
-{
-	qlock(ep);
-	if(ep->inuse){
-		if(!waserror()){
-			(*ep->hp->epclose)(ep);
-			poperror();
-		}
-		ep->inuse = 0;
-	}
-	qunlock(ep);
 }
 
 static void
@@ -996,18 +1037,32 @@ usbclose(Chan *c)
 	if(q < Qep0dir || isqtype(q, Qepctl) || isqtype(q, Qepdir))
 		return;
 
+	if((c->flag & COPEN) == 0)
+		return;
+
+	free(c->aux);
+	c->aux = nil;
+	c->flag &= ~COPEN;
+
 	ep = getep(qid2epidx(q));
 	if(ep == nil)
 		return;
+
 	deprint("usbclose q %#x fid %d ref %ld\n", q, c->fid, ep->ref);
-	if(c->flag & COPEN){
-		free(c->aux);
-		c->aux = nil;
-		epclose(ep);
+
+	qlock(ep);
+	if(!ep->inuse)
+		qunlock(ep);
+	else {
+		if(!waserror()){
+			(*ep->hp->epclose)(ep);
+			poperror();
+		}
+		ep->inuse = 0;
+		qunlock(ep);
 		putep(ep);	/* release ref kept since usbopen */
-		c->flag &= ~COPEN;
 	}
-	putep(ep);
+	putep(ep);		/* release ref of getep() above */
 }
 
 static long
@@ -1065,7 +1120,7 @@ rhubread(Ep *ep, void *a, long n)
 {
 	uchar b[8];
 
-	if(ep->dev->isroot == 0 || ep->nb != 0 || n < 2 || ep->rhrepl == -1)
+	if(ep->dev->depth >= 0 || ep->nb != 0 || n < 2 || ep->rhrepl == -1)
 		return -1;
 
 	b[0] = ep->rhrepl;
@@ -1086,34 +1141,6 @@ rhubread(Ep *ep, void *a, long n)
 	return n;
 }
 
-static int
-rootport(Ep *ep, int port)
-{
-	Hci *hp;
-	Udev *hub;
-	uint mask;
-	int rootport;
-
-	hp = ep->hp;
-	hub = ep->dev;
-	if(!hub->isroot)
-		return hub->rootport;
-
-	mask = hp->superspeed;
-	if(hub->speed != Superspeed)
-		mask = (1<<hp->nports)-1 & ~mask;
-
-	for(rootport = 1; mask != 0; rootport++){
-		if(mask & 1){
-			if(--port == 0)
-				return rootport;
-		}
-		mask >>= 1;
-	}
-
-	return 0;
-}
-
 static long
 rhubwrite(Ep *ep, void *a, long n)
 {
@@ -1123,7 +1150,7 @@ rhubwrite(Ep *ep, void *a, long n)
 	int port;
 	Hci *hp;
 
-	if(ep->dev->isroot == 0 || ep->nb != 0)
+	if(ep->dev->depth >= 0 || ep->nb != 0)
 		return -1;
 	if(n != Rsetuplen)
 		error("root hub is a toy hub");
@@ -1136,7 +1163,7 @@ rhubwrite(Ep *ep, void *a, long n)
 	feature = GET2(s+Rvalue);
 	port = rootport(ep, GET2(s+Rindex));
 	if(port == 0)
-		error("bad hub port number");
+		error(Ebadport);
 	switch(feature){
 	case Rportenable:
 		ep->rhrepl = (*hp->portenable)(hp, port, cmd == Rsetfeature);
@@ -1175,10 +1202,11 @@ usbread(Chan *c, void *a, long n, vlong offset)
 		putep(ep);
 		nexterror();
 	}
-	if(ep->dev->state == Ddetach)
-		error(Edetach);
 	if(ep->mode == OWRITE || ep->inuse == 0)
 		error(Ebadusefd);
+	if(ep->dev->state == Ddetach)
+		error(Edetach);
+
 	switch(ep->ttype){
 	case Tnone:
 		error(Enotconf);
@@ -1210,15 +1238,12 @@ usbread(Chan *c, void *a, long n, vlong offset)
 static long
 epctl(Ep *ep, Chan *c, void *a, long n)
 {
-	int i, l, mode, nb, tt;
+	int i, l, port, mode, nb, tt;
 	char *b, *s;
 	Cmdbuf *cb;
 	Cmdtab *ct;
 	Ep *nep;
 	Udev *d;
-	static char *Info = "info ";
-
-	d = ep->dev;
 
 	cb = parsecmd(a, n);
 	if(waserror()){
@@ -1226,197 +1251,78 @@ epctl(Ep *ep, Chan *c, void *a, long n)
 		nexterror();
 	}
 	ct = lookupcmd(cb, epctls, nelem(epctls));
+	deprint("usb epctl %s\n", cb->f[0]);
 	i = ct->index;
-	if(i == CMnew || i == CMspeed || i == CMhub || i == CMpreset || i == CMaddress)
+	if(i == CMnew || i == CMnewdev || i == CMhub || i == CMpreset || i == CMaddress)
 		if(ep != ep->ep0)
 			error("allowed only on a setup endpoint");
-	if(i != CMclrhalt && i != CMdetach && i != CMdebugep && i != CMname)
-		if(ep != ep->ep0 && ep->inuse != 0)
-			error("must configure before using");
+	eqlock(ep);
+	if(waserror()){
+		qunlock(ep);
+		nexterror();
+	}
+	d = ep->dev;
+	if(d->state == Ddetach)
+		error(Edetach);
 	switch(i){
 	case CMnew:
-		deprint("usb epctl %s\n", cb->f[0]);
 		nb = strtol(cb->f[1], nil, 0);
 		if(nb < 0 || nb >= Ndeveps)
 			error("bad endpoint number");
 		tt = name2ttype(cb->f[2]);
 		if(tt == Tnone)
-			error("unknown endpoint type");
+			error(Ebadtype);
 		mode = name2mode(cb->f[3]);
 		if(mode < 0)
 			error("unknown i/o mode");
-		nep = newdevep(ep->ep0, nb, tt, mode);
+		nep = newdevep(ep, nb, tt, mode);
 		nep->debug = ep->debug;
 		putep(nep);
 		break;
 	case CMnewdev:
-		deprint("usb epctl %s\n", cb->f[0]);
-		if(ep != ep->ep0 || d->ishub == 0)
-			error("not a hub setup endpoint");
+		if(d->state != Denabled)
+			error(Edisabled);
 		l = name2speed(cb->f[1]);
 		if(l == Nospeed)
 			error("speed must be full|low|high|super");
-		if(l != d->speed && (l == Superspeed || d->speed == Superspeed))
-			error("wrong speed for superspeed hub/device");
-		nep = newdev(ep->hp, 0, 0);
-		nep->dev->speed = l;
-		if(l == Superspeed)
-			nep->maxpkt = 512;
-		else if(l != Lowspeed)
-			nep->maxpkt = 64;	/* assume full speed */
-		nep->dev->hubnb = d->nb;
-		nep->dev->hub = d->addr;
-		nep->dev->port = atoi(cb->f[2]);
-		nep->dev->depth = d->depth+1;
-		nep->dev->rootport = rootport(ep, nep->dev->port);
-		nep->dev->routestr = d->routestr | (((nep->dev->port&15) << 4*nep->dev->depth) >> 4);
+		if(l != d->speed)
+			switch(d->speed){
+			case Highspeed:
+				if(l == Fullspeed)
+					break;
+				/* no break */
+			case Fullspeed:
+				if(l == Lowspeed)
+					break;
+				/* no break */
+			default:
+				error("wrong speed for hub/device");
+			}
+		port = strtoul(cb->f[2], nil, 0);
+		if(port < 1 || port > d->nports)
+			error(Ebadport);
+		nep = newdev(ep->hp, ep, port, l);
 		/* next read request will read
 		 * the name for the new endpoint
 		 */
 		snprint(up->genbuf, sizeof(up->genbuf), "ep%d.%d", nep->dev->nb, nep->nb);
-		putep(nep);
 		kstrdup(&c->aux, up->genbuf);
-		break;
-	case CMhub:
-		deprint("usb epctl %s\n", cb->f[0]);
-		qlock(ep);
-		d->ishub = 1;
-		qunlock(ep);
-		break;
-	case CMspeed:
-		l = name2speed(cb->f[1]);
-		deprint("usb epctl %s %d\n", cb->f[0], l);
-		if(l == Nospeed)
-			error("speed must be full|low|high|super");
-		qlock(ep);
-		if(l != d->speed && (l == Superspeed || d->speed == Superspeed)){
-			qunlock(ep);
-			error("cannot change speed on superspeed device");
-		}
-		d->speed = l;
-		qunlock(ep);
-		break;
-	case CMmaxpkt:
-		l = strtoul(cb->f[1], nil, 0);
-		deprint("usb epctl %s %d\n", cb->f[0], l);
-		if(l < 1 || l > 1024)
-			error("maxpkt not in [1:1024]");
-		qlock(ep);
-		ep->maxpkt = l;
-		ep->hz = 0; /* recalculate */
-		qunlock(ep);
-		break;
-	case CMntds:
-		l = strtoul(cb->f[1], nil, 0);
-		deprint("usb epctl %s %d\n", cb->f[0], l);
-		if(l < 1 || l > 3)
-			error("ntds not in [1:3]");
-		qlock(ep);
-		ep->ntds = l;
-		ep->hz = 0; /* recalculate */
-		qunlock(ep);
-		break;
-	case CMpollival:
-		if(ep->ttype != Tintr && ep->ttype != Tiso)
-			error("not an intr or iso endpoint");
-		l = strtoul(cb->f[1], nil, 0);
-		deprint("usb epctl %s %d\n", cb->f[0], l);
-		if(ep->dev->speed == Fullspeed || ep->dev->speed == Lowspeed){
-			if(l < 1 || l > 255)
-				error("pollival not in [1:255]");
-		} else {
-			if(l < 1 || l > 16)
-				error("pollival power not in [1:16]");
-			l = 1 << l-1;
-		}
-		qlock(ep);
-		ep->pollival = l;
-		ep->hz = 0; /* recalculate */
-		qunlock(ep);
-		break;
-	case CMsamplesz:
-		if(ep->ttype != Tiso)
-			error("not an iso endpoint");
-		l = strtoul(cb->f[1], nil, 0);
-		deprint("usb epctl %s %d\n", cb->f[0], l);
-		if(l <= 0 || l > 8)
-			error("samplesz not in [1:8]");
-		qlock(ep);
-		ep->samplesz = l;
-		qunlock(ep);
-		break;
-	case CMhz:
-		if(ep->ttype != Tiso)
-			error("not an iso endpoint");
-		l = strtoul(cb->f[1], nil, 0);
-		deprint("usb epctl %s %d\n", cb->f[0], l);
-		if(l <= 0 || l > 1000000000)
-			error("hz not in [1:1000000000]");
-		qlock(ep);
-		ep->hz = l;
-		qunlock(ep);
-		break;
-	case CMuframes:
-		if(ep->ttype != Tiso)
-			error("not an iso endpoint");
-		l = strtoul(cb->f[1], nil, 0);
-		deprint("usb uframes %s %d\n", cb->f[0], l);
-		if(l != 0 && l != 1)
-			error("uframes not in [0:1]");
-		qlock(ep);
-		ep->uframes = l;
-		qunlock(ep);
-		break;
-	case CMclrhalt:
-		qlock(ep);
-		deprint("usb epctl %s\n", cb->f[0]);
-		ep->clrhalt = 1;
-		qunlock(ep);
-		break;
-	case CMinfo:
-		deprint("usb epctl %s\n", cb->f[0]);
-		l = strlen(Info);
-		s = a;
-		if(n < l+2 || strncmp(Info, s, l) != 0)
-			error(Ebadctl);
-		if(n > 1024)
-			n = 1024;
-		b = smalloc(n);
-		memmove(b, s+l, n-l);
-		b[n-l] = 0;
-		if(b[n-l-1] == '\n')
-			b[n-l-1] = 0;
-		qlock(ep);
-		free(ep->info);
-		ep->info = b;
-		qunlock(ep);
-		break;
-	case CMaddress:
-		deprint("usb epctl %s\n", cb->f[0]);
-		qlock(ep);
-		if(d->state != Dconfig){
-			qunlock(ep);
-			error("address already set");
-		}
-		if(d->addr == 0)
-			d->addr = d->nb;
-		d->state = Denabled;
-		qunlock(ep);
+		putep(nep);
 		break;
 	case CMdetach:
-		deprint("usb epctl %s ep%d.%d\n", cb->f[0], d->nb, ep->nb);
-		if(ep->dev->isroot != 0)
+		if(d->depth < 0)
 			error("can't detach a root hub");
-		qlock(ep->ep0);
-		if(d->state == Ddetach){
-			qunlock(ep->ep0);
-			break;	/* already detached */
-		}
 		d->state = Ddetach;
-		qunlock(ep->ep0);
+		qunlock(ep);
+		poperror();
 		/* Release file system ref. for its endpoints */
 		for(i = 0; i < nelem(d->eps); i++)
 			putep(d->eps[i]);
+		goto Unlocked;
+	case CMpreset:
+		if(d->state != Denabled)
+			error(Edisabled);
+		d->state = Dreset;
 		break;
 	case CMdebugep:
 		if(strcmp(cb->f[1], "on") == 0)
@@ -1427,39 +1333,150 @@ epctl(Ep *ep, Chan *c, void *a, long n)
 			ep->debug = strtoul(cb->f[1], nil, 0);
 		print("usb: ep%d.%d debug %d\n", d->nb, ep->nb, ep->debug);
 		break;
-	case CMname:
-		deprint("usb epctl %s %s\n", cb->f[0], cb->f[1]);
-		validname(cb->f[1], 0);
-		kstrdup(&ep->name, cb->f[1]);
+	case CMclrhalt:
+		ep->clrhalt = 1;
+		break;
+	case CMaddress:
+		if(d->state != Dconfig)
+			error("address already set");
+		if(d->addr == 0)
+			d->addr = d->nb & Devmax;
+		d->state = Denabled;
+		break;
+	case CMhub:
+		if(cb->nf < 2)
+			error(Ebadctl);
+		if(ep->inuse)
+			error(Einuse);
+		if(d->depth >= 5)
+			error("hub depth exceeded");
+		port = strtoul(cb->f[1], nil, 0);
+		if(port < 1 || port > 127
+		|| port > 15 && d->speed == Superspeed)
+			error(Ebadport);
+		d->nports = port;
+		if(d->speed == Highspeed && cb->nf >= 4){
+			d->ttt = strtoul(cb->f[2], nil, 0) & 3;
+			d->mtt = strtoul(cb->f[3], nil, 0) != 0;
+		}
+		break;
+	case CMmaxpkt:
+		if(ep->inuse)
+			error(Einuse);
+		l = strtoul(cb->f[1], nil, 0);
+		if(l < 1 || l > 1024)
+			error("maxpkt not in [1:1024]");
+		ep->maxpkt = l;
+		ep->hz = 0; /* recalculate */
+		break;
+	case CMntds:
+		if(ep->inuse)
+			error(Einuse);
+		l = strtoul(cb->f[1], nil, 0);
+		if(l < 1 || l > 3)
+			error("ntds not in [1:3]");
+		ep->ntds = l;
+		ep->hz = 0; /* recalculate */
+		break;
+	case CMpollival:
+		if(ep->ttype != Tintr && ep->ttype != Tiso)
+			error(Ebadtype);
+		if(ep->inuse)
+			error(Einuse);
+		l = strtoul(cb->f[1], nil, 0);
+		if(d->speed == Fullspeed || d->speed == Lowspeed){
+			if(l < 1 || l > 255)
+				error("pollival not in [1:255]");
+		} else {
+			if(l < 1 || l > 16)
+				error("pollival power not in [1:16]");
+			l = 1 << l-1;
+		}
+		ep->pollival = l;
+		ep->hz = 0; /* recalculate */
 		break;
 	case CMtmout:
-		deprint("usb epctl %s\n", cb->f[0]);
 		if(ep->ttype == Tiso || ep->ttype == Tctl)
-			error("ctl ignored for this endpoint type");
-		ep->tmout = strtoul(cb->f[1], nil, 0);
-		if(ep->tmout != 0 && ep->tmout < Xfertmout)
-			ep->tmout = Xfertmout;
+			error(Ebadtype);
+		if(ep->inuse)
+			error(Einuse);
+		l = strtoul(cb->f[1], nil, 0);
+		if(l != 0 && l < Xfertmout)
+			l = Xfertmout;
+		ep->tmout = l;
+		break;
+	case CMhz:
+		if(ep->ttype != Tiso)
+			error(Ebadtype);
+		if(ep->inuse)
+			error(Einuse);
+		l = strtoul(cb->f[1], nil, 0);
+		if(l <= 0 || l > 1000000000)
+			error("hz not in [1:1000000000]");
+		ep->hz = l;
+		break;
+	case CMsamplesz:
+		if(ep->ttype != Tiso)
+			error(Ebadtype);
+		if(ep->inuse)
+			error(Einuse);
+		l = strtoul(cb->f[1], nil, 0);
+		if(l <= 0 || l > 8)
+			error("samplesz not in [1:8]");
+		ep->samplesz = l;
 		break;
 	case CMsampledelay:
 		if(ep->ttype != Tiso)
-			error("ctl ignored for this endpoint type");
-		ep->sampledelay = strtoul(cb->f[1], nil, 0);
+			error(Ebadtype);
+		if(ep->inuse)
+			error(Einuse);
+		l = strtoul(cb->f[1], nil, 0);
+		ep->sampledelay = l;
 		break;
-	case CMpreset:
-		deprint("usb epctl %s\n", cb->f[0]);
-		if(ep->ttype != Tctl)
-			error("not a control endpoint");
-		qlock(ep->ep0);
-		if(d->state != Denabled){
-			qunlock(ep->ep0);
-			error("forbidden on devices not enabled");
+	case CMuframes:
+		if(ep->ttype != Tiso)
+			error(Ebadtype);
+		if(ep->inuse)
+			error(Einuse);
+		l = strtoul(cb->f[1], nil, 0);
+		if(l != 0 && l != 1)
+			error("uframes not in [0:1]");
+		ep->uframes = l;
+		break;
+	case CMname:
+		if(ep->inuse)
+			error(Einuse);
+		s = cb->f[1];
+		if(strlen(s) >= sizeof(up->genbuf))
+			error(Etoolong);
+		validname(s, 0);
+		kstrdup(&ep->name, s);
+		break;
+	case CMinfo:
+		s = a;
+		s += 5, n -= 5;	/* "info " */
+		if(n < 0)
+			error(Ebadctl);
+		b = smalloc(n+1);
+		if(waserror()){
+			free(b);
+			nexterror();
 		}
-		d->state = Dreset;
-		qunlock(ep->ep0);
+		memmove(b, s, n);
+		poperror();
+		b[n] = 0;
+		s = strchr(b, '\n');
+		if(s != nil)
+			*s = 0;
+		free(ep->info);
+		ep->info = b;
 		break;
 	default:
-		panic("usb: unknown epctl %d", ct->index);
+		error(Ebadctl);
 	}
+	qunlock(ep);
+	poperror();
+Unlocked:
 	free(cb);
 	poperror();
 	return n;
@@ -1520,6 +1537,7 @@ ctlwrite(Chan *c, void *a, long n)
 	}
 	if(ep->dev->state == Ddetach)
 		error(Edetach);
+
 	if(isqtype(q, Qepctl) && c->aux != nil){
 		/* Be sure we don't keep a cloned ep name */
 		free(c->aux);
@@ -1553,10 +1571,10 @@ usbwrite(Chan *c, void *a, long n, vlong off)
 		putep(ep);
 		nexterror();
 	}
-	if(ep->dev->state == Ddetach)
-		error(Edetach);
 	if(ep->mode == OREAD || ep->inuse == 0)
 		error(Ebadusefd);
+	if(ep->dev->state == Ddetach)
+		error(Edetach);
 
 	switch(ep->ttype){
 	case Tnone:

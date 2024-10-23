@@ -350,11 +350,32 @@ the driver does not issue them, leaving the task to either
 .I usbd
 or the usb driver library documented in
 .IR nusb (2).
+Except for
+.BR detach ,
+.BR reset ,
+.BR clrhalt ,
+.B address
+and
+.B debug
+commands,
+changing the settings of an endpoint while its
+.B data
+file is held open is prohibited.
+The settings are applied by the driver when the
+.B data
+file is opend.
 .TF "\fLsamplehz\fI n
 .TP
 .B detach
 Prevent further I/O on the device (delete the endpoint)
 and remove its file interface as soon as no process is using their files.
+.TP
+.B reset
+Request
+.IR usbd
+to perform a port reset on the hub that the device
+is attached to.
+This causes the device to be re-enumerated.
 .TP
 .BI maxpkt " n"
 Set the maximum packet size to
@@ -485,11 +506,16 @@ or
 .BR rw ,
 which creates, respectively, an input, output, or input/output endpoint.
 .TP
-.B "speed {low|full|high|super}
-Set the endpoint speed to full, low, high, or SuperSpeed, respectively.
-.TP
-.B hub
-Tell this driver that the endpoint corresponds to a hub device.
+.BI hub " n [ttt] [mtt]"
+Tell this driver that the endpoint corresponds to a hub device
+by setting the number of ports to
+.I n
+and optionally set the
+transaction translator think-time
+.I ttt
+and multi transaction-translator mode
+.I mtt
+for high-speed hubs.
 .PD
 .PP
 Setup endpoints for hub devices also accept

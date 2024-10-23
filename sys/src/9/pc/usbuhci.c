@@ -1539,7 +1539,7 @@ epctlio(Ep *ep, Ctlio *cio, void *a, long count)
 	/* set the address if unset and out of configuration state */
 	if(ep->dev->state != Dconfig && ep->dev->state != Dreset)
 		if(cio->usbid == 0)
-			cio->usbid = ((ep->nb&Epmax)<<7)|(ep->dev->nb&Devmax);
+			cio->usbid = ((ep->nb&Epmax)<<7)|ep->dev->addr;
 	c = a;
 	cio->tok = Tdtoksetup;
 	cio->toggle = Tddata0;
@@ -1659,7 +1659,7 @@ isoopen(Ep *ep)
 		iso->tok = Tdtokin;
 	else
 		iso->tok = Tdtokout;
-	iso->usbid = ((ep->nb & Epmax)<<7)|(ep->dev->nb & Devmax);
+	iso->usbid = ((ep->nb & Epmax)<<7)|ep->dev->addr;
 	iso->state = Qidle;
 	iso->nframes = Nframes/ep->pollival;
 	if(iso->nframes < 3)
@@ -1777,7 +1777,7 @@ epopen(Ep *ep)
 		cio->debug = ep->debug;
 		cio->ndata = -1;
 		cio->data = nil;
-		if(ep->dev->isroot != 0 && ep->nb == 0)	/* root hub */
+		if(ep->dev->depth < 0 && ep->nb == 0)	/* root hub */
 			break;
 		cio->qh = qhalloc(ctlr, cqh, cio, "epc");
 		break;
@@ -1785,7 +1785,7 @@ epopen(Ep *ep)
 	case Tintr:
 		io = ep->aux = smalloc(sizeof(Qio)*2);
 		io[OREAD].debug = io[OWRITE].debug = ep->debug;
-		usbid = ((ep->nb&Epmax)<<7)|(ep->dev->nb&Devmax);
+		usbid = ((ep->nb&Epmax)<<7)|ep->dev->addr;
 		if(ep->mode != OREAD){
 			if(ep->toggle[OWRITE] != 0)
 				io[OWRITE].toggle = Tddata1;

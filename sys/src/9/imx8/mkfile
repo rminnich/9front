@@ -101,7 +101,7 @@ main.$O: rebootcode.i
 
 i2cimx.$O: ../port/i2c.h
 pciimx.$O: ../port/pci.h
-usbxhciimx.$O: ../port/usbxhci.h
+usbxhciimx.$O: ../port/usbxhci.h ../port/usb.h
 usdhc.$O: ../port/sd.h
 etherimx.$O: ../port/netif.h ../port/etherif.h
 

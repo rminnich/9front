@@ -157,7 +157,7 @@ chansetup(Hostchan *hc, Ep *ep)
 		hcc = 0;
 		break;
 	default:
-		hcc = (ep->dev->nb&Devmax)<<ODevaddr;
+		hcc = ep->dev->addr<<ODevaddr;
 		break;
 	}
 	hcc |= ep->maxpkt | 1<<OMulticnt | (ep->nb&Epmax)<<OEpnum;
@@ -180,9 +180,8 @@ chansetup(Hostchan *hc, Ep *ep)
 		hcc |= Lspddev;
 		/* fall through */
 	case Fullspeed:
-		if(ep->dev->hub > 1){
-			hc->hcsplt = Spltena | POS_ALL | ep->dev->hub<<OHubaddr |
-				ep->dev->port;
+		if(ep->dev->tthub != 0 && ep->dev->ttport != 0){
+			hc->hcsplt = Spltena | POS_ALL | ep->dev->tthub<<OHubaddr | ep->dev->ttport;
 			break;
 		}
 		/* fall through */

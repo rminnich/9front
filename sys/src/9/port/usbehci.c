@@ -682,8 +682,8 @@ qhalloc(Ctlr *ctlr, Ep *ep, Qio *io, char* tag)
 		coherence();
 		qhsetaddr(qh, io->usbid);
 		qh->eps1 = (ep->ntds & Qhmultmask) << Qhmultshift;
-		qh->eps1 |= ep->dev->port << Qhportshift;
-		qh->eps1 |= ep->dev->hub << Qhhubshift;
+		qh->eps1 |= ep->dev->ttport << Qhportshift;
+		qh->eps1 |= ep->dev->tthub << Qhhubshift;
 		qh->eps1 |= 034 << Qhscmshift;
 		if(ep->ttype == Tintr)
 			qh->eps1 |= 1 << Qhismshift;	/* intr. start µf. */
@@ -2615,7 +2615,7 @@ epctlio(Ep *ep, Ctlio *cio, void *a, long count)
 	/* set the address if unset and out of configuration state */
 	if(ep->dev->state != Dconfig && ep->dev->state != Dreset)
 		if(cio->usbid == 0){
-			cio->usbid = (ep->nb&Epmax)<<7 | (ep->dev->nb&Devmax);
+			cio->usbid = (ep->nb&Epmax)<<7 | ep->dev->addr;
 			coherence();
 			qhsetaddr(cio->qh, cio->usbid);
 		}
@@ -2725,10 +2725,10 @@ isofsinit(Ep *ep, Isoio *iso)
 	for(i = 0; i < iso->nframes; i++){
 		td = sitdalloc(ctlr);
 		td->data = iso->data + i * ep->maxpkt;
-		td->epc = ep->dev->port << Stdportshift;
-		td->epc |= ep->dev->hub << Stdhubshift;
+		td->epc = ep->dev->ttport << Stdportshift;
+		td->epc |= ep->dev->tthub << Stdhubshift;
 		td->epc |= (ep->nb&Epmax) << Stdepshift;
-		td->epc |= (ep->dev->nb&Devmax) << Stddevshift;
+		td->epc |= ep->dev->addr << Stddevshift;
 		td->mfs = 034 << Stdscmshift | 1 << Stdssmshift;
 		if(ep->mode == OREAD){
 			td->epc |= Stdin;
@@ -2769,7 +2769,7 @@ isohsinit(Ep *ep, Isoio *iso)
 	frno = iso->td0frno;
 	for(i = 0; i < iso->nframes; i++){
 		td = itdalloc(ctlr);
-		td->buffer[0] = (ep->nb&Epmax)<<Itdepshift | (ep->dev->nb&Devmax)<<Itddevshift;
+		td->buffer[0] = (ep->nb&Epmax)<<Itdepshift | ep->dev->addr<<Itddevshift;
 		td->buffer[1] = (ep->maxpkt << Itdmaxpktshift) | (ep->mode == OREAD? Itdin: Itdout);
 		td->buffer[2] = (ep->ntds << Itdntdsshift);
 		td->data = iso->data + i * 8*iso->maxsize;
@@ -2811,7 +2811,7 @@ isoopen(Ctlr *ctlr, Ep *ep)
 	default:
 		error("iso i/o is half-duplex");
 	}
-	iso->usbid = (ep->nb&Epmax)<<7 | (ep->dev->nb&Devmax);
+	iso->usbid = (ep->nb&Epmax)<<7 | ep->dev->addr;
 	iso->state = Qidle;
 	coherence();
 	iso->debug = ep->debug;
@@ -2930,7 +2930,7 @@ epopen(Ep *ep)
 		cio->debug = ep->debug;
 		cio->ndata = -1;
 		cio->data = nil;
-		if(ep->dev->isroot != 0 && ep->nb == 0)	/* root hub */
+		if(ep->dev->depth < 0 && ep->nb == 0)	/* root hub */
 			break;
 		cio->qh = qhalloc(ctlr, ep, cio, "epc");
 		break;
@@ -2940,7 +2940,7 @@ epopen(Ep *ep)
 	case Tintr:
 		io = ep->aux = smalloc(sizeof(Qio)*2);
 		io[OREAD].debug = io[OWRITE].debug = ep->debug;
-		usbid = (ep->nb&Epmax)<<7 | (ep->dev->nb&Devmax);
+		usbid = (ep->nb&Epmax)<<7 | ep->dev->addr;
 		assert(ep->pollival != 0);
 		if(ep->mode != OREAD){
 			if(ep->toggle[OWRITE] != 0)

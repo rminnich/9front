@@ -100,7 +100,7 @@ rebootcode.$O:	../arm64/rebootcode.s
 main.$O: rebootcode.i
 
 pcilx2k.$O: ../port/pci.h
-usbxhcilx2k.$O: ../port/usbxhci.h
+usbxhcilx2k.$O: ../port/usbxhci.h ../port/usb.h
 usdhc.$O: ../port/sd.h
 
 l.$O main.$O clock.$O gic.$O cache.v8.$O fpu.$O trap.$O rebootcode.$O: ../arm64/sysreg.h

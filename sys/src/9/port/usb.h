@@ -183,16 +183,20 @@ struct Udev
 {
 	int	nb;		/* USB device number */
 	int	state;		/* state for the device */
-	int	ishub;		/* hubs can allocate devices */
-	int	isroot;		/* is a root hub */
-	int	speed;		/* Full/Low/High/Super/No -speed */
+	int	nports;		/* number of downstream ports for hub */
+	int	speed;		/* Full/Low/High/Super -speed */
 	int	hubnb;		/* USB device number for the parent hub */
-	int	hub;		/* device address for the parent hub */
-	int	port;		/* port number in the parent hub */
+	int	hub;		/* device address of parent hub */
+	int	port;		/* port number on parent hub */
 	int	addr;		/* device address */
-	int	depth;		/* hub depth from root port */
+	int	depth;		/* hub depth from root port -1 */
 	int	rootport;	/* port number on root hub */
 	int	routestr;	/* route string */
+
+	int	tthub;		/* device address of TT HS hub */
+	int	ttport;		/* port number on TT HS hub */
+	int	ttt;		/* TT Think-Time for HS hub */
+	int	mtt;		/* Multi TT enabled for HS hub */
 
 	void	*aux;
 	void	(*free)(void*);
