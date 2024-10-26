@@ -311,6 +311,7 @@ goticmpkt(Proto *icmp, Block *bp, Ipifc *ifc)
 	qlock(icmp);
 	iph = iphtlook(&((Icmppriv*)icmp->priv)->ht, src, recid, dst, recid);
 	if(iph != nil){
+		Routehint *rh;
 		Translation *q;
 		int hop = p->ttl;
 
@@ -320,11 +321,13 @@ goticmpkt(Proto *icmp, Block *bp, Ipifc *ifc)
 		hnputs_csum(p->icmpid, q->forward.rport, p->cksum);
 
 		/* only use route-hint when from original desination */
-		if(memcmp(p->src, q->forward.laddr+IPv4off, IPv4addrlen) != 0)
-			q = nil;
+		if(memcmp(p->src, q->forward.laddr+IPv4off, IPv4addrlen) == 0)
+			rh = q;
+		else
+			rh = nil;
 		qunlock(icmp);
 
-		ipoput4(icmp->f, bp, ifc, hop - 1, p->tos, q);
+		ipoput4(icmp->f, bp, ifc, hop - 1, p->tos, rh);
 		return;
 	}
 	for(c = icmp->conv; (s = *c) != nil; c++){

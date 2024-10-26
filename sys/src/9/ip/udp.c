@@ -430,7 +430,9 @@ Noconv:
 		return;
 	}
 	if(iph->trans){
+		Routehint *rh;
 		Translation *q;
+
 		int hop = uh4->ttl;
 		if(hop <= 1 || (q = transbackward(udp, iph)) == nil){
 			qunlock(udp);
@@ -442,10 +444,12 @@ Noconv:
 		hnputs_csum(uh4->udpdport, q->forward.rport, uh4->udpcksum);
 
 		/* only use route-hint when from original desination */
-		if(memcmp(uh4->udpsrc, q->forward.laddr+IPv4off, IPv4addrlen) != 0)
-			q = nil;
+		if(memcmp(uh4->udpsrc, q->forward.laddr+IPv4off, IPv4addrlen) == 0)
+			rh = q;
+		else
+			rh = nil;
 		qunlock(udp);
-		ipoput4(f, bp, ifc, hop - 1, uh4->tos, q);
+		ipoput4(f, bp, ifc, hop - 1, uh4->tos, rh);
 		return;
 	}
 	c = iphconv(iph);
