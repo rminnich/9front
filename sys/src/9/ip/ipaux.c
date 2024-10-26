@@ -520,7 +520,8 @@ transforward(Proto *p, Ipht *ht, uchar *sa, int sp, uchar *da, int dp, Route *r)
 	q->backward.trans = 2;
 	q->backward.lport = lport;
 	ipmove(q->backward.laddr, ia);
-	if(p->ipproto == 1 || ipismulticast(da)){
+	if(p->ipproto == 1 || p->ipproto == 17){
+		/* ICMP and UDP allow reply from anyone (for hole punching) */
 		q->backward.rport = 0;
 		ipmove(q->backward.raddr, IPnoaddr);
 	} else {
