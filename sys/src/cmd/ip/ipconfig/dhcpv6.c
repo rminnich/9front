@@ -189,16 +189,26 @@ Response:
 			memmove(sid, p, sidlen);
 			continue;
 		case 0x03:		/* IA for non-temporary address */
-			if(p+12+4+IPaddrlen+2*4 > x)
+			if(p+12 > x)
 				break;
 			/* skip IAID, T1, T2 */
 			p += 12;
+			/* find IA Address option */
+			while(p + 4 <= x) {
+				opt = (int)p[0] << 8 | p[1];
+				len = (int)p[2] << 8 | p[3];
+				p += 4;
+				if(p + len > x)
+					break;
+				if(opt == 5)
+					break;
+				p += len;
+			}
 			/* IA Addresss */
-			if(p[0] != 0x00 || p[1] != 0x05
-			|| p[2] != 0x00 || p[3] != IPaddrlen+2*4)
+			if(opt != 5)
 				break;
-			p += 4;
-			memset(conf.mask, 0xFF, IPaddrlen);
+			if(len < IPaddrlen)
+				break;
 			memmove(conf.laddr, p, IPaddrlen);
 			continue;
 		case 0x17:	/* dns servers */
@@ -221,10 +231,14 @@ dhcpv6query(void)
 {
 	int fd;
 
-	if(!dodhcp || conf.duidlen <= 0)
-		return;
+	ipmove(conf.laddr, IPnoaddr);
+	memset(conf.mask, 0xFF, IPaddrlen);
 
+	if(conf.duidlen <= 0)
+		return;
 	fd = openlisten();
+	if(fd < 0)
+		return;
 	if(transaction(fd, SOLICIT, 5000) < 0)
 		goto out;
 	if(!validip(conf.laddr))

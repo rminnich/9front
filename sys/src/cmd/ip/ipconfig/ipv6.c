@@ -588,6 +588,8 @@ recvrahost(uchar buf[], int pktlen)
 	if(!ISIPV6LINKLOCAL(ra->src))
 		return -1;
 
+	DEBUG("got RA from %I on %s; flags %x", ra->src, conf.dev, ra->mor);
+
 	conf.ttl = ra->cttl;
 	conf.mflag = (MFMASK & ra->mor) != 0;
 	conf.oflag = (OCMASK & ra->mor) != 0;
@@ -785,8 +787,8 @@ recvrahost(uchar buf[], int pktlen)
 		if(conf.preflt == 0)
 			continue;
 
-		DEBUG("got RA from %I on %s; pfx %I %M",
-			ra->src, conf.dev, conf.v6pref, conf.mask);
+		DEBUG("got prefix %I %M via %I on %s",
+			conf.v6pref, conf.mask, conf.gaddr, conf.dev);
 
 		if(noconfig)
 			continue;
@@ -797,6 +799,9 @@ recvrahost(uchar buf[], int pktlen)
 		putndb(1);
 		refresh();
 	}
+
+	/* pass gateway to dhcpv6 if it is managed network */
+	ipmove(conf.gaddr, conf.mflag? ra->src: IPnoaddr);
 
 	return 0;
 }
