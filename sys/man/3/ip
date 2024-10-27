@@ -366,7 +366,8 @@ Should be set to the ``current diameter of the Internet.''
 ``Zero means unspecified (by this router).''
 .TP
 .B routerlt
-sets the Router Lifetime field of RAs sent from the interface, in ms.
+sets the Router Lifetime field of RAs sent from the interface,
+in seconds.
 Zero means the router is not to be used as a default router.
 .PD
 .RE
