@@ -1597,7 +1597,7 @@ ipconfig(int shell, char *net, char *dev, char *ipnet, int mtu, int proxy, Ipadd
 		if(gate != nil)
 			fprint(shell, "-g %I ", gate);
 		if(ipnet != nil)
-			fprint(shell, "-i %s ", ipnet);
+			fprint(shell, "-i %q ", ipnet);
 	}
 	/* allow dhcpv6 */
 	if(duid != nil)
