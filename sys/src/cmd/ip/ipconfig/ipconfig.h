@@ -149,6 +149,9 @@ void	warning(char *fmt, ...);
 #define DEBUG if(debug)warning
 #pragma	varargck argpos	warning 1
 
+/* for ndbvalfmt */
+#pragma varargck type "$" char*
+
 /*
  * DHCP
  */

@@ -52,8 +52,6 @@ static void	ndbconfig(void);
 
 static int	Ufmt(Fmt*);
 #pragma varargck type "U" char*
-/* for ndbvalfmt */
-#pragma varargck type "$" char*
 
 void
 usage(void)
@@ -768,7 +766,7 @@ putndb(int doadd)
 
 	if(doadd){
 		if(ipnet != nil && validip(conf.raddr)){
-			p = seprint(p, e, "ipnet=%s ip=%I ipmask=%M ipgw=%I\n",
+			p = seprint(p, e, "ipnet=%$ ip=%I ipmask=%M ipgw=%I\n",
 				ipnet, conf.raddr, conf.mask, conf.gaddr);
 		}
 		if(validip(conf.laddr)){

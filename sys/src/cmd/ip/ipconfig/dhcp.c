@@ -909,7 +909,7 @@ optgetx(uchar *p, uchar opt)
 		break;
 	case Tstr:
 		if(optgetstr(p, opt, str, sizeof str))
-			s = smprint("%s=%s", o->name, str);
+			s = smprint("%s=%$", o->name, str);
 		break;
 	case Tvec:
 		n = optgetvec(p, opt, vec, sizeof vec);
