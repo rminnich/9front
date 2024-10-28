@@ -26,6 +26,8 @@ static	char	*chatfile;
 int	debug;
 char*	LOG = "ppp";
 char*	keyspec = "";
+char*	ipnet4;
+char*	ipnet6;
 
 /*
  * Calculate FCS - rfc 1331
@@ -1573,9 +1575,11 @@ ppptimer(PPP *ppp)
 }
 
 static void
-ipconfig(int shell, char *net, char *dev, int mtu, int proxy, Ipaddr gate, Ipaddr dns[2], char *duid)
+ipconfig(int shell, char *net, char *dev, char *ipnet, int mtu, int proxy, Ipaddr gate, Ipaddr dns[2], char *duid)
 {
 	fprint(shell, "ip/ipconfig -x %q ", net);
+	if(debug)
+		fprint(shell, "-D ");
 	if(!primary){
 		/* don't write /net/ndb */
 		fprint(shell, "-P ");
@@ -1592,6 +1596,8 @@ ipconfig(int shell, char *net, char *dev, int mtu, int proxy, Ipaddr gate, Ipadd
 		/* set default gateway */
 		if(gate != nil)
 			fprint(shell, "-g %I ", gate);
+		if(ipnet != nil)
+			fprint(shell, "-i %s ", ipnet);
 	}
 	/* allow dhcpv6 */
 	if(duid != nil)
@@ -1607,10 +1613,10 @@ static void
 addip(int shell, char *net, char *dev, Ipaddr local, Ipaddr remote, int mtu, Ipaddr *dns)
 {
 	if(validv4(local) && validv4(remote)){
-		ipconfig(shell, net, dev, mtu, proxy, remote, dns, nil);
+		ipconfig(shell, net, dev, ipnet4, mtu, proxy, remote, dns, nil);
 		fprint(shell, "add %I 255.255.255.255 %I\n", local, remote);
 	} else if(validv6(local)){
-		ipconfig(shell, net, dev, mtu, 0, nil, nil, nil);
+		ipconfig(shell, net, dev, ipnet6, mtu, 0, nil, nil, nil);
 		fprint(shell, "add %I /64\n", local);
 	}
 }
@@ -1619,10 +1625,10 @@ static void
 delip(int shell, char *net, char *dev, Ipaddr local, Ipaddr remote)
 {
 	if(validv4(local) && validv4(remote)){
-		ipconfig(shell, net, dev, 0, 0, remote, nil, nil);
+		ipconfig(shell, net, dev, ipnet4, 0, 0, remote, nil, nil);
 		fprint(shell, "del %I 255.255.255.255\n", local);
 	} else if(validv6(local)){
-		ipconfig(shell, net, dev, 0, 0, nil, nil, nil);
+		ipconfig(shell, net, dev, ipnet6, 0, 0, nil, nil, nil);
 		fprint(shell, "del %I /64\n", local);
 	}
 }
@@ -1632,7 +1638,7 @@ v6autoconfig(int shell, char *net, char *dev, Ipaddr remote, char *duid)
 {
 	if(server || !validv6(remote))
 		return;
-	ipconfig(shell, net, dev, 0, proxy, remote, nil, duid);
+	ipconfig(shell, net, dev, ipnet6, 0, proxy, remote, nil, duid);
 	fprint(shell, "ra6 recvra 1\n");
 }
 
@@ -2810,7 +2816,7 @@ int interactive;
 void
 usage(void)
 {
-	fprint(2, "usage: ppp [-CPSacdfuy] [-b baud] [-k keyspec] [-m mtu] "
+	fprint(2, "usage: ppp [-CPSacdfuy] [-b baud] [-iI ipnet] [-k keyspec] [-m mtu] "
 		"[-M chatfile] [-p dev] [-x netmntpt] [-t modemcmd] [-U duid] "
 		"[local-addr [remote-addr]]\n");
 	exits("usage");
@@ -2869,6 +2875,12 @@ main(int argc, char **argv)
 		break;
 	case 'F':
 		pppframing = 0;
+		break;
+	case 'i':
+		ipnet4 = EARGF(usage());
+		break;
+	case 'I':
+		ipnet6 = EARGF(usage());
 		break;
 	case 'k':
 		keyspec = EARGF(usage());

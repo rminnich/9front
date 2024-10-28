@@ -21,6 +21,7 @@ int debug;
 int rflag;
 int sessid;
 char *duid;
+char *ipnet4, *ipnet6;
 char *keyspec;
 char *pppnetmtpt;
 char *acname;
@@ -96,6 +97,12 @@ main(int argc, char **argv)
 		break;
 	case 'm':
 		mtu = atoi(EARGF(usage()));
+		break;
+	case 'i':
+		ipnet4 = EARGF(usage());
+		break;
+	case 'I':
+		ipnet6 = EARGF(usage());
 		break;
 	case 'k':
 		keyspec = EARGF(usage());
@@ -642,6 +649,14 @@ execppp(int fd)
 	if(pppnetmtpt){
 		argv[argc++] = "-x";
 		argv[argc++] = pppnetmtpt;
+	}
+	if(ipnet4){
+		argv[argc++] = "-i";
+		argv[argc++] = ipnet4;
+	}
+	if(ipnet6){
+		argv[argc++] = "-I";
+		argv[argc++] = ipnet6;
 	}
 	if(keyspec){
 		argv[argc++] = "-k";

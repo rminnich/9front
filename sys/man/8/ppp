@@ -9,6 +9,13 @@ ppp, pppoe, pptp, pptpd \- point-to-point protocol
 .B -b
 .I baud
 ] [
+] [
+.B -i
+.I ipnet
+] [
+.B -I
+.I ipnet
+] [
 .B -k
 .I keyspec
 ] [
@@ -47,6 +54,12 @@ ppp, pppoe, pptp, pptpd \- point-to-point protocol
 ] [
 .B -U
 .I duid
+] [
+.B -i
+.I ipnet
+] [
+.B -I
+.B ipnet
 ] [
 .B -k
 .I keyspec
@@ -128,6 +141,20 @@ disallow IP header compression
 .B f
 make PPP add HDLC framing.  This is necessary when using
 PPP over a serial line or a TCP connection
+.TP
+.B i
+when writing IPv4 configuration to
+.BR /net/ndb ,
+create a
+.B ipnet=
+tuple with the value of
+.I ipnet
+and the network attributes.
+.TP
+.B I
+same as
+.B -i
+but for IPv6.
 .TP
 .B k
 add
