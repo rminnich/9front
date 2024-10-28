@@ -16,6 +16,8 @@ ipconfig, rip, linklocal \- Internet configuration and routing
 .IR gateway ]
 .RB [ -h
 .IR host ]
+.BR [ -i
+.IR ipnet ]
 .RB [ -m
 .IR mtu ]
 .RB [ -o
@@ -191,6 +193,15 @@ file servers and auth servers.
 the hostname to add to DHCP requests.  Some DHCP
 servers, such as the one used by Comcast, will not respond
 unless a correct hostname is in the request.
+.TP
+.B i
+when writing
+.B /net/ndb
+configuration, create an
+.B ipnet=
+tuple with the value of
+.I ipnet
+and the gathered network attributes.
 .TP
 .B m
 the maximum IP packet size to use on this interface.

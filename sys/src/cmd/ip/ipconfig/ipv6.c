@@ -198,6 +198,7 @@ parse6pref(int argc, char **argv)
 			sysfatal("bad address %s", argv[0]);
 		break;
 	}
+	genipmask(conf.v6mask, conf.prefixlen);
 	DEBUG("parse6pref: pref %I len %d", conf.v6pref, conf.prefixlen);
 }
 
@@ -391,7 +392,7 @@ Again:
 		if(validip(conf.gaddr) && !isv4(conf.gaddr)
 		&& ipcmp(conf.gaddr, conf.laddr) != 0
 		&& ipcmp(conf.gaddr, conf.lladdr) != 0)
-			adddefroute(conf.gaddr, conf.laddr, conf.laddr, conf.mask);
+			adddefroute(conf.gaddr, conf.laddr, conf.laddr, conf.raddr, conf.mask);
 		return 0;
 	}
 
@@ -530,8 +531,8 @@ masklen(uchar *mask)
 	return len;
 }
 
-static void
-genipmkask(uchar *mask, int len)
+void
+genipmask(uchar *mask, int len)
 {
 	memset(mask, 0, IPaddrlen);
 	if(len < 0)
@@ -563,11 +564,27 @@ struct Route
 
 static Route	*routelist;
 
+int
+validv6prefix(uchar *ip)
+{
+	if(!validip(ip))
+		return 0;
+	if(isv4(ip))
+		return 0;
+	if(ipcmp(ip, v6loopback) == 0)
+		return 0;
+	if(ISIPV6MCAST(ip))
+		return 0;
+	if(ISIPV6LINKLOCAL(ip))
+		return 0;
+	return 1;
+}
+
 /*
  * host receiving a router advertisement calls this
  */
 static int
-recvrahost(uchar buf[], int pktlen)
+recvrahost(uchar buf[], int pktlen, ulong now)
 {
 	char dnsdomain[sizeof(conf.dnsdomain)];
 	int m, n, optype, seen;
@@ -576,9 +593,9 @@ recvrahost(uchar buf[], int pktlen)
 	Prefixopt *prfo;
 	Ipaddrsopt *addrso;
 	Routeradv *ra;
+	uchar raddr[IPaddrlen];
 	uchar hash[SHA1dlen];
 	Route *r, **rr;
-	ulong now;
 
 	m = sizeof *ra;
 	ra = (Routeradv*)buf;
@@ -590,6 +607,13 @@ recvrahost(uchar buf[], int pktlen)
 
 	DEBUG("got RA from %I on %s; flags %x", ra->src, conf.dev, ra->mor);
 
+	/*
+	 * ignore all non-managed-flag router-advertisements
+	 * when dhcpv6 is active so we do not trash conf data.
+	 */
+	if(dodhcp && conf.state && (MFMASK & ra->mor) == 0)
+		return -1;
+
 	conf.ttl = ra->cttl;
 	conf.mflag = (MFMASK & ra->mor) != 0;
 	conf.oflag = (OCMASK & ra->mor) != 0;
@@ -597,6 +621,8 @@ recvrahost(uchar buf[], int pktlen)
 	conf.reachtime = nhgetl(ra->rchbltime);
 	conf.rxmitra = nhgetl(ra->rxmtimer);
 	conf.linkmtu = DEFMTU;
+
+	ipmove(conf.v6router, conf.routerlt? ra->src: IPnoaddr);
 
 	memset(conf.dns, 0, sizeof(conf.dns));
 	memset(conf.fs, 0, sizeof(conf.fs));
@@ -657,8 +683,6 @@ recvrahost(uchar buf[], int pktlen)
 
 	issuebasera6(&conf);
 
-	now = time(nil);
-
 	/* remove expired default routes */
 	m = 0;
 	for(rr = &routelist; (r = *rr) != nil;){
@@ -667,8 +691,10 @@ recvrahost(uchar buf[], int pktlen)
 		|| r->routerlt != ~0UL && r->routerlt < now-r->time){
 			DEBUG("purging RA from %I on %s; pfx %I %M",
 				r->src, conf.dev, r->laddr, r->mask);
-			if(!noconfig && validip(r->gaddr))
-				deldefroute(r->gaddr, conf.lladdr, r->laddr, r->mask);
+			if(validip(r->gaddr)){
+				maskip(r->laddr, r->mask, raddr);
+				deldefroute(r->gaddr, conf.lladdr, r->laddr, raddr, r->mask);
+			}
 			*rr = r->next;
 			free(r);
 			continue;
@@ -679,6 +705,10 @@ recvrahost(uchar buf[], int pktlen)
 
 	/* remove expired prefixes */
 	issuedel6(&conf);
+
+	/* managed netork: prefixes are acquired with dhcpv6 */
+	if(dodhcp && conf.mflag)
+		return 0;
 
 	/* process new prefixes */
 	m = sizeof *ra;
@@ -704,18 +734,15 @@ recvrahost(uchar buf[], int pktlen)
 		|| conf.prefixlen > 64)
 			continue;
 
-		genipmkask(conf.mask, conf.prefixlen);
-		maskip(prfo->pref, conf.mask, conf.v6pref);
-		if(!validip(conf.v6pref)
-		|| isv4(conf.v6pref)
-		|| ipcmp(conf.v6pref, v6loopback) == 0
-		|| ISIPV6MCAST(conf.v6pref)
-		|| ISIPV6LINKLOCAL(conf.v6pref))
+		genipmask(conf.v6mask, conf.prefixlen);
+		maskip(prfo->pref, conf.v6mask, conf.v6pref);
+		if(!validv6prefix(conf.v6pref))
 			continue;
-
+		ipmove(conf.raddr, conf.v6pref);
+		ipmove(conf.mask, conf.v6mask);
 		memmove(conf.laddr, conf.v6pref, 8);
 		memmove(conf.laddr+8, conf.lladdr+8, 8);
-		ipmove(conf.gaddr, (prfo->lar & RFMASK) != 0? prfo->pref: ra->src);
+		ipmove(conf.gaddr, (prfo->lar & RFMASK) != 0? prfo->pref: conf.v6router);
 		conf.onlink = (prfo->lar & OLMASK) != 0;
 		conf.autoflag = (prfo->lar & AFMASK) != 0;
 		conf.validlt = nhgetl(prfo->validlt);
@@ -723,8 +750,7 @@ recvrahost(uchar buf[], int pktlen)
 		if(conf.preflt > conf.validlt)
 			continue;
 
-		if(conf.routerlt == 0
-		|| conf.preflt == 0
+		if(conf.preflt == 0
 		|| isula(conf.laddr)
 		|| ipcmp(conf.gaddr, conf.laddr) == 0
 		|| ipcmp(conf.gaddr, conf.lladdr) == 0)
@@ -754,8 +780,8 @@ recvrahost(uchar buf[], int pktlen)
 			seen = memcmp(r->hash, hash, SHA1dlen) == 0;
 			if(!seen && validip(r->gaddr) && ipcmp(r->gaddr, conf.gaddr) != 0){
 				DEBUG("changing router %I->%I", r->gaddr, conf.gaddr);
-				if(!noconfig)
-					deldefroute(r->gaddr, conf.lladdr, r->laddr, r->mask);
+				maskip(r->laddr, r->mask, raddr);
+				deldefroute(r->gaddr, conf.lladdr, r->laddr, raddr, r->mask);
 			}
 		} else {
 			seen = 0;
@@ -790,18 +816,12 @@ recvrahost(uchar buf[], int pktlen)
 		DEBUG("got prefix %I %M via %I on %s",
 			conf.v6pref, conf.mask, conf.gaddr, conf.dev);
 
-		if(noconfig)
-			continue;
-
 		if(validip(conf.gaddr))
-			adddefroute(conf.gaddr, conf.lladdr, conf.laddr, conf.mask);
+			adddefroute(conf.gaddr, conf.lladdr, conf.laddr, conf.raddr, conf.mask);
 
 		putndb(1);
 		refresh();
 	}
-
-	/* pass gateway to dhcpv6 if it is managed network */
-	ipmove(conf.gaddr, conf.mflag? ra->src: IPnoaddr);
 
 	return 0;
 }
@@ -814,6 +834,7 @@ recvra6(void)
 {
 	int fd, n, sendrscnt, gotra, pktcnt, sleepfor;
 	uchar buf[4096];
+	ulong now;
 
 	fd = dialicmpv6(v6allnodesL, ICMP6_RA);
 	if(fd < 0)
@@ -834,15 +855,16 @@ recvra6(void)
 	procsetname("recvra6 on %s %I", conf.dev, conf.lladdr);
 	notify(catch);
 
+	gotra = 0;
+restart:
 	sendrscnt = 0;
 	if(recvra6on(myifc) == IsHostRecv){
 		sendrs(fd, v6allroutersL);
 		sendrscnt = Maxv6rss;
 	}
-
-	gotra = 0;
 	pktcnt = 0;
 	sleepfor = Minv6interradelay;
+	conf.state = 0;	/* dhcpv6 off */
 
 	for (;;) {
 		alarm(sleepfor);
@@ -858,6 +880,7 @@ recvra6(void)
 			pktcnt = 1;
 		}
 		sleepfor = Maxv6radelay;
+		now = time(nil);
 
 		myifc = readipifc(conf.mpoint, myifc, myifc->index);
 		if(myifc == nil) {
@@ -884,34 +907,104 @@ recvra6(void)
 				sendrs(fd, v6allroutersL);
 				sleepfor = V6rsintvl + nrand(100);
 			} else if(!gotra) {
-				gotra = 1;
 				warning("recvra6: no router advs after %d sols on %s",
 					Maxv6rss, conf.dev);
 				rendezvous(recvra6, (void*)0);
-			}
+			} else if(dodhcp && conf.state)
+				goto renewdhcp;
 			continue;
 		}
 
-		if(recvrahost(buf, n) < 0)
+		if(recvrahost(buf, n, now) < 0)
 			continue;
 
-		/* got at least initial ra; no whining */
-		if(!gotra){
-			gotra = 1;
-			if(dodhcp && conf.mflag){
-				dhcpv6query();
-				if(noconfig || !validip(conf.laddr))
+		if(dodhcp && conf.mflag){
+			if(conf.state){
+				if(validip(conf.gaddr) && ipcmp(conf.gaddr, conf.v6router) != 0){
+					warning("dhcpv6: default router changed %I -> %I on %s",
+						conf.gaddr, conf.v6router, conf.dev);
+				} else {
+renewdhcp:
+					/* when renewing, wait for lease to time-out */
+					if(now < conf.timeout)
+						continue;
+				}
+			}
+			if(dhcpv6query(conf.state) < 0){
+				if(conf.state == 0)
 					continue;
+
+				DEBUG("dhcpv6 failed renew for %I with prefix %I %M via %I on %s",
+					conf.laddr, conf.v6pref, conf.v6mask, conf.gaddr, conf.dev);
+
+				if(!noconfig){
+					fprint(conf.rfd, "tag dhcp");
+					if(validip(conf.gaddr))
+						if(conf.preflt && validv6prefix(conf.v6pref) && !isula(conf.v6pref))
+							deldefroute(conf.gaddr, conf.lladdr, IPnoaddr, conf.v6pref, conf.v6mask);
+					ipunconfig();
+					fprint(conf.rfd, "tag ra6");
+				}
+				/* restart sending router solitications */
+				conf.state = 0;
+				goto restart;
+			}
+			now = time(nil);
+			conf.state = 1;	/* dhcpv6 active */
+			sendrscnt = 0;	/* stop sending router solicitations */
+
+			DEBUG("dhcpv6 got %I with prefix %I %M via %I on %s for lease %lud",
+				conf.laddr, conf.v6pref, conf.v6mask, conf.v6router, conf.dev, conf.lease);
+
+			if(!noconfig){
 				fprint(conf.rfd, "tag dhcp");
+
+				if(validip(conf.gaddr) && ipcmp(conf.gaddr, conf.v6router) != 0){
+					deldefroute(conf.gaddr, conf.lladdr, conf.laddr, conf.raddr, conf.mask);
+					if(conf.preflt && validv6prefix(conf.v6pref) && !isula(conf.v6pref))
+						deldefroute(conf.gaddr, conf.lladdr, IPnoaddr, conf.v6pref, conf.v6mask);
+				}
+				ipmove(conf.gaddr, conf.v6router);
+
 				if(ip6cfg() < 0){
 					fprint(conf.rfd, "tag ra6");
 					continue;
 				}
 				putndb(1);
+				if(conf.preflt && validv6prefix(conf.v6pref)){
+					uchar save[IPaddrlen];
+
+					/* if we got a delegated prefix, add the default route */
+					if(validip(conf.gaddr) && !isula(conf.v6pref))
+						adddefroute(conf.gaddr, conf.lladdr, IPnoaddr, conf.v6pref, conf.v6mask);
+
+					/* store prefix info in /net/ndb */
+					ipmove(save, conf.laddr);
+					ipmove(conf.laddr, IPnoaddr);		/* we don't have an address there */
+					ipmove(conf.raddr, conf.v6pref);
+					ipmove(conf.mask, conf.v6mask);
+					putndb(1);
+					ipmove(conf.laddr, save);
+					ipmove(conf.raddr, save);		/* was same as laddr as /128 */
+					memset(conf.mask, 0xFF, IPaddrlen);
+				}
 				refresh();
-				rendezvous(recvra6, (void*)1);
+				fprint(conf.rfd, "tag ra6");
+			}
+			/* infinity */
+			if(conf.lease == ~0UL){
+				if(!gotra)
+					rendezvous(recvra6, (void*)1);
 				exits(nil);
 			}
+			if(conf.lease < 60)
+				conf.lease = 60;
+			conf.timeout = now + conf.lease;
+		}
+
+		/* got at least initial ra; no whining */
+		if(!gotra){
+			gotra = 1;
 			rendezvous(recvra6, (void*)1);
 		}
 	}
@@ -1004,11 +1097,7 @@ sendra(int fd, uchar *dst, int rlt, Ipifc *ifc, Ndb *db)
 		if(pktlen > sizeof buf - 4*8)
 			break;
 
-		if(!validip(lifc->ip)
-		|| isv4(lifc->ip)
-		|| ipcmp(lifc->ip, v6loopback) == 0
-		|| ISIPV6MCAST(lifc->ip)
-		|| ISIPV6LINKLOCAL(lifc->ip))
+		if(!validv6prefix(lifc->ip))
 			continue;
 
 		prfo = (Prefixopt*)&buf[pktlen];

@@ -45,6 +45,7 @@ struct Conf
 	uchar	laddr[IPaddrlen];
 	uchar	mask[IPaddrlen];
 	uchar	raddr[IPaddrlen];
+
 	uchar	dns[8*IPaddrlen];
 	uchar	fs[2*IPaddrlen];
 	uchar	auth[2*IPaddrlen];
@@ -69,6 +70,7 @@ struct Conf
 	/*
 	 * IPv6
 	 */
+	uchar	v6router[IPaddrlen];
 
 	/* router-advertisement related */
 	uchar	sendra;
@@ -86,6 +88,7 @@ struct Conf
 	/* prefix related */
 	uchar	lladdr[IPaddrlen];
 	uchar	v6pref[IPaddrlen];
+	uchar	v6mask[IPaddrlen];
 	int	prefixlen;
 	uchar	onlink;		/* flag: address is `on-link' */
 	uchar	autoflag;	/* flag: autonomous */
@@ -118,13 +121,14 @@ extern int	dupl_disc;
 extern int	nodhcpwatch;
 extern int	sendhostname;
 extern char	*ndboptions;
+extern char	*ipnet;		/* put ipnet= tuple in ndb for raddr */
 
 void	usage(void);
 int	ip4cfg(void);
 void	ipunconfig(void);
 
-void	adddefroute(uchar*, uchar*, uchar*, uchar*);
-void	deldefroute(uchar*, uchar*, uchar*, uchar*);
+void	adddefroute(uchar*, uchar*, uchar*, uchar*, uchar*);
+void	deldefroute(uchar*, uchar*, uchar*, uchar*, uchar*);
 
 int	myip(Ipifc*, uchar*);
 int	isether(void);
@@ -163,9 +167,10 @@ void	doipv6(int);
 void	ea2lla(uchar *lla, uchar *ea);
 int	findllip(uchar *ip, Ipifc *ifc);
 int	ip6cfg(void);
+int	validv6prefix(uchar *ip);
+void	genipmask(uchar *mask, int len);
 
 /*
  * DHCPv6
  */
-void	dhcpv6init(void);
-void	dhcpv6query(void);
+int	dhcpv6query(int);

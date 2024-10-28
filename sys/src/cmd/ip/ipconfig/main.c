@@ -30,6 +30,7 @@ int	dodhcp;
 int	nodhcpwatch;
 int	sendhostname;
 char	*ndboptions;
+char	*ipnet;
 
 int	ipv6auto;
 int	dupl_disc = 1;		/* flag: V6 duplicate neighbor discovery */
@@ -58,7 +59,7 @@ void
 usage(void)
 {
 	fprint(2, "usage: %s [-6dDGnNOpPrtuXy][-b baud][-c ctl]* [-U duid] [-g gw]"
-		"[-h host][-m mtu][-s dns]...\n"
+		"[-h host][-i ipnet][-m mtu][-s dns]...\n"
 		"\t[-f dbfile][-x mtpt][-o dhcpopt] type dev [verb] [laddr [mask "
 		"[raddr [fs [auth]]]]]\n", argv0);
 	exits("usage");
@@ -400,6 +401,9 @@ main(int argc, char **argv)
 			sysfatal("bad hostname");
 		sendhostname = 1;
 		break;
+	case 'i':
+		ipnet = EARGF(usage());
+		break;
 	case 'm':
 		conf.mtu = atoi(EARGF(usage()));
 		break;
@@ -569,7 +573,7 @@ dodel(void)
 		return;
 
 	if(validip(conf.gaddr))
-		deldefroute(conf.gaddr, conf.laddr, conf.laddr, conf.mask);
+		deldefroute(conf.gaddr, conf.laddr, conf.laddr, conf.raddr, conf.mask);
 
 	/* use "remove" verb instead of "del" for older kernels */
 	if(conf.cfd >= 0 && fprint(conf.cfd, "remove %I %M", conf.laddr, conf.mask) < 0)
@@ -595,6 +599,8 @@ openiproute(void)
 {
 	char buf[127];
 
+	if(noconfig)
+		return;
 	snprint(buf, sizeof buf, "%s/iproute", conf.mpoint);
 	conf.rfd = open(buf, OWRITE);
 }
@@ -684,7 +690,7 @@ ip4cfg(void)
 
 	if(validip(conf.gaddr) && isv4(conf.gaddr)
 	&& ipcmp(conf.gaddr, conf.laddr) != 0)
-		adddefroute(conf.gaddr, conf.laddr, conf.laddr, conf.mask);
+		adddefroute(conf.gaddr, conf.laddr, conf.laddr, conf.laddr, conf.mask);
 
 	if(tflag)
 		fprint(conf.cfd, "iprouting 1");
@@ -754,37 +760,43 @@ putndb(int doadd)
 	Ndb *db;
 	int fd;
 
-	if(beprimary == 0)
+	if(beprimary == 0 || noconfig)
 		return;
 
 	p = buf;
 	e = buf + sizeof buf;
 
 	if(doadd){
-		p = seprint(p, e, "ip=%I ipmask=%M ipgw=%I\n",
-			conf.laddr, conf.mask, conf.gaddr);
-		if(np = strchr(conf.hostname, '.')){
-			if(*conf.domainname == 0)
-				strcpy(conf.domainname, np+1);
-			*np = 0;
+		if(ipnet != nil && validip(conf.raddr)){
+			p = seprint(p, e, "ipnet=%s ip=%I ipmask=%M ipgw=%I\n",
+				ipnet, conf.raddr, conf.mask, conf.gaddr);
 		}
-		if(*conf.hostname)
-			p = seprint(p, e, "\tsys=%U\n", conf.hostname);
-		if(*conf.domainname)
-			p = seprint(p, e, "\tdom=%U.%U\n",
-				conf.hostname, conf.domainname);
-		if(*conf.dnsdomain)
-			p = putnames(p, e, "\tdnsdomain", conf.dnsdomain);
-		if(validip(conf.dns))
-			p = putaddrs(p, e, "\tdns", conf.dns, sizeof conf.dns);
-		if(validip(conf.fs))
-			p = putaddrs(p, e, "\tfs", conf.fs, sizeof conf.fs);
-		if(validip(conf.auth))
-			p = putaddrs(p, e, "\tauth", conf.auth, sizeof conf.auth);
-		if(validip(conf.ntp))
-			p = putaddrs(p, e, "\tntp", conf.ntp, sizeof conf.ntp);
-		if(ndboptions)
-			p = seprint(p, e, "%s\n", ndboptions);
+		if(validip(conf.laddr)){
+			p = seprint(p, e, "ip=%I ipmask=%M ipgw=%I\n",
+				conf.laddr, conf.mask, conf.gaddr);
+			if(np = strchr(conf.hostname, '.')){
+				if(*conf.domainname == 0)
+					strcpy(conf.domainname, np+1);
+				*np = 0;
+			}
+			if(*conf.hostname)
+				p = seprint(p, e, "\tsys=%U\n", conf.hostname);
+			if(*conf.domainname)
+				p = seprint(p, e, "\tdom=%U.%U\n",
+					conf.hostname, conf.domainname);
+			if(*conf.dnsdomain)
+				p = putnames(p, e, "\tdnsdomain", conf.dnsdomain);
+			if(validip(conf.dns))
+				p = putaddrs(p, e, "\tdns", conf.dns, sizeof conf.dns);
+			if(validip(conf.fs))
+				p = putaddrs(p, e, "\tfs", conf.fs, sizeof conf.fs);
+			if(validip(conf.auth))
+				p = putaddrs(p, e, "\tauth", conf.auth, sizeof conf.auth);
+			if(validip(conf.ntp))
+				p = putaddrs(p, e, "\tntp", conf.ntp, sizeof conf.ntp);
+			if(ndboptions)
+				p = seprint(p, e, "%s\n", ndboptions);
+		}
 	}
 
 	/* for myip() */
@@ -797,10 +809,11 @@ putndb(int doadd)
 		while((t = ndbparse(db)) != nil){
 			uchar ip[IPaddrlen];
 
-			if(ndbfindattr(t, t, "ipnet") != nil
-			|| (nt = ndbfindattr(t, t, "ip")) == nil
-			|| parseip(ip, nt->val) == -1
-			|| ipcmp(ip, conf.laddr) != 0 && myip(allifcs, ip)){
+			nt = ndbfindattr(t, t, "ipnet");
+			if(nt != nil && (ipnet == nil || strcmp(nt->val, ipnet) != 0)
+			|| nt == nil && ((nt = ndbfindattr(t, t, "ip")) == nil
+				|| parseip(ip, nt->val) == -1
+				|| ipcmp(ip, conf.laddr) != 0 && myip(allifcs, ip))){
 				if(p > buf)
 					p = seprint(p, e, "\n");
 				for(nt = t; nt != nil; nt = nt->entry)
@@ -843,7 +856,7 @@ routectl(char *cmd, uchar *dst, uchar *mask, uchar *gate, char *flags, uchar *ia
 }
 
 static void
-defroutectl(char *cmd, uchar *gaddr, uchar *ia, uchar *src, uchar *smask)
+defroutectl(char *cmd, uchar *gaddr, uchar *ia, uchar *laddr, uchar *src, uchar *smask)
 {
 	uchar dst[IPaddrlen], mask[IPaddrlen];
 
@@ -870,21 +883,21 @@ defroutectl(char *cmd, uchar *gaddr, uchar *ia, uchar *src, uchar *smask)
 	}
 
 	/* add source specific route for us */
-	if(validip(src))
-		routectl(cmd, dst, mask, gaddr, "", ia, src, IPallbits);
+	if(validip(laddr))
+		routectl(cmd, dst, mask, gaddr, "", ia, laddr, IPallbits);
 }
 
 void
-adddefroute(uchar *gaddr, uchar *ia, uchar *src, uchar *smask)
+adddefroute(uchar *gaddr, uchar *ia, uchar *laddr, uchar *src, uchar *smask)
 {
-	defroutectl("add", gaddr, ia, src, smask);
+	defroutectl("add", gaddr, ia, laddr, src, smask);
 }
 
 void
-deldefroute(uchar *gaddr, uchar *ia, uchar *src, uchar *smask)
+deldefroute(uchar *gaddr, uchar *ia, uchar *laddr, uchar *src, uchar *smask)
 {
 	/* use "remove" verb instead of "del" for older kernels */
-	defroutectl("remove", gaddr, ia, src, smask);
+	defroutectl("remove", gaddr, ia, laddr, src, smask);
 }
 
 void
@@ -892,6 +905,9 @@ refresh(void)
 {
 	char file[64];
 	int fd;
+
+	if(noconfig)
+		return;
 
 	snprint(file, sizeof file, "%s/cs", conf.mpoint);
 	if((fd = open(file, OWRITE)) >= 0){
