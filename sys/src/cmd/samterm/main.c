@@ -583,7 +583,7 @@ type(Flayer *l, int res)	/* what a bloody mess this is */
 		center(l, a0);
 	}else if(c == Kright){
 		flushtyping(0);
-		a0 = l->p0;
+		a0 = l->p1;
 		if(a0 < t->rasp.nrunes)
 			a0++;
 		flsetselect(l, a0, a0);
