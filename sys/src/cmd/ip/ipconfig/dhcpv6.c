@@ -37,7 +37,7 @@ openlisten(void)
 	int n, fd, cfd;
 	char data[128], devdir[40];
 
-	sprint(data, "%s/udp!%I!546", conf.mpoint, conf.lladdr);
+	snprint(data, sizeof(data), "%s/udp!%I!546", conf.mpoint, conf.lladdr);
 	for (n = 0; (cfd = announce(data, devdir)) < 0; n++) {
 		if(!noconfig)
 			sysfatal("can't announce for dhcp: %r");
@@ -54,7 +54,7 @@ openlisten(void)
 
 	fprint(cfd, "ignoreadvice");
 
-	sprint(data, "%s/data", devdir);
+	snprint(data, sizeof(data), "%s/data", devdir);
 	fd = open(data, ORDWR);
 	if(fd < 0)
 		sysfatal("open %s: %r", data);
