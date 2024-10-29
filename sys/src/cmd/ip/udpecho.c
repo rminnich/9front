@@ -23,14 +23,14 @@ main(int argc, char **argv)
 		break;
 	}ARGEND;
 
-	sprint(data, "%s/udp!*!echo", net);
+	snprint(data, sizeof(data), "%s/udp!*!echo", net);
 	cfd = announce(data, devdir);
 	if(cfd < 0)
 		sysfatal("can't announce %s: %r", data);
 	if(fprint(cfd, "headers") < 0)
 		sysfatal("can't set header mode: %r");
 
-	sprint(data, "%s/data", devdir);
+	snprint(data, sizeof(data), "%s/data", devdir);
 	fd = open(data, ORDWR);
 	if(fd < 0)
 		sysfatal("open %s: %r", data);

@@ -24,7 +24,7 @@ getremote(char *dir)
 	char remfile[256];
 	static char buf[256];
 
-	sprint(remfile, "%s/remote", dir);
+	snprint(remfile, sizeof(remfile), "%s/remote", dir);
 	fd = open(remfile, OREAD);
 	if(fd < 0)
 		return nil;

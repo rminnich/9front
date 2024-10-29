@@ -55,8 +55,8 @@ main(int argc, char *argv[])
 	uchar buf[2048];
 	long n;
 	Rarp *rp;
-	char ebuf[16];
 	char ipbuf[64];
+	char ebuf[128];
 	char file[128];
 	int arp;
 	char *p, *ndbfile;
@@ -102,7 +102,7 @@ main(int argc, char *argv[])
 
 	if(myipaddr(myip, net) < 0)
 		error("can't get my ip address");
-	sprint(ebuf, "%s/%s", net, device);
+	snprint(ebuf, sizeof(ebuf), "%s/%s", net, device);
 	if(myetheraddr(myether, ebuf) < 0)
 		error("can't get my ether address");
 
@@ -138,7 +138,7 @@ main(int argc, char *argv[])
 			syslog(debug, rlog, "rcv se %E si %V te %E ti %V",
 				 rp->sha, rp->spa, rp->tha, rp->tpa);
 
-		sprint(ebuf, "%E", rp->tha);
+		snprint(ebuf, sizeof(ebuf), "%E", rp->tha);
 		if(lookup("ether", ebuf, "ip", ipbuf, sizeof ipbuf) == nil){
 			syslog(debug, rlog, "client lookup failed: %s", ebuf);
 			continue;

@@ -333,7 +333,7 @@ openport(void)
 	if(fprint(ripctl, "headers") < 0)
 		fatal(1, "can't set header mode");
 
-	sprint(data, "%s/data", devdir);
+	snprint(data, sizeof(data), "%s/data", devdir);
 	rip = open(data, ORDWR);
 	if(rip < 0)
 		fatal(1, "open udp data");

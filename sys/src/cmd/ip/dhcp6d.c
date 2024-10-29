@@ -120,7 +120,7 @@ openlisten(char *net)
 	Ipifc *ifc;
 	Iplifc *lifc;
 
-	sprint(data, "%s/udp!*!dhcp6s", net);
+	snprint(data, sizeof(data), "%s/udp!*!dhcp6s", net);
 	cfd = announce(data, devdir);
 	if(cfd < 0)
 		sysfatal("can't announce: %r");
@@ -139,7 +139,7 @@ openlisten(char *net)
 		}
 	}
 
-	sprint(data, "%s/data", devdir);
+	snprint(data, sizeof(data), "%s/data", devdir);
 	fd = open(data, ORDWR);
 	if(fd < 0)
 		sysfatal("open udp data: %r");

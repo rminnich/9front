@@ -1187,13 +1187,13 @@ port(void)
 	int port;
 
 	/* get a channel to listen on, let kernel pick the port number */
-	sprint(buf, "%s!*!0", net);
+	snprint(buf, sizeof(buf), "%s!*!0", net);
 	listenfd = announce(buf, netdir);
 	if(listenfd < 0)
 		return seterr("can't announce");
 
 	/* get the local address and port number */
-	sprint(buf, "%s/local", netdir);
+	snprint(buf, sizeof(buf), "%s/local", netdir);
 	fd = open(buf, OREAD);
 	if(fd < 0)
 		return seterr("opening %s: %r", buf);
@@ -1205,8 +1205,10 @@ port(void)
 	ptr = strchr(buf, ' ');
 	if(ptr)
 		*ptr = 0;
-	ptr = strchr(buf, '!')+1;
-	port = atoi(ptr);
+	ptr = strchr(buf, '!');
+	if(ptr == 0)
+		return seterr("no port in address: %s", buf);
+	port = atoi(ptr+1);
 
 	memset(ipaddr, 0, IPaddrlen);
 	if (*net){
@@ -1218,8 +1220,10 @@ port(void)
 	}
 
 	/* tell remote side */
-	sprint(buf, "PORT %d,%d,%d,%d,%d,%d", ipaddr[IPv4off+0], ipaddr[IPv4off+1],
-		ipaddr[IPv4off+2], ipaddr[IPv4off+3], port>>8, port&0xff);
+	snprint(buf, sizeof(buf), "PORT %d,%d,%d,%d,%d,%d",
+		ipaddr[IPv4off+0], ipaddr[IPv4off+1],
+		ipaddr[IPv4off+2], ipaddr[IPv4off+3],
+		port>>8, port&0xff);
 	sendrequest(buf, nil);
 	if(getreply(&ctlin, msg, sizeof(msg), 0) != Success)
 		return seterr(msg);
@@ -1254,7 +1258,7 @@ active(int mode, Biobuf **bpp, char *cmda, char *cmdb)
 	close(listenfd);
 
 	/* open it's data connection and close the control connection */
-	sprint(datafile, "%s/data", newdir);
+	snprint(datafile, sizeof(datafile), "%s/data", newdir);
 	dfd = open(datafile, ORDWR);
 	close(cfd);
 	if(dfd < 0)

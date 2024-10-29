@@ -1326,14 +1326,14 @@ openlisten(char *net)
 	int fd, cfd;
 	char data[128], devdir[40];
 
-	sprint(data, "%s/udp!*!bootp", net);
+	snprint(data, sizeof(data), "%s/udp!*!bootp", net);
 	cfd = announce(data, devdir);
 	if(cfd < 0)
 		fatal("can't announce: %r");
 	if(fprint(cfd, "headers") < 0)
 		fatal("can't set header mode: %r");
 	fprint(cfd, "ignoreadvice");
-	sprint(data, "%s/data", devdir);
+	snprint(data, sizeof(data), "%s/data", devdir);
 	fd = open(data, ORDWR);
 	if(fd < 0)
 		fatal("open udp data: %r");

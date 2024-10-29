@@ -60,7 +60,7 @@ csquery(DS *ds, char *clone, char *dest)
 	/*
 	 *  ask connection server to translate
 	 */
-	sprint(buf, "%s!%s", ds->proto, ds->rem);
+	snprint(buf, sizeof(buf), "%s!%s", ds->proto, ds->rem);
 	if(write(fd, buf, strlen(buf)) < 0){
 		close(fd);
 		return -1;
