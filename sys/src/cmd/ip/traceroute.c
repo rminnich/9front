@@ -270,7 +270,7 @@ call(DS *ds, char *clone, char *dest, int ttl, long *interval)
 	msg[n] = 0;
 
 	/* open data file */
-	sprint(file, "%s/%s/%s/data", ds->netdir, ds->proto, msg);
+	snprint(file, sizeof(file), "%s/%s/%s/data", ds->netdir, ds->proto, msg);
 	dfd = open(file, ORDWR);
 	if(dfd < 0)
 		goto out;
