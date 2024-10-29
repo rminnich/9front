@@ -66,12 +66,14 @@ getremote(char *dir)
 	int fd, n;
 	char remfile[Maxpath];
 
-	sprint(remfile, "%s/remote", dir);
+	snprint(remfile, sizeof(remfile), "%s/remote", dir);
 	fd = open(remfile, OREAD);
-	if(fd < 0)
-		strcpy(remotesys, "unknown2");
+	if(fd < 0){
+		strcpy(remotesys, remfile);
+		return;
+	}
 	n = read(fd, remotesys, sizeof(remotesys)-1);
-	if(n>0)
+	if(n > 0)
 		remotesys[n-1] = 0;
 	else
 		strcpy(remotesys, remfile);
