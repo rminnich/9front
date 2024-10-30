@@ -174,7 +174,7 @@ listendir(char *srvdir, int trusted)
 		return;
 	}
 
-	procsetname("%s %s %s %s", protodir, addr, srvdir, namespace);
+	procsetname("%s %s %s", protodir, addr, srvdir);
 	if (!trusted)
 		becomenone();
 
