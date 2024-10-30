@@ -1,0 +1,49 @@
+#!/bin/rc
+p=0
+if(! ~ $#* 0)
+	p=$1
+cd /proc || exit
+ls -d [0-9]* | sort -n | awk -v 'this='^$p '
+function cat(f,	v){
+	getline v < f
+	close(f)
+	return v
+}
+BEGIN{
+	OFS="\t"
+}
+{
+	s = cat($1"/args")
+	if(s == ""){
+		s = cat($1"/status")
+		s = substr(s, 1, 27)
+		gsub(" *", "", s)
+	}
+	p = int(cat($1"/ppid"))
+	child[p,++nchild[p]] = $1
+	proc[$1] = s
+	ppid[$1] = p
+	pid[NR] = $1
+}
+function out(p, sep, k,	m,	i, n, c, s){
+	n = nchild[p]
+	if(p != 0 && proc[p] != "")
+		printf "%-11s%s%s%s\n", p, sep, k, proc[p]
+	s = m > 0 ? "│" : " "
+	k = "├"
+	for(i=1; i<=n; i++){
+		c = child[p,i]
+		if(i == n)
+			k = "└"
+		out(c, sep s, k, n - i)
+	}
+}
+END{
+	for(i=1; i<=length(pid); i++){
+		p = pid[i]
+		if(!(ppid[p] in proc) && ppid[p] != 0)
+			child[0,++nchild[0]] = p
+	}
+	out(this, "", "", 0)
+}
+'

@@ -16,6 +16,9 @@ ps, psu, pstree \- process status
 ]
 .PP
 .B pstree
+[
+.I pid
+]
 .SH DESCRIPTION
 .I Ps
 prints information about processes.
@@ -113,6 +116,9 @@ prints the processes as a tree in a two-column layout where
 the first column being the process id and second column
 the program name and arguments indented and prefixed with
 line drawing runes to reflect the nesting in the hierarchy.
+It optionally accepts an argument
+.I pid
+to only print a tree for the corresponding process.
 .SH FILES
 .B /proc/*/status
 .SH SOURCE
@@ -120,7 +126,7 @@ line drawing runes to reflect the nesting in the hierarchy.
 .br
 .B /rc/bin/psu
 .br
-.B /sys/src/cmd/pstree.c
+.B /rc/bin/pstree
 .SH "SEE ALSO"
 .IR acid (1),
 .IR db (1),
