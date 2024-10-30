@@ -46,6 +46,9 @@ dhcpd, dhcp6d, dhcpleases, rarpd, tftpd \- Internet booting
 .IR nsfile ]
 .RB [ -m
 .IR mapfile ]
+[
+.I addr
+]
 .SH DESCRIPTION
 These programs support booting over the Internet.
 They should all be run on the same server to
@@ -295,6 +298,13 @@ transfers files to systems that are booting.
 It runs as user
 .B none
 and can only access files with global read permission.
+By default
+.I tftpd
+announces on all local IPs found on
+.IR netmtpt ,
+the
+.I addr
+argument may be used to specify a single local address to use.
 The options are:
 .TP
 .B d

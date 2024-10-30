@@ -119,7 +119,7 @@ static char *opnames[] = {
 void
 usage(void)
 {
-	fprint(2, "usage: %s [-dr] [-h homedir] [-s svc] [-x netmtpt] [-n nsfile] [-m mapfile]\n",
+	fprint(2, "usage: %s [-dr] [-h homedir] [-s svc] [-x netmtpt] [-n nsfile] [-m mapfile] [addr]\n",
 		argv0);
 	exits("usage");
 }
@@ -127,10 +127,11 @@ usage(void)
 void
 main(int argc, char **argv)
 {
-	char buf[64];
+	char buf[128];
 	char adir[64], ldir[64];
 	int cfd, lcfd, dfd;
-	char *svc = "69";
+	char *svc = "tftp";
+	char *addr = "*";
 
 	setnetmtpt(net, sizeof net, nil);
 	ARGBEGIN{
@@ -158,6 +159,8 @@ main(int argc, char **argv)
 	default:
 		usage();
 	}ARGEND
+	if(argc)
+		addr = argv[0];
 
 	dirsllen = strlen(homedir);
 	while(dirsllen > 0 && homedir[dirsllen-1] == '/')
@@ -185,10 +188,11 @@ main(int argc, char **argv)
 			exits(0);
 		}
 
-	snprint(buf, sizeof buf, "%s/udp!*!%s", net, svc);
+	snprint(buf, sizeof buf, "%s/udp!%s!%s", net, addr, svc);
 	cfd = announce(buf, adir);
 	if (cfd < 0)
 		sysfatal("announcing on %s: %r", buf);
+	procsetname("%s", buf);
 	syslog(dbg, flog, "tftpd started on %s dir %s", buf, adir);
 	for(;;) {
 		lcfd = listen(adir, ldir);
