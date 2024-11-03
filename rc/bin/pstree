@@ -1,9 +1,7 @@
 #!/bin/rc
-p=0
-if(! ~ $#* 0)
-	p=$1
-cd /proc || exit
-ls -d [0-9]* | sort -n | awk -v 'this='^$p '
+if(~ $#* 0)
+	*=0
+cd /proc && ls | sort -n | awk -v 'this='^$1 '
 function cat(f,	v){
 	getline v < f
 	close(f)
@@ -12,7 +10,7 @@ function cat(f,	v){
 BEGIN{
 	OFS="\t"
 }
-{
+/^[0-9]+/ {
 	s = cat($1"/args")
 	if(s == ""){
 		s = cat($1"/status")
@@ -41,7 +39,7 @@ function out(p, sep, k,	m,	i, n, c, s){
 END{
 	for(i=1; i<=length(pid); i++){
 		p = pid[i]
-		if(!(ppid[p] in proc) && ppid[p] != 0)
+		if(p && !(ppid[p] in proc) && ppid[p] != 0)
 			child[0,++nchild[0]] = p
 	}
 	out(this, "", "", 0)
