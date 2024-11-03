@@ -449,6 +449,13 @@ usbcmd(Dev *d, int type, int req, int value, int index, uchar *data, int count)
 			if(r == 0)
 				werrstr("no data from device");
 		}
+
+		/* don't retry GET_STATUS requests */
+		if(type == (Rd2h|Rclass|Rother)
+		&& req == Rgetstatus
+		&& value == 0)
+			break;
+
 		nerr++;
 		if(*err == 0)
 			rerrstr(err, sizeof(err));
