@@ -74,6 +74,12 @@ configusb2hub(Hub *h, DHub *dd, int nr)
 		pp->pwrctl = (PortPwrCtrlMask[offset] & mask) != 0;
 	}
 	h->mtt = h->dev->usb->ver == 0x0200 && Proto(h->dev->usb->csp) == 2;
+
+	if(usbcmd(h->dev, Rh2d|Rstd|Rdev, Rsetconf, 1, 0, nil, 0) < 0){
+		fprint(2, "%s: %s: hub setconf #1: %r\n", argv0, h->dev->dir);
+		return -1;
+	}
+
 	if(h->mtt){	/* try enable multi TT */
 		if(usbcmd(h->dev, Rh2d|Rstd|Riface, Rsetiface, 1, 0, nil, 0) < 0){
 			fprint(2, "%s: %s: setifcace (mtt): %r\n", argv0, h->dev->dir);
@@ -111,6 +117,18 @@ configusb3hub(Hub *h, DSSHub *dd, int)
 		pp->removable = (dd->DeviceRemovable[offset] & mask) != 0;
 	}
 	h->mtt = 0;
+
+	/*
+	 * SetConfiguration(0) appears to be neccessary for self powered
+	 * usb3 hub after upstream disconnect with the power remaining.
+	 */
+	if(usbcmd(h->dev, Rh2d|Rstd|Rdev, Rsetconf, 0, 0, nil, 0) < 0)
+		fprint(2, "%s: %s: hub setconf #0: %r\n", argv0, h->dev->dir);
+
+	if(usbcmd(h->dev, Rh2d|Rstd|Rdev, Rsetconf, 1, 0, nil, 0) < 0){
+		fprint(2, "%s: %s: hub setconf #1: %r\n", argv0, h->dev->dir);
+		return -1;
+	}
 	if(usbcmd(h->dev, Rh2d|Rclass|Rdev, Rsethubdepth, h->dev->depth, 0, nil, 0) < 0){
 		fprint(2, "%s: %s: sethubdepth: %r\n", argv0, h->dev->dir);
 		return -1;
@@ -462,10 +480,9 @@ portattach(Hub *h, int p, u32int sts)
 			return -1;
 		sleep(i*50);
 	}
-
 	/*
 	 * for xhci, this command is ignored by the driver as the device address
-	 * has already been assigned by the controller firmware.
+	 * has already been assigned by the controller firmware when opening ep0.
 	 */
 	if(usbcmd(nd, Rh2d|Rstd|Rdev, Rsetaddress, nd->id&0x7f, 0, nil, 0) < 0){
 		dprint(2, "%s: %s: port %d: setaddress: %r\n", argv0, d->dir, p);
@@ -494,18 +511,6 @@ portattach(Hub *h, int p, u32int sts)
 		return -1;
 	}
 
-	/*
-	 * We always set conf #1. BUG.
-	 */
-	if(usbcmd(nd, Rh2d|Rstd|Rdev, Rsetconf, 1, 0, nil, 0) < 0){
-		dprint(2, "%s: %s: port %d: setconf: %r\n", argv0, d->dir, p);
-		if(usbcmd(nd, Rh2d|Rstd|Rdev, Rsetconf, 1, 0, nil, 0) < 0)
-			return -1;
-	}
-
-	pp->state = Pconfigured;
-	dprint(2, "%s: %s: port %d: configured: %s\n", argv0, d->dir, p, nd->dir);
-
 	/* assign stable name based on device descriptor */
 	assignhname(nd);
 
@@ -519,8 +524,21 @@ portattach(Hub *h, int p, u32int sts)
 		if(pp->hub == nil)
 			return -1;
 
+		pp->state = Pconfigured;
 		return 0;
 	}
+
+	/*
+	 * We always set conf #1. BUG.
+	 */
+	if(usbcmd(nd, Rh2d|Rstd|Rdev, Rsetconf, 1, 0, nil, 0) < 0){
+		fprint(2, "%s: %s: port %d: setconf: %r\n", argv0, d->dir, p);
+		if(usbcmd(nd, Rh2d|Rstd|Rdev, Rsetconf, 1, 0, nil, 0) < 0)
+			return -1;
+	}
+
+	pp->state = Pconfigured;
+	dprint(2, "%s: %s: port %d: configured: %s\n", argv0, d->dir, p, nd->dir);
 
 	/* close control endpoint so driver can open it */
 	close(nd->dfd);
