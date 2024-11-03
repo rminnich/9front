@@ -81,7 +81,7 @@ if(! test -e /net/dns)
 
 if(! ps|grep -s timesync){
 	if(~ $#ntp 0)
-		. <{ndb/ipquery sys $sysname ntp | sed 's, +,\n,g'}
+		ntp=`{ndb/query -cia sys $sysname ntp}
 	if(~ $#ntp 0)
 		ntp=pool.ntp.org
 	aux/timesync -n $ntp
@@ -95,9 +95,9 @@ if not if(test -d /cfg/default/service)
 if not
 	serviced=/rc/bin/service
 if(~ $#auth 0)
-	auth=`{ndb/ipquery sys $sysname auth | sed 's,auth=,,g'}
+	auth=`{ndb/query -cia sys $sysname auth}
 if(@{
-	for(a in `{ndb/ipquery sys $sysname ip sys dom | sed 's,(ip|sys|dom)=,,g'}){
+	for(a in $sysname `{ndb/query -cia sys $sysname ip} `{ndb/query -cia sys $sysname dom}){
 		if(~ $a $auth)
 			exit ''
 	}
