@@ -98,4 +98,4 @@ if(~ $terminal *reform*){
 	reform/audio
 }
 
-dontkill '^(ipconfig|factotum|mntgen|venti|hjfs|kfs|cfs|cwfs.*|9660srv|dossrv|paqfs|cs|dns|listen|reboot|usbd|kb|disk|ether|wpa)$'
+dontkill '^(9660srv|cfs|cs|cwfs.*|disk|dns|dossrv|ether|factotum|gefs|hjfs|ipconfig|kb|kfs|mntgen|paqfs|reboot|usbd|venti|wpa)$'
