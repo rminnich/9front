@@ -1909,7 +1909,7 @@ cancelisoio(Ctlr *ctlr, Isoio *iso, int pollival, ulong load)
 }
 
 static void
-epclose(Ep *ep)
+epstop(Ep *ep)
 {
 	Ctlr *ctlr;
 	Ctlio *cio;
@@ -1917,16 +1917,15 @@ epclose(Ep *ep)
 	Qio *io;
 
 	ctlr = ep->hp->aux;
-	deprint("uhci: epclose ep%d.%d\n", ep->dev->nb, ep->nb);
+	deprint("uhci: epstop ep%d.%d\n", ep->dev->nb, ep->nb);
 
 	if(ep->aux == nil)
-		panic("uhci: epclose called with closed ep");
+		panic("uhci: epstop called with closed ep");
+
 	switch(ep->ttype){
 	case Tctl:
 		cio = ep->aux;
 		cancelio(ctlr, cio);
-		free(cio->data);
-		cio->data = nil;
 		break;
 	case Tbulk:
 	case Tintr:
@@ -1948,12 +1947,35 @@ epclose(Ep *ep)
 		cancelisoio(ctlr, iso, ep->pollival, ep->load);
 		break;
 	default:
+		panic("epstop: bad ttype %d", ep->ttype);
+	}
+}
+
+static void
+epclose(Ep *ep)
+{
+	Ctlio *cio;
+
+	deprint("uhci: epclose ep%d.%d\n", ep->dev->nb, ep->nb);
+
+	if(ep->aux == nil)
+		panic("uhci: epclose called with closed ep");
+
+	switch(ep->ttype){
+	case Tctl:
+		cio = ep->aux;
+		free(cio->data);
+		cio->data = nil;
+		break;
+	case Tbulk:
+	case Tintr:
+	case Tiso:
+		break;
+	default:
 		panic("epclose: bad ttype %d", ep->ttype);
 	}
-
 	free(ep->aux);
 	ep->aux = nil;
-
 }
 
 static char*
@@ -2327,6 +2349,7 @@ reset(Hci *hp)
 	hp->init = init;
 	hp->interrupt = interrupt;
 	hp->epopen = epopen;
+	hp->epstop = epstop;
 	hp->epclose = epclose;
 	hp->epread = epread;
 	hp->epwrite = epwrite;

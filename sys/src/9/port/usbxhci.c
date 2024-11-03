@@ -928,13 +928,10 @@ interrupt(Ureg*, void *arg)
 }
 
 static void
-freeslot(void *arg)
+freeslot(Slot *slot)
 {
-	Slot *slot;
-
-	if(arg == nil)
+	if(slot == nil)
 		return;
-	slot = arg;
 	if(slot->id > 0){
 		Ctlr *ctlr = slot->ctlr;
 		qlock(&ctlr->slotlock);
@@ -1026,7 +1023,6 @@ initdevctx(Ctlr *ctlr, Slot *slot)
 {
 	Udev *dev = slot->dev;
 	u32int *w;
-	int i;
 
 	/* (input) control context */
 	w = slot->ibase;
@@ -1044,29 +1040,43 @@ initdevctx(Ctlr *ctlr, Slot *slot)
 		w[2] |= dev->ttt<<16;
 	}
 
-	if(dev->speed < Highspeed && dev->tthub != 0 && dev->ttport != 0){
-		qlock(&ctlr->slotlock);
-		for(i=1; i<=ctlr->nslots; i++){
-			Slot *hub = ctlr->slot[i];
-
-			if(hub == nil || hub->dev == nil || hub->dev->aux != hub)
-				continue;
-			if(hub == slot || hub->dev == dev)
-				continue;
-
-			if(hub->dev->addr != dev->tthub)
-				continue;
-			if(hub->dev->rootport != dev->rootport)
-				continue;
-
+	if(dev->tthub != nil){
+		Slot *hub = dev->tthub->aux;
+		if(hub != nil && hub->dev == dev->tthub){
 			w[0] |= hub->dev->mtt<<25;
 			w[2] |= hub->id | dev->ttport<<8;
-			break;
 		}
-		qunlock(&ctlr->slotlock);
 	}
 
 	return slot->ibase;
+}
+
+static void
+epstop(Ep *ep)
+{
+	Ctlr *ctlr;
+	Slot *slot;
+	Ring *ring;
+	Epio *io;
+
+	if(ep->nb == 0 || ep->dev->depth < 0)
+		return;
+
+	io = ep->aux;
+	if(io == nil)
+		return;
+
+	ctlr = ep->hp->aux;
+	slot = ep->dev->aux;
+
+	if((ring = io[OREAD].ring) != nil && ring->stopped == 0){
+		ctlrcmd(ctlr, CR_STOPEP | (ring->id<<16) | (slot->id<<24), 0, 0, nil);
+		ring->stopped = 1;
+	}
+	if((ring = io[OWRITE].ring) != nil && ring->stopped == 0){
+		ctlrcmd(ctlr, CR_STOPEP | (ring->id<<16) | (slot->id<<24), 0, 0, nil);
+		ring->stopped = 1;
+	}
 }
 
 static void
@@ -1097,13 +1107,11 @@ epclose(Ep *ep)
 			w[0] |= 1 << ring->id;
 			if(ring->id == slot->nep)
 				slot->nep--;
-			ctlrcmd(ctlr, CR_STOPEP | (ring->id<<16) | (slot->id<<24), 0, 0, nil);
 		}
 		if((ring = io[OWRITE].ring) != nil){
 			w[0] |= 1 << ring->id;
 			if(ring->id == slot->nep)
 				slot->nep--;
-			ctlrcmd(ctlr, CR_STOPEP | (ring->id<<16) | (slot->id<<24), 0, 0, nil);
 		}
 
 		/* find largest index still in use */ 
@@ -1272,6 +1280,12 @@ initep(Ep *ep)
 }
 
 static void
+devclose(Udev *dev)
+{
+	freeslot(dev->aux);
+}
+
+static void
 epopen(Ep *ep)
 {
 	Ctlr *ctlr = ep->hp->aux;
@@ -1338,10 +1352,16 @@ epopen(Ep *ep)
 	/* (output) slot context */
 	w = slot->obase;
 
+	if(((w[3] >> 27) & 0x1F) < 2)
+		error("xhci did not set device address");
+
 	dev->addr = w[3] & 0xFF;
+	if(dev->addr == 0 || dev->addr > Devmax){
+		dev->addr = 0;
+		error("xhci returned invalid device address");
+	}
 
 	dev->aux = slot;
-	dev->free = freeslot;
 
 	poperror();
 	poperror();
@@ -1823,10 +1843,12 @@ xhcilinkage(Hci *hp, Xhci *ctlr)
 
 	hp->interrupt = interrupt;
 	hp->epopen = epopen;
+	hp->epstop = epstop;
 	hp->epclose = epclose;
 	hp->epread = epread;
 	hp->epwrite = epwrite;
 	hp->seprintep = seprintep;
+	hp->devclose = devclose;
 	hp->portenable = portenable;
 	hp->portreset = portreset;
 	hp->portstatus = portstatus;

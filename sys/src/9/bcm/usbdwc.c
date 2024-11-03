@@ -180,8 +180,8 @@ chansetup(Hostchan *hc, Ep *ep)
 		hcc |= Lspddev;
 		/* fall through */
 	case Fullspeed:
-		if(ep->dev->tthub != 0 && ep->dev->ttport != 0){
-			hc->hcsplt = Spltena | POS_ALL | ep->dev->tthub<<OHubaddr | ep->dev->ttport;
+		if(ep->dev->tthub != nil){
+			hc->hcsplt = Spltena | POS_ALL | ep->dev->tthub->addr<<OHubaddr | ep->dev->ttport;
 			break;
 		}
 		/* fall through */
@@ -582,10 +582,8 @@ ctltrans(Ep *ep, uchar *req, long n)
 		datalen = GET2(req+Rcount);
 		if(datalen <= 0 || datalen > Maxctllen)
 			error(Ebadlen);
-		/* XXX cache madness */
 		epio->cb = b = allocb(ROUND(datalen, ep->maxpkt));
 		assert(((uintptr)b->wp & (BLOCKALIGN-1)) == 0);
-		memset(b->wp, 0x55, b->lim - b->wp);
 		cachedwbinvse(b->wp, b->lim - b->wp);
 		data = b->wp;
 	}else{
@@ -604,7 +602,7 @@ ctltrans(Ep *ep, uchar *req, long n)
 	chansetup(hc, ep);
 	chanio(ep, hc, Epout, SETUP, req, Rsetuplen);
 	if(req[Rtype] & Rd2h){
-		if(ep->dev->hub <= 1){
+		if(ep->dev->depth == 0){
 			ep->toggle[Read] = DATA1;
 			b->wp += multitrans(ep, hc, Read, data, datalen);
 		}else

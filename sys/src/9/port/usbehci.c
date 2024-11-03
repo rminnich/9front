@@ -682,8 +682,10 @@ qhalloc(Ctlr *ctlr, Ep *ep, Qio *io, char* tag)
 		coherence();
 		qhsetaddr(qh, io->usbid);
 		qh->eps1 = (ep->ntds & Qhmultmask) << Qhmultshift;
-		qh->eps1 |= ep->dev->ttport << Qhportshift;
-		qh->eps1 |= ep->dev->tthub << Qhhubshift;
+		if(ep->dev->tthub != nil){
+			qh->eps1 |= ep->dev->tthub->addr << Qhhubshift;
+			qh->eps1 |= ep->dev->ttport << Qhportshift;
+		}
 		qh->eps1 |= 034 << Qhscmshift;
 		if(ep->ttype == Tintr)
 			qh->eps1 |= 1 << Qhismshift;	/* intr. start µf. */
@@ -2725,10 +2727,11 @@ isofsinit(Ep *ep, Isoio *iso)
 	for(i = 0; i < iso->nframes; i++){
 		td = sitdalloc(ctlr);
 		td->data = iso->data + i * ep->maxpkt;
-		td->epc = ep->dev->ttport << Stdportshift;
-		td->epc |= ep->dev->tthub << Stdhubshift;
-		td->epc |= (ep->nb&Epmax) << Stdepshift;
-		td->epc |= ep->dev->addr << Stddevshift;
+		td->epc = (ep->nb&Epmax) << Stdepshift | ep->dev->addr << Stddevshift;
+		if(ep->dev->tthub != nil){
+			td->epc |= ep->dev->tthub->addr << Stdhubshift;
+			td->epc |= ep->dev->ttport << Stdportshift;
+		}
 		td->mfs = 034 << Stdscmshift | 1 << Stdssmshift;
 		if(ep->mode == OREAD){
 			td->epc |= Stdin;
@@ -3095,7 +3098,7 @@ cancelisoio(Ctlr *ctlr, Isoio *iso, ulong load)
 }
 
 static void
-epclose(Ep *ep)
+epstop(Ep *ep)
 {
 	Qio *io;
 	Ctlio *cio;
@@ -3103,16 +3106,15 @@ epclose(Ep *ep)
 	Ctlr *ctlr;
 
 	ctlr = ep->hp->aux;
-	deprint("ehci: epclose ep%d.%d\n", ep->dev->nb, ep->nb);
+	deprint("ehci: epstop ep%d.%d\n", ep->dev->nb, ep->nb);
 
 	if(ep->aux == nil)
-		panic("ehci: epclose called with closed ep");
+		panic("ehci: epstop called with closed ep");
+
 	switch(ep->ttype){
 	case Tctl:
 		cio = ep->aux;
 		cancelio(ctlr, cio);
-		free(cio->data);
-		cio->data = nil;
 		break;
 	case Tintr:
 	case Tbulk:
@@ -3128,11 +3130,35 @@ epclose(Ep *ep)
 			if(io[OWRITE].toggle == Tddata1)
 				ep->toggle[OWRITE] = 1;
 		}
-		coherence();
 		break;
 	case Tiso:
 		iso = ep->aux;
 		cancelisoio(ctlr, iso, ep->load);
+		break;
+	default:
+		panic("epstop: bad ttype");
+	}
+}
+
+static void
+epclose(Ep *ep)
+{
+	Ctlio *cio;
+
+	deprint("ehci: epclose ep%d.%d\n", ep->dev->nb, ep->nb);
+
+	if(ep->aux == nil)
+		panic("ehci: epclose called with closed ep");
+
+	switch(ep->ttype){
+	case Tctl:
+		cio = ep->aux;
+		free(cio->data);
+		cio->data = nil;
+		break;
+	case Tintr:
+	case Tbulk:
+	case Tiso:
 		break;
 	default:
 		panic("epclose: bad ttype");
@@ -3292,6 +3318,7 @@ ehcilinkage(Hci *hp)
 	hp->init = init;
 	hp->interrupt = interrupt;
 	hp->epopen = epopen;
+	hp->epstop = epstop;
 	hp->epclose = epclose;
 	hp->epread = epread;
 	hp->epwrite = epwrite;

@@ -326,7 +326,7 @@ seprintep(char *s, char *se, Ep *ep, int all)
 	s = seprint(s, se, " samplesz %ld", ep->samplesz);
 	s = seprint(s, se, " hz %ld", ep->hz);
 	s = seprint(s, se, " uframes %d", ep->uframes);
-	s = seprint(s, se, " hub %d", ep->dev->hubnb);
+	s = seprint(s, se, " hub %d", ep->dev->hub? ep->dev->hub->nb: 0);
 	s = seprint(s, se, " port %d", ep->dev->port);
 	s = seprint(s, se, " rootport %d", ep->dev->rootport);
 	s = seprint(s, se, " addr %d", ep->dev->addr);
@@ -409,33 +409,38 @@ static void
 putep(Ep *ep)
 {
 	Udev *d;
+	Ep *next;
 
-	if(ep == nil || decref(ep) > 0)
-		return;
-	d = ep->dev;
-	deprint("usb: ep%d.%d %#p released\n", d->nb, ep->nb, ep);
-	qlock(ep->ep0);
-	qlock(&epslck);
-	assert(d->eps[ep->nb] == ep);
-	d->eps[ep->nb] = nil;
-	assert(eps[ep->idx] == ep);
-	eps[ep->idx] = nil;
-	if(ep->idx == epmax-1){
-		while(epmax > 0 && eps[epmax-1] == nil)
-			epmax--;
+	for(; ep != nil; ep = next){
+		if(decref(ep) > 0)
+			return;
+		assert(ep->inuse == 0);
+		d = ep->dev;
+		deprint("usb: ep%d.%d %#p released\n", d->nb, ep->nb, ep);
+		qlock(ep->ep0);
+		qlock(&epslck);
+		assert(d->eps[ep->nb] == ep);
+		d->eps[ep->nb] = nil;
+		assert(eps[ep->idx] == ep);
+		eps[ep->idx] = nil;
+		if(ep->idx == epmax-1){
+			while(epmax > 0 && eps[epmax-1] == nil)
+				epmax--;
+		}
+		qunlock(&epslck);
+		qunlock(ep->ep0);
+		if(ep->ep0 != ep)
+			next = ep->ep0;
+		else {
+			next = d->hub != nil? d->hub->eps[0]: nil;
+			if(ep->hp->devclose != nil)
+				(*ep->hp->devclose)(d);
+			free(d);
+		}
+		free(ep->info);
+		free(ep->name);
+		free(ep);
 	}
-	qunlock(&epslck);
-	qunlock(ep->ep0);
-	if(ep->ep0 != ep)
-		putep(ep->ep0);
-	else {
-		if(d->free != nil)
-			(*d->free)(d->aux);
-		free(d);
-	}
-	free(ep->info);
-	free(ep->name);
-	free(ep);
 }
 
 static int
@@ -497,22 +502,22 @@ newdev(Hci *hp, Ep *hub, int port, int speed)
 
 	d->nports = 0;
 	d->rootport = d->routestr = 0;
-	d->tthub = d->ttport = d->ttt = d->mtt = 0;
+	d->ttport = d->ttt = d->mtt = 0;
+	d->tthub = nil;
 
 	if(hub != nil){
-		d->hub = hub->dev->addr;
-		d->hubnb = hub->dev->nb;
-		d->depth = hub->dev->depth+1;
+		d->hub = hub->dev;
+		d->depth = d->hub->depth+1;
 		if(d->depth > 0){
 			assert(d->depth <= 5);
-			d->routestr = hub->dev->routestr | (d->port<15? d->port: 15) << 4*(d->depth-1);
+			d->routestr = d->hub->routestr | (d->port<15? d->port: 15) << 4*(d->depth-1);
 			if(speed < Highspeed){
-				if(hub->dev->speed == Highspeed){
-					d->tthub = hub->dev->addr;
+				if(d->hub->speed == Highspeed){
+					d->tthub = d->hub;
 					d->ttport = port;
 				}else {
-					d->tthub = hub->dev->tthub;
-					d->ttport = hub->dev->ttport;
+					d->tthub = d->hub->tthub;
+					d->ttport = d->hub->ttport;
 				}
 			}
 		}
@@ -520,8 +525,7 @@ newdev(Hci *hp, Ep *hub, int port, int speed)
 		if(d->rootport == 0)
 			error(Ebadport);
 	} else {
-		d->hub = 0;
-		d->hubnb = 0;
+		d->hub = nil;
 		d->depth = -1;
 	}
 
@@ -548,8 +552,9 @@ newdev(Hci *hp, Ep *hub, int port, int speed)
 	ep->ep0 = ep;			/* no ref counted here */
 	ep->dev = d;
 	d->eps[0] = ep;
+	if(hub != nil)
+		incref(hub);
 	incref(ep);
-
 	qunlock(&epslck);
 	poperror();
 	poperror();
@@ -1049,18 +1054,21 @@ usbclose(Chan *c)
 		return;
 
 	deprint("usbclose q %#x fid %d ref %ld\n", q, c->fid, ep->ref);
-
 	qlock(ep);
 	if(!ep->inuse)
 		qunlock(ep);
 	else {
 		if(!waserror()){
-			(*ep->hp->epclose)(ep);
+			if(ep->hp->epstop != nil)
+				(*ep->hp->epstop)(ep);
+			if(ep->hp->epclose != nil)
+				(*ep->hp->epclose)(ep);
 			poperror();
 		}
 		ep->inuse = 0;
+		ep->aux = nil;
 		qunlock(ep);
-		putep(ep);	/* release ref kept since usbopen */
+		putep(ep);	/* release ref from usbopen() */
 	}
 	putep(ep);		/* release ref of getep() above */
 }
@@ -1219,7 +1227,7 @@ usbread(Chan *c, void *a, long n, vlong offset)
 		ddeprint("\nusbread q %#x fid %d cnt %ld off %lld\n",q,c->fid,n,offset);
 	Again:
 		nr = (*ep->hp->epread)(ep, a, n);
-		if(nr == 0 && ep->ttype == Tiso){
+		if(nr == 0 && ep->ttype == Tiso && ep->dev->state != Ddetach){
 			tsleep(&up->sleep, return0, nil, 2*ep->pollival);
 			goto Again;
 		}
@@ -1315,9 +1323,18 @@ epctl(Ep *ep, Chan *c, void *a, long n)
 		d->state = Ddetach;
 		qunlock(ep);
 		poperror();
-		/* Release file system ref. for its endpoints */
-		for(i = 0; i < nelem(d->eps); i++)
-			putep(d->eps[i]);
+		for(i = 0; i < nelem(d->eps); i++){
+			ep = d->eps[i];
+			if(ep != nil){
+				qlock(ep);
+				if(ep->inuse && ep->hp->epstop != nil && !waserror()){
+					(*ep->hp->epstop)(ep);
+					poperror();
+				}
+				qunlock(ep);
+				putep(ep);
+			}
+		}
 		goto Unlocked;
 	case CMpreset:
 		if(d->state != Denabled)

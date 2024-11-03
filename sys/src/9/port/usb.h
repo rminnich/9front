@@ -90,7 +90,8 @@ enum
  * Services provided by the driver.
  * epopen allocates hardware structures to prepare the endpoint
  * for I/O. This happens when the user opens the data file.
- * epclose releases them. This happens when the data file is closed.
+ * epstop canceles in-flight I/O and epclose releases them.
+ * This happens when the data file is closed.
  * epwrite tries to write the given bytes, waiting until all of them
  * have been written (or failed) before returning; but not for Iso.
  * epread does the same for reading.
@@ -102,7 +103,7 @@ enum
  * hubs. Port status must return bits as a hub request would do.
  * Toggle handling and other details are left for the controller driver
  * to avoid mixing too much the controller and the comon device.
- * While an endpoint is closed, its toggles are saved in the Ep struct.
+ * While an endpoint is stopped, its toggles are saved in the Ep struct.
  */
 struct Hciimpl
 {
@@ -110,10 +111,12 @@ struct Hciimpl
 	void	(*init)(Hci*);			/* init. controller */
 	void	(*interrupt)(Ureg*, void*);	/* service interrupt */
 	void	(*epopen)(Ep*);			/* prepare ep. for I/O */
-	void	(*epclose)(Ep*);		/* terminate I/O on ep. */
+	void	(*epstop)(Ep*);			/* cancel I/O on ep. */
+	void	(*epclose)(Ep*);		/* release I/O on ep. (after epstop) */
 	long	(*epread)(Ep*,void*,long);	/* transmit data for ep */
 	long	(*epwrite)(Ep*,void*,long);	/* receive data for ep */
 	char*	(*seprintep)(char*,char*,Ep*);	/* debug */
+	void	(*devclose)(Udev*);		/* release the device */
 	int	(*portenable)(Hci*, int, int);	/* enable/disable port */
 	int	(*portreset)(Hci*, int, int);	/* set/clear port reset */
 	int	(*portstatus)(Hci*, int);	/* get port status */
@@ -185,23 +188,22 @@ struct Udev
 	int	state;		/* state for the device */
 	int	nports;		/* number of downstream ports for hub */
 	int	speed;		/* Full/Low/High/Super -speed */
-	int	hubnb;		/* USB device number for the parent hub */
-	int	hub;		/* device address of parent hub */
 	int	port;		/* port number on parent hub */
 	int	addr;		/* device address */
 	int	depth;		/* hub depth from root port -1 */
 	int	rootport;	/* port number on root hub */
 	int	routestr;	/* route string */
 
-	int	tthub;		/* device address of TT HS hub */
+	Udev	*hub;		/* parent hub; keeping ref to hub->eps[0] */
+
+	Udev	*tthub;		/* the TT HS hub */
 	int	ttport;		/* port number on TT HS hub */
 	int	ttt;		/* TT Think-Time for HS hub */
 	int	mtt;		/* Multi TT enabled for HS hub */
 
 	void	*aux;
-	void	(*free)(void*);
 
-	Ep*	eps[Ndeveps];	/* end points for this device (cached) */
+	Ep	*eps[Ndeveps];	/* end points for this device (cached) */
 };
 
 void	addhcitype(char *type, int (*reset)(Hci*));
