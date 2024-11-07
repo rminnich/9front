@@ -7,6 +7,70 @@
 #include <libc.h>
 #include <ip.h>
 
+typedef struct Etherhdr Etherhdr;
+struct Etherhdr {
+	uchar dst[6];
+	uchar src[6];
+	uchar type[2];
+};
+
+enum {
+	EtherHdrSz = 6+6+2,
+	EtherMintu = 60,
+	EtherMaxtu = 1500+EtherHdrSz,
+
+	EtherPppoeDiscovery = 0x8863,
+	EtherPppoeSession = 0x8864,
+};
+
+uchar etherbcast[6] = {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF};
+
+typedef struct Pppoehdr Pppoehdr;
+struct Pppoehdr {
+	uchar verstype;
+	uchar code;
+	uchar sessid[2];
+	uchar length[2];	/* of payload */
+};
+
+enum {
+	PppoeHdrSz = 1+1+2+2,
+	Hdr = EtherHdrSz+PppoeHdrSz,
+	Maxmtu = EtherMaxtu - (Hdr+2),	/* 2 bytes for PPP header */
+};
+
+enum {
+	VersType = 0x11,
+
+	/* Discovery codes */
+	CodeDiscInit = 0x09,	/* discovery init */
+	CodeDiscOffer = 0x07,	/* discovery offer */
+	CodeDiscReq = 0x19,	/* discovery request */
+	CodeDiscSess = 0x65,	/* session confirmation */
+	CodeDiscTerm = 0xa7,
+
+	/* Session codes */
+	CodeSession = 0x00,
+};
+
+typedef struct Taghdr Taghdr;
+struct Taghdr {
+	uchar type[2];
+	uchar length[2];	/* of value */
+};
+
+enum {
+	TagEnd = 0x0000,		/* end of tag list */
+	TagSrvName = 0x0101,	/* service name */
+	TagAcName = 0x0102,	/* access concentrator name */
+	TagHostUniq = 0x0103,	/* nonce */
+	TagAcCookie = 0x0104,	/* a.c. cookie */
+	TagVendSpec = 0x0105,	/* vendor specific */
+	TagRelaySessId = 0x0110,	/* relay session id */
+	TagSrvNameErr = 0x0201,	/* service name error (ascii) */
+	TagAcSysErr = 0x0202,	/* a.c. system error */
+};
+
 void dumppkt(uchar*);
 uchar *findtag(uchar*, int, int*, int);
 void hexdump(uchar*, int);
@@ -32,7 +96,7 @@ uchar *cookie;
 int cookielen;
 uchar etherdst[6];
 uchar ethersrc[6];
-int mtu = 1492;
+int mtu = Maxmtu;
 int pktcompress, hdrcompress;
 char *baud;
 
@@ -97,6 +161,8 @@ main(int argc, char **argv)
 		break;
 	case 'm':
 		mtu = atoi(EARGF(usage()));
+		if(mtu > Maxmtu)
+			mtu = Maxmtu;
 		break;
 	case 'i':
 		ipnet4 = EARGF(usage());
@@ -150,23 +216,6 @@ main(int argc, char **argv)
 	execppp(pppoe(dev));
 }
 
-typedef struct Etherhdr Etherhdr;
-struct Etherhdr {
-	uchar dst[6];
-	uchar src[6];
-	uchar type[2];
-};
-
-enum {
-	EtherHdrSz = 6+6+2,
-	EtherMintu = 60,
-
-	EtherPppoeDiscovery = 0x8863,
-	EtherPppoeSession = 0x8864,
-};
-
-uchar etherbcast[6] = {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF};
-
 int
 etherhdr(uchar *pkt, uchar *dst, int type)
 {
@@ -177,33 +226,6 @@ etherhdr(uchar *pkt, uchar *dst, int type)
 	hnputs(eh->type, type);
 	return EtherHdrSz;
 }
-
-typedef struct Pppoehdr Pppoehdr;
-struct Pppoehdr {
-	uchar verstype;
-	uchar code;
-	uchar sessid[2];
-	uchar length[2];	/* of payload */
-};
-
-enum {
-	PppoeHdrSz = 1+1+2+2,
-	Hdr = EtherHdrSz+PppoeHdrSz,
-};
-
-enum {
-	VersType = 0x11,
-
-	/* Discovery codes */
-	CodeDiscInit = 0x09,	/* discovery init */
-	CodeDiscOffer = 0x07,	/* discovery offer */
-	CodeDiscReq = 0x19,	/* discovery request */
-	CodeDiscSess = 0x65,	/* session confirmation */
-	CodeDiscTerm = 0xa7,
-
-	/* Session codes */
-	CodeSession = 0x00,
-};
 
 int
 pppoehdr(uchar *pkt, int code, int sessid)
@@ -216,24 +238,6 @@ pppoehdr(uchar *pkt, int code, int sessid)
 	hnputs(ph->sessid, sessid);
 	return PppoeHdrSz;
 }
-
-typedef struct Taghdr Taghdr;
-struct Taghdr {
-	uchar type[2];
-	uchar length[2];	/* of value */
-};
-
-enum {
-	TagEnd = 0x0000,		/* end of tag list */
-	TagSrvName = 0x0101,	/* service name */
-	TagAcName = 0x0102,	/* access concentrator name */
-	TagHostUniq = 0x0103,	/* nonce */
-	TagAcCookie = 0x0104,	/* a.c. cookie */
-	TagVendSpec = 0x0105,	/* vendor specific */
-	TagRelaySessId = 0x0110,	/* relay session id */
-	TagSrvNameErr = 0x0201,	/* service name error (ascii) */
-	TagAcSysErr = 0x0202,	/* a.c. system error */
-};
 
 int
 tag(uchar *pkt, int type, void *value, int nvalue)
@@ -473,11 +477,9 @@ int
 pppoe(char *ether)
 {
 	char buf[128];
-	uchar pkt[1520];
+	uchar pkt[EtherMaxtu];
 	int dfd, sfd, p[2], n, sz, timeout;
-	Pppoehdr *ph;
 
-	ph = (Pppoehdr*)(pkt+EtherHdrSz);
 	snprint(buf, sizeof buf, "%s!%d", ether, EtherPppoeDiscovery);
 	if((dfd = dial(buf, nil, nil, nil)) < 0)
 		fatal("dial %s: %r\n", buf);
@@ -549,16 +551,17 @@ Restart:
 		break;
 	case 0:
 		close(dfd);
-		while((n = read(sfd, pkt, sizeof pkt)) > 0){
-			if(malformed(pkt, n, EtherPppoeSession)
-			|| ph->code != 0x00 || nhgets(ph->sessid) != sessid){
-				if(debug)
-					fprint(2, "malformed session pkt: %r\n");
-				if(debug)
-					dumppkt(pkt);
+
+		pppoehdr((uchar*)buf, 0x00, sessid);
+
+		while((sz = read(sfd, pkt, sizeof pkt)) > 0){
+			if(sz < Hdr
+			|| pkt[EtherHdrSz+1] != 0x00		/* code */
+			|| pkt[EtherHdrSz+2] != (uchar)buf[2]	/* sessid[0] */
+			|| pkt[EtherHdrSz+3] != (uchar)buf[3]	/* sessid[1] */
+			|| (n = nhgets(pkt+Hdr-2)) > sz-Hdr)
 				continue;
-			}
-			if(write(p[0], pkt+Hdr, nhgets(ph->length)) < 0){
+			if(write(p[0], pkt+Hdr, n) < 0){
 				if(debug)
 					fprint(2, "write to ppp failed: %r\n");
 				break;
@@ -574,17 +577,14 @@ Restart:
 		break;
 	case 0:
 		close(dfd);
+
+		etherhdr(pkt, etherdst, EtherPppoeSession);
+		pppoehdr(pkt+EtherHdrSz, 0x00, sessid);
+
 		while((n = read(p[0], pkt+Hdr, sizeof pkt-Hdr)) > 0){
-			etherhdr(pkt, etherdst, EtherPppoeSession);
-			pppoehdr(pkt+EtherHdrSz, 0x00, sessid);
 			hnputs(pkt+Hdr-2, n);
-			sz = Hdr+n;
-			if(debug > 1){
-				dumppkt(pkt);
-				hexdump(pkt, sz);
-			}
-			if(sz < EtherMintu)
-				sz = EtherMintu;
+			for(sz = Hdr+n; sz < EtherMintu; sz++)
+				pkt[sz] = 0;
 			if(write(sfd, pkt, sz) < 0){
 				if(debug)
 					fprint(2, "write to ether failed: %r");
