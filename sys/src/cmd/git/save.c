@@ -25,6 +25,7 @@ int	nparents;
 Idxent	*idx;
 int	idxsz;
 int	nidx;
+
 int
 gitmode(Dirent *e)
 {
@@ -38,6 +39,12 @@ gitmode(Dirent *e)
 		return 0100755;
 	else
 		return 0100644;
+}
+
+int
+namecmp(void *pa, void *pb)
+{
+	return strcmp(*(char**)pa, *(char**)pb);
 }
 
 int
@@ -228,6 +235,8 @@ treeify(Object *t, char **path, char **epath, int off, Hash *h)
 		 * paths have been normalized already,
 		 * no leading or double-slashes allowed.
 		 */
+		assert(off <= strlen(s));
+		assert(off == 0 || s[off-1] == '/');
 		assert(s[off] != '\0' && s[off] != '/');
 
 		/* get next path element length (from off until '/' or nul) */
@@ -414,6 +423,7 @@ main(int argc, char **argv)
 		while(*argv[i] == '/')
 			argv[i]++;
 	}
+	qsort(argv, argc, sizeof(*argv), namecmp);
 
 	t = findroot();
 	nidx = 0;
