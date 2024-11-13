@@ -105,6 +105,7 @@ addipmedium(Medium *med)
 			media[i] = med;
 			break;
 		}
+	panic("addipmedium: too many mediums");
 }
 
 /*
