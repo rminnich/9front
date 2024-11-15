@@ -103,7 +103,7 @@ addipmedium(Medium *med)
 	for(i = 0; i < nelem(media)-1; i++)
 		if(media[i] == nil){
 			media[i] = med;
-			break;
+			return;
 		}
 	panic("addipmedium: too many mediums");
 }
