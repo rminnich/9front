@@ -71,7 +71,7 @@ bios32locate(void)
 }
 
 void
-BIOS32close(BIOS32si* si)
+bios32close(BIOS32si* si)
 {
 	vunmap(si->base, si->length);
 	free(si);

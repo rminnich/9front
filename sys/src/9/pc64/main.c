@@ -364,3 +364,10 @@ procsave(Proc *p)
 	 */
 	mmuflushtlb(PADDR(m->pml4));
 }
+
+int
+pcibiosinit(int *, int *)
+{
+	return -1;
+}
+

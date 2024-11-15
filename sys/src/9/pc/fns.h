@@ -113,6 +113,7 @@ void	outl(int, ulong);
 void	outsl(int, void*, int);
 ulong	paddr(void*);
 void	patwc(void*, int);
+int	pcibiosinit(int*, int*);
 void	pcicfginit(void);
 int	(*pcicfgrw8)(int, int, int, int);
 int	(*pcicfgrw16)(int, int, int, int);

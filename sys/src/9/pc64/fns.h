@@ -3,10 +3,6 @@
 Dirtab*	addarchfile(char*, int, long(*)(Chan*,void*,long,vlong), long(*)(Chan*,void*,long,vlong));
 void	archinit(void);
 void	archreset(void);
-int	bios32call(BIOS32ci*, u16int[3]);
-int	bios32ci(BIOS32si*, BIOS32ci*);
-void	bios32close(BIOS32si*);
-BIOS32si* bios32open(char*);
 void	bootargsinit(void);
 uintptr	cankaddr(uintptr);
 int	checksum(void *, int);
@@ -117,6 +113,7 @@ void	outl(int, ulong);
 void	outsl(int, void*, int);
 uintptr	paddr(void*);
 void	patwc(void*, int);
+int	pcibiosinit(int*, int*);
 void	pcicfginit(void);
 int	(*pcicfgrw8)(int, int, int, int);
 int	(*pcicfgrw16)(int, int, int, int);

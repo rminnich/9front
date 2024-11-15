@@ -23,7 +23,6 @@ static int pcimaxbno = 255;
 static int pcicfgmode = -1;
 static Pcidev* pciroot;
 static int nobios, nopcirouting;
-static BIOS32si* pcibiossi;
 
 static int pcicfgrw8raw(int, int, int, int);
 static int pcicfgrw16raw(int, int, int, int);
@@ -124,108 +123,6 @@ pcicfgrw32raw(int tbdf, int rno, int data, int read)
 		data = -1;
 	}
 	return data;
-}
-
-static int
-pcicfgrw8bios(int tbdf, int rno, int data, int read)
-{
-	BIOS32ci ci;
-
-	if(pcibiossi == nil)
-		return -1;
-
-	memset(&ci, 0, sizeof(BIOS32ci));
-	ci.ebx = (BUSBNO(tbdf)<<8)|(BUSDNO(tbdf)<<3)|BUSFNO(tbdf);
-	ci.edi = rno;
-	if(read){
-		ci.eax = 0xB108;
-		if(!bios32ci(pcibiossi, &ci)/* && !(ci.eax & 0xFF)*/)
-			return ci.ecx & 0xFF;
-	}
-	else{
-		ci.eax = 0xB10B;
-		ci.ecx = data & 0xFF;
-		if(!bios32ci(pcibiossi, &ci)/* && !(ci.eax & 0xFF)*/)
-			return 0;
-	}
-
-	return -1;
-}
-
-static int
-pcicfgrw16bios(int tbdf, int rno, int data, int read)
-{
-	BIOS32ci ci;
-
-	if(pcibiossi == nil)
-		return -1;
-
-	memset(&ci, 0, sizeof(BIOS32ci));
-	ci.ebx = (BUSBNO(tbdf)<<8)|(BUSDNO(tbdf)<<3)|BUSFNO(tbdf);
-	ci.edi = rno;
-	if(read){
-		ci.eax = 0xB109;
-		if(!bios32ci(pcibiossi, &ci)/* && !(ci.eax & 0xFF)*/)
-			return ci.ecx & 0xFFFF;
-	}
-	else{
-		ci.eax = 0xB10C;
-		ci.ecx = data & 0xFFFF;
-		if(!bios32ci(pcibiossi, &ci)/* && !(ci.eax & 0xFF)*/)
-			return 0;
-	}
-
-	return -1;
-}
-
-static int
-pcicfgrw32bios(int tbdf, int rno, int data, int read)
-{
-	BIOS32ci ci;
-
-	if(pcibiossi == nil)
-		return -1;
-
-	memset(&ci, 0, sizeof(BIOS32ci));
-	ci.ebx = (BUSBNO(tbdf)<<8)|(BUSDNO(tbdf)<<3)|BUSFNO(tbdf);
-	ci.edi = rno;
-	if(read){
-		ci.eax = 0xB10A;
-		if(!bios32ci(pcibiossi, &ci)/* && !(ci.eax & 0xFF)*/)
-			return ci.ecx;
-	}
-	else{
-		ci.eax = 0xB10D;
-		ci.ecx = data;
-		if(!bios32ci(pcibiossi, &ci)/* && !(ci.eax & 0xFF)*/)
-			return 0;
-	}
-
-	return -1;
-}
-
-static BIOS32si*
-pcibiosinit(void)
-{
-	BIOS32ci ci;
-	BIOS32si *si;
-
-	if((si = bios32open("$PCI")) == nil)
-		return nil;
-
-	memset(&ci, 0, sizeof(BIOS32ci));
-	ci.eax = 0xB101;
-	if(bios32ci(si, &ci) || ci.edx != ((' '<<24)|('I'<<16)|('C'<<8)|'P')){
-		free(si);
-		return nil;
-	}
-	if(ci.eax & 0x01)
-		pcimaxdno = 31;
-	else
-		pcimaxdno = 15;
-	pcimaxbno = ci.ecx & 0xff;
-
-	return si;
 }
 
 static uchar
@@ -673,11 +570,8 @@ pcicfginit(void)
 	}
 
 	if(pcicfgmode < 0 || pcibios) {
-		if((pcibiossi = pcibiosinit()) == nil)
+		if(pcibiosinit(&pcimaxdno, &pcimaxbno) < 0)
 			goto out;
-		pcicfgrw8 = pcicfgrw8bios;
-		pcicfgrw16 = pcicfgrw16bios;
-		pcicfgrw32 = pcicfgrw32bios;
 		pcicfgmode = 3;
 	}
 

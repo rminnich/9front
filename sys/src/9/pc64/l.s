@@ -422,14 +422,6 @@ TEXT mb586(SB), 1, $-4
 	RET
 
 /*
- * BIOS32.
- */
-TEXT bios32call(SB), 1, $-4
-	XORL	AX, AX
-	INCL	AX
-	RET
-
-/*
  * Basic timing loop.
  */
 TEXT delayloop(SB), 1, $-4

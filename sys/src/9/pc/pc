@@ -96,7 +96,7 @@ link
 	pmmc		pci
 
 misc
-	pci		pcipc
+	pci		pcipc pcibios bios32
 
 	archgeneric	devkbd i8259 i8253
 	archacpi	mp apic squidboy ec hpet

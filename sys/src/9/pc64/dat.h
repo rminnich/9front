@@ -1,5 +1,3 @@
-typedef struct BIOS32si	BIOS32si;
-typedef struct BIOS32ci	BIOS32ci;
 typedef struct Conf	Conf;
 typedef struct Confmem	Confmem;
 typedef struct FPssestate	FPssestate;
@@ -23,7 +21,6 @@ typedef vlong		Tval;
 typedef struct Ureg	Ureg;
 typedef struct Vctl	Vctl;
 
-#pragma incomplete BIOS32si
 #pragma incomplete Pcidev
 #pragma incomplete Ureg
 
@@ -352,12 +349,3 @@ struct DevConf
 	int	nports;			/* Number of ports */
 	Devport	*ports;			/* The ports themselves */
 };
-
-typedef struct BIOS32ci {		/* BIOS32 Calling Interface */
-	u32int	eax;
-	u32int	ebx;
-	u32int	ecx;
-	u32int	edx;
-	u32int	esi;
-	u32int	edi;
-} BIOS32ci;

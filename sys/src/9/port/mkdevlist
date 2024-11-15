@@ -1,6 +1,6 @@
 #!/bin/rc
 
-awk -v 'objtype='$objtype '
+awk '
 BEGIN{
 	if(ARGC < 2)
 		exit;
@@ -18,12 +18,12 @@ collect && /^[^	\t]/{
 }
 collect && $0 ~ /[^ \t]+/{
 	if(isdev)
-		obj["dev" $1 "'.$O'"]++;
+		obj["dev" $1]++;
 	else
-		obj[$1 "'.$O'"]++;
+		obj[$1]++;
 	for(i = 2; i <= NF; i++){
 		if($i !~ "[+=-].*")
-			obj[$i "'.$O'"]++;
+			obj[$i]++;
 	}
 }
 $0 ~ /^[^ \t]/{
@@ -37,10 +37,6 @@ $0 ~ /^[^ \t]/{
 }
 
 END{
-	x = ""
 	for(i in obj)
-		x = x i "\n";
-	if((objtype ~ "386" || objtype ~ "amd64") && obj["pci" "'.$O'"])
-		x = x "bios32'.$O' \n";
-	printf x;
+		print i ".'$O'"
 }' $*

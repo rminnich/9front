@@ -137,6 +137,7 @@ etherm10g.$O:			etherm10g2k.i etherm10g4k.i
 etherwpi.$O:			../port/wifi.h
 etherrt2860.$O: 		../port/wifi.h
 l.$O rebootcode.$O apbootstrap.$O:	mem.h
+pcipc.$O pcibios.$O:		../port/pci.h io.h
 
 initcode.out:		init9.$O initcode.$O /$objtype/lib/libc.a
 	$LD -l -R1 -s -o $target $prereq
