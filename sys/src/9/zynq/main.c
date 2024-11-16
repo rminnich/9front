@@ -9,7 +9,6 @@
 #include "../port/error.h"
 
 Conf conf;
-int normalprint, delaylink;
 
 enum { MAXCONF = 64 };
 
@@ -337,10 +336,7 @@ main(void)
 	timersinit();
 	procinit0();
 	initseg(); 
-	if(delaylink)
-		bootlinks();
-	else
-		links();
+	links();
 	archinit();
 	chandevreset();
 	pageinit();

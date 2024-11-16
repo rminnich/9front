@@ -11,7 +11,6 @@
 #include	"rebootcode.i"
 
 Conf conf;
-int delaylink;
 int idle_spin;
 
 extern void (*i8237alloc)(void);
@@ -211,10 +210,7 @@ main(void)
 		arch->clockenable();
 	procinit0();
 	initseg();
-	if(delaylink){
-		bootlinks();
-	}else
-		links();
+	links();
 	chandevreset();
 	preallocpages();
 	pageinit();

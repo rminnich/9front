@@ -155,8 +155,6 @@ struct
 extern register Mach* m;			/* R10 */
 extern register Proc* up;			/* R9 */
 
-extern int normalprint;
-
 void nope(void);
 #define NOPE nope();
 

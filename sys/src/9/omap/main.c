@@ -31,7 +31,6 @@ uintptr kseg0 = KZERO;
 Mach* machaddr[MAXMACH];
 
 int vflag;
-int normalprint;
 char debug[256];
 
 /* store plan9.ini contents here at least until we stash them in #ec */

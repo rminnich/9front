@@ -180,7 +180,6 @@ struct
 
 extern register Mach* m;			/* R27 */
 extern register Proc* up;			/* R26 */
-extern int normalprint;
 
 /*
  *  a parsed plan9.ini line

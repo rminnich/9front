@@ -154,8 +154,6 @@ struct
 extern register Mach* m;			/* R10 */
 extern register Proc* up;			/* R9 */
 
-extern int normalprint;
-
 extern ulong *mpcore, *slcr;
 
 void nope(void);
