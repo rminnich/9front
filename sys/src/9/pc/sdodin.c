@@ -2807,7 +2807,6 @@ mswtopctl(SDev*, Cmdbuf *cmd)
 	int *v;
 
 	f = cmd->f;
-	v = 0;
 	if(strcmp(f[0], "debug") == 0)
 		v = &debug;
 	else if(strcmp(f[0], "idprint") == 0)
