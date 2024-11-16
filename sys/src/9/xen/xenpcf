@@ -51,9 +51,8 @@ port
 	int cpuserver = 0;
 
 bootdir
+	boot
 	/$objtype/bin/paqfs
 	/$objtype/bin/auth/factotum
-	bootfs.paq
-	boot
+	$CONF.bootfs.paq	bootfs.paq
 	xenstore
-

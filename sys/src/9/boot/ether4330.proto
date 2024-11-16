@@ -1,0 +1,19 @@
+lib
+	firmware
+		bcmdhd.cal.40181
+		bcmdhd.cal.40183.26MHz
+		fw_bcm40183b1.bin
+		fw_bcm40183b2.bin
+		fw_bcm40181a0.bin
+		fw_bcm40181a2.bin
+		brcmfmac43430-sdio.bin
+		brcmfmac43430-sdio.txt
+		brcmfmac43436-sdio.bin
+		brcmfmac43436-sdio.txt
+		brcmfmac43436-sdio.clm_blob
+		brcmfmac43455-sdio.bin
+		brcmfmac43455-sdio.txt
+		brcmfmac43455-sdio.clm_blob
+		brcmfmac43456-sdio.bin
+		brcmfmac43456-sdio.txt
+		brcmfmac43456-sdio.clm_blob

@@ -30,7 +30,7 @@ all:V:
 		mk 'CONF='$i
 
 clean:V:
-	rm -f *.[$OS] *.i *.root.s *.rootc.c cfs.h fs.h conf.h *.out *.m errstr.h init.h reboot.h boot bootfs.paq
+	rm -f *.[$OS] *.i *.root.s *.rootc.c cfs.h fs.h conf.h *.out *.m errstr.h init.h reboot.h boot *.bootfs.paq bootfs.paq
 	for(i in $CONFLIST $CRAPLIST)
 		mk $i.clean
 

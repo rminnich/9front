@@ -50,8 +50,7 @@ port
 	int cpuserver = 0;
 
 bootdir
+	boot
 	/$objtype/bin/paqfs
 	/$objtype/bin/auth/factotum
-	bootfs.paq
-	boot
-#	nvram
+	$CONF.bootfs.paq	bootfs.paq

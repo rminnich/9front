@@ -1,6 +1,5 @@
 $objtype
 	bin
-		9660srv
 		awk
 		auth
 			secstore
@@ -12,15 +11,7 @@ $objtype
 		cfs
 		chmod
 		dd
-		disk
-			cryptsetup
-			edisk
-			fdisk
-			prep
-		dossrv
 		echo
-		cwfs64x
-		gefs
 		grep
 		ip
 			ipconfig
@@ -31,7 +22,6 @@ $objtype
 		mv
 		ndb
 			dnsgetip
-		hjfs
 		rc
 		rm
 		sed
@@ -40,24 +30,15 @@ $objtype
 		test
 		tlsclient
 		unmount
-		nusb
-			usbd
-			ether
-			disk
-			kb
 		xd
 rc
 	lib
 		rcmain
 		reboot.rc 555 sys sys ../boot/reboot.rc
-		local.rc 555 sys sys ../boot/local.rc
 		net.rc 555 sys sys ../boot/net.rc
 	bin
-		fstype
-		diskparts
 		ethermultilink
 		srvtls
-		nusbrc 555 sys sys ../boot/nusbrc
 		bootrc 555 sys sys ../boot/bootrc
 tmp
 sys
@@ -66,4 +47,3 @@ sys
 			+
 lib
 	firmware
-		+

@@ -1,0 +1,13 @@
+lib
+	firmware
+		iwm-8265-34
+		iwm-9260-34
+		iwn-1000
+		iwn-4965
+		iwn-5000
+		iwn-5150
+		iwn-6000
+		iwn-6005
+		iwn-6030
+		iwn-6050
+		iwn-license

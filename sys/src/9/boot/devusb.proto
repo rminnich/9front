@@ -1,0 +1,10 @@
+$objtype
+	bin
+		nusb
+			usbd
+			ether
+			disk
+			kb
+rc
+	bin
+		nusbrc 555 sys sys ../boot/nusbrc

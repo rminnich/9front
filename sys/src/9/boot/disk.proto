@@ -1,0 +1,19 @@
+$objtype
+	bin
+		9660srv
+		cfs
+		cwfs64x
+		disk
+			cryptsetup
+			edisk
+			fdisk
+			prep
+		dossrv
+		gefs
+		hjfs
+rc
+	lib
+		local.rc 555 sys sys ../boot/local.rc
+	bin
+		fstype
+		diskparts

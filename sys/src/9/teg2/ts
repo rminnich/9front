@@ -79,7 +79,7 @@ port
 	int i8250freq = 3686000;
 
 bootdir
+	boot
 	/$objtype/bin/paqfs
 	/$objtype/bin/auth/factotum
-	bootfs.paq
-	boot
+	$CONF.bootfs.paq	bootfs.paq

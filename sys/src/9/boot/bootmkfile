@@ -4,19 +4,26 @@ boot.$O:	../boot/boot.c
 boot:	boot.$O
 	$LD -o $target $prereq
 
-# look for proto file in order:
+# look for main proto file in order:
 #	1) $CONF.bootfs.proto		(config specific)
 #	2) bootfs.proto			(kernel specific)
 #	3) ../boot/bootfs.proto		(default generic)
 #
-BOOTFSPROTO=`{for(i in $CONF.bootfs.proto bootfs.proto ../boot/bootfs.proto) test -r $i && echo $i && exit}
+# add driver specific proto files:
+#	../boot/disk.proto	(if the kernel has devsd, devfs or devusb driver)
+#	../boot/*.proto		(if the proto basename matches in $OBJ)
+#
+BOOTFSPROTOS=\
+	`{for(i in $CONF.bootfs.proto bootfs.proto ../boot/bootfs.proto) test -r $i && echo $i && exit} \
+	`{if(~ devfs.$O $OBJ || ~ devsd.$O $OBJ || ~ devusb.$O $OBJ) echo ../boot/disk.proto} \
+	`{for(j in ../boot/*.proto){~ `{basename $j .proto}^.$O $OBJ && echo $j}}
 
-bootfs.paq:	$BOOTFSPROTO `{disk/mkfs -aos / $BOOTFSPROTO >[2]/dev/null}
-	mkdir -p bootfs
-	disk/mkfs -s / -d bootfs $BOOTFSPROTO
+$CONF.bootfs.paq bootfs.paq:D:	$BOOTFSPROTOS `{disk/mkfs -aos / $BOOTFSPROTOS >[2]/dev/null}
+	mkdir -p $CONF.bootfs
+	disk/mkfs -s / -d $CONF.bootfs $BOOTFSPROTOS
 	@{
-		cd bootfs/$objtype/bin
+		cd $CONF.bootfs/$objtype/bin
 		#strip * */* */*/* >[2]/dev/null || status=''
 	}
-	mkpaqfs -9 -b 65536 -o $target bootfs
-	rm -rf bootfs
+	mkpaqfs -9 -b 65536 -o $target $CONF.bootfs
+	rm -rf $CONF.bootfs
