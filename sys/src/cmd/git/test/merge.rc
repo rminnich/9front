@@ -44,7 +44,7 @@ echo @@ merge different files @@
 	@{
 		cd b
 		qq git/pull
-		git/merge origin/front || status=''
+		q git/merge origin/front || status=''
 		q git/commit -m merged
 	}
 }
@@ -91,3 +91,33 @@ quux
 ! test -x b/a || die merge remove exec
 test -x b/b || die merge add exec
 ! test -x b/c || die merge preserve nonexec c
+
+# repro for bug in git/save, around missing
+# files when saving the merged commit.
+mkdir -p scratch/james
+echo @@ james test @@
+@{
+	cd scratch/james
+	q git/init
+	mkdir -p lib/ndb
+	touch lib/words 
+	q git/add lib/words
+	q git/commit -m 'add words' lib/words
+	q git/branch -n myhead
+	echo stuff > lib/ndb/local
+	q git/add lib/ndb/local
+	q git/commit -m 'Add lib/ndb/local' lib/ndb/local
+
+	q git/branch front
+	echo cromulent >> lib/words
+	q git/commit -m 'Some change on front' lib/words
+	q git/branch myhead
+	q git/merge front
+	q git/commit -m 'Merge front'
+	d=`''{git/diff lib/words lib/ndb/local}  # should have no output
+	if(! ~ $d ''){
+		echo $d
+		exit diff
+	}
+	exit ''
+}

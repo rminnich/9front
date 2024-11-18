@@ -219,7 +219,7 @@ dirent(Dirent **ent, int *nent, char *name)
 int
 treeify(Object *t, char **path, char **epath, int off, Hash *h)
 {
-	int nent, ne, slash;
+	int nent, ne, slash, isdir;
 	char *s, **p, **ep;
 	Dirent *e, *ent;
 	Object *o;
@@ -248,24 +248,15 @@ treeify(Object *t, char **path, char **epath, int off, Hash *h)
 		s[off + ne] = '\0';
 
 		/* skip over children (having s as prefix) */
-		for(ep = p + 1; ep != epath; ep++){
+		for(ep = p + 1; slash && ep != epath; ep++){
 			if(strncmp(s, *ep, off + ne) != 0)
 				break;
 			if((*ep)[off+ne] != '\0' && (*ep)[off+ne] != '/')
 				break;
 		}
 
-		e = dirent(&ent, &nent, s + off);
-
 		d = dirstat(s);
-		if(d == nil){
-			/* delete */
-			e->name = nil;
-
-			s[off + ne] = slash;
-			continue;
-		}
-
+		e = dirent(&ent, &nent, s + off);
 		if(e->islink)
 			sysfatal("symlinks may not be modified: %s", s);
 		if(e->ismod)
@@ -273,8 +264,35 @@ treeify(Object *t, char **path, char **epath, int off, Hash *h)
 
 		s[off + ne] = slash;
 
-		if(slash && (d->mode & DMDIR) != 0){
-			free(d);
+		isdir = d != nil && (d->mode & DMDIR) != 0;
+		/*
+		 * exist? slash? dir?	track?
+		 * n      _      _      _      -> remove: file gone
+		 * y      n      n      y      -> blob: tracked non-dir
+		 * y      n      y      n      -> remove: file untracked
+		 * y      n      y      n      -> remove: file -> dir
+		 * y      n      y      y      -> remove: file -> dir
+		 * y      n      y      n      -> untracked dir, cli junk
+		 * y      y      y      n      -> recurse
+		 * y      y      y      y      -> recurse
+		 */
+		if(d == nil || !slash && isdir && tracked(s)){
+			/*
+			 * if a tracked file is removed or turned
+			 * into a dir, we want to delete it. We
+			 * only want to change files passed in, and
+			 * not ones along the way, so ignore files
+			 * that have a '/'.
+			 */
+			e->name = nil;
+			s[off + ne] = slash;
+			continue;
+		} else if(slash && isdir){
+			/*
+			 * If we have a list of entries that go into
+			 * a directory, create a tree node for this
+			 * entry, and recurse down.
+			 */
 			e->mode = DMDIR | 0755;
 			o = readobject(e->h);
 			if(o == nil || o->type != GTree)
@@ -289,13 +307,18 @@ treeify(Object *t, char **path, char **epath, int off, Hash *h)
 			 */
 			if(treeify(o, p, ep, off + ne + 1, &e->h) == 0)
 				e->name = nil;
-		}else{
-			if((d->mode & DMDIR) == 0 && tracked(s))
+		}else if(!slash && !isdir){
+			/*
+			 * If the file was explicitly passed in and is
+			 * not a dir, we want to either remove it or
+			 * track it, depending on the state of the index.
+			 */
+			if(tracked(s) && !isdir)
 				blobify(d, s, &e->mode, &e->h);
 			else
 				e->name = nil;
-			free(d);
 		}
+		free(d);
 	}
 	if(nent == 0)
 		sysfatal("%.*s: refusing to update empty directory", off, *path);
