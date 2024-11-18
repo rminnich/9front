@@ -8,14 +8,14 @@ mkdir -p scratch/noam
 echo @@ noam test @@
 @{
 	cd scratch/noam
-	git/init
+	q git/init
 	touch a
-	git/add a
-	git/commit -m 'add a' a
+	q git/add a
+	q git/commit -m 'add a' a
 	rm a
 	mkdir a
 	touch a/b
 
-	git/add a/b
-	git/commit -m 'switch to folder' a a/b
+	q git/add a/b
+	q git/commit -m 'switch to folder' a a/b
 }
