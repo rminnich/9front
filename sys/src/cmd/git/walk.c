@@ -85,18 +85,21 @@ seen(Dir *dir)
 int
 checkedin(Idxent *e, int change)
 {
+	Dir *d;
 	char *p;
 	int r;
 
 	p = smprint("%s/%s", bdir, e->path);
-	r = access(p, AEXIST);
-	if(r == 0 && change){
+	d = dirstat(p);
+	r = d != nil && !(d->mode&DMDIR);
+	if(r && change){
 		if(e->state != 'R')
 			e->state = 'T';
 		staleidx = 1;
 	}
 	free(p);
-	return r == 0;
+	free(d);
+	return r;
 }
 
 int
