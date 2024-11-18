@@ -326,7 +326,7 @@ copyup(Blk *n, Path *pp, int *nbytes)
 	 * delete messages, so we need to check if
 	 * there's anything in it to copy up.
 	 */
-	if(pp->nl->nval > 0){
+	if(pp->nl != nil){
 		getval(pp->nl, 0, &kv);
 		if(pp->nl->nbuf > 0){
 			getmsg(pp->nl, 0, &m);
@@ -337,7 +337,7 @@ copyup(Blk *n, Path *pp, int *nbytes)
 		if(nbytes != nil)
 			*nbytes += valsz(&kv);
 	}
-	if(pp->nr != nil && pp->nr->nval > 0){
+	if(pp->nr != nil){
 		getval(pp->nr, 0, &kv);
 		if(pp->nr->nbuf > 0){
 			getmsg(pp->nr, 0, &m);
@@ -435,6 +435,19 @@ apply(Kvp *kv, Msg *m, char *buf, int nbuf)
 	}
 	return 0;
 }
+
+static Blk*
+setb(Tree *t, Blk *b)
+{
+	if(b->nval == 0){
+		freeblk(t, b);
+		return nil;
+	}else{
+		enqueue(b);
+		return b;
+	}
+}
+		
 
 static int
 pullmsg(Path *p, int i, Kvp *v, Msg *m, int *full, int spc)
@@ -554,7 +567,8 @@ updateleaf(Tree *t, Path *up, Path *p)
 		}
 	}
 	p->npull = (j - up->lo);
-	p->nl = n;
+	p->op = POmod;
+	p->nl = setb(t, n);
 }
 
 /*
@@ -626,7 +640,8 @@ updatepiv(Tree *t, Path *up, Path *p, Path *pp)
 		j++;
 	}
 	p->npull = (j - up->lo);
-	p->nl = n;
+	p->op = POmod;
+	p->nl = setb(t, n);
 }
 
 /*
@@ -739,8 +754,8 @@ splitleaf(Tree *t, Path *up, Path *p, Kvp *mid)
 	}
 	p->npull = (j - up->lo);
 	p->op = POsplit;
-	p->nl = l;
-	p->nr = r;
+	p->nl = setb(t, l);
+	p->nr = setb(t, r);
 	poperror();
 }
 
@@ -809,8 +824,8 @@ splitpiv(Tree *t, Path *, Path *p, Path *pp, Kvp *mid)
 		setmsg(d, &m);
 	}
 	p->op = POsplit;
-	p->nl = l;
-	p->nr = r;
+	p->nl = setb(t, l);
+	p->nr = setb(t, r);
 	poperror();
 }
 
@@ -840,11 +855,9 @@ merge(Tree *t, Path *p, Path *pp, int idx, Blk *a, Blk *b)
 			setmsg(d, &m);
 		}
 	}
-	enqueue(d);
 	p->midx = idx;
-	pp->nl = d;
 	pp->op = POmerge;
-	pp->nr = nil;
+	pp->nl = setb(t, d);
 }
 
 /*
@@ -951,12 +964,10 @@ rotate(Tree *t, Path *p, Path *pp, int midx, Blk *a, Blk *b, int halfpiv)
 			o++;
 		}
 	}
-	enqueue(l);
-	enqueue(r);
 	p->midx = midx;
 	pp->op = POrot;
-	pp->nl = l;
-	pp->nr = r;
+	pp->nl = setb(t, l);
+	pp->nr = setb(t, r);
 	poperror();
 }
 
@@ -1055,12 +1066,9 @@ flush(Tree *t, Path *path, int npath)
 	if(p->b->type == Tleaf){
 		if(!filledleaf(p->b, up->sz)){
 			updateleaf(t, p-1, p);
-			enqueue(p->nl);
 			rp = p;
 		}else{
 			splitleaf(t, up, p, &mid);
-			enqueue(p->nl);
-			enqueue(p->nr);
 		}
 		p->midx = -1;
 		pp = p;
@@ -1076,12 +1084,9 @@ flush(Tree *t, Path *path, int npath)
 				goto Out;
 			}
 			updatepiv(t, up, p, pp);
-			enqueue(p->nl);
 			rp = p;
 		}else{
 			splitpiv(t, up, p, pp, &mid);
-			enqueue(p->nl);
-			enqueue(p->nr);
 		}
 		pp = p;
 		up--;
