@@ -38,10 +38,7 @@ void \
 _name(void) \
 { \
 	mpint *m, *r; \
-	int i, sign, mag; \
-	_type v; \
-	int fail; \
-	 \
+	int i, sign, mag, fail; \
 	fail = 0; \
 	m = mpnew(0); \
 	r = mpnew(0); \
@@ -98,7 +95,7 @@ XTOMP_END(vtomp, vlong, "%lld")
 
 XTOMP(test_uitomp, uint, uitomp)
 	if(mag >= 32 || sign < 0) continue;
-XTOMP_END(uitomp, uint, "%lld")
+XTOMP_END(uitomp, uint, "%ud")
 
 XTOMP(test_vtomp, vlong, vtomp)
 	if(mag >= 63) continue;
