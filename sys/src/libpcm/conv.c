@@ -52,7 +52,15 @@ enum {
 #define MAXINT	((int)(~0UL>>1))
 #define MININT	(MAXINT+1)
 
-#define clip(v)	((v) > MAXINT ? MAXINT : ((v) < MININT ? MININT : (v)))
+static int
+clip(vlong v)
+{
+	if(v > MAXINT)
+		return MAXINT;
+	if(v < MININT)
+		return MININT;
+	return v;
+}
 
 static int
 chaninit(Chan *c, int irate, int orate, int count, uintptr caller)
