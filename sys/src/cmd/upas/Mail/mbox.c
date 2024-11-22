@@ -313,17 +313,21 @@ change(char *name, char *digest)
 {
 	Mesg *m;
 	char *f;
+	int old;
 
 	if((m = mesglookup(name, digest)) == nil)
 		return nil;
 	if((f = rslurp(m, "flags", nil)) == nil)
 		return nil;
+	old = m->flags;
 	free(m->mflags);
 	m->mflags = f;
 	m->flags &= ~(Fdel|Fseen|Fresp);
 	if(strchr(m->mflags, 'd')) m->flags |= Fdel;
 	if(strchr(m->mflags, 's')) m->flags |= Fseen;
 	if(strchr(m->mflags, 'a')) m->flags |= Fresp;
+	if(old == m->flags)
+		return nil;
 	return m;
 }
 
