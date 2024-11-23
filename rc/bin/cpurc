@@ -17,11 +17,9 @@ mntgen -s slashn /n && chmod 666 /srv/slashn
 mntgen -s slashmnt /mnt && chmod 666 /srv/slashmnt
 mntgen -s mntexport /mnt/exportfs && chmod 666 /srv/mntexport}
 
-# move factotum from /mnt to /mnt/factotum
-mount /srv/factotum /mnt/temp
-unmount /srv/factotum /mnt
-bind /mnt/temp/factotum /mnt/factotum
-unmount /mnt/temp
+# now that /mnt exists, mount factotum
+mount /srv/factotum /mnt/factotum factotum
+bind -q /mnt/factotum/factotum /mnt/factotum
 
 # usb listener
 nusbrc

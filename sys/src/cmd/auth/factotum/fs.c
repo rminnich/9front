@@ -7,7 +7,7 @@ int		doprivate = 1;
 int		gflag;
 char		*owner;
 int		kflag;
-char		*mtpt = "/mnt";
+char		*mtpt = nil;
 Keyring	*ring;
 char		*service;
 int		sflag;
@@ -153,7 +153,12 @@ main(int argc, char **argv)
 		promptforhostowner();
 	owner = getuser();
 
-	postmountsrv(&fs, service, mtpt, MBEFORE);
+	if(mtpt == nil){
+		mtpt = "/mnt";
+		mount(postsrv(&fs, service), -1, "/mnt/factotum", MREPL, "factotum");
+	} else {
+		mount(postsrv(&fs, service), -1, mtpt, MBEFORE, "");
+	}
 	if(service){
 		nulldir(&d);
 		d.mode = 0666;
@@ -236,7 +241,14 @@ mkqid(int type, int path)
 static void
 fsattach(Req *r)
 {
-	r->fid->qid = mkqid(QTDIR, Qroot);
+	if(strcmp(r->ifcall.aname, "factotum") == 0)
+		r->fid->qid = mkqid(QTDIR, Qfactotum);
+	else if(*r->ifcall.aname == 0)
+		r->fid->qid = mkqid(QTDIR, Qroot);
+	else {
+		respond(r, "unknown mount spec");
+		return;
+	}
 	r->ofcall.qid = r->fid->qid;
 	respond(r, nil);
 }
