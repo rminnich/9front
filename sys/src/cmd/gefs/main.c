@@ -47,23 +47,6 @@ _trace(char *msg, Bptr bp, vlong v0, vlong v1)
 	t->v1 = v1;
 }
 
-static void
-nokill(void)
-{
-	char buf[128];
-	int fd;
-
-	snprint(buf, sizeof(buf), "/proc/%d/ctl", getpid());
-	if((fd = open(buf, OWRITE)) == -1){
-		fprint(2, "nokill: open %s: %r", buf);
-		return;
-	}
-	if(fprint(fd, "noswap\n") == -1){
-		fprint(2, "nokill: write %s: %r", buf);
-		return;
-	}
-}
-
 static uvlong
 memsize(void)
 {
@@ -216,7 +199,6 @@ launch(void (*f)(int, void *), void *arg, char *text)
 	if (pid < 0)
 		sysfatal("can't fork: %r");
 	if (pid == 0) {
-		nokill();
 		id = aincl(&fs->nworker, 1);
 		if((*errctx = mallocz(sizeof(Errctx), 1)) == nil)
 			sysfatal("malloc: %r");
@@ -408,7 +390,6 @@ main(int argc, char **argv)
 	}
 
 	rfork(RFNOTEG);
-	nokill();
 	loadfs(dev);
 	fs->wrchan = mkchan(32);
 	fs->admchan = mkchan(32);
