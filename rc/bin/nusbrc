@@ -10,30 +10,28 @@ if(! bind -a '#u' /dev)
 		id=$1
 		if(~ $#* 5 && ! test -e /env/nousbhname)
 			id=$1:$5
-		switch($4){
-		case *01
-			nusb/audio $id
-		case ff0202
-			# RNDIS; handled by /sys/src/9/boot/nusbrc
-		case *02
-			# serial and ethernet
+		switch($2$3){
+		case 12d11003 1a867523 10c4ea60 0403* 1a867523 # HUAWEI, Prolific, CP2102, FTDI, pine64
 			nusb/serial $id
-			# handled /sys/src/9/boot/nusbrc
-			# nusb/ether $id
-		case *03
-			# handled /sys/src/9/boot/nusbrc
-			# nusb/kb $id
-		case *08
-			# handled /sys/src/9/boot/nusbrc
-			# nusb/disk $id
-		case 010106
-			nusb/ptp $id
+		case 59862113
+			nusb/cam $id
 		case *
-			switch($2$3){
-			case 12d11003 0403* 1a867523 # HUAWEI, FTDI, pine64
+			switch($4){
+			case *01
+				nusb/audio $id
+			case ff0202
+				# RNDIS; handled by /sys/src/9/boot/nusbrc
+			case *02
+				# serial and ethernet
 				nusb/serial $id
-			case 59862113
-				nusb/cam $id
+			case *03
+				# handled /sys/src/9/boot/nusbrc
+				# nusb/kb $id
+			case *08
+				# handled /sys/src/9/boot/nusbrc
+				# nusb/disk $id
+			case 010106
+				nusb/ptp $id
 			}
 		}
 	}
