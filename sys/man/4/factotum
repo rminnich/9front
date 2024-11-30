@@ -744,7 +744,7 @@ is the reason for the error.
 .SH "HISTORY"
 Since November 2024,
 .I auth/factotum
-understand the previously ignored
+understands the previously ignored
 mount specifier
 .BR factotum ,
 causing it to serve the second-level directory
