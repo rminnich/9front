@@ -6,6 +6,7 @@
 #include <keyboard.h>
 #include <bio.h>
 #include <mach.h>
+#include <plumb.h>
 
 typedef struct Data	Data;
 
@@ -100,6 +101,25 @@ name(ulong pc)
 	return buf;
 }
 
+static void
+plumbpc(ulong pc)
+{
+	Symbol s;
+	char buf[256], wd[256];
+	int fd;
+
+	if(!findsym(pc, CTEXT, &s))
+		return;
+	
+	fileline(buf, sizeof buf, pc);
+	fd = plumbopen("send", OWRITE);
+	if(fd < 0)
+		return;
+	getwd(wd, sizeof wd);
+	plumbsendtext(fd, "flambe", "edit", wd, buf);
+	close(fd);
+}
+
 int rowh;
 Image **cols;
 int ncols;
@@ -149,7 +169,7 @@ onhover(int i)
 	string(screen, r.min, display->black, ZP, font, name(data[i].pc));
 
 	r.min.y += font->height + 1;
-	snprint(buf, sizeof buf, "Time: %.8f(s), Calls: %lud", (double)data[i].time/cyclefreq, data[i].count);
+	snprint(buf, sizeof buf, "Time: %.8f(s) %.2f%%, Calls: %lud", (double)data[i].time/cyclefreq, (double)data[i].time/total * 100, data[i].count);
 	string(screen, r.min, display->black, ZP, font, buf);
 	flushimage(display, 1);
 }
@@ -272,7 +292,7 @@ threadmain(int argc, char **argv)
 			}
 			break;
 		case Cmouse:
-			if(m.buttons == 4 || m.buttons == 16){
+			if(m.buttons == 16){
 				redraw(1);
 				break;
 			}
@@ -285,6 +305,9 @@ threadmain(int argc, char **argv)
 					break;
 				case 1: case 8:
 					redraw(i);
+					break;
+				case 4:
+					plumbpc(data[i].pc);
 					break;
 				}
 				break;
