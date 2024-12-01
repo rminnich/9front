@@ -12,6 +12,11 @@ codgen(Node *n, Node *nn)
 	hasdoubled = 0;
 
 	/*
+	 * no point in giving invalid code to the backend.
+	 */
+	if(nerrors != 0)
+		return;
+	/*
 	 * isolate name
 	 */
 	for(n1 = nn;; n1 = n1->left) {
