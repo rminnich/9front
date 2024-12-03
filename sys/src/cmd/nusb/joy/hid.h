@@ -7,8 +7,9 @@ enum {
 
 	/* HID class subclass protocol ids */
 	JoyCSP		= 0x000003,
+	Xbox360CSP	= 0x015dff,
 	
-	Maxaxes = 3,
+	Maxaxes = 6,
 
 	/* Requests */
 	Getreport = 0x01,

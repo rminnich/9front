@@ -47,6 +47,7 @@ kbfatal(KDev *kd, char *sts)
 }
 
 static int debug, kbd;
+static double deadband;
 
 static int
 signext(int v, int bits)
@@ -219,8 +220,7 @@ setproto(KDev *f, Iface *iface)
 			fprint(2, "\n");
 		}
 		proto = Reportproto;
-	}else
-		kbfatal(f, "no report");
+	}
 
 	/*
 	 * if a HID's subclass code is 1 (boot mode), it will support
@@ -283,15 +283,18 @@ joyparse(int t, int f, int g[], int l[], int, void *a)
 		case 0x010030:
 		case 0x010031:
 		case 0x010032:
+		case 0x010033:
+		case 0x010034:
+		case 0x010035:
 			i = l[Usage] - 0x010030;
 			if((f & (Fabs|Frel)) == Fabs)
-				p->axes[i] = v;
+				p->axes[i] = (abs(v)<(g[LogiMax]*deadband))?0:v;
 			else
-				p->axes[i] += v;
+				p->axes[i] += (abs(v)<(g[LogiMax]*deadband))?0:v;
 			break;
 		}
 		if((l[Usage] >> 16) == 0x09){
-			m = 1ULL << (l[Usage] & 0xff);
+			m = 1ULL << (l[Usage] & 0x3f);
 			p->btns &= ~m;
 			if(v != 0)
 				p->btns |= m;
@@ -363,18 +366,122 @@ joywork(void *a)
 	}
 }
 
+static void 
+xbox360(KDev *kd)
+{
+	static uchar descr[] = {
+		0x05, 0x01,
+		0x09, 0x05,
+		0xa1, 0x01,
+		0x75, 0x08,	
+		0x95, 0x01,	
+		0x81, 0x01,
+		0x75, 0x08,
+		0x95, 0x01,
+		0x05, 0x01,
+		0x09, 0x3b,
+		0x81, 0x01,
+		0x05, 0x01,	
+		0x09, 0x01,
+		0xa1, 0x00,
+		0x75, 0x01,
+		0x15, 0x00,
+		0x25, 0x01,
+		0x35, 0x00,	
+		0x45, 0x01,	
+		0x95, 0x04,
+		0x05, 0x09,
+		0x09, 0x0c,
+		0x09, 0x0d,
+		0x09, 0x0e,
+		0x09, 0x0f,
+		0x81, 0x02,
+		0xc0,
+		0x75, 0x01,
+		0x15, 0x00,
+		0x25, 0x01,
+		0x35, 0x00,
+		0x45, 0x01,
+		0x95, 0x07,
+		0x05, 0x09,
+		0x09, 0x08,
+		0x09, 0x07,
+		0x09, 0x09,
+		0x09, 0x0a,
+		0x09, 0x05,
+		0x09, 0x06,
+		0x09, 0x0b,
+		0x81, 0x02,
+		0x75, 0x01,
+		0x95, 0x01,
+		0x81, 0x01,
+		0x75, 0x01,
+		0x15, 0x00,
+		0x25, 0x01,
+		0x35, 0x00,
+		0x45, 0x01,
+		0x95, 0x04,
+		0x05, 0x09,
+		0x19, 0x01,
+		0x29, 0x04,
+		0x81, 0x02,	
+		0x75, 0x08,
+		0x15, 0x00,
+		0x26, 0xff, 0x00,
+		0x35, 0x00,
+		0x46, 0xff, 0x00,
+		0x95, 0x02,
+		0x05, 0x01,
+		0x09, 0x32,
+		0x09, 0x35,
+		0x81, 0x02,
+		0x75, 0x10,
+		0x16, 0x00, 0x80,
+		0x26, 0xff, 0x7f,
+		0x36, 0x00, 0x80,
+		0x46, 0xff, 0x7f,
+		0x95, 0x04,
+		0x05, 0x01,
+		0x09, 0x30,
+		0x09, 0x31,
+		0x09, 0x33,
+		0x09, 0x34,
+		0x81, 0x02,
+		0x75, 0x30,
+		0x95, 0x01,
+		0x81, 0x01,
+		0xc0,
+	};
+	static uchar ledcmd[] = {1,3,0};
+	Dev *d = kd->dev;
+
+	memcpy(kd->rep, descr, kd->nrep = sizeof(descr));
+	/* no blinken lights */
+	usbcmd(d, Rh2d|Rclass|Riface, Setreport, Reportout, 0, ledcmd, 3);
+}
+
+
 /* apply quirks for special devices */
 static void
-quirks(Dev *d)
+quirks(KDev *kd)
 {
 	int ret;
+	Dev *d;
 	uchar buf[17];
+
+	d = kd->dev;
 
 	/* sony dualshock 3 (ps3) controller requires special enable command */
 	if(d->usb->vid == 0x054c && d->usb->did == 0x0268){
 		ret = usbcmd(d, Rd2h|Rclass|Riface, Getreport, (0x3<<8) | 0xF2, 0, buf, sizeof(buf));
 		if(ret < 0)
 			sysfatal("failed to enable ps3 controller: %r");
+	}
+
+	/* XBox360 controller and compatible return no HID descriptor, so we provide one */
+	if(d->usb->vid == 0x045e && d->usb->did == 0x028e
+	|| d->usb->vid == 0x1bad && d->usb->did == 0xf03a){
+		xbox360(kd);
 	}
 }
 
@@ -399,7 +506,10 @@ kbstart(Dev *d, Ep *ep, void (*f)(void*))
 		fprint(2, "%s: %s: opendevdata: %r\n", argv0, kd->ep->dir);
 		goto Err;
 	}
-	quirks(kd->dev);
+	quirks(kd);
+	if(kd->nrep == 0) 
+		kbfatal(kd, "no report");
+
 	f(kd);
 	return;
 Err:
@@ -409,7 +519,7 @@ Err:
 static void
 usage(void)
 {
-	fprint(2, "usage: %s [-d] devid\n", argv0);
+	fprint(2, "usage: %s [-d] [-b deadband] devid\n", argv0);
 	threadexits("usage");
 }
 
@@ -420,11 +530,17 @@ threadmain(int argc, char* argv[])
 	Dev *d;
 	Ep *ep;
 	Usbdev *ud;
+	char *b;
 
 	ARGBEGIN{
 	case 'd':
 		debug++;
 		break;
+	case 'b':
+		b = EARGF(usage());
+		deadband = atof(b);
+		if(deadband > 0.0 && deadband < 1.0)
+			break;
 	default:
 		usage();
 	}ARGEND;
@@ -438,7 +554,11 @@ threadmain(int argc, char* argv[])
 	for(i = 0; i < nelem(ud->ep); i++){
 		if((ep = ud->ep[i]) == nil)
 			continue;
-		if(ep->type == Eintr && ep->dir == Ein && ep->iface->csp == JoyCSP)
+		if(ep->type != Eintr || (ep->dir == Eout))
+			continue;
+		if(ep->iface->csp == JoyCSP) 
+			break;
+		if(ep->iface->csp == Xbox360CSP)
 			break;
 	}
 	if(ep == nil)

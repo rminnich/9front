@@ -44,6 +44,9 @@ usbd - Universal Serial Bus drivers
 .B nusb/joy
 [
 .B -d
+] [
+.B -b
+.I deadband
 ]
 .I devid
 .PP
@@ -190,7 +193,7 @@ parses data packets from a given endpoint and prints back
 any changes in the device's axes or buttons.
 Buttons are identified via an integer id.
 .PP
-Directional buttons are reported as axes
+Directional buttons are reported either as buttons or axes
 with 3 positions:
 .IR 0 ,
 .IR 128 ,
@@ -198,6 +201,12 @@ and
 .I 255
 for left (or up), center and right (or down) respectively.
 Messages are in the form \fIaxis id position\fR.
+.PP
+A deadband in the range of
+.RI [ 0.0 , 1.0 ]
+can be set with the
+.B \-b 
+option to filter out input below a threshold on all analog axes.
 .PP
 On/off buttons are reported as either
 .I down
