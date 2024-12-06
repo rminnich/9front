@@ -30,6 +30,8 @@ enum
 	Fcportovercurrent= 19,
 	Fcportreset	= 20,
 	Fportindicator	= 22,
+	Fbhportreset	= 28,
+	
 
 	/* Port status and status change bits
 	 * Constants at /sys/src/9/pc/usb.h starting with HP-
@@ -55,7 +57,7 @@ enum
 
 	/* Delays, timeouts (ms) */
 	Resetdelay	= 20,		/* how much to wait after a reset */
-	Enabledelay	= 20,		/* how much to wait after an enable */
+	Resumedelay	= 20,		/* how much to wait after a resume */
 	Powerdelay	= 100,		/* after powering up ports */
 	Pollms		= 250, 		/* port poll interval */
 
@@ -75,7 +77,7 @@ struct Hub
 {
 	uchar	pwrmode;
 	uchar	compound;
-	uchar	pwrms;		/* time to wait in ms */
+	int	pwrms;		/* time to wait in ms */
 	uchar	maxcurrent;	/*    after powering port*/
 	uchar	ttt;		/* tt think-time */
 	uchar	mtt;		/* muti tt enabled */

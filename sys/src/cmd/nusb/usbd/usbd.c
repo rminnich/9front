@@ -569,11 +569,11 @@ main(int argc, char **argv)
 		nd = dirreadall(fd, &d);
 		close(fd);
 		for(i = 0; i < nd; i++){
-			if(strcmp(d[i].name, "ctl") != 0){
-				fn = smprint("/dev/usb/%s", d[i].name);
-				newhub(fn, nil);
-				free(fn);
-			}
+			if(strcmp(d[i].name, "ctl") == 0)
+				continue;
+			fn = smprint("/dev/usb/%s", d[i].name);
+			newhub(fn, nil);
+			free(fn);
 		}
 		free(d);
 	}else {
