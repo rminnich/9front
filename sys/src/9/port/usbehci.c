@@ -51,7 +51,6 @@ enum
 	Qclose,
 	Qfree,
 
-	Enabledelay	= 100,		/* waiting for a port to enable */
 	Abortdelay	= 10,		/* delay after cancelling Tds (ms) */
 
 	Incr		= 64,		/* for pools of Tds, Qhs, etc. */
@@ -1628,41 +1627,6 @@ interrupt(Ureg*, void* a)
 	ehciintr(a);
 }
 
-static int
-portenable(Hci *hp, int port, int on)
-{
-	Ctlr *ctlr;
-	Eopio *opio;
-	int s;
-
-	ctlr = hp->aux;
-	opio = ctlr->opio;
-	s = opio->portsc[port-1];
-	eqlock(&ctlr->portlck);
-	if(waserror()){
-		qunlock(&ctlr->portlck);
-		nexterror();
-	}
-	dprint("ehci %#p port %d enable=%d; sts %#x\n",
-		ctlr->capio, port, on, s);
-	ilock(ctlr);
-	if(s & (Psstatuschg | Pschange))
-		opio->portsc[port-1] = s;
-	if(on)
-		opio->portsc[port-1] |= Psenable;
-	else
-		opio->portsc[port-1] &= ~Psenable;
-	coherence();
-	microdelay(64);
-	iunlock(ctlr);
-	tsleep(&up->sleep, return0, 0, Enabledelay);
-	dprint("ehci %#p port %d enable=%d: sts %#lux\n",
-		ctlr->capio, port, on, opio->portsc[port-1]);
-	qunlock(&ctlr->portlck);
-	poperror();
-	return 0;
-}
-
 /*
  * If we detect during status that the port is low-speed or
  * during reset that it's full-speed, the device is not for
@@ -1678,67 +1642,53 @@ portlend(Ctlr *ctlr, int port, char *ss)
 	ulong s;
 
 	opio = ctlr->opio;
-
 	dprint("ehci %#p port %d: %s speed device: no longer owned\n",
 		ctlr->capio, port, ss);
 	s = opio->portsc[port-1] & ~(Pschange|Psstatuschg);
 	opio->portsc[port-1] = s | Psowner;
-	coherence();
 }
 
-static int
-portreset(Hci *hp, int port, int on)
+static void
+portenable(Hci *hp, int port, int on)
 {
-	ulong *portscp;
-	Eopio *opio;
 	Ctlr *ctlr;
-	int i;
-
-	if(on == 0)
-		return 0;
+	Eopio *opio;
+	int s;
 
 	ctlr = hp->aux;
 	opio = ctlr->opio;
 	eqlock(&ctlr->portlck);
-	if(waserror()){
-		iunlock(ctlr);
-		qunlock(&ctlr->portlck);
-		nexterror();
-	}
-	portscp = &opio->portsc[port-1];
-	dprint("ehci %#p port %d reset; sts %#lux\n", ctlr->capio, port, *portscp);
 	ilock(ctlr);
-	/* Shalted must be zero, else Psreset will stay set */
-	if (opio->sts & Shalted)
-		iprint("ehci %#p: halted yet trying to reset port\n",
-			ctlr->capio);
-
-	*portscp = (*portscp & ~Psenable) | Psreset;	/* initiate reset */
-	/*
-	 * usb 2 spec: reset must finish within 20 ms.
-	 * linux says spec says it can take 50 ms. for hubs.
-	 */
-	delay(50);
-	*portscp &= ~Psreset;	/* terminate reset */
-
-	delay(10);
-	for(i = 0; *portscp & Psreset && i < 10; i++)
-		delay(10);
-
-	if (*portscp & Psreset)
-		iprint("ehci %#p: port %d didn't reset; sts %#lux\n",
-			ctlr->capio, port, *portscp);
-
-	delay(10);			/* ehci spec: enable within 2 ms. */
-	if((*portscp & Psenable) == 0)
-		portlend(ctlr, port, "full");
-
+	s = opio->portsc[port-1];
+	if(s & (Psstatuschg | Pschange))
+		opio->portsc[port-1] = s;
+	if(on){
+		/* not enabled after reset? */
+		if((s & Psenable) == 0)
+			portlend(ctlr, port, "full");
+	} else {
+		opio->portsc[port-1] &= ~Psenable;
+	}
 	iunlock(ctlr);
-	dprint("ehci %#p after port %d reset; sts %#lux\n",
-		ctlr->capio, port, *portscp);
 	qunlock(&ctlr->portlck);
-	poperror();
-	return 0;
+}
+
+static void
+portreset(Hci *hp, int port, int on)
+{
+	Eopio *opio;
+	Ctlr *ctlr;
+
+	ctlr = hp->aux;
+	opio = ctlr->opio;
+	eqlock(&ctlr->portlck);
+	ilock(ctlr);
+	if(on)
+		opio->portsc[port-1] = (opio->portsc[port-1] & ~Psenable) | Psreset;	/* initiate reset */
+	else
+		opio->portsc[port-1] &= ~Psreset;	/* terminate reset */
+	iunlock(ctlr);
+	qunlock(&ctlr->portlck);
 }
 
 static int
@@ -1751,18 +1701,10 @@ portstatus(Hci *hp, int port)
 	ctlr = hp->aux;
 	opio = ctlr->opio;
 	eqlock(&ctlr->portlck);
-	if(waserror()){
-		iunlock(ctlr);
-		qunlock(&ctlr->portlck);
-		nexterror();
-	}
 	ilock(ctlr);
 	s = opio->portsc[port-1];
-	if(s & (Psstatuschg | Pschange)){
+	if(s & (Psstatuschg | Pschange))
 		opio->portsc[port-1] = s;
-		coherence();
-		ddprint("ehci %#p port %d status %#x\n", ctlr->capio, port, s);
-	}
 	/*
 	 * If the port is a low speed port we yield ownership now
 	 * to the [uo]hci companion controller and pretend it's not here.
@@ -1773,7 +1715,6 @@ portstatus(Hci *hp, int port)
 	}
 	iunlock(ctlr);
 	qunlock(&ctlr->portlck);
-	poperror();
 
 	/*
 	 * We must return status bits as a
@@ -1822,7 +1763,6 @@ seprintep(char *s, char *e, Ep *ep)
 	case Tctl:
 		cio = ep->aux;
 		s = seprintio(s, e, cio, "c");
-		s = seprint(s, e, "\trepl %llux ndata %d\n", ep->rhrepl, cio->ndata);
 		break;
 	case Tbulk:
 	case Tintr:

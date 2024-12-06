@@ -93,6 +93,8 @@ enum
 	/* Hub feature selectors */
 	Rportenable	= 1,
 	Rportreset	= 4,
+	Rportpower	= 8,
+	Rbhportreset	= 28,
 
 };
 
@@ -505,6 +507,9 @@ newdev(Hci *hp, Ep *hub, int port, int speed)
 	d->ttport = d->ttt = d->mtt = 0;
 	d->tthub = nil;
 
+	d->rhrepl = -1;
+	d->rhresetport = 0;
+
 	if(hub != nil){
 		d->hub = hub->dev;
 		d->depth = d->hub->depth+1;
@@ -522,7 +527,7 @@ newdev(Hci *hp, Ep *hub, int port, int speed)
 			}
 		}
 		d->rootport = rootport(hub, port);
-		if(d->rootport == 0)
+		if(d->rootport <= 0)
 			error(Ebadport);
 	} else {
 		d->hub = nil;
@@ -1014,7 +1019,8 @@ usbopen(Chan *c, int omode)
 	if(ep->dev->state == Ddetach)
 		error(Edetach);
 	ep->clrhalt = 0;
-	ep->rhrepl = -1;
+	if(ep->ttype == Tctl)
+		ep->dev->rhrepl = -1;
 	if(ep->ttype == Tiso)
 		isotiming(ep);
 	if(ep->load == 0 && ep->dev->speed != Superspeed)
@@ -1127,20 +1133,23 @@ static long
 rhubread(Ep *ep, void *a, long n)
 {
 	uchar b[8];
+	Udev *dev;
 
-	if(ep->dev->depth >= 0 || ep->nb != 0 || n < 2 || ep->rhrepl == -1)
+	dev = ep->dev;
+
+	if(dev->depth >= 0 || ep->nb != 0 || n < 2 || dev->rhrepl == -1)
 		return -1;
 
-	b[0] = ep->rhrepl;
-	b[1] = ep->rhrepl>>8;
-	b[2] = ep->rhrepl>>16;
-	b[3] = ep->rhrepl>>24;
-	b[4] = ep->rhrepl>>32;
-	b[5] = ep->rhrepl>>40;
-	b[6] = ep->rhrepl>>48;
-	b[7] = ep->rhrepl>>56;
+	b[0] = dev->rhrepl;
+	b[1] = dev->rhrepl>>8;
+	b[2] = dev->rhrepl>>16;
+	b[3] = dev->rhrepl>>24;
+	b[4] = dev->rhrepl>>32;
+	b[5] = dev->rhrepl>>40;
+	b[6] = dev->rhrepl>>48;
+	b[7] = dev->rhrepl>>56;
 
-	ep->rhrepl = -1;
+	dev->rhrepl = -1;
 
 	if(n > sizeof(b))
 		n = sizeof(b);
@@ -1157,33 +1166,70 @@ rhubwrite(Ep *ep, void *a, long n)
 	int feature;
 	int port;
 	Hci *hp;
+	Udev *dev;
 
-	if(ep->dev->depth >= 0 || ep->nb != 0)
+	hp = ep->hp;
+	dev = ep->dev;
+
+	if(dev->depth >= 0 || ep->nb != 0)
 		return -1;
 	if(n != Rsetuplen)
 		error("root hub is a toy hub");
-	ep->rhrepl = -1;
 	s = a;
 	if(s[Rtype] != (Rh2d|Rclass|Rother) && s[Rtype] != (Rd2h|Rclass|Rother))
 		error("root hub is a toy hub");
-	hp = ep->hp;
+
+	/* terminate previous port reset */
+	port = dev->rhresetport;
+	if(port > 0){
+		dev->rhresetport = 0;
+
+		/* some controllers have to clear reset and set enable manually */
+		if(hp->portreset != nil){
+			(*hp->portreset)(hp, port, 0);
+			tsleep(&up->sleep, return0, nil, 50);
+		}
+		if(hp->portenable != nil){
+			(*hp->portenable)(hp, port, 1);
+			tsleep(&up->sleep, return0, nil, 50);
+		}
+	}
+
 	cmd = s[Rreq];
 	feature = GET2(s+Rvalue);
 	port = rootport(ep, GET2(s+Rindex));
-	if(port == 0)
+	if(port <= 0)
 		error(Ebadport);
+
+	dev->rhrepl = 0;
 	switch(feature){
+	case Rportpower:
+		if(hp->portpower == nil)
+			break;
+		(*hp->portpower)(hp, port, cmd == Rsetfeature);
+		break;
 	case Rportenable:
-		ep->rhrepl = (*hp->portenable)(hp, port, cmd == Rsetfeature);
+		if(cmd != Rclearfeature || hp->portenable == nil)
+			break;
+		(*hp->portenable)(hp, port, 0);
+		break;
+	case Rbhportreset:
+		if(cmd != Rsetfeature || hp->bhportreset == nil)
+			break;
+		(*hp->bhportreset)(hp, port, 1);
 		break;
 	case Rportreset:
-		ep->rhrepl = (*hp->portreset)(hp, port, cmd == Rsetfeature);
+		if(cmd != Rsetfeature || hp->portreset == nil)
+			break;
+		(*hp->portreset)(hp, port, 1);
+		/* port reset in progress */
+		dev->rhresetport = port;
 		break;
 	case Rgetstatus:
-		ep->rhrepl = (*hp->portstatus)(hp, port);
+		if(hp->portstatus == nil)
+			break;
+		dev->rhrepl = (*hp->portstatus)(hp, port);
 		break;
-	default:
-		ep->rhrepl = 0;
 	}
 	return n;
 }

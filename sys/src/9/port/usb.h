@@ -117,9 +117,11 @@ struct Hciimpl
 	long	(*epwrite)(Ep*,void*,long);	/* receive data for ep */
 	char*	(*seprintep)(char*,char*,Ep*);	/* debug */
 	void	(*devclose)(Udev*);		/* release the device */
-	int	(*portenable)(Hci*, int, int);	/* enable/disable port */
-	int	(*portreset)(Hci*, int, int);	/* set/clear port reset */
-	int	(*portstatus)(Hci*, int);	/* get port status */
+	void	(*portenable)(Hci*, int, int);	/* enable/disable root port */
+	void	(*portreset)(Hci*, int, int);	/* set/clear root port reset */
+	void	(*bhportreset)(Hci*, int, int);	/* set/clear warm root port reset (usb3) */
+	void	(*portpower)(Hci*, int, int);	/* set/clear root port power state */
+	int	(*portstatus)(Hci*, int);	/* get root port status */
 	void	(*shutdown)(Hci*);		/* shutdown for reboot */
 	void	(*debug)(Hci*, int);		/* set/clear debug flag */
 };
@@ -167,7 +169,6 @@ struct Ep
 	int	ttype;		/* tranfer type */
 	ulong	load;		/* in µs, for a transfer of maxpkt bytes */
 	void*	aux;		/* for controller specific info */
-	u64int	rhrepl;		/* fake root hub replies */
 	int	toggle[2];	/* saved toggles (while ep is not in use) */
 	long	pollival;	/* poll interval ([µ]frames; intr/iso) */
 	long	hz;		/* poll frequency (iso) */
@@ -204,6 +205,9 @@ struct Udev
 	void	*aux;
 
 	Ep	*eps[Ndeveps];	/* end points for this device (cached) */
+
+	u64int	rhrepl;		/* fake root hub replies */
+	int	rhresetport;	/* root port being reset */
 };
 
 void	addhcitype(char *type, int (*reset)(Hci*));

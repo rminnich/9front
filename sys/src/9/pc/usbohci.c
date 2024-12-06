@@ -43,7 +43,6 @@ enum
 
 	Abortdelay	= 1,		/* delay after cancelling Tds (ms) */
 	Tdatomic		= 8,		/* max nb. of Tds per bulk I/O op. */
-	Enabledelay	= 100,		/* waiting for a port to enable */
 
 
 	/* Queue states (software) */
@@ -339,7 +338,6 @@ struct Edpool
 struct Ctlr
 {
 	Lock;			/* for ilock; lists and basic ctlr I/O */
-	QLock	resetl;		/* lock controller during USB reset */
 	int	active;
 	Ctlr*	next;
 	int	nports;
@@ -950,7 +948,6 @@ seprintep(char* s, char* e, Ep *ep)
 	case Tctl:
 		cio = ep->aux;
 		s = seprintio(s, e, cio, "c");
-		s = seprint(s, e, "\trepl %llux ndata %d\n", ep->rhrepl, cio->ndata);
 		break;
 	case Tbulk:
 	case Tintr:
@@ -2211,63 +2208,46 @@ epclose(Ep *ep)
 	ep->aux = nil;
 }
 
-static int
+static void
 portreset(Hci *hp, int port, int on)
 {
 	Ctlr *ctlr;
-	Ohci *ohci;
-
-	if(on == 0)
-		return 0;
 
 	ctlr = hp->aux;
-	eqlock(&ctlr->resetl);
-	if(waserror()){
-		qunlock(&ctlr->resetl);
-		nexterror();
-	}
 	ilock(ctlr);
-	ohci = ctlr->ohci;
-	ohci->rhportsts[port - 1] = Spp;
-	if((ohci->rhportsts[port - 1] & Ccs) == 0){
-		iunlock(ctlr);
-		error("port not connected");
-	}
-	ohci->rhportsts[port - 1] = Spr;
-	while((ohci->rhportsts[port - 1] & Prsc) == 0){
-		iunlock(ctlr);
-		dprint("ohci: portreset, wait for reset complete\n");
-		ilock(ctlr);
-	}
-	ohci->rhportsts[port - 1] = Prsc;
+	if(on)
+		ctlr->ohci->rhportsts[port - 1] = Spr;
+	else if(ctlr->ohci->rhportsts[port - 1] & Prsc)
+		ctlr->ohci->rhportsts[port - 1] = Prsc;
 	iunlock(ctlr);
-	poperror();
-	qunlock(&ctlr->resetl);
-	return 0;
 }
 
-static int
+static void
+portpower(Hci *hp, int port, int on)
+{
+	Ctlr *ctlr;
+
+	ctlr = hp->aux;
+	ilock(ctlr);
+	if(on)
+		ctlr->ohci->rhportsts[port - 1] = Spp;
+	else
+		ctlr->ohci->rhportsts[port - 1] = Cpp;
+	iunlock(ctlr);
+}
+
+static void
 portenable(Hci *hp, int port, int on)
 {
 	Ctlr *ctlr;
 
 	ctlr = hp->aux;
-	dprint("ohci: %#p port %d enable=%d\n", ctlr->ohci, port, on);
-	eqlock(&ctlr->resetl);
-	if(waserror()){
-		qunlock(&ctlr->resetl);
-		nexterror();
-	}
 	ilock(ctlr);
 	if(on)
-		ctlr->ohci->rhportsts[port - 1] = Spe | Spp;
+		ctlr->ohci->rhportsts[port - 1] = Spe;
 	else
 		ctlr->ohci->rhportsts[port - 1] = Cpe;
 	iunlock(ctlr);
-	tsleep(&up->sleep, return0, 0, Enabledelay);
-	poperror();
-	qunlock(&ctlr->resetl);
-	return 0;
 }
 
 static int
@@ -2626,6 +2606,7 @@ reset(Hci *hp)
 	hp->seprintep = seprintep;
 	hp->portenable = portenable;
 	hp->portreset = portreset;
+	hp->portpower = portpower;
 	hp->portstatus = portstatus;
 	hp->shutdown = shutdown;
 	hp->debug = usbdebug;

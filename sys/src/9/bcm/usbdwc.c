@@ -27,9 +27,6 @@
 enum
 {
 	USBREGS		= VIRTIO + 0x980000,
-	Enabledelay	= 50,
-	Resetdelay	= 10,
-	ResetdelayHS	= 50,
 
 	Read		= 0,
 	Write		= 1,
@@ -936,61 +933,52 @@ seprintep(char *s, char*, Ep*)
 {
 	return s;
 }
+
+enum {
+	RW1C = Prtconndet | Prtena | Prtenchng | Prtovrcurrchng,
+};
 	
-static int
-portenable(Hci *hp, int port, int on)
+static void
+portenable(Hci *hp, int, int on)
 {
-	Ctlr *ctlr;
-	Dwcregs *r;
+	Ctlr *ctlr = hp->aux;
+	Dwcregs *r = ctlr->regs;
 
-	assert(port == 1);
-	ctlr = hp->aux;
-	r = ctlr->regs;
-	dprint("usbdwc enable=%d; sts %#x\n", on, r->hport0);
 	if(!on)
-		r->hport0 = Prtpwr | Prtena;
-	tsleep(&up->sleep, return0, 0, Enabledelay);
-	dprint("usbdwc enable=%d; sts %#x\n", on, r->hport0);
-	return 0;
+		r->hport0 = (r->hport0 & ~RW1C) | Prtena;
+}
+
+static void
+portreset(Hci *hp, int, int on)
+{
+	Ctlr *ctlr = hp->aux;
+	Dwcregs *r = ctlr->regs;
+
+	if(on)
+		r->hport0 = (r->hport0 & ~RW1C) | Prtrst;
+	else
+		r->hport0 = (r->hport0 & ~RW1C) & ~Prtrst;
+}
+
+static void
+portpower(Hci *hp, int, int on)
+{
+	Ctlr *ctlr = hp->aux;
+	Dwcregs *r = ctlr->regs;
+
+	if(on)
+		r->hport0 = (r->hport0 & ~RW1C) | Prtpwr;
+	else
+		r->hport0 = (r->hport0 & ~RW1C) & ~Prtpwr;
 }
 
 static int
-portreset(Hci *hp, int port, int on)
+portstatus(Hci *hp, int)
 {
-	Ctlr *ctlr;
-	Dwcregs *r;
+	Ctlr *ctlr = hp->aux;
+	Dwcregs *r = ctlr->regs;
 	int b, s;
 
-	assert(port == 1);
-	ctlr = hp->aux;
-	r = ctlr->regs;
-	dprint("usbdwc reset=%d; sts %#x\n", on, r->hport0);
-	if(!on)
-		return 0;
-	r->hport0 = Prtpwr | Prtrst;
-	tsleep(&up->sleep, return0, 0, ResetdelayHS);
-	r->hport0 = Prtpwr;
-	tsleep(&up->sleep, return0, 0, Enabledelay);
-	s = r->hport0;
-	b = s & (Prtconndet|Prtenchng|Prtovrcurrchng);
-	if(b != 0)
-		r->hport0 = Prtpwr | b;
-	dprint("usbdwc reset=%d; sts %#x\n", on, s);
-	if((s & Prtena) == 0)
-		print("usbdwc: host port not enabled after reset");
-	return 0;
-}
-
-static int
-portstatus(Hci *hp, int port)
-{
-	Ctlr *ctlr;
-	Dwcregs *r;
-	int b, s;
-
-	assert(port == 1);
-	ctlr = hp->aux;
-	r = ctlr->regs;
 	s = r->hport0;
 	b = s & (Prtconndet|Prtenchng|Prtovrcurrchng);
 	if(b != 0)
@@ -1067,6 +1055,7 @@ reset(Hci *hp)
 	hp->seprintep = seprintep;
 	hp->portenable = portenable;
 	hp->portreset = portreset;
+	hp->portpower = portpower;
 	hp->portstatus = portstatus;
 	hp->shutdown = shutdown;
 	hp->debug = setdebug;

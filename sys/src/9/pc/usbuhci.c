@@ -30,7 +30,6 @@ typedef struct Tdpool Tdpool;
 enum
 {
 	Resetdelay	= 100,		/* delay after a controller reset (ms) */
-	Enabledelay	= 100,		/* waiting for a port to enable */
 	Abortdelay	= 10,		/* delay after cancelling Tds (ms) */
 	Incr		= 64,		/* for Td and Qh pools */
 
@@ -2023,79 +2022,52 @@ seprintep(char *s, char *e, Ep *ep)
 	return s;
 }
 
-static int
+static void
 portenable(Hci *hp, int port, int on)
 {
-	int s;
-	int ioport;
 	Ctlr *ctlr;
+	int ioport, s;
 
 	ctlr = hp->aux;
-	dprint("uhci: %#x port %d enable=%d\n", ctlr->port, port, on);
 	ioport = PORT(port-1);
 	eqlock(&ctlr->portlck);
-	if(waserror()){
-		qunlock(&ctlr->portlck);
-		nexterror();
-	}
 	ilock(ctlr);
 	s = INS(ioport);
 	if(on)
 		OUTS(ioport, s | PSenable);
 	else
 		OUTS(ioport, s & ~PSenable);
-	microdelay(64);
 	iunlock(ctlr);
-	tsleep(&up->sleep, return0, 0, Enabledelay);
-	dprint("uhci %#ux port %d enable=%d: sts %#x\n",
-		ctlr->port, port, on, INS(ioport));
 	qunlock(&ctlr->portlck);
-	poperror();
-	return 0;
 }
 
-static int
+static void
 portreset(Hci *hp, int port, int on)
 {
-	int i, p;
 	Ctlr *ctlr;
+	int ioport;
 
-	if(on == 0)
-		return 0;
 	ctlr = hp->aux;
-	dprint("uhci: %#ux port %d reset\n", ctlr->port, port);
-	p = PORT(port-1);
+	ioport = PORT(port-1);
+	eqlock(&ctlr->portlck);
 	ilock(ctlr);
-	OUTS(p, PSreset);
-	delay(50);
-	OUTS(p, INS(p) & ~PSreset);
-	OUTS(p, INS(p) | PSenable);
-	microdelay(64);
-	for(i=0; i<1000 && (INS(p) & PSenable) == 0; i++)
-		;
-	OUTS(p, (INS(p) & ~PSreset)|PSenable);
+	if(on)
+		OUTS(ioport, PSreset);
+	else
+		OUTS(ioport, INS(ioport) & ~PSreset);
 	iunlock(ctlr);
-	dprint("uhci %#ux after port %d reset: sts %#x\n",
-		ctlr->port, port, INS(p));
-	return 0;
+	qunlock(&ctlr->portlck);
 }
 
 static int
 portstatus(Hci *hp, int port)
 {
-	int s;
-	int r;
-	int ioport;
 	Ctlr *ctlr;
+	int ioport, s, r;
 
 	ctlr = hp->aux;
 	ioport = PORT(port-1);
 	eqlock(&ctlr->portlck);
-	if(waserror()){
-		iunlock(ctlr);
-		qunlock(&ctlr->portlck);
-		nexterror();
-	}
 	ilock(ctlr);
 	s = INS(ioport);
 	if(s & (PSstatuschg | PSchange)){
@@ -2104,7 +2076,6 @@ portstatus(Hci *hp, int port)
 	}
 	iunlock(ctlr);
 	qunlock(&ctlr->portlck);
-	poperror();
 
 	/*
 	 * We must return status bits as a

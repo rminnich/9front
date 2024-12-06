@@ -1785,26 +1785,61 @@ portstatus(Hci *hp, int port)
 
 	return ps;
 }
+
+enum {
+	RW1S = PR | WPR,
+	RW1CS = PED | CSC | PEC | WRC | OCC | PRC | PLC | CEC,
+};
 	
-static int
-portenable(Hci*, int, int)
+static void
+portenable(Hci *hp, int port, int on)
 {
-	return 0;
+	Ctlr *ctlr = hp->aux;
+	u32int *portsc;
+
+	if(on || ctlr->port == nil || needrecover(ctlr))
+		return;
+	portsc = &ctlr->port[port-1].reg[PORTSC];
+	*portsc = (*portsc & ~(RW1CS|RW1S)) | PED;
 }
 
-static int
+static void
 portreset(Hci *hp, int port, int on)
 {
 	Ctlr *ctlr = hp->aux;
+	u32int *portsc;
+
+	if(!on || ctlr->port == nil || needrecover(ctlr))
+		return;
+	portsc = &ctlr->port[port-1].reg[PORTSC];
+	*portsc = (*portsc & ~(RW1CS|RW1S)) | PR;
+}
+
+static void
+bhportreset(Hci *hp, int port, int on)
+{
+	Ctlr *ctlr = hp->aux;
+	u32int *portsc;
+
+	if(!on || ctlr->port == nil || needrecover(ctlr))
+		return;
+	portsc = &ctlr->port[port-1].reg[PORTSC];
+	*portsc = (*portsc & ~(RW1CS|RW1S)) | WPR;
+}
+
+static void
+portpower(Hci *hp, int port, int on)
+{
+	Ctlr *ctlr = hp->aux;
+	u32int *portsc;
 
 	if(ctlr->port == nil || needrecover(ctlr))
-		return 0;
-
-	if(on){
-		ctlr->port[port-1].reg[PORTSC] |= PR;
-		tsleep(&up->sleep, return0, nil, 200);
-	}
-	return 0;
+		return;
+	portsc = &ctlr->port[port-1].reg[PORTSC];
+	if(on)
+		*portsc = (*portsc & ~(RW1CS|RW1S|PP)) | PP;
+	else
+		*portsc = (*portsc & ~(RW1CS|RW1S|PP));
 }
 
 static u64int
@@ -1851,6 +1886,8 @@ xhcilinkage(Hci *hp, Xhci *ctlr)
 	hp->devclose = devclose;
 	hp->portenable = portenable;
 	hp->portreset = portreset;
+	hp->bhportreset = bhportreset;
+	hp->portpower = portpower;
 	hp->portstatus = portstatus;
 
 	hp->debug = setdebug;
