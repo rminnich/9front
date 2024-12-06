@@ -222,7 +222,7 @@ newhub(char *fn, Dev *d)
 			ud->csp, h->nport, ud->vid, ud->did, ud->vendor, ud->product, d->hname);
 	}
 	if(opendevdata(h->dev, ORDWR) < 0){
-		fprint(2, "%s: %s: opendevdata: %r\n", argv0, fn);
+		dprint(2, "%s: %s: opendevdata: %r\n", argv0, fn);
 		goto Fail;
 	}
 	for(i = 1; i <= h->nport; i++)
@@ -298,7 +298,7 @@ portstatus(Hub *h, int p)
 		usbdebug = 1;	/* do not be too chatty */
 	if(usbcmd(h->dev, Rd2h|Rclass|Rother, Rgetstatus, 0, p, buf, sizeof(buf)) < 0){
 		usbdebug = dbg;
-		fprint(2, "%s: %s: port %d: get status: %r\n", argv0, h->dev->dir, p);
+		dprint(2, "%s: %s: port %d: get status: %r\n", argv0, h->dev->dir, p);
 
 		/* try to reset the hubs upstream port */
 		devctl(h->dev, "reset");
@@ -451,7 +451,7 @@ portattach(Hub *h, int p, u32int sts)
 		sp = "super";
 	} else {
 		if(portfeature(h, p, Fportreset, 1) < 0){
-			fprint(2, "%s: %s: port %d: set reset: %r\n", argv0, d->dir, p);
+			dprint(2, "%s: %s: port %d: set reset: %r\n", argv0, d->dir, p);
 			return -1;
 		}
 		sleep(Resetdelay);
@@ -498,7 +498,7 @@ portattach(Hub *h, int p, u32int sts)
 		if(opendevdata(nd, ORDWR) >= 0)
 			break;
 		if(i >= 10){
-			fprint(2, "%s: %s: opendevdata: %r\n", argv0, nd->dir);
+			dprint(2, "%s: %s: opendevdata: %r\n", argv0, nd->dir);
 			return -1;
 		}
 		if((sts = portstatus(h, p)) == -1)
@@ -615,10 +615,10 @@ portfail(Hub *h, int p, char *what)
 	portdetach(h, p);
 	if(h->dev->isusb3){
 		if(portfeature(h, p, Fbhportreset, 1) < 0)
-			fprint(2, "%s: %s: port %d: set warm reset: %r\n", argv0, h->dev->dir, p);
+			dprint(2, "%s: %s: port %d: set warm reset: %r\n", argv0, h->dev->dir, p);
 	} else {
 		if(portfeature(h, p, Fportenable, 0) < 0)
-			fprint(2, "%s: %s: port %d: clear enable: %r\n", argv0, h->dev->dir, p);
+			dprint(2, "%s: %s: port %d: clear enable: %r\n", argv0, h->dev->dir, p);
 	}
 }
 
@@ -650,7 +650,7 @@ enumhub(Hub *h, int p)
 		return -1;
 	if((sts & PSsuspend) != 0 && !d->isusb3){
 		if(portfeature(h, p, Fportsuspend, 0) < 0)
-			fprint(2, "%s: %s: port %d: clear suspend: %r\n", argv0, d->dir, p);
+			dprint(2, "%s: %s: port %d: clear suspend: %r\n", argv0, d->dir, p);
 		sleep(Resumedelay);
 		if((sts = portstatus(h, p)) != -1)
 			return -1;
