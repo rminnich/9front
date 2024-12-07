@@ -9,8 +9,25 @@ static char *edir[] = {"in", "out", "inout"};
 static char *etype[] = {"ctl", "iso", "bulk", "intr"};
 static char* cnames[] =
 {
-	"none", "audio", "comms", "hid", "",
-	"", "", "printer", "storage", "hub", "data"
+	[0x00] "none",
+	[0x01] "audio",
+	[0x02] "comms",
+	[0x03] "hid",
+	[0x05] "phys",
+	[0x06] "image",
+	[0x07] "printer",
+	[0x08] "storage",
+	[0x09] "hub",
+	[0x0A] "data",
+	[0x0B] "smartcard",
+	[0x0D] "drm",
+	[0x0E] "video",
+	[0x0F] "healthcare",
+	[0x10] "av",
+	[0x11] "billboard",
+	[0x12] "usbc",
+	[0x13] "display",
+	[0x14] "mctp",
 };
 static char* devstates[] =
 {
@@ -20,12 +37,23 @@ static char* devstates[] =
 char*
 classname(int c)
 {
-	static char buf[30];
+	static char buf[12];
 
-	if(c >= 0 && c < nelem(cnames))
+	if(c >= 0 && c < nelem(cnames) && cnames[c] != nil && cnames[c][0] != '\0')
 		return cnames[c];
-	else{
-		seprint(buf, buf+30, "%d", c);
+	switch(c){
+	case 0x3C:	/* I3C Device Class */
+		return "i3c";
+	case 0xDC:	/* Diagnostic Device */
+		return "debug";
+	case 0xE0:	/* Wireless Controller */
+		return "wireless";
+	case 0xEF:	/* Miscellaneous */
+		return "misc";
+	case 0xFE:	/* Application specific */
+		return "spec";
+	default:
+		snprint(buf, sizeof(buf), "%d", c);
 		return buf;
 	}
 }
@@ -146,11 +174,9 @@ emallocz(ulong size, int zero)
 {
 	void *x;
 
-	x = malloc(size);
+	x = mallocz(size, zero);
 	if(x == nil)
 		sysfatal("malloc: %r");
-	if(zero)
-		memset(x, 0, size);
 	setmalloctag(x, getcallerpc(&size));
 	return x;
 }
