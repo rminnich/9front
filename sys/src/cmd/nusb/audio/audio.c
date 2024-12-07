@@ -266,17 +266,15 @@ parseasdesc1(Desc *dd, Aconf *c)
 		c->bits = b[4];
 		if(b[5] == 0){	/* continuous frequency range */
 			c->nfreq = 1;
-			c->freq = emallocz(sizeof(*f), 1);
-			c->freq->min = b[6] | b[7]<<8 | b[8]<<16;
-			c->freq->max = b[9] | b[10]<<8 | b[11]<<16;
+			c->freq = emallocz(sizeof(*f), 0);
+			c->freq->min = b[6] | (int)b[7]<<8 | (int)b[8]<<16;
+			c->freq->max = b[9] | (int)b[10]<<8 | (int)b[11]<<16;
 		} else {		/* discrete sampling frequencies */
 			c->nfreq = b[5];
-			c->freq = emallocz(c->nfreq * sizeof(*f), 1);
+			c->freq = emallocz(c->nfreq * sizeof(*f), 0);
 			b += 6;
-			for(f = c->freq; f < c->freq+c->nfreq; f++, b += 3){
-				f->min = b[0] | b[1]<<8 | b[2]<<16;
-				f->max = f->min;
-			}
+			for(f = c->freq; f < c->freq+c->nfreq; f++, b += 3)
+				f->min = f->max = b[0] | (int)b[1]<<8 | (int)b[2]<<16;
 		}
 		break;
 	}
@@ -356,8 +354,8 @@ getclockrange(Aconf *c)
 		werrstr("invalid response");
 		return -1;
 	}
-	c->freq = emallocz(n, sizeof(Range));
 	c->nfreq = n;
+	c->freq = emallocz(n*sizeof(Range), 0);
 	for(i = 0; i < n; i++)
 		c->freq[i] = (Range){GET4(&b[2 + i*12]), GET4(&b[6 + i*12])};
 	return 0;
