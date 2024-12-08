@@ -419,17 +419,13 @@ getmaxpkt(Dev *d)
  * BUG: does not consider max. power avail.
  */
 static int
-portattach(Hub *h, int p, u32int sts)
+portattach(Hub *h, int p)
 {
-	Dev *d;
+	Dev *nd, *d;
 	Port *pp;
-	Dev *nd;
-	char fname[80];
-	char buf[40];
-	char *sp;
-	int mp;
-	int nr;
-	int i;
+	char *sp, fname[80], buf[40];
+	int mp, nr, i;
+	u32int sts;
 
 	d = h->dev;
 	pp = &h->port[p];
@@ -445,9 +441,11 @@ portattach(Hub *h, int p, u32int sts)
 	if(++pp->acount > Attachcount){
 		fprint(2, "%s: %s: port %d: too many attaches in short succession\n",
 			argv0, d->dir, p);
-		return -1;
+		/* don't call portfail() */
+		return 1;
 	}
-	if(h->dev->isusb3){
+	if(d->isusb3){
+		sts = pp->sts;
 		sp = "super";
 	} else {
 		if(portfeature(h, p, Fportreset, 1) < 0){
@@ -463,12 +461,12 @@ portattach(Hub *h, int p, u32int sts)
 		if(sts & PShigh)
 			sp = "high";
 	}
+	dprint(2, "%s: %s: port %d: attached status %s %#ux, speed %s\n", argv0, d->dir, p,
+		stsstr(sts, d->isusb3), sts, sp);
 	if((sts & PSenable) == 0){
 		dprint(2, "%s: %s: port %d: not enabled?\n", argv0, d->dir, p);
 		return -1;
 	}
-	dprint(2, "%s: %s: port %d: attached status %s %#ux, speed %s\n", argv0, d->dir, p,
-		stsstr(sts, h->dev->isusb3), sts, sp);
 	pp->sts = sts;
 	pp->state = Pattached;
 	if(devctl(d, "newdev %s %d", sp, p) < 0){
@@ -490,8 +488,8 @@ portattach(Hub *h, int p, u32int sts)
 		return -1;
 	}
 	pp->dev = nd;
-	nd->depth = h->dev->depth+1;
-	nd->isusb3 = h->dev->isusb3;
+	nd->depth = d->depth+1;
+	nd->isusb3 = d->isusb3;
 	if(usbdebug > 2)
 		devctl(nd, "debug 1");
 	for(i=1;; i++){
@@ -659,6 +657,11 @@ enumhub(Hub *h, int p)
 	}
 	onhubs = nhubs;
 	pp = &h->port[p];
+	if(sts != pp->sts){
+		dprint(2, "%s: %s port %d: sts %s %#ux ->", argv0, d->dir, p,
+			stsstr(pp->sts, d->isusb3), pp->sts);
+		dprint(2, " %s %#ux\n", stsstr(sts, d->isusb3), sts);
+	}
 	if((sts & PSpresent) == 0 && (pp->sts & PSpresent) != 0){
 		pp->sts = sts;
 		portdetach(h, p);
@@ -670,17 +673,14 @@ enumhub(Hub *h, int p)
 		portfail(h, p, "reset");
 	} else if((sts & PSpresent) != 0 && (pp->sts & PSpresent) == 0){
 		pp->sts = sts;
-		if(portattach(h, p, sts) < 0){
+		if(portattach(h, p) < 0){
 			if(h->failed)
 				return -1;
 			if(pp->state != Pdisabled)
 				pp->sts = 0;	/* force re-attach */
 			portfail(h, p, "attach");
 		}
-	} else if(sts != pp->sts){
-		dprint(2, "%s: %s port %d: sts %s %#ux ->", argv0, d->dir, p,
-			stsstr(pp->sts, d->isusb3), pp->sts);
-		dprint(2, " %s %#ux\n", stsstr(sts, d->isusb3), sts);
+	} else {
 		pp->sts = sts;
 	}
 	return onhubs != nhubs;
