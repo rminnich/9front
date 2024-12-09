@@ -229,8 +229,8 @@ enum {
 static void
 setname(Mkaux *mkaux, Name *name, File *f)
 {
-	char *s1, *s2, *ss;
-	int l;
+	char *s1, *s2;
+	int n;
 	
 	s1 = mkaux->root;
 	s2 = "";
@@ -242,18 +242,14 @@ setname(Mkaux *mkaux, Name *name, File *f)
 			s2 = f->old;
 	}else
 		s2 = f->new;
-
-	l = strlen(s1);
-	ss = (*s1 && *s2 && *s2 != '/' && s1[l-1] != '/') ? "/" : "";
-	l += strlen(ss);
-	l += strlen(s2);
-	l++;
-	if(name->n < l+SLOP/2) {
+	n = strlen(s1) + strlen(s2) + 2;
+	if(name->n < n+SLOP/2) {
 		free(name->s);
-		name->s = emalloc(mkaux, l+SLOP);
-		name->n = l+SLOP;
+		name->s = emalloc(mkaux, n+SLOP);
+		name->n = n+SLOP;
 	}
-	snprint(name->s, name->n, "%s%s%s", s1, ss, s2);
+	snprint(name->s, name->n, "%s/%s", s1, s2);
+	cleanname(name->s);
 }
 
 
@@ -311,10 +307,8 @@ mkpath(Mkaux *mkaux, char *prefix, char *elem)
 
 	n = strlen(prefix) + strlen(elem) + 2;
 	p = emalloc(mkaux, n);
-	strcpy(p, prefix);
-	strcat(p, "/");
-	strcat(p, elem);
-	return p;
+	snprint(p, n, "%s/%s", prefix, elem);
+	return cleanname(p);
 }
 
 static int
@@ -552,8 +546,11 @@ loop:
 
 	f = emalloc(mkaux, sizeof *f);
 	f->new = mkpath(mkaux, old->new, elem);
+	if((s = strrchr(f->new, '/')) != nil)
+		f->elem = s+1;
+	else
+		f->elem = f->new;
 	free(elem);
-	f->elem = utfrrune(f->new, L'/') + 1;
 
 	if((p = getmode(mkaux, p, &f->mode)) == nil){
 		freefile(f);
