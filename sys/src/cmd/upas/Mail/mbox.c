@@ -32,6 +32,7 @@ Mesg	dead = {.messageid="", .hash=42};
 
 Reprog	*mesgpat;
 Reprog	*filterpat;
+char	*filterflags;
 
 int	threadsort = 1;
 int	sender;
@@ -126,6 +127,45 @@ rcmpmesg(void *pa, void *pb)
 }
 
 static int
+matchfilter(Mesg *m)
+{
+	char *p;
+	int ok;
+
+	ok = 1;
+	if(filterpat != nil
+	&& m->subject != nil
+	&& m->from != nil){
+		if(!regexec(filterpat, m->subject, nil, 0)
+		&& !regexec(filterpat, m->from, nil, 0))
+			ok = 0;
+	}
+	for(p = filterflags; p && *p; p++){
+		switch(*p){
+		case 's':	ok = ok && (m->flags & Fseen);	break;
+		case 'u':	ok = ok && !(m->flags & Fseen);	break;
+		case 'a':	ok = ok && (m->flags & Fresp);	break;
+		}
+	}
+	return ok;
+}
+
+static int
+nsub(Mesg *m)
+{
+	Mesg *c;
+	int n, i;
+
+	n = 0;
+	for(i = 0; i < m->nchild; i++){
+		c = m->child[i];
+		if(!(c->state & (Sdummy|Shide)))
+			n += nsub(c)+1;
+	}
+	return n;
+}
+
+static int
 mesglineno(Mesg *msg, int *depth)
 {
 	Mesg *p, *m;
@@ -143,9 +183,9 @@ mesglineno(Mesg *msg, int *depth)
 		for(i = 0; i < p->nchild; i++){
 			if(p->child[i] == m)
 				break;
-			o += p->child[i]->nsub + 1;
+			o += nsub(p->child[i]) + 1;
 		}
-		if(!(p->state & (Sdummy|Szap))){
+		if(!(p->state & (Sdummy|Shide))){
 			o++;
 			d++;
 		}
@@ -157,8 +197,8 @@ mesglineno(Mesg *msg, int *depth)
 		if(m == p)
 			break;
 		if(m->state & Stoplev){
-			n += mbox.mesg[i]->nsub;
-			if(!(m->state & (Sdummy|Szap)))
+			n += nsub(mbox.mesg[i]);
+			if(!(m->state & (Sdummy|Szap|Shide)))
 				n++;
 		}
 
@@ -170,7 +210,7 @@ mesglineno(Mesg *msg, int *depth)
 }
 
 static int
-addchild(Mesg *p, Mesg *m, int d)
+addchild(Mesg *p, Mesg *m)
 {
 	Mesg *q;
 
@@ -182,8 +222,6 @@ addchild(Mesg *p, Mesg *m, int d)
 		if(m->time > q->time)
 			q->time = m->time;
 	}
-	for(q = p; q != nil; q = q->parent)
-		q->nsub += d;
 	p->child = erealloc(p->child, ++p->nchild*sizeof(Mesg*));
 	p->child[p->nchild - 1] = m;
 	qsort(p->child, p->nchild, sizeof(Mesg*), rcmpmesg);
@@ -347,7 +385,6 @@ static Mesg*
 load(char *name, char *digest, int ins)
 {
 	Mesg *m, *p;
-	int d;
 
 	if(strncmp(name, mbox.path, strlen(mbox.path)) == 0)
 		name += strlen(mbox.path);
@@ -357,13 +394,10 @@ load(char *name, char *digest, int ins)
 	if(digest != nil && strcmp(digest, m->digest) != 0)
 		goto error;
 	/* if we already have a dummy, populate it */
-	d = 1;
 	p = lookupid(m->messageid);
 	if(p != nil && (p->state & Sdummy)){
-		d = p->nsub + 1;
 		m->child = p->child;
 		m->nchild = p->nchild;
-		m->nsub = p->nsub;
 		mesgclear(p);
 		memcpy(p, m, sizeof(*p));
 		free(m);
@@ -387,8 +421,10 @@ load(char *name, char *digest, int ins)
 	p = lookupid(m->inreplyto);
 	if(p == nil)
 		p = placeholder(m->inreplyto, m->time, ins);
-	if(!addchild(p, m, d))
+	if(!addchild(p, m))
 		m->state |= Stoplev;
+	if(!matchfilter(m))
+		m->state |= Shide;
 	return m;
 error:
 	mesgfree(m);
@@ -576,22 +612,12 @@ fmtmesg(Biobuf *bp, char *fmt, Mesg *m, int depth)
 	Bputc(bp, '\n');
 }
 
-static int
-matchfilter(Mesg *m)
-{
-	if(filterpat == nil
-	|| regexec(filterpat, m->subject, nil, 0)
-	|| regexec(filterpat, m->from, nil, 0))
-		return 1;
-	return 0;
-}
-
 static void
 showmesg(Biobuf *bfd, Mesg *m, int depth, int recurse)
 {
 	int i;
 
-	if(!(m->state & Sdummy) && matchfilter(m)){
+	if(!(m->state & (Sdummy|Shide))){
 		fmtmesg(bfd, listfmt, m, depth);
 		depth++;
 	}
@@ -664,7 +690,7 @@ mbmark(char **f, int nf)
 static void
 relinkmsg(Mesg *p, Mesg *m)
 {
-	Mesg *c, *pp;
+	Mesg *c;
 	int i, j;
 
 	/* remove child, preserving order */
@@ -674,14 +700,12 @@ relinkmsg(Mesg *p, Mesg *m)
 			p->child[j++] = p->child[i];
 	}
 	p->nchild = j;
-	for(pp = p; pp != nil; pp = pp->parent)
-		pp->nsub -= m->nsub + 1;
 
 	/* reparent children */
 	for(i = 0; i < m->nchild; i++){
 		c = m->child[i];
 		c->parent = nil;
-		addchild(p, c, c->nsub + 1);
+		addchild(p, c);
 	}
 }
 
@@ -704,17 +728,15 @@ mbflush(char **, int)
 			continue;
 
 		ln = mesglineno(m, nil);
-		fprint(mbox.addr, "%d,%d", ln, ln+m->nsub);
+		fprint(mbox.addr, "%d,%d", ln, ln+nsub(m));
 		write(mbox.data, "", 0);
 		if(m->flags & Ftodel)
 			fprint(fd, "delete %s %d", mailbox, atoi(m->name));
 
 		removeid(m);
 		m->state |= Szap;
-		if(p == nil && m->nsub != 0){
+		if(p == nil && nsub(m) != 0)
 			p = placeholder(m->messageid, m->time, 1);
-			p->nsub = m->nsub + 1;
-		}
 		if(p != nil)
 			relinkmsg(p, m);
 		for(j = 0; j < m->nchild; j++)
@@ -824,10 +846,10 @@ changemesg(Plumbmsg *pm)
 		for(r = m; r->parent != nil; r = r->parent)
 			/* nothing */;
 		/* Bump whole thread up in list */
-		if(r->nsub > 0){
+		if(nsub(r) > 0){
 			ln = mesglineno(r, nil);
-			nr = r->nsub-1;
-			if(!(r->state & Sdummy))
+			nr = nsub(r)-1;
+			if(!(r->state & (Sdummy|Shide)))
 				nr++;
 			/*
 			 * We can end up with an empty container
@@ -881,18 +903,38 @@ redraw(char **, int)
 static void
 filter(char **filt, int nfilt)
 {
-	if(nfilt > 1){
-		fprint(2, "filter: only one argument supported");
+	Mesg *m;
+	int i;
+
+	if(nfilt > 2){
+Usage:
+		fprint(2, "usage: Filter [regexp] [*flags]");
 		return;
 	}
 	free(filterpat);
+	free(filterflags);
 	filterpat = nil;
-	if(nfilt == 1){
-		filterpat = regcomp(filt[0]);
-		if(filterpat == nil){
-			fprint(2, "Filter: %r");
-			return;
+	filterflags = nil;
+	for(i = 0; i < nfilt; i++){
+		if(*filt[i] == '*'){
+			if(filterflags != nil)
+				goto Usage;
+			filterflags = strdup(filt[i]+1);
+		}else{
+			if(filterpat != nil)
+				goto Usage;
+			filterpat = regcomp(filt[i]);
+			if(filterpat == nil){
+				fprint(2, "recomp: %r");
+				return;
+			}
 		}
+	}
+	for(i = 0; i < mbox.nmesg; i++){
+		m = mbox.mesg[i];
+		m->state &= ~Shide;
+		if(!matchfilter(m))
+			m->state |= Shide;
 	}
 	fprint(mbox.addr, ",");
 	showlist();

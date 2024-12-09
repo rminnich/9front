@@ -101,11 +101,17 @@ are listed in
 .IR upasfs (4)
 .PD 0
 .TP
-.B Filter [pattern]
+.B Filter [filter] [*flags]
 Shows only messages where the sender or subject match
 the
-.I pattern
-regexp.
+.I filter
+regexp,
+or where the
+.I flags
+string matches the state of the message. The flags
+used are the same as for Mark, with the addition of
+.I u
+to represent unread messages.
 Filter without an argument resets the filtering,
 showing all messages again.
 .PD 0
@@ -127,15 +133,12 @@ As with the message view, but applied to the open message.
 .TP
 .B Mark
 As with the message view, but applied to the open message.
-
 .PP
 The following text commands are recognized by the composition
 window:
-
 .TP
 .B Post
 Sends the message currently being composed.
-
 .SS Format strings
 The formatting of messages in the list view is controlled by the
 format string defined through the

@@ -16,6 +16,7 @@ enum {
 	Stoplev	= 1<<1,	/* not a response to anything */
 	Sopen	= 1<<2,	/* opened for viewing */
 	Szap	= 1<<3, /* flushed, to be removed from list */
+	Shide	= 1<<4, /* hidden from view */
 };
 
 enum {
@@ -95,7 +96,6 @@ struct Mesg {
 	Mesg	*parent;
 	Mesg	**child;
 	int	nchild;
-	int	nsub;	/* transitive children */
 	
 	Mesg	*body;	/* best attachment to use, or nil */
 	Mesg	**parts;
