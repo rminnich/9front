@@ -31,6 +31,7 @@ char	*listfmt	= "%>48s\t<%f>";
 Mesg	dead = {.messageid="", .hash=42};
 
 Reprog	*mesgpat;
+Reprog	*filterpat;
 
 int	threadsort = 1;
 int	sender;
@@ -575,13 +576,22 @@ fmtmesg(Biobuf *bp, char *fmt, Mesg *m, int depth)
 	Bputc(bp, '\n');
 }
 
+static int
+matchfilter(Mesg *m)
+{
+	if(filterpat == nil
+	|| regexec(filterpat, m->subject, nil, 0)
+	|| regexec(filterpat, m->from, nil, 0))
+		return 1;
+	return 0;
+}
 
 static void
 showmesg(Biobuf *bfd, Mesg *m, int depth, int recurse)
 {
 	int i;
 
-	if(!(m->state & Sdummy)){
+	if(!(m->state & Sdummy) && matchfilter(m)){
 		fmtmesg(bfd, listfmt, m, depth);
 		depth++;
 	}
@@ -869,6 +879,26 @@ redraw(char **, int)
 }
 
 static void
+filter(char **filt, int nfilt)
+{
+	if(nfilt > 1){
+		fprint(2, "filter: only one argument supported");
+		return;
+	}
+	free(filterpat);
+	filterpat = nil;
+	if(nfilt == 1){
+		filterpat = regcomp(filt[0]);
+		if(filterpat == nil){
+			fprint(2, "Filter: %r");
+			return;
+		}
+	}
+	fprint(mbox.addr, ",");
+	showlist();
+}
+
+static void
 nextunread(char **, int)
 {
 	fprint(mbox.ctl, "addr=dot\n");
@@ -886,8 +916,8 @@ Fn mboxfn[] = {
 	{"Redraw", redraw},
 	{"Next", nextunread},
 	{"Mark", mbmark},
-#ifdef NOTYET
 	{"Filter", filter},
+#ifdef NOTYET
 	{"Get", mbrefresh},
 #endif
 	{nil}

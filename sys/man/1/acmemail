@@ -101,13 +101,20 @@ are listed in
 .IR upasfs (4)
 .PD 0
 .TP
+.B Filter [pattern]
+Shows only messages where the sender or subject match
+the
+.I pattern
+regexp.
+Filter without an argument resets the filtering,
+showing all messages again.
+.PD 0
+.TP
 .B Redraw
 Redraws the contents of the mailbox.
-
 .PP
 The following text commands are recognized by the message
 view:
-
 .TP
 .B Reply [all]
 Replies to a message, quoting it.
