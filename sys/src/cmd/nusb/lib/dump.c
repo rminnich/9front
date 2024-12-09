@@ -51,7 +51,9 @@ classname(int c)
 	case 0xEF:	/* Miscellaneous */
 		return "misc";
 	case 0xFE:	/* Application specific */
-		return "spec";
+		return "application";
+	case 0xFF:	/* Vendor specific */
+		return "vendor";
 	default:
 		snprint(buf, sizeof(buf), "%d", c);
 		return buf;
