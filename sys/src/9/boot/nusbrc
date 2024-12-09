@@ -5,7 +5,7 @@ if(! bind -a '#u' /dev)
 mkdir -p -m 700 '#σc/usb'
 mkdir -p -m 700 '#σc/usbnet'
 
-if(! nusb/usbd)
+if(! nusb/usbd $usbdebug)
 	exit
 
 @{
