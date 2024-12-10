@@ -17,6 +17,42 @@ enum {
 	Nbranch	= 32,
 };
 
+char *
+matchcap(char *s, char *cap, int full)
+{
+	if(strncmp(s, cap, strlen(cap)) == 0)
+		if(!full || strlen(s) == strlen(cap))
+			return s + strlen(cap);
+	return nil;
+}
+
+void
+parsecaps(char *caps, Capset *cs)
+{
+	char *p, *n, *c, *t;
+
+	memset(cs, 0, sizeof(*cs));
+	for(p = caps; p != nil; p = n){
+		n = strchr(p, ' ');
+		if(n != nil)
+			*n++ = 0;
+		if(matchcap(p, "report-status", 1) != nil)
+			cs->report = 1;
+		else if(matchcap(p, "side-band", 1) != nil)
+			cs->sideband = 1;
+		else if(matchcap(p, "side-band-64k", 1) != nil)
+			cs->sideband64k = 1;
+		else if((c = matchcap(p, "symref=", 0)) != nil){
+			if((t = strchr(c, ':')) == nil)
+				continue;
+			*t++ = '\0';
+			snprint(cs->symfrom, sizeof(cs->symfrom), c);
+			snprint(cs->symto, sizeof(cs->symto), t);
+		}
+	}
+}
+
+
 void
 tracepkt(int v, char *pfx, char *b, int n)
 {
@@ -158,7 +194,7 @@ parseuri(char *uri, char *proto, char *host, char *port, char *path, char *repo)
 		snprint(port, Nport, "80");
 	else if(strncmp(proto, "hjgit", 5) == 0)
 		snprint(port, Nport, "17021");
-	else if(strncmp(proto, "gits", 4) == 0)
+	else if(strncmp(proto, "gits", 5) == 0)
 		snprint(port, Nport, "9419");
 	else
 		hasport = 0;

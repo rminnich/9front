@@ -134,33 +134,6 @@ branchmatch(char *br, char *pat)
 	return strcmp(br, name) == 0;
 }
 
-char *
-matchcap(char *s, char *cap, int full)
-{
-	if(strncmp(s, cap, strlen(cap)) == 0)
-		if(!full || strlen(s) == strlen(cap))
-			return s + strlen(cap);
-	return nil;
-}
-
-void
-handlecaps(char *caps)
-{
-	char *p, *n, *c, *r;
-
-	for(p = caps; p != nil; p = n){
-		n = strchr(p, ' ');
-		if(n != nil)
-			*n++ = 0;
-		if((c = matchcap(p, "symref=", 0)) != nil){
-			if((r = strchr(c, ':')) != nil){
-				*r++ = '\0';
-				print("symref %s %s\n", c, r);
-			}
-		}
-	}
-}
-
 void
 fail(char *pack, char *idx, char *msg, ...)
 {
@@ -202,6 +175,7 @@ fetchpack(Conn *c)
 	int nref, refsz, first, nsent;
 	int i, l, n, req, pfd;
 	vlong packsz;
+	Capset cs;
 	Objset hadobj;
 	Object *o;
 	Objq haveq;
@@ -220,8 +194,11 @@ fetchpack(Conn *c)
 		if(n == 0)
 			break;
 
-		if(first && n > strlen(buf))
-			handlecaps(buf + strlen(buf) + 1);
+		if(first && n > strlen(buf)){
+			parsecaps(buf + strlen(buf) + 1, &cs);
+			if(cs.symfrom[0] != 0)
+				print("symref %s %s\n", cs.symfrom, cs.symto);
+		}
 		first = 0;
 
 		getfields(buf, sp, nelem(sp), 1, " \t\n\r");

@@ -82,6 +82,14 @@ struct Hash {
 	uchar h[20];
 };
 
+struct Capset {
+	char	symfrom[256];
+	char	symto[256];
+	int	sideband;
+	int	sideband64k;
+	int	report;
+};
+
 struct Conn {
 	int type;
 	int rfd;
@@ -330,6 +338,7 @@ int	gitconnect(Conn *, char *, char *);
 int	readphase(Conn *);
 int	writephase(Conn *);
 void	closeconn(Conn *);
+void	parsecaps(char *, Capset *);
 
 /* queues */
 void	qinit(Objq*);

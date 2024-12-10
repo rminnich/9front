@@ -3,14 +3,7 @@
 
 #include "git.h"
 
-typedef struct Capset	Capset;
 typedef struct Map	Map;
-
-struct Capset {
-	int	sideband;
-	int	sideband64k;
-	int	report;
-};
 
 struct Map {
 	char	*ref;
@@ -87,33 +80,6 @@ readours(Hash **tailp, char ***refp)
 	*tailp = tail;
 	*refp = ref;
 	return nu;	
-}
-
-char *
-matchcap(char *s, char *cap, int full)
-{
-	if(strncmp(s, cap, strlen(cap)) == 0)
-		if(!full || strlen(s) == strlen(cap))
-			return s + strlen(cap);
-	return nil;
-}
-
-void
-parsecaps(char *caps, Capset *cs)
-{
-	char *p, *n;
-
-	for(p = caps; p != nil; p = n){
-		n = strchr(p, ' ');
-		if(n != nil)
-			*n++ = 0;
-		if(matchcap(p, "report-status", 1) != nil)
-			cs->report = 1;
-		if(matchcap(p, "side-band", 1) != nil)
-			cs->sideband = 1;
-		if(matchcap(p, "side-band-64k", 1) != nil)
-			cs->sideband64k = 1;
-	}
 }
 
 int
