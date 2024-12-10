@@ -21,6 +21,7 @@ Dir *dotdir = nil;
 
 Biobuf *bout;
 
+void unsee(Dir*);
 int seen(Dir*);
 
 void
@@ -114,29 +115,30 @@ walk(char *path, Dir *cf, long depth)
 	while((n = dirread(fd, &dirs)) > 0){
 		fe = dirs+n;
 		for(f = dirs; f < fe; f++){
-			if(seen(f))
-				continue;
-			if(! (f->qid.type & QTDIR)){
+			if(!(f->qid.type & QTDIR)){
 				if(fflag && depth >= mindepth)
 					dofile(path, f, 0);
-			} else if(strcmp(f->name, ".") == 0 || strcmp(f->name, "..") == 0){
+			}else if(strcmp(f->name, ".") == 0 || strcmp(f->name, "..") == 0){
 				warn(". or .. named file: %s/%s", path, f->name);
-			} else{
+			}else{
 				if(depth+1 > maxdepth){
 					dofile(path, f, 0);
 					continue;
-				} else if(path == dotpath){
+				}else if(path == dotpath){
 					if((file = s_new()) == nil)
 						sysfatal("s_new: %r");
-				} else{
+				}else{
 					if((file = s_copy(path)) == nil)
 						sysfatal("s_copy: %r");
 					if(s_len(file) != 1 || *s_to_c(file) != '/')
 						s_putc(file, '/');
 				}
 				s_append(file, f->name);
-
-				walk(s_to_c(file), f, depth+1);	
+				if(seen(f))
+					dofile(s_to_c(file), f, 0);
+				else
+					walk(s_to_c(file), f, depth+1);
+				unsee(f);
 				s_free(file);
 			}
 		}
@@ -221,7 +223,6 @@ usage(void)
 	functions, but since they are a no-op and libString needs
 	a rework, I left them in - BurnZeZ
 */
-
 void
 main(int argc, char **argv)
 {
@@ -267,7 +268,7 @@ main(int argc, char **argv)
 	if(argc == 0){
 		dotdir = dirstat(".");
 		walk(dotpath, dotdir, 1);
-	} else for(i=0; i<argc; i++){
+	}else for(i=0; i<argc; i++){
 		if(strncmp(argv[i], "#/", 2) == 0)
 			slashslash(argv[i]+2);
 		else{
@@ -275,11 +276,15 @@ main(int argc, char **argv)
 				cleanname(argv[i]);
 			slashslash(argv[i]);
 		}
-		if((d = dirstat(argv[i])) != nil && ! (d->qid.type & QTDIR)){
-			if(fflag && !seen(d) && mindepth < 1)
-				dofile(argv[i], d, 1);
-		} else
+		if((d = dirstat(argv[i])) == nil)
+			continue;
+		if(d->qid.type & QTDIR){
+			seen(d);
 			walk(argv[i], d, 1);
+		}else{
+			if(!dflag && !seen(d) && mindepth < 1)
+				dofile(argv[i], d, 1);
+		}
 		free(d);
 	}
 	Bterm(bout);
@@ -299,6 +304,23 @@ typedef struct
 	int	max;
 } Cache;
 Cache cache[NCACHE];
+
+void
+unsee(Dir *dir)
+{
+	Dir *dp;
+	int i;
+	Cache *c;
+
+	c = &cache[dir->qid.path&(NCACHE-1)];
+	dp = c->cache;
+	for(i=0; i<c->n; i++, dp++){
+		if(dir->qid.path == dp->qid.path &&
+		   dir->type == dp->type &&
+		   dir->dev == dp->dev)
+			c->cache[i] = c->cache[--c->n];
+	}
+}
 
 int
 seen(Dir *dir)
