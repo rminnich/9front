@@ -63,7 +63,7 @@ $MAN/%:    %.man
 man:V:    $MAN/$TARG
 
 test:QV: $O.out $TESTDEP
-	if(test -d ./test){
+	if(test -f ./test/mkfile){
 		pwd
 		@{cd ./test && mk $MKFLAGS test}
 	}

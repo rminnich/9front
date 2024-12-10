@@ -82,7 +82,7 @@ clean:V:
 man:V:	$MANFILES
 
 test:VQ: $PROGS
-	if(test -d ./test)
+	if(test -f ./test/mkfile)
 		cd test && mk $MKFLAGS test
 	if not
 		status=()
