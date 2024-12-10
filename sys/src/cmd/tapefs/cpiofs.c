@@ -114,8 +114,33 @@ rdasc(int n)
 
 	for(x = 0; n > 0; n--) {
 		if((y = egetc() - '0') & ~7)
-			sysfatal("not octal");
+			sysfatal("rdasc:%#c not octal", y);
 		x = x<<3 | y;
+	}
+	return x;
+}
+
+static vlong
+rdascx(int n)
+{
+	vlong x;
+	int y;
+
+	for(x = 0; n > 0; n--) {
+		y = egetc();
+		if ((y >= '0') && (y <= '9')){
+			x = x << 4 | (y - '0');
+			continue;
+		}
+		if ((y >= 'a') && (y <= 'f')){
+			x = x << 4 | 10 + (y - 'a');
+			continue;
+		}
+		if ((y >= 'A') && (y <= 'F')){
+			x = x << 4 | 10 + (y - 'A');
+			continue;
+		}
+		sysfatal("rdascx:%#x:not hex", y);
 	}
 	return x;
 }
@@ -157,10 +182,70 @@ rdsysiii(Fileinf *f)
 	f->name = buf;
 }
 
+/*
+struct cpio_newc_header {
+                   char    c_magic[6];
+                   char    c_ino[8];
+                   char    c_mode[8];
+                   char    c_uid[8];
+                   char    c_gid[8];
+                   char    c_nlink[8];
+                   char    c_mtime[8];
+                   char    c_filesize[8];
+                   char    c_devmajor[8];
+                   char    c_devminor[8];
+                   char    c_rdevmajor[8];
+                   char    c_rdevminor[8];
+                   char    c_namesize[8];
+                   char    c_check[8];
+           };
+*/
+static void
+rdnewc(Fileinf *f)
+{
+	int namesz, n;
+	static char buf[256];
+
+	rdascx(8);	/* ino */
+	f->mode = rdascx(8);
+	f->uid = rdascx(8);
+	f->gid = rdascx(8);
+	rdascx(8);	/* nlink */
+	f->mdate = rdascx(8);
+	f->size = rdascx(8);
+	rdascx(8); //devmajor
+	rdascx(8); //devminor
+	rdascx(8); //rdevmajor
+	rdascx(8); //rdevminor
+	namesz = rdascx(8);
+	rdascx(8); // checksum
+
+	/* namesz includes the trailing nul */
+	if(namesz == 0)
+		sysfatal("name too small");
+	if(namesz > sizeof (buf))
+		sysfatal("name too big");
+	if((n = Bread(tape, buf, namesz)) < 0)
+		sysfatal("read error: %r");
+	if(n < namesz)
+		sysfatal("unexpected eof");
+
+	if(buf[n-1] != '\0')
+		sysfatal("no nul after file name");
+	if((n = strlen(buf)) != namesz-1)
+		sysfatal("mismatched name length: saw %d; expected %d", n, namesz-1);
+	f->name = buf;
+	if((Bseek(tape, 0, 1) & 3)) {
+		int skip = 4-(Bseek(tape, 0, 1) & 3);
+		for(int i = 0; i < skip; i++)
+			egetc();
+	}
+}
+
 static HdrReader *
 rdmagic(void)
 {
-	uchar buf[6];
+	uchar buf[8];
 
 	buf[0] = egetc();
 	buf[1] = egetc();
@@ -171,10 +256,17 @@ rdmagic(void)
 	buf[3] = egetc();
 	buf[4] = egetc();
 	buf[5] = egetc();
+	buf[6] = 0;
 	if(memcmp(buf, "070707", 6) == 0)
 		return rdsysiii;
 
-	sysfatal("Out of phase--get MERT help");
+	if(memcmp(buf, "070701", 6) == 0)
+		return rdnewc;
+
+	for(int i = 0; i < 6; i++)
+		print("%#x,", buf[i]);
+
+	sysfatal("Out of phase(%s)--get MERT help", buf);
 }
 
 void
@@ -187,7 +279,6 @@ populate(char *name)
 	record headers */
 	if((tape = Bopen(name, OREAD)) == nil)
 		sysfatal("Can't open argument file");
-
 	extern void (*_sysfatal)(char *, va_list);
 	_sysfatal = addrfatal;
 
@@ -224,10 +315,16 @@ populate(char *name)
 		poppath(f, 1);
 
 		Bseek(tape, f.size, 1);
-
 		/* skip padding */
-		if(rdhdr == rdpwb11 && (Bseek(tape, 0, 1) & 1))
+		if(((rdhdr == rdpwb11)||(rdhdr == rdnewc)) && (Bseek(tape, 0, 1) & 1))
 			egetc();
+
+		/* sleazy alignment hack. Who needs a for loop? */
+		if(rdhdr == rdnewc && (Bseek(tape, 0, 1) & 2)) {
+				egetc();
+				egetc();
+		}
+
 	}
 }
 
