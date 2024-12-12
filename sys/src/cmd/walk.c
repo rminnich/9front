@@ -266,6 +266,9 @@ main(int argc, char **argv)
 		usage();
 	}ARGEND;
 
+	if(!printfiles && !printdirs)
+		sysfatal("mutually exclusive flags: -f and -d");
+
 	fmtinstall('M', dirmodefmt);
 
 	if((bout = Bfdopen(1, OWRITE)) == nil)
