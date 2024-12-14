@@ -91,11 +91,9 @@ sendpack(Conn *c)
 	Hash h, *theirs, *ours;
 	Object *a, *b, *p, *o;
 	char **refs;
-	Capset cs;
 	Map *map, *m;
 
 	first = 1;
-	memset(&cs, 0, sizeof(Capset));
 	nours = readours(&ours, &refs);
 	theirs = nil;
 	ntheirs = 0;
@@ -113,7 +111,7 @@ sendpack(Conn *c)
 		if(n == 0)
 			break;
 		if(first && n > strlen(buf))
-			parsecaps(buf + strlen(buf) + 1, &cs);
+			parsecaps(buf + strlen(buf) + 1, c);
 		first = 0;
 
 		if(getfields(buf, sp, nelem(sp), 1, " \t\r\n") != 2)
@@ -179,7 +177,7 @@ sendpack(Conn *c)
 		 * Github doesn't advertise any capabilities, so we can't check
 		 * for compatibility. We just need to add it blindly.
 		 */
-		if(i == 0 && cs.report){
+		if(i == 0 && c->report){
 			buf[n++] = '\0';
 			n += snprint(buf + n, sizeof(buf) - n, " report-status");
 		}
@@ -195,7 +193,7 @@ sendpack(Conn *c)
 
 	if(writepack(c->wfd, ours, nours, theirs, ntheirs, &h) == -1)
 		return -1;
-	if(!cs.report)
+	if(!c->report)
 		return 0;
 
 	if(readphase(c) == -1)

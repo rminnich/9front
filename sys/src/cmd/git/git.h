@@ -4,7 +4,6 @@
 #include <flate.h>
 #include <regexp.h>
 
-typedef struct Capset	Capset;
 typedef struct Conn	Conn;
 typedef struct Hash	Hash;
 typedef struct Delta	Delta;
@@ -82,18 +81,18 @@ struct Hash {
 	uchar h[20];
 };
 
-struct Capset {
-	char	symfrom[256];
-	char	symto[256];
-	int	sideband;
-	int	sideband64k;
-	int	report;
-};
-
 struct Conn {
 	int type;
 	int rfd;
 	int wfd;
+
+	/* capabilities */
+	char	symfrom[256];
+	char	symto[256];
+	char	multiack;
+	char	sideband;
+	char	sideband64k;
+	char	report;
 
 	/* only used by http */
 	int cfd;
@@ -338,7 +337,7 @@ int	gitconnect(Conn *, char *, char *);
 int	readphase(Conn *);
 int	writephase(Conn *);
 void	closeconn(Conn *);
-void	parsecaps(char *, Capset *);
+void	parsecaps(char *, Conn *);
 
 /* queues */
 void	qinit(Objq*);

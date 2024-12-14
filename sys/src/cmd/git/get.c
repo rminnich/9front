@@ -166,16 +166,59 @@ enqueueparent(Objq *q, Object *o)
 	}
 }
 
+void
+fmtcaps(Conn *c, char *caps, int ncaps)
+{
+	char *p, *e;
+
+	p = caps;
+	e = caps + ncaps;
+	*p = 0;
+	if(c->multiack)
+		p = seprint(p, e, " multi_ack");
+	if(c->sideband64k)
+		p = seprint(p, e, " side-band-64k");
+	else if(c->sideband)
+		p = seprint(p, e, " side-band");
+	assert(p != e);
+}
+
+int
+sbread(Conn *c, char *buf, int nbuf, char **pbuf)
+{
+	int n;
+
+	assert(nbuf >= Pktmax);
+	if(!c->sideband && !c->sideband64k){
+		*pbuf = buf;
+		return readn(c->rfd, buf, nbuf);
+	}else{
+		*pbuf = buf+1;
+		while(1){
+			n = readpkt(c, buf, nbuf);
+			if(n <= 0)
+				return n;
+			else if(buf[0] == 1 && n > 1)
+				return n - 1;
+			else if(buf[0] == 3)
+				fprint(2, "error: %s\n", buf+1);
+			else if(buf[0] < 1 || buf[0] > 3)
+				fprint(2, "unknown sideband(%c:%d) data: %s\n", buf[0], buf[0], buf+1);
+			
+		}
+	}
+}
+
 int
 fetchpack(Conn *c)
 {
-	char buf[Pktmax], *sp[3], *ep;
-	char *packtmp, *idxtmp, **ref, *caps;
+	char spinner[] = {'|', '/', '-', '\\'};
+	char buf[Pktmax], caps[512], *sp[3], *ep;
+	char *packtmp, *idxtmp, **ref, *rp;
 	Hash h, *have, *want;
 	int nref, refsz, first, nsent;
-	int i, l, n, req, pfd;
+	int i, j, l, n, spin, req, pfd;
 	vlong packsz;
-	Capset cs;
 	Objset hadobj;
 	Object *o;
 	Objq haveq;
@@ -195,9 +238,9 @@ fetchpack(Conn *c)
 			break;
 
 		if(first && n > strlen(buf)){
-			parsecaps(buf + strlen(buf) + 1, &cs);
-			if(cs.symfrom[0] != 0)
-				print("symref %s %s\n", cs.symfrom, cs.symto);
+			parsecaps(buf + strlen(buf) + 1, c);
+			if(c->symfrom[0] != 0)
+				print("symref %s %s\n", c->symfrom, c->symto);
 		}
 		first = 0;
 
@@ -227,18 +270,22 @@ fetchpack(Conn *c)
 	if(writephase(c) == -1)
 		sysfatal("write: %r");
 	req = 0;
-	caps = " multi_ack";
+	fmtcaps(c, caps, sizeof(caps));
 	for(i = 0; i < nref; i++){
 		if(hasheq(&have[i], &want[i]))
 			continue;
+		for(j = 0; j < i; j++)
+			if(hasheq(&want[i], &want[j]))
+				goto Next;
 		if((o = readobject(want[i])) != nil){
 			unref(o);
 			continue;
 		}
 		if(fmtpkt(c, "want %H%s\n", want[i], caps) == -1)
 			sysfatal("could not send want for %H", want[i]);
-		caps = "";
+		caps[0] = 0;
 		req = 1;
+Next:		continue;
 	}
 	flushpkt(c);
 
@@ -261,6 +308,7 @@ fetchpack(Conn *c)
 		enqueueparent(&haveq, o);
 		osadd(&hadobj, o);
 		unref(o);
+		nsent++;
 	}
 	/*
 	 * While we could short circuit this and check if upstream has
@@ -274,7 +322,7 @@ fetchpack(Conn *c)
 		if(oshas(&hadobj, e.o->hash))
 			continue;
 		if((o = readobject(e.o->hash)) == nil)
-			sysfatal("missing object we should have: %H", have[i]);
+			sysfatal("missing object we should have: %H", e.o->hash);
 		if(fmtpkt(c, "have %H", o->hash) == -1)
 			sysfatal("write: %r");
 		enqueueparent(&haveq, o);
@@ -292,9 +340,6 @@ fetchpack(Conn *c)
 		goto showrefs;
 	if(readphase(c) == -1)
 		sysfatal("read: %r");
-	if((n = readpkt(c, buf, sizeof(buf))) == -1)
-		sysfatal("read: %r");
-	buf[n] = 0;
 
 	if((packtmp = smprint(".git/objects/pack/fetch.%d.pack", getpid())) == nil)
 		sysfatal("smprint: %r");
@@ -305,38 +350,56 @@ fetchpack(Conn *c)
 	if((pfd = create(packtmp, ORDWR, 0664)) == -1)
 		sysfatal("could not create %s: %r", packtmp);
 
-	fprint(2, "fetching...\n");
-	/*
-	 * Work around torvalds git bug: we get duplicate have lines
-	 * somtimes, even though the protocol is supposed to start the
-	 * pack file immediately.
-	 *
-	 * Skip ahead until we read 'PACK' off the wire
-	 */
-	while(1){
-		if(readn(c->rfd, buf, 4) != 4)
-			sysfatal("fetch packfile: short read");
-		buf[4] = 0;
-		if(strncmp(buf, "PACK", 4) == 0)
-			break;
-		l = strtol(buf, &ep, 16);
-		if(ep != buf + 4)
-			sysfatal("fetch packfile: junk pktline");
-		if(readn(c->rfd, buf, l-4) != l-4)
-			sysfatal("fetch packfile: short read");
+	fprint(2, "fetching...  ");
+	packsz = 0;
+	if(c->multiack){
+		for(i = 0; i < nsent; i++){
+			if(readpkt(c, buf, sizeof(buf)) == -1)
+				sysfatal("read: %r");
+			if(strncmp(buf, "NAK\n", 4) == 0)
+				break;
+			if(strncmp(buf, "ACK ", 4) != 0)
+				sysfatal("bad response: '%s'", buf);
+		}
+	} 
+	if(readpkt(c, buf, sizeof(buf)) == -1)
+		sysfatal("read: %r");
+	if(!c->sideband && !c->sideband64k && !c->multiack){
+		/*
+		 * Work around torvalds git bug: we get duplicate have lines
+		 * somtimes, even though the protocol is supposed to start the
+		 * pack file immediately.
+		 *
+		 * Skip ahead until we read 'PACK' off the wire
+		 */
+		while(1){
+			if(readn(c->rfd, buf, 4) != 4)
+				sysfatal("fetch packfile: short read");
+			if(strncmp(buf, "PACK", 4) == 0)
+				break;
+			buf[4] = 0;
+			l = strtol(buf, &ep, 16);
+			if(ep != buf + 4)
+				sysfatal("fetch packfile: junk pktline");
+			if(readn(c->rfd, buf, l-4) != l-4)
+				sysfatal("fetch packfile: short read");
+		}
+		if(write(pfd, "PACK", 4) != 4)
+			sysfatal("write pack header: %r");
+		packsz = 4;
 	}
-	if(write(pfd, "PACK", 4) != 4)
-		sysfatal("write pack header: %r");
-	packsz = 4;
+	spin = 0;
 	while(1){
-		n = read(c->rfd, buf, sizeof buf);
+		n = sbread(c, buf, sizeof buf, &rp);
 		if(n == 0)
 			break;
-		if(n == -1 || write(pfd, buf, n) != n)
+		if(n == -1 || write(pfd, rp, n) != n)
 			sysfatal("fetch packfile: %r");
+		if(interactive && spin++ % 100 == 0)
+			fprint(2, "\b%c", spinner[spin/100 % nelem(spinner)]);
 		packsz += n;
 	}
-
+	fprint(2, "\n");
 	closeconn(c);
 	if(seek(pfd, 0, 0) == -1)
 		fail(packtmp, idxtmp, "packfile seek: %r");

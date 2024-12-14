@@ -27,27 +27,28 @@ matchcap(char *s, char *cap, int full)
 }
 
 void
-parsecaps(char *caps, Capset *cs)
+parsecaps(char *caps, Conn *c)
 {
-	char *p, *n, *c, *t;
+	char *p, *n, *s, *t;
 
-	memset(cs, 0, sizeof(*cs));
 	for(p = caps; p != nil; p = n){
 		n = strchr(p, ' ');
 		if(n != nil)
 			*n++ = 0;
 		if(matchcap(p, "report-status", 1) != nil)
-			cs->report = 1;
+			c->report = 1;
+		if(matchcap(p, "multi_ack", 1) != nil)
+			c->multiack = 1;
 		else if(matchcap(p, "side-band", 1) != nil)
-			cs->sideband = 1;
+			c->sideband = 1;
 		else if(matchcap(p, "side-band-64k", 1) != nil)
-			cs->sideband64k = 1;
-		else if((c = matchcap(p, "symref=", 0)) != nil){
-			if((t = strchr(c, ':')) == nil)
+			c->sideband64k = 1;
+		else if((s = matchcap(p, "symref=", 0)) != nil){
+			if((t = strchr(s, ':')) == nil)
 				continue;
 			*t++ = '\0';
-			snprint(cs->symfrom, sizeof(cs->symfrom), c);
-			snprint(cs->symto, sizeof(cs->symto), t);
+			snprint(c->symfrom, sizeof(c->symfrom), s);
+			snprint(c->symto, sizeof(c->symto), t);
 		}
 	}
 }
@@ -108,7 +109,7 @@ readpkt(Conn *c, char *buf, int nbuf)
 		sysfatal("pktline: bad length '%s'", len);
 	n  -= 4;
 	if(n >= nbuf)
-		sysfatal("pktline: undersize buffer");
+		abort();//sysfatal("pktline: undersize buffer");
 	if(readn(c->rfd, buf, n) != n)
 		return -1;
 	if(n > 4 && strncmp(buf, "ERR ", 4) == 0){
@@ -468,7 +469,6 @@ static int
 localrepo(char *uri, char *path, int npath)
 {
 	int fd;
-
 	snprint(path, npath, "%s/.git/../", uri);
 	fd = open(path, OREAD);
 	if(fd < 0)
