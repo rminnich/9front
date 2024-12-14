@@ -114,8 +114,9 @@ for(m in $cleanpaths){
 for(ours in $dirtypaths){
 	common=$gitfs/object/$orig/tree/$ours
 	theirs=$gitfs/object/$base/tree/$ours
-	merge1 $ours $ours $common $theirs || st=$status
-	if(! ~ $#st 1)
+	merge1 $ours $ours $common $theirs
+	st=$status
+	if(! ~ $st '')
 		>[1=2] echo merge failed $ours: $st
 }
 if(~ $new */*)
