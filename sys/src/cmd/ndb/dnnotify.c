@@ -26,7 +26,7 @@ dnnotify(DNSmsg *reqp, DNSmsg *repp, Request *req)
 		return;
 
 	/* is it something we care about? */
-	a = inmyarea(repp->qd->owner->name);
+	a = inmyarea(repp->qd->owner->name, nil);
 	if(a == nil)
 		return;
 

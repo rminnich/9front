@@ -14,7 +14,7 @@ dnserver(DNSmsg *reqp, DNSmsg *repp, Request *req, uchar *srcip, int rcode)
 {
 	char tname[32], *cp;
 	DN *nsdp;
-	Area *myarea;
+	Area *myarea, *delegation;
 	RR *rp, *neg;
 
 	repp->id = reqp->id;
@@ -49,7 +49,7 @@ dnserver(DNSmsg *reqp, DNSmsg *repp, Request *req, uchar *srcip, int rcode)
 		return;
 	}
 
-	myarea = inmyarea(repp->qd->owner->name);
+	myarea = inmyarea(repp->qd->owner->name, &delegation);
 	if(myarea){
 		if(repp->qd->type == Tixfr || repp->qd->type == Taxfr){
 			if(debug)
@@ -64,9 +64,15 @@ dnserver(DNSmsg *reqp, DNSmsg *repp, Request *req, uchar *srcip, int rcode)
 	} else {
 		if(cfg.nonrecursive
 		|| cfg.localrecursive && !localip(srcip)){
-			/* we don't recurse and we're not authoritative */
-			setercode(repp, Rrefused);
-			return;
+			if(delegation == nil){
+				/*
+				 * we don't recurse and we're not authoritative
+				 * nor lies the domain in a delegated sub area.
+				 */
+				setercode(repp, Rrefused);
+				return;
+			}
+			neg = nil;
 		} else {
 			repp->flags |= Fcanrec;
 			if(reqp->flags & Frecurse){

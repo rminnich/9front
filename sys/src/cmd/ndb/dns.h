@@ -489,7 +489,7 @@ extern Area	*delegated;
 extern Area	*owned;
 void	addarea(RR *rp, Ndbtuple *t);
 void	freeareas(Area**);
-Area*	inmyarea(char*);
+Area*	inmyarea(char*, Area**);
 
 /* dblookup.c */
 int	baddelegation(RR*, RR*, uchar*);

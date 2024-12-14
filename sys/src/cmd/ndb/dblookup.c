@@ -164,7 +164,7 @@ out:
 		 * don't call it non-existent if it's not ours
 		 * (unless we're a resolver).
 		 */
-		if(err == Rname && (!inmyarea(dp->name) || cfg.resolver))
+		if(err == Rname && (!inmyarea(dp->name, nil) || cfg.resolver))
 			err = Rserver;
 		dp->respcode = err;
 	}
@@ -848,7 +848,7 @@ baddelegation(RR *rp, RR *nsrp, uchar *addr)
 	for(nt = mydoms; nt != nil; nt = nt->entry)
 		if(rp->host && cistrcmp(rp->host->name, nt->val) == 0)
 			break;
-	if(nt == nil || inmyarea(rp->owner->name))
+	if(nt == nil || inmyarea(rp->owner->name, nil))
 		return 0;
 	dnslog("bad delegation %R from %I/%s; "
 		"no further logging of them",

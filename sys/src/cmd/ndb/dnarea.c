@@ -26,17 +26,22 @@ nameinarea(char *name, Area *s)
  *  true if a name is in our area
  */
 Area*
-inmyarea(char *name)
+inmyarea(char *name, Area **delegation)
 {
 	Area *s, *d;
 
 	s = nameinarea(name, owned);
-	if(s == nil)
+	if(s == nil){
+		if(delegation)
+			*delegation = nil;
 		return nil;
+	}
 	d = nameinarea(name, delegated);
-	if(d && d->len > s->len)
+	if(delegation)
+		*delegation = d;
+	if(d != nil && d->len > s->len)
 		return nil;
-	return s;	/* name is in owned area `s' and not in a delegated subarea */
+	return s;	/* name is in owned area `s' and not in a delegated subarea `d' */
 }
 
 /*

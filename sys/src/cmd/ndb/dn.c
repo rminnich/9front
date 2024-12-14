@@ -526,7 +526,7 @@ dnauthdb(void)
 
 	for(i = 0; i < HTLEN; i++)
 		for(dp = ht[i]; dp; dp = dp->next){
-			area = inmyarea(dp->name);
+			area = inmyarea(dp->name, nil);
 			l = &dp->rr;
 			for(rp = *l; rp; rp = *l){
 				if(rp->db){
@@ -539,7 +539,7 @@ dnauthdb(void)
 						if(rp->ttl < minttl)
 							rp->ttl = minttl;
 						rp->auth = 1;
-					} else if(rp->type == Tns && inmyarea(rp->host->name))
+					} else if(rp->type == Tns && inmyarea(rp->host->name, nil))
 						rp->auth = 1;
 				} else if(area){
 					/* no outside spoofing */
@@ -707,7 +707,7 @@ rrattach(RR *rp, int auth)
 		next = rp->next;
 		rp->next = nil;
 		if(rp->type == Tall || rp->type == Topt || !rrsupported(rp->type)
-		|| cfg.cachedb && !rp->db && inmyarea(rp->owner->name))
+		|| cfg.cachedb && !rp->db && inmyarea(rp->owner->name, nil))
 			rrfree(rp);
 		else
 			rrattach1(rp, auth);

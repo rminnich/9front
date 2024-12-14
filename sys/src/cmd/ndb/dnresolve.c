@@ -403,7 +403,7 @@ dnresolve1(char *name, int class, int type, Request *req, int depth, int recurse
 	 * if the domain name is within an area of ours,
 	 * we should have found its data in memory by now.
 	 */
-	area = inmyarea(dp->name);
+	area = inmyarea(dp->name, nil);
 	if (area || strncmp(dp->name, "local#", 6) == 0)
 		return nil;
 
