@@ -159,8 +159,9 @@ nsub(Mesg *m)
 	n = 0;
 	for(i = 0; i < m->nchild; i++){
 		c = m->child[i];
+		n += nsub(c);
 		if(!(c->state & (Sdummy|Shide)))
-			n += nsub(c)+1;
+			n++;
 	}
 	return n;
 }
@@ -183,7 +184,9 @@ mesglineno(Mesg *msg, int *depth)
 		for(i = 0; i < p->nchild; i++){
 			if(p->child[i] == m)
 				break;
-			o += nsub(p->child[i]) + 1;
+			o += nsub(p->child[i]);
+			if(!(p->state & (Sdummy|Shide)))
+				o++;
 		}
 		if(!(p->state & (Sdummy|Shide))){
 			o++;
