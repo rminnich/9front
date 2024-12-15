@@ -56,8 +56,9 @@ enum
 	Pconfigured,
 
 	/* Delays, timeouts (ms) */
-	Resetdelay	= 20,		/* how much to wait after a reset */
-	Resumedelay	= 20,		/* how much to wait after a resume */
+	Rootresetdelay	= 100,		/* how much to wait after a root port reset (50ms by standard) */
+	Portresetdelay	= 50,		/* how much to wait after a hub port reset (20ms by standard) */
+	Resumedelay	= 50,		/* how much to wait after a resume (20ms by standard) */
 	Powerdelay	= 100,		/* after powering up ports */
 	Pollms		= 250, 		/* port poll interval */
 

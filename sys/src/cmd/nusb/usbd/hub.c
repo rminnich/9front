@@ -452,7 +452,7 @@ portattach(Hub *h, int p)
 			dprint(2, "%s: %s: port %d: set reset: %r\n", argv0, d->dir, p);
 			return -1;
 		}
-		sleep(Resetdelay);
+		sleep(d->depth<0? Rootresetdelay: Portresetdelay);
 		if((sts = portstatus(h, p)) == -1)
 			return -1;
 		sp = "full";
