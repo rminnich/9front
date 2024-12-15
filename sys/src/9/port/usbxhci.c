@@ -43,6 +43,7 @@ enum {
 		CRS	= 1<<9,		/* Controller Restore State - RW */
 		EWE	= 1<<10,	/* Enable Wrap Event - RW */
 		EU3S	= 1<<11,	/* Enable U3 MFINDEX Stop - RW */
+		USBCMD_PRES =0xfffff030,/* Reserved - RsvdP */
 
 	USBSTS		= 0x04/4,	/* USB Status Register */
 		HCH	= 1<<0,		/* HCHalted - RO */
@@ -54,22 +55,24 @@ enum {
 		SRE	= 1<<10,	/* Save/Restore Error - RW1C */
 		CNR	= 1<<11,	/* Controller Not Ready - RO */
 		HCE	= 1<<12,	/* Host Controller Error - RO */
+		USBSTS_PRES =0xffffe002,/* Reserved - RsvdP */
 
 	PAGESIZE	= 0x08/4,	/* Page Size - RO */
 
 	DNCTRL		= 0x14/4,	/* Device Notification Control Register - RW */
+		DNCTL_PRES =0xffff0000,	/* Reserved - RsvdP */
 
 	CRCR		= 0x18/4,	/* Command Ring Control Register - RW */
 		RCS	= 1<<0,		/* Ring Cycle State - RW */
 		CS	= 1<<1,		/* Command Stop - RW1S */
 		CA	= 1<<2,		/* Command Abort - RW1S */
 		CRR	= 1<<3,		/* Command Ring Running - RO */
+		CRCR_PRES = 3<<4,	/* Reserved - RsvdP */
 
-	DCBAAP		= 0x30/4,	// 8
+	DCBAAP		= 0x30/4,	/* 64-bit */
 
 	CONFIG		= 0x38/4,	/* Configure Register (MaxSlotEn[7:0]) */
-		U3E	= 1<<8,
-		CIE	= 1<<9,
+		CONFIG_PRES =0xffffff00,/* Reserved - RsvdP */
 
 	/* Port Register Set */
 	PORTSC		= 0x00/4,	/* Port status and Control Register */
@@ -105,10 +108,16 @@ enum {
 
 	/* Interrupter Registers */
 	IMAN		= 0x00/4,	/* Interrupter Management */
+		IP	= 1<<0,		/* Interrupt pending - RW1C */
+		IE	= 1<<1,		/* interrupt enable - RW */
+		IMAN_PRES = 0xfffffffc,	/* Reserved - RsvdP */
 	IMOD		= 0x04/4,	/* Interrupter Moderation */
 	ERSTSZ		= 0x08/4,	/* Event Ring Segment Table Size */
+		ERSTSZ_PRES =0xffff0000,/* Reserved - RsvdP */
 	ERSTBA		= 0x10/4,	/* Event Ring Segment Table Base Address */
+		ERSTBA_PRES =0x3f,	/* Reserved - RsvdP */
 	ERDP		= 0x18/4,	/* Event Ring Dequeue Pointer */
+		EHB	= 1<<3,		/* Event Handler Busy - RW1C */
 
 	/* TRB flags */
 	TR_ENT		= 1<<1,
@@ -420,7 +429,7 @@ xhcishutdown(Hci *hp)
 	Ctlr *ctlr = hp->aux;
 	int i;
 
-	ctlr->opr[USBCMD] = 0;
+	ctlr->opr[USBCMD] &= USBCMD_PRES;
 	for(i=0; (ctlr->opr[USBSTS] & HCH) == 0 && i < 10; i++)
 		delay(10);
 	intrdisable(hp->irq, hp->interrupt, hp, hp->tbdf, hp->type);
@@ -470,7 +479,7 @@ xhciinit(Hci *hp)
 	for(i=0; (ctlr->opr[USBSTS] & CNR) != 0 && i<100; i++)
 		tsleep(&up->sleep, return0, nil, 10);
 
-	ctlr->opr[USBCMD] = HCRST;
+	ctlr->opr[USBCMD] = HCRST | (ctlr->opr[USBCMD] & USBCMD_PRES);
 
 	/* some intel controllers require 1ms delay after reset */
 	tsleep(&up->sleep, return0, nil, 1);
@@ -544,7 +553,8 @@ xhciinit(Hci *hp)
 	for(i=1; i<=ctlr->nslots; i++)
 		ctlr->dcba[i] = 0;
 
-	ctlr->opr[CONFIG] = (ctlr->opr[CONFIG] & ~(CIE|U3E|0xFF)) | ctlr->nslots;	/* MaxSlotsEn */
+	/* MaxSlotsEn */
+	ctlr->opr[CONFIG] = ctlr->nslots | (ctlr->opr[CONFIG] & CONFIG_PRES);
 
 	dmaflush(1, ctlr->dcba, (1+ctlr->nslots)*sizeof(ctlr->dcba[0]));
 	setrptr(&ctlr->opr[DCBAAP], (*ctlr->dmaaddr)(ctlr->dcba));
@@ -552,16 +562,18 @@ xhciinit(Hci *hp)
 	initring(ctlr, ctlr->cr, 8);		/* 256 entries */
 	ctlr->cr->id = 0;
 	ctlr->cr->doorbell = &ctlr->dba[0];
-	setrptr(&ctlr->opr[CRCR], resetring(ctlr->cr));
+	setrptr(&ctlr->opr[CRCR], resetring(ctlr->cr) |
+		(ctlr->opr[CRCR] & CRCR_PRES));
 
 	for(i=0; i<ctlr->nintrs; i++){
 		u32int *irs = &ctlr->rts[IR0 + i*8];
 
 		if(i >= nelem(ctlr->er)){
-			irs[ERSTSZ] = 0;	/* disable ring */
-			irs[IMAN] = 1;
+			/* disable ring */
+			irs[ERSTSZ] = 0 | (irs[ERSTSZ] & ERSTSZ_PRES);
+			irs[IMAN] = irs[IMAN] & (IP | IMAN_PRES);
 			irs[IMOD] = 0;
-			setrptr(&irs[ERSTBA], 0);
+			setrptr(&irs[ERSTBA], irs[ERSTBA] & ERSTBA_PRES);
 			setrptr(&irs[ERDP], 0);
 			continue;
 		}
@@ -576,19 +588,22 @@ xhciinit(Hci *hp)
 		ctlr->erst[i][3] = 0;
 		dmaflush(1, ctlr->erst[i], 4*4);
 
-		irs[ERSTSZ] = 1;	/* just one segment */
-		irs[IMAN] = 3;
+		/* just one segment */
+		irs[ERSTSZ] = 1 | (irs[ERSTSZ] & ERSTSZ_PRES);
+		irs[IMAN] = IE | (irs[IMAN] & (IP | IMAN_PRES));
 		irs[IMOD] = 0;
-		setrptr(&irs[ERSTBA], (*ctlr->dmaaddr)(ctlr->erst[i]));
-		setrptr(&irs[ERDP], (*ctlr->dmaaddr)(ctlr->er[i].base) | (1<<3));
+		setrptr(&irs[ERSTBA], (*ctlr->dmaaddr)(ctlr->erst[i]) |
+			(irs[ERSTBA] & ERSTBA_PRES));
+
+		setrptr(&irs[ERDP], (*ctlr->dmaaddr)(ctlr->er[i].base) | EHB);
 	}
 	poperror();
 
 	ctlr->µframe = 0;
-	ctlr->opr[USBSTS] = ctlr->opr[USBSTS] & (HSE|EINT|PCD|SRE);
+	ctlr->opr[USBSTS] = ctlr->opr[USBSTS] & (HSE|EINT|PCD|SRE | USBSTS_PRES);
 	coherence();
 
-	ctlr->opr[USBCMD] = RUNSTOP|INTE|HSEE|EWE;
+	ctlr->opr[USBCMD] = RUNSTOP|INTE|HSEE|EWE | (ctlr->opr[USBCMD] & USBCMD_PRES);
 	for(i=0; (ctlr->opr[USBSTS] & (CNR|HCH)) != 0 && i<100; i++)
 		tsleep(&up->sleep, return0, nil, 10);
 
@@ -613,6 +628,10 @@ recover(void *arg)
 		;
 	while(!needrecover(ctlr))
 		tsleep(&ctlr->recover, needrecover, ctlr, 1000);
+
+	print("usbxhci %llux: need recover: USBSTS=%ux, er stopped=%d\n",
+		ctlr->base, ctlr->opr[USBSTS], ctlr->er->stopped);
+
 	(*hp->shutdown)(hp);
 
 	/*
@@ -654,12 +673,11 @@ recover(void *arg)
 	qlock(&ctlr->cmdlock);
 	release(ctlr);
 	if(waserror()) {
-		print("xhci recovery failed: %s\n", up->errstr);
+		print("usbxhci %llux: recovery failed: %s\n", ctlr->base, up->errstr);
 	} else {
 		(*hp->init)(hp);
 		poperror();
 	}
-
 	qunlock(&ctlr->cmdlock);
 	qunlock(&ctlr->slotlock);
 
@@ -881,7 +899,7 @@ interrupt(Ureg*, void *arg)
 
 	irs = &ctlr->rts[IR0];
 	x = irs[IMAN];
-	if(x & 1) irs[IMAN] = x & 3;
+	if(x & IP) irs[IMAN] = x;
 
 	for(x = ring->rp;; x=++ring->rp){
 		td = ring->base + 4*(x & ring->mask);
@@ -908,8 +926,8 @@ interrupt(Ureg*, void *arg)
 				(ctlr->µframe+(1<<14) & ~((1<<14)-1));
 			break;
 		case ER_HCE:
-			iprint("xhci: host controller error: %ux %ux %ux %ux\n",
-				td[0], td[1], td[2], td[3]);
+			iprint("usbxhci %llux: host controller error: %ux %ux %ux %ux\n",
+				ctlr->base, td[0], td[1], td[2], td[3]);
 			ctlr->er->stopped = 1;
 			wakeup(&ctlr->recover);
 			return;
@@ -919,12 +937,12 @@ interrupt(Ureg*, void *arg)
 		case ER_DOORBELL:
 		case ER_DEVNOTE:
 		default:
-			iprint("xhci: event %ud: %ux %ux %ux %ux\n",
-				x, td[0], td[1], td[2], td[3]);
+			iprint("usbxhci %llux: event %ud: %ux %ux %ux %ux\n",
+				ctlr->base, x, td[0], td[1], td[2], td[3]);
 		}
 	}
 
-	setrptr(&irs[ERDP], (*ctlr->dmaaddr)(td) | (1<<3));
+	setrptr(&irs[ERDP], (*ctlr->dmaaddr)(td) | EHB);
 }
 
 static void
@@ -1855,7 +1873,7 @@ xhcialloc(u32int *mmio, u64int base, u64int size)
 
 	ctlr = malloc(sizeof(Ctlr));
 	if(ctlr == nil){
-		print("usbxhci: no memory for controller\n");
+		print("usbxhci %llux: no memory for controller\n", base);
 		return nil;
 	}
 	ctlr->mmio = mmio;
