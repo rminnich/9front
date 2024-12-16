@@ -234,14 +234,20 @@ chanwait(Ep *ep, Ctlr *ctlr, Hostchan *hc, int mask)
 	int intr, ointr, chan;
 	ulong start, now;
 
+	if(waserror()){
+		chanhalt(ep, hc);
+		nexterror();
+	}
 	chan = hc - ctlr->regs->hchan;
 	for(;;){
-restart:
+	restart:
 		tsleep(&ctlr->chanintr[chan], chandone, hc, 1000);
 		if((intr = hc->hcint) == 0)
-			goto restart;
-		if(intr & Chhltd)
+			error("channel timeout");
+		if(intr & Chhltd){
+			poperror();
 			return intr;
+		}
 		ointr = intr;
 		now = start = fastticks(0);
 		do{
@@ -252,6 +258,7 @@ restart:
 				   (now - start) > 60)
 					dprint("ep%d.%d await %x after %ldµs %x -> %x\n",
 						ep->dev->nb, ep->nb, mask, now - start, ointr, intr);
+				poperror();
 				return intr;
 			}
 			if((intr & mask) == 0){
@@ -686,7 +693,7 @@ init(Hci *hp)
 	dprint("usbdwc: FIFO depth %d sizes rx/nptx/ptx %8.8ux %8.8ux %8.8ux\n",
 		n, r->grxfsiz, r->gnptxfsiz, r->hptxfsiz);
 
-	r->hport0 = Prtpwr|Prtconndet|Prtenchng|Prtovrcurrchng;
+	r->hport0 = Prtconndet|Prtenchng|Prtovrcurrchng;
 	r->gintsts = ~0;
 	r->gintmsk = Hcintr;
 	r->gahbcfg |= Glblintrmsk;
@@ -982,7 +989,7 @@ portstatus(Hci *hp, int)
 	s = r->hport0;
 	b = s & (Prtconndet|Prtenchng|Prtovrcurrchng);
 	if(b != 0)
-		r->hport0 = Prtpwr | b;
+		r->hport0 = (s & Prtpwr) | b;
 	b = 0;
 	if(s & Prtconnsts)
 		b |= HPpresent;
