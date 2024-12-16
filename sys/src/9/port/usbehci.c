@@ -1639,13 +1639,34 @@ static void
 portlend(Ctlr *ctlr, int port, char *ss)
 {
 	Eopio *opio;
-	ulong s;
+	int s;
 
 	opio = ctlr->opio;
 	dprint("ehci %#p port %d: %s speed device: no longer owned\n",
 		ctlr->capio, port, ss);
 	s = opio->portsc[port-1] & ~(Pschange|Psstatuschg);
 	opio->portsc[port-1] = s | Psowner;
+}
+
+static void
+portpower(Hci *hp, int port, int on)
+{
+	Ctlr *ctlr;
+	Eopio *opio;
+	int s;
+
+	ctlr = hp->aux;
+	opio = ctlr->opio;
+	eqlock(&ctlr->portlck);
+	ilock(ctlr);
+	s = opio->portsc[port-1] & ~(Pschange|Psstatuschg);
+	if(on)
+		s |= Pspower;
+	else
+		s &= ~Pspower;
+	opio->portsc[port-1] = s;
+	iunlock(ctlr);
+	qunlock(&ctlr->portlck);
 }
 
 static void
@@ -3221,7 +3242,6 @@ init(Hci *hp)
 {
 	Ctlr *ctlr;
 	Eopio *opio;
-	int i;
 
 	hp->highspeed = 1;
 	ctlr = hp->aux;
@@ -3243,10 +3263,6 @@ init(Hci *hp)
 
 	/* route all ports to us */
 	opio->config = Callmine;
-	coherence();
-
-	for (i = 0; i < hp->nports; i++)
-		opio->portsc[i] = Pspower;
 	iunlock(ctlr);
 	if(ehcidebug > 1)
 		dump(hp);
@@ -3263,8 +3279,9 @@ ehcilinkage(Hci *hp)
 	hp->epread = epread;
 	hp->epwrite = epwrite;
 	hp->seprintep = seprintep;
-	hp->portenable = portenable;
+	hp->portpower = portpower;
 	hp->portreset = portreset;
+	hp->portenable = portenable;
 	hp->portstatus = portstatus;
 	hp->type = "ehci";
 }
