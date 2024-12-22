@@ -66,7 +66,7 @@ if(! ~ `{git/query HEAD $remote @} `{git/query HEAD}){
 
 oldcommit=`{git/query $local}
 newcommit=`{git/query $remote}
-echo $remote':' $oldcommit '=>' `$newcommit
+echo $remote':' $oldcommit '=>' $newcommit
 git/branch -mnb $remote $local
 
 # The remote is directly ahead of the local, and we have
