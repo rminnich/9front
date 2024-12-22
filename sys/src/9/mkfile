@@ -1,13 +1,16 @@
 ARCH=\
 	arm64\
-	bcm\
 	bcm64\
+	bcm\
 	cycv\
+	imx8\
 	kw\
+	lx2k\
+	mt7688\
 	#mtx\
 	omap\
-	pc\
 	pc64\
+	pc\
 	#ppc\
 	sgi\
 	teg2\
