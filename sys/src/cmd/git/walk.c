@@ -34,7 +34,6 @@ Idxed	idxtab[NCACHE];
 char	repopath[1024];
 char	wdirpath[1024];
 char	relapath[1024];
-char	slashes[1024];
 int	nslash;
 char	*rstr	= "R ";
 char	*mstr	= "M ";
@@ -350,31 +349,33 @@ reporel(char *s)
 void
 show(Biobuf *o, int flg, char *str, char *path)
 {
-	char *pa, *pb, *suffix;
-	int ncommon = 0;
+	char *pa, *pb;
+	int n;
 
 	dirty |= flg;
 	if(!quiet && (printflg & flg)){
-		if(nslash){
-			suffix = path;
+		Bprint(o, str);
+		n = nslash;
+		if(n){
 			for(pa = relapath, pb = path; *pa && *pb; pa++, pb++){
 				if(*pa != *pb)
 					break;
 				if(*pa == '/'){
-					ncommon++;
-					suffix = pb+1;
+					n--;
+					path = pb+1;
 				}
 			}
-			Bprint(o, "%s%.*s%s\n", str, (nslash-ncommon)*3, slashes, suffix);
-		} else
-			Bprint(o, "%s%s\n", str, path);
+			while(n-- > 0)
+				Bprint(o, "../");
+		}
+		Bprint(o, "%s\n", path);
 	}
 }
 
 void
 findslashes(char *path)
 {
-	char *s, *p;
+	char *p;
 
 	p = cleanname(path);
 	if(p[0] == '.'){
@@ -389,13 +390,9 @@ findslashes(char *path)
 	if(*p == '/')
 		p++;
 
-	s = slashes;
-	for(; *p; p++){
-		if(*p != '/')
-			continue;
-		nslash++;
-		s = seprint(s, slashes + sizeof slashes, "../");
-	}
+	for(; *p; p++)
+		if(*p == '/')
+			nslash++;
 }
 
 void

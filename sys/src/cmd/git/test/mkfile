@@ -3,6 +3,7 @@
 TEST=\
 	add\
 	basic\
+	diff\
 	export\
 	ftype\
 	lca\
