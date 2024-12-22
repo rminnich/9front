@@ -183,6 +183,10 @@ git/pull, git/rm, git/serve \- Manage git repositories.
 .I filters
 ]
 [
+.B -r
+.I rel
+]
+[
 .I file...
 ]
 
@@ -331,7 +335,14 @@ is an alias for
 .PP
 .B Git/commit
 creates a new commit consisting of all changes to the specified files.
-By default, an editor is opened to prepare the commit message.
+By default,
+.I $editor
+is opened to prepare the commit message.
+If
+.I $editor
+is undefined
+.IR hold (1)
+is used.
 The 
 .B -m
 flag supplies the commit message directly.
@@ -531,6 +542,10 @@ option suppresses the status, so only the paths are printed.
 The
 .B -q
 option suppresses all output.
+The
+.B -r
+option causes paths to be printed relative to the supplied directory
+.IR rel .
 The
 .B -f
 option filters files by status, and only matching items are printed.
