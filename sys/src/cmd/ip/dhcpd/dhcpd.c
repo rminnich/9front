@@ -1134,9 +1134,9 @@ miscoptions(Req *rp, uchar *ip)
 		addrs[i] = &x[i*IPaddrlen];
 
 	/* always supply these */
-	if(validip(rp->ii.ipmask))
+	if(validipmask(rp->ii.ipmask))
 		maskopt(rp, OBmask, rp->ii.ipmask);
-	else if(validip(rp->gii.ipmask))
+	else if(validipmask(rp->gii.ipmask))
 		maskopt(rp, OBmask, rp->gii.ipmask);
 	else if((lifc = ipremoteonifc(rp->ifc, ip)) != nil)
 		maskopt(rp, OBmask, lifc->mask);
@@ -1391,6 +1391,16 @@ readsysname(void)
 
 extern int
 validip(uchar *ip)
+{
+	if(ipcmp(ip, IPnoaddr) == 0)
+		return 0;
+	if(ipcmp(ip, v4prefix) == 0)
+		return 0;
+	return isv4(ip);
+}
+
+extern int
+validipmask(uchar *ip)
 {
 	if(ipcmp(ip, IPnoaddr) == 0)
 		return 0;

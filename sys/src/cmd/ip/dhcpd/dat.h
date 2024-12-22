@@ -50,6 +50,7 @@ struct Info
 
 /* from dhcp.c */
 extern int	validip(uchar*);
+extern int	validipmask(uchar*);
 extern void	fatal(char*, ...);
 extern void	warning(char*, ...);
 #pragma	varargck argpos	fatal 1

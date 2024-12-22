@@ -60,14 +60,18 @@ static void
 setipaddr(uchar *addr, char *ip)
 {
 	if(ipcmp(addr, IPnoaddr) == 0)
-		parseip(addr, ip);
+		if(parseip(addr, ip) == -1
+		|| !validip(addr))
+			ipmove(addr, IPnoaddr);	/* invalid */
 }
 
 static void
 setipmask(uchar *mask, char *ip)
 {
 	if(ipcmp(mask, IPnoaddr) == 0)
-		parseipmask(mask, ip, 1);
+		if(parseipmask(mask, ip, 1) == -1
+		|| !validipmask(mask))
+			ipmove(mask, IPnoaddr);	/* invalid */
 }
 
 /*
@@ -228,9 +232,7 @@ lookup(Bootp *bp, Info *iip, Info *riip)
 		for(nt = t; nt != nil; nt = nt->entry){
 			if(strcmp(nt->attr, "ip") != 0)
 				continue;
-			if(parseip(ciaddr, nt->val) == -1 || !isv4(ciaddr))
-				continue;
-			if(!validip(ciaddr))
+			if(parseip(ciaddr, nt->val) == -1 || !validip(ciaddr))
 				continue;
 			if(!samenet(ciaddr, riip))
 				continue;
