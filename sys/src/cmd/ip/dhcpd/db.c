@@ -412,3 +412,22 @@ releasebinding(Binding *b, char *id)
 	close(fd);
 	return 0;
 }
+
+int
+validip(uchar *ip)
+{
+	if(ipcmp(ip, v4prefix) == 0)
+		return 0;
+	return isv4(ip);
+}
+
+int
+validipmask(uchar *mask)
+{
+	unsigned x;
+
+	if(memcmp(mask, IPallbits, IPv4off) != 0)
+		return 0;
+	x = ~(mask[IPv4off+0] << 24 | mask[IPv4off+1] << 16 | mask[IPv4off+2] << 8 | mask[IPv4off+3]);
+	return ((x + 1U) & x) == 0;
+}

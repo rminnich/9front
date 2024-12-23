@@ -57,19 +57,19 @@ localip(uchar *laddr, uchar *raddr, Ipifc *ifc)
 }
 
 static void
-setipaddr(uchar *addr, char *ip)
+setipaddr(uchar *ip, char *s)
 {
-	if(ipcmp(addr, IPnoaddr) == 0)
-		if(parseip(addr, ip) == -1
-		|| !validip(addr))
-			ipmove(addr, IPnoaddr);	/* invalid */
+	if(ipcmp(ip, IPnoaddr) == 0)
+		if(parseip(ip, s) == -1
+		|| !validip(ip))
+			ipmove(ip, IPnoaddr);	/* invalid */
 }
 
 static void
-setipmask(uchar *mask, char *ip)
+setipmask(uchar *mask, char *s)
 {
 	if(ipcmp(mask, IPnoaddr) == 0)
-		if(parseipmask(mask, ip, 1) == -1
+		if(parseipmask(mask, s, 1) == -1
 		|| !validipmask(mask))
 			ipmove(mask, IPnoaddr);	/* invalid */
 }

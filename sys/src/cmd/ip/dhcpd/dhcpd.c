@@ -191,7 +191,6 @@ void	sendnak(Req*, uchar*, char*);
 void	sendoffer(Req*, uchar*, int);
 void	stringopt(Req*, int, char*);
 void	termopt(Req*);
-int	validip(uchar*);
 void	vectoropt(Req*, int, uchar*, int);
 
 void
@@ -1387,26 +1386,6 @@ readsysname(void)
 	if(p == nil || *p == 0)
 		return "unknown";
 	return p;
-}
-
-extern int
-validip(uchar *ip)
-{
-	if(ipcmp(ip, IPnoaddr) == 0)
-		return 0;
-	if(ipcmp(ip, v4prefix) == 0)
-		return 0;
-	return isv4(ip);
-}
-
-extern int
-validipmask(uchar *ip)
-{
-	if(ipcmp(ip, IPnoaddr) == 0)
-		return 0;
-	if(ipcmp(ip, v4prefix) == 0)
-		return 0;
-	return 1;
 }
 
 void

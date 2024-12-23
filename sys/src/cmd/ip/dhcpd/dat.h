@@ -49,8 +49,6 @@ struct Info
 
 
 /* from dhcp.c */
-extern int	validip(uchar*);
-extern int	validipmask(uchar*);
 extern void	fatal(char*, ...);
 extern void	warning(char*, ...);
 #pragma	varargck argpos	fatal 1
@@ -58,6 +56,8 @@ extern void	warning(char*, ...);
 extern int	minlease;
 
 /* from db.c */
+extern int	validip(uchar*);
+extern int	validipmask(uchar*);
 extern char*	toid(uchar*, int);
 extern void	initbinding(uchar*, int);
 extern Binding*	iptobinding(uchar*, int);
