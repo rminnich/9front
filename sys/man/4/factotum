@@ -1,6 +1,6 @@
 .TH FACTOTUM 4
 .SH NAME
-factotum, fgui, userpasswd \- authentication agent
+factotum, fgui, userpasswd, totp \- authentication agent
 .SH SYNOPSIS
 .B auth/factotum
 [
@@ -26,6 +26,14 @@ factotum, fgui, userpasswd \- authentication agent
 .PP
 .B auth/userpasswd
 .I fmt
+.PP
+.B auth/totp
+[
+.B -k
+.I pattern
+] | [
+.B label
+]
 .SH DESCRIPTION
 .I Factotum
 is a user-level file system that
@@ -258,6 +266,15 @@ key tuple specified in
 .IR fmt .
 This can be used by shell scripts to do cleartext password
 authentication.
+.PP
+.I Totp
+queries and prints an
+.B RFC 6238
+ TOTP code
+for the
+.B proto=totp
+key tuple specified.
+This can be used to authenticate with services that require time based OTP.
 .SS "Key Tuples
 .PP
 A

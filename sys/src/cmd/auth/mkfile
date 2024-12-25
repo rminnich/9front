@@ -35,6 +35,7 @@ TARG=\
 	rsafill\
 	rsagen\
 	ssh2rsa\
+	totp\
 	uniq\
 	userpasswd\
 	warning\

@@ -43,6 +43,7 @@ prototab[] =
 	&vnc,
 	&ecdsa,
 	&wpapsk,
+	&totp,
 	nil,
 };
 
