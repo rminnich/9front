@@ -1,0 +1,57 @@
+.TH TOTP 1
+.SH NAME
+auth/userpasswd, auth/totp \- authentication agent
+.SH SYNOPSIS
+.PP
+.B auth/userpasswd
+.I fmt
+.PP
+.B auth/totp
+[
+.B -k
+.I pattern
+] | [
+.B label
+]
+.SH DESCRIPTION
+.PP
+.I Totp
+queries and prints the
+.B RFC 6238
+TOTP code
+for the specified key tuple.
+The key tuple is selected using the provided label.
+This can be used to authenticate with services that require time based OTP.
+.PP
+.I Userpasswd
+queries and prints a cleartext user/password pair from factotum
+for the
+.B proto=pass
+key tuple specified in
+.IR fmt .
+This can be used by shell scripts to do cleartext password
+authentication.
+Using plain password authentication with factotum is discouraged,
+as it reveals the secrets in plain text.
+.SH EXAMPLES
+.PP
+Adding a TOTP key to factotum:
+.IP
+.EX
+% echo 'key label=mylabel secret=ABCDEF123456' \\
+	> /mnt/factotum/ctl
+.EE
+.PP
+Generating a TOTP key from factotum:
+.IP
+.EX
+% auth/totp mylabel
+012345
+.EE
+.PP
+Retrieving a password from factotum:
+.IP
+.EX
+% auth/userpasswd 'server=setec service=ssh user=ori'
+toomanysecrets
+.EE
