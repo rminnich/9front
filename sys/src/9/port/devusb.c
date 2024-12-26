@@ -1184,14 +1184,22 @@ rhubwrite(Ep *ep, void *a, long n)
 	if(port > 0){
 		dev->rhresetport = 0;
 
-		/* some controllers have to clear reset and set enable manually */
+		/*
+		 * Some controllers have to clear reset and set enable manually.
+		 * We assume that clearing reset will transition the bus from
+		 * SE0 to idle state, and setting enable starts transmitting
+		 * SOF packets (keep alive).
+		 *
+		 * The delay between clearing reset and setting enable must
+		 * not exceed 3ms as this makes devices suspend themselfs.
+		 */
 		if(hp->portreset != nil){
 			(*hp->portreset)(hp, port, 0);
-			tsleep(&up->sleep, return0, nil, 50);
+			tsleep(&up->sleep, return0, nil, 2);
 		}
 		if(hp->portenable != nil){
 			(*hp->portenable)(hp, port, 1);
-			tsleep(&up->sleep, return0, nil, 50);
+			tsleep(&up->sleep, return0, nil, 2);
 		}
 	}
 
