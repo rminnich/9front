@@ -585,7 +585,7 @@ parse(int fd)
 void
 usage(void)
 {
-	fprint(2, "%s [-b] [-p n]\n", argv0);
+	fprint(2, "usage: %s [-b] [-p nstrip] [file]\n", argv0);
 	exits("usage");
 }
 
@@ -615,6 +615,16 @@ threadmain(int argc, char *argv[])
 		usage();
 		break;
 	}ARGEND;
+	switch(argc){
+	default:
+		usage();
+	case 1:
+		close(0);
+		if(open(argv[0], OREAD) < 0)
+			sysfatal("open: %r");
+	case 0:
+		break;
+	}
 
 	parse(0);
 	if(nblocks==1 && blocks[0]->nlines==0){

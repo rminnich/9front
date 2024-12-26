@@ -8,37 +8,45 @@ vdiff \- a visual diff viewer
 ]
 [
 .B -p
-.I strip
+.I nstrip
+]
+[
+.I file
 ]
 .SH DESCRIPTION
 .I vdiff
-reads unified diff output from standard input and displays a colored version. Each file diff is displayed in a separate block that can be collapsed by a click on the file name. Right clicking on a line will send a 
+reads unified diff output from
+.I file
+or standard input and displays a colored version.
+Each file within the diff is displayed in a separate block that can be collapsed by clicking on the file name.
+Right clicking on a line will send a
 .IR plumb (6)
 message to the
 .B edit
-port. Pressing
+port.
+Pressing
 .B q
 or
 .B del
 will exit
-.B vdiff.
+.I vdiff.
 .PP
 The
-.B \-b
+.B -b
 flag changes the color scheme to white text on a black background.
 .PP
 The
-.B \-p
-.I nstrip
+.B -p
 flag removes
 .I nstrip
-path elements from path before plumbing.
+path elements from the path before plumbing.
 .SH EXAMPLE
-% git/diff |vdiff
+.EX
+% git/diff | vdiff
+.EE
 .SH SOURCE
-/sys/src/cmd/vdiff.c
+.B /sys/src/cmd/vdiff.c
 .SH SEE ALSO
 .IR diff (1)
 .SH HISTORY
 vdiff first appeared in 9front (January, 2024).
-
