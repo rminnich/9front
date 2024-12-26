@@ -89,6 +89,7 @@ places windows but does not mediate programs' access to the display device.
 Other files are unique to
 .IR rio .
 .TF window
+.PD
 .TP
 .B cons
 a virtual version of the standard terminal file from
