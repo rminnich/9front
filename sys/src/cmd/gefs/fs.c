@@ -2026,7 +2026,7 @@ readsnap(Fmsg *m, Fid *f, Fcall *r)
 	}
 	if(s->donescan){
 		r->count = 0;
-		return;
+		goto Out;
 	}
 	p = r->data;
 	n = m->count;
@@ -2037,7 +2037,7 @@ readsnap(Fmsg *m, Fid *f, Fcall *r)
 		d.qid.path = UNPACK64(s->kv.v + 1);
 		if((ns = dir2statbuf(&d, p, n)) == -1){
 			r->count = 0;
-			return;
+			goto Out;
 		}
 		s->overflow = 0;
 		p += ns;
@@ -2058,9 +2058,11 @@ readsnap(Fmsg *m, Fid *f, Fcall *r)
 		n -= ns;
 	}
 	btexit(s);
+	r->count = p - r->data;
+
+Out:
 	poperror();
 	wunlock(f);
-	r->count = p - r->data;
 	return;
 }
 
