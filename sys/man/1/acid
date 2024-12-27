@@ -12,10 +12,7 @@ acid, truss, trump \- debugger
 .B -m
 .I machine
 ] [
-.I pid
-]
-[
-.I textfile
+.I pid | textfile | pid textfile
 ]
 .PP
 .B acid
@@ -27,10 +24,7 @@ acid, truss, trump \- debugger
 .B -l
 .B trump
 [
-.I pid
-]
-[
-.I textfile
+.I pid | textfile | pid textfile
 ]
 .SH DESCRIPTION
 .I Acid
@@ -38,9 +32,9 @@ is a programmable symbolic debugger.
 It can inspect one or more processes that share an address space.
 A program to be debugged may be specified by the process id of
 a running or defunct process,
-or by the name of the program's text file 
-.RB ( 8.out
-by default).
+or by the name of the program's text file. Both a pid and a file
+may be specified to supply debugging information for a process
+ran from a stripped binary.
 At the prompt,
 .I acid
 will store function definitions or print the value of expressions.

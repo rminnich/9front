@@ -23,7 +23,7 @@ void	loadmoduleobjtype(void);
 void
 usage(void)
 {
-	fprint(2, "usage: acid [-kqw] [-l library] [-m machine] [pid] [file]\n");
+	fprint(2, "usage: acid [-kqw] [-l library] [-m machine] [pid | textfile | pid textfile]\n");
 	exits("usage");
 }
 
@@ -37,7 +37,7 @@ main(int argc, char *argv[])
 
 	argv0 = argv[0];
 	pid = 0;
-	aout = "8.out";
+	aout = nil;
 	quiet = 1;
 
 	mtype = 0;
@@ -81,6 +81,8 @@ main(int argc, char *argv[])
 			}
 			aout = argv[0];
 		}
+	} else {
+		usage();
 	}
 
 	fmtinstall('x', xfmt);
