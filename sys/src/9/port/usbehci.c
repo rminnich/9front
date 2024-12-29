@@ -738,7 +738,7 @@ qhcoherency(Ctlr *ctlr)
 {
 	int i;
 
-	qlock(&ctlr->portlck);
+	qlock(&ctlr->doorbell);
 	ctlr->opio->cmd |= Ciasync;	/* ask for intr. on async advance */
 	coherence();
 	for(i = 0; i < 3 && qhadvanced(ctlr) == 0; i++){
@@ -751,7 +751,7 @@ qhcoherency(Ctlr *ctlr)
 	if(i == 3)
 		print("ehci: async advance doorbell did not ring\n");
 	ctlr->opio->cmd &= ~Ciasync;	/* try to clean */
-	qunlock(&ctlr->portlck);
+	qunlock(&ctlr->doorbell);
 }
 
 static void
@@ -1657,7 +1657,6 @@ portpower(Hci *hp, int port, int on)
 
 	ctlr = hp->aux;
 	opio = ctlr->opio;
-	eqlock(&ctlr->portlck);
 	ilock(ctlr);
 	s = opio->portsc[port-1] & ~(Pschange|Psstatuschg);
 	if(on)
@@ -1666,7 +1665,6 @@ portpower(Hci *hp, int port, int on)
 		s &= ~Pspower;
 	opio->portsc[port-1] = s;
 	iunlock(ctlr);
-	qunlock(&ctlr->portlck);
 }
 
 static void
@@ -1678,7 +1676,6 @@ portenable(Hci *hp, int port, int on)
 
 	ctlr = hp->aux;
 	opio = ctlr->opio;
-	eqlock(&ctlr->portlck);
 	ilock(ctlr);
 	s = opio->portsc[port-1];
 	if(s & (Psstatuschg | Pschange))
@@ -1691,7 +1688,6 @@ portenable(Hci *hp, int port, int on)
 		opio->portsc[port-1] &= ~Psenable;
 	}
 	iunlock(ctlr);
-	qunlock(&ctlr->portlck);
 }
 
 static void
@@ -1702,14 +1698,12 @@ portreset(Hci *hp, int port, int on)
 
 	ctlr = hp->aux;
 	opio = ctlr->opio;
-	eqlock(&ctlr->portlck);
 	ilock(ctlr);
 	if(on)
 		opio->portsc[port-1] = (opio->portsc[port-1] & ~Psenable) | Psreset;	/* initiate reset */
 	else
 		opio->portsc[port-1] &= ~Psreset;	/* terminate reset */
 	iunlock(ctlr);
-	qunlock(&ctlr->portlck);
 }
 
 static int
@@ -1721,7 +1715,6 @@ portstatus(Hci *hp, int port)
 
 	ctlr = hp->aux;
 	opio = ctlr->opio;
-	eqlock(&ctlr->portlck);
 	ilock(ctlr);
 	s = opio->portsc[port-1];
 	if(s & (Psstatuschg | Pschange))
@@ -1735,7 +1728,6 @@ portstatus(Hci *hp, int port)
 		s &= ~Pspresent;		/* not for us this time */
 	}
 	iunlock(ctlr);
-	qunlock(&ctlr->portlck);
 
 	/*
 	 * We must return status bits as a

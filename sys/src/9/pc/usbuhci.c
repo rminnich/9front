@@ -141,7 +141,6 @@ enum
 struct Ctlr
 {
 	Lock;			/* for ilock. qh lists and basic ctlr I/O */
-	QLock	portlck;	/* for port resets/enable... */
 	Pcidev*	pcidev;
 	Ctlr	*next;
 	int	active;
@@ -2030,7 +2029,6 @@ portenable(Hci *hp, int port, int on)
 
 	ctlr = hp->aux;
 	ioport = PORT(port-1);
-	eqlock(&ctlr->portlck);
 	ilock(ctlr);
 	s = INS(ioport);
 	if(on)
@@ -2038,7 +2036,6 @@ portenable(Hci *hp, int port, int on)
 	else
 		OUTS(ioport, s & ~PSenable);
 	iunlock(ctlr);
-	qunlock(&ctlr->portlck);
 }
 
 static void
@@ -2049,14 +2046,12 @@ portreset(Hci *hp, int port, int on)
 
 	ctlr = hp->aux;
 	ioport = PORT(port-1);
-	eqlock(&ctlr->portlck);
 	ilock(ctlr);
 	if(on)
 		OUTS(ioport, PSreset);
 	else
 		OUTS(ioport, INS(ioport) & ~PSreset);
 	iunlock(ctlr);
-	qunlock(&ctlr->portlck);
 }
 
 static int
@@ -2067,7 +2062,6 @@ portstatus(Hci *hp, int port)
 
 	ctlr = hp->aux;
 	ioport = PORT(port-1);
-	eqlock(&ctlr->portlck);
 	ilock(ctlr);
 	s = INS(ioport);
 	if(s & (PSstatuschg | PSchange)){
@@ -2075,7 +2069,6 @@ portstatus(Hci *hp, int port)
 		ddprint("uhci %#ux port %d status %#x\n", ctlr->port, port, s);
 	}
 	iunlock(ctlr);
-	qunlock(&ctlr->portlck);
 
 	/*
 	 * We must return status bits as a

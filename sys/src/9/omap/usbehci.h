@@ -145,7 +145,7 @@ struct Ctlr
 {
 	Rendez;			/* for waiting to async advance doorbell */
 	Lock;			/* for ilock. qh lists and basic ctlr I/O */
-	QLock	portlck;	/* for port resets/enable... (and doorbell) */
+	QLock	doorbell;	/* for doorbell */
 	int	active;		/* in use or not */
 	Ecapio*	capio;		/* Capability i/o regs */
 	Eopio*	opio;		/* Operational i/o regs */
