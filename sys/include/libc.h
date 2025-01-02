@@ -543,6 +543,7 @@ extern	void	setnetmtpt(char*, int, char*);
 extern	int	hangup(int);
 extern	int	listen(char*, char*);
 extern	char*	netmkaddr(char*, char*, char*);
+extern	char*	netmkaddrbuf(char*, char*, char*, char*, int);
 extern	int	reject(int, char*, char*);
 
 /*

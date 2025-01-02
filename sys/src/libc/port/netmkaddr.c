@@ -6,47 +6,48 @@
  *  make an address, add the defaults
  */
 char *
-netmkaddr(char *linear, char *defnet, char *defsrv)
+netmkaddrbuf(char *addr, char *defnet, char *defsrv, char *buf, int len)
 {
-	static char addr[256];
 	char *cp;
 
-	/*
-	 *  dump network name
-	 */
-	cp = strchr(linear, '!');
-	if(cp == 0){
-		if(defnet==0){
-			if(defsrv)
-				snprint(addr, sizeof(addr), "net!%s!%s",
-					linear, defsrv);
+	cp = strchr(addr, '!');
+	if(cp == nil){
+		/*
+		 *  dump network name
+		 */
+		if(defnet == nil){
+			if(defsrv != nil)
+				snprint(buf, len, "net!%s!%s", addr, defsrv);
 			else
-				snprint(addr, sizeof(addr), "net!%s", linear);
+				snprint(buf, len, "net!%s", addr);
 		}
 		else {
-			if(defsrv)
-				snprint(addr, sizeof(addr), "%s!%s!%s", defnet,
-					linear, defsrv);
+			if(defsrv != nil)
+				snprint(buf, len, "%s!%s!%s", defnet, addr, defsrv);
 			else
-				snprint(addr, sizeof(addr), "%s!%s", defnet,
-					linear);
+				snprint(buf, len, "%s!%s", defnet, addr);
 		}
-		return addr;
+	} else {
+		cp = strchr(cp+1, '!');
+		if(cp != nil || defsrv == nil){
+			/*
+			 *  if there is already a service or no defsrv given
+			 */
+			snprint(buf, len, "%s", addr);
+		} else {
+			/*
+			 *  add default service
+			 */
+			snprint(buf, len,"%s!%s", addr, defsrv);
+		}
 	}
+	return buf;
+}
 
-	/*
-	 *  if there is already a service, use it
-	 */
-	cp = strchr(cp+1, '!');
-	if(cp)
-		return linear;
+char *
+netmkaddr(char *addr, char *defnet, char *defsrv)
+{
+	static char buf[256];
 
-	/*
-	 *  add default service
-	 */
-	if(defsrv == 0)
-		return linear;
-	snprint(addr, sizeof(addr), "%s!%s", linear, defsrv);
-
-	return addr;
+	return netmkaddrbuf(addr, defnet, defsrv, buf, sizeof(buf));
 }

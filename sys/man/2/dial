@@ -1,6 +1,6 @@
 .TH DIAL 2
 .SH NAME
-dial, hangup, announce, listen, accept, reject, netmkaddr, setnetmtpt, getnetconninfo, freenetconninfo \- make and break network connections
+dial, hangup, announce, listen, accept, reject, netmkaddr, netmkaddrbuf, setnetmtpt, getnetconninfo, freenetconninfo \- make and break network connections
 .SH SYNOPSIS
 .B #include <u.h>
 .br
@@ -25,7 +25,12 @@ int   accept(int ctl, char *dir)
 int   reject(int ctl, char *dir, char *cause)
 .PP
 .B
-char* netmkaddr(char *addr, char *defnet, char *defservice)
+char* netmkaddr(char *addr, char *defnet, char *defsrv)
+.PP
+.B
+char* netmkaddrbuf(char *addr, char *defnet, char *defsrv,
+.br
+	char *buf, int len)
 .PP
 .B
 void  setnetmtpt(char *to, int tolen, char *from)
@@ -171,10 +176,19 @@ returns a file descriptor for the data file opened
 .BR ORDWR .
 .PP
 .I Netmkaddr
-makes an address suitable for dialing or announcing.
-It takes an address along with a default network and service to use
+and
+.I netmkaddrbuf
+make an address suitable for dialing or announcing.
+They take an address along with a default network and service to use
 if they are not specified in the address.
-It returns a pointer to static data holding the actual address to use.
+.I Netmkaddrbuf
+stores the resulting dialstring in
+.I buf
+up to a maximum length of
+.I len
+and returns a pointer to it.
+.I Netmkaddr
+returns a pointer to a static buffer.
 .PP
 .I Getnetconninfo
 returns a structure containing information about a
