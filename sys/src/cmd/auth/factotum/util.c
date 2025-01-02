@@ -75,6 +75,7 @@ netndbauthaddr(void)
 int
 _authdial(char *authdom)
 {
+	char addr[256];
 	int i, fd;
 
 	alarm(30*1000);
@@ -97,9 +98,11 @@ _authdial(char *authdom)
 		if(authaddr[0] == nil)
 			netndbauthaddr();
 		for(i = 0; fd < 0 && authaddr[i] != nil; i++){
-			fd = dial(netmkaddr(authaddr[i], "tcp", "567"), 0, 0, 0);
+			fd = dial(netmkaddrbuf(authaddr[i], "tcp", "567", addr, sizeof(addr)),
+				nil, nil, nil);
 			if(fd < 0)
-				fd = dial(netmkaddr(authaddr[i], "il", "566"), 0, 0, 0);
+				fd = dial(netmkaddrbuf(authaddr[i], "il", "566", addr, sizeof(addr)),
+					nil, nil, nil);
 		}
 	}
 	alarm(0);
