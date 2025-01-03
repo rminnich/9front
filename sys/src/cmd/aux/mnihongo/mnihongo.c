@@ -43,6 +43,7 @@ x ...\n	device control functions:
 #include <u.h>
 #include <libc.h>
 #include <draw.h>
+#include <memdraw.h>
 #include <bio.h>
 
 #define hmot(n)	hpos += n
@@ -57,12 +58,14 @@ int	vpos;	/* current vertical position (down positive) */
 char	*fontfile	= "/lib/font/bit/pelm/unicode.9x24.font";
 
 char	*pschar(char *, char *hex, int *wid, int *ht);
+void	memopenfont(char *);
 int	kanji(char *);
 void	Bgetstr(Biobuf *bp, char *s);
 void	Bgetline(Biobuf *bp, char *s);
 void	Bgetint(Biobuf *bp, int *n);
 
 Biobuf bin, bout;
+Memimage *white;
 
 void
 main(void)
@@ -71,12 +74,15 @@ main(void)
 	char str[100], *args[10];
 	int jfont, curfont;
 
-	if(initdraw(0, fontfile, 0) < 0){
-		fprint(2, "mnihongo: can't initialize display: %r\n");
-		exits("open");
-	}
 	Binit(&bin, 0, OREAD);
 	Binit(&bout, 1, OWRITE);
+	memimageinit();
+	white = allocmemimage(Rect(0, 0, 1, 1), GREY1);
+	if(white == nil)
+		sysfatal("allocmemimage: %r");
+	memfillcolor(white, DWhite);
+	white->flags |= Frepl;
+	memopenfont(fontfile);
 
 	jfont = -1;
 	curfont = 1;
@@ -177,6 +183,64 @@ main(void)
 	}
 }
 
+struct {
+	int s, e;
+	char *path;
+	Memsubfont *f;
+} fonts[128];
+static int nfonts;
+
+void memopenfont(char *name)
+{
+	Biobuf *b;
+	int i;
+	char *s, *p, *p2;
+
+	b = Bopen(name, OREAD);
+	for(i = 0; s = Brdline(b, '\n'); i++){
+		if(i == 0)
+			continue;
+		s[Blinelen(b)-1] = '\0';
+		fonts[i].s = strtol(s, &p, 0);
+		if(s == p || *p == '\0')
+			goto Invalid;
+		p++;
+		fonts[i].e = strtol(p, &p2, 0);
+		if(p == p2 || *p2 == '\0')
+			goto Invalid;
+		p = p2 + 1;
+		if(*p == '/')
+			fonts[i].path = strdup(p);
+		else {
+			fonts[i].path = smprint("/lib/font/bit/pelm/%s", p);
+			cleanname(fonts[i].path);
+		}
+	}
+	nfonts = i;
+	if(nfonts == 0){
+Invalid:
+		sysfatal("%s is an invalid font file", name);
+	}
+	Bterm(b);
+}
+
+Memsubfont* memgetfont(Rune r)
+{
+	int i;
+
+	for(i = 0; i < nfonts; i++){
+		if(r >= fonts[i].s && r < fonts[i].e){
+			if(fonts[i].f == nil){
+				fonts[i].f = openmemsubfont(fonts[i].path, fonts[i].s);
+				if(fonts[i].f == nil)
+					sysfatal("failed to open subfont: %r");
+			}
+			return fonts[i].f;
+		}
+	}
+	return nil;	
+}
+
 int kanji(char *s)	/* very special pleading */
 {			/* dump as kanji char if looks like one */
 	Rune r;
@@ -197,29 +261,37 @@ int kanji(char *s)	/* very special pleading */
 char *pschar(char *s, char *hex, int *wid, int *ht)
 {
 	Point chpt, spt;
-	Image *b;
+	Memimage *b;
+	Memsubfont *f;
 	uchar rowdata[100];
 	char *hp = hex;
 	int y, i;
+	Rune r;
 
-	chpt = stringsize(font, s);		/* bounding box of char */
+	chartorune(&r, s);
+	f = memgetfont(r);
+	chpt = memsubfontwidth(f, s);		/* bounding box of char */
 	*wid = ((chpt.x+7) / 8) * 8;
 	*ht = chpt.y;
 	/* postscript is backwards to video, so draw white (ones) on black (zeros) */
-	b = allocimage(display, Rpt(ZP, chpt), GREY1, 0, DBlack);	/* place to put it */
-	spt = string(b, Pt(0,0), display->white, ZP, font, s);	/* put it there */
+	white->clipr = Rpt(ZP, chpt);
+	b = allocmemimage(white->clipr, GREY1);
+	if(b == nil)
+		sysfatal("allocmemimage: %r");
+	memfillcolor(b, DBlack);
+	spt = memimagestring(b, Pt(0,0), white, ZP, f, s);	/* put it there */
 /* Bprint(&bout, "chpt %P, spt %P, wid,ht %d,%d\n", chpt, spt, *wid, *ht);
 /* Bflush(&bout); */
 	for (y = 0; y < chpt.y; y++) {	/* read bits a row at a time */
 		memset(rowdata, 0, sizeof rowdata);
-		unloadimage(b, Rect(0, y, chpt.x, y+1), rowdata, sizeof rowdata);
+		unloadmemimage(b, Rect(0, y, chpt.x, y+1), rowdata, sizeof rowdata);
 		for (i = 0; i < spt.x; i += 8) {	/* 8 == byte */
 			sprint(hp, "%2.2x", rowdata[i/8]);
 			hp += 2;
 		}
 	}
 	*hp = 0;
-	freeimage(b);
+	freememimage(b);
 	return hex;
 }
 
