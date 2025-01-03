@@ -25,6 +25,7 @@ memimagestring(Memimage *b, Point p, Memimage *color, Point cp, Memsubfont *f, c
 			}
 			s += w;
 		}
+		c -= f->min;
 		if(c >= f->n)
 			continue;
 		i = f->info+c;
@@ -58,6 +59,7 @@ memsubfontwidth(Memsubfont *f, char *cs)
 			}
 			s += w;
 		}
+		c -= f->min;
 		if(c >= f->n)
 			continue;
 		i = f->info+c;

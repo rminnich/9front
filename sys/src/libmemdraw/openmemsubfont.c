@@ -4,7 +4,7 @@
 #include <memdraw.h>
 
 Memsubfont*
-openmemsubfont(char *name)
+openmemsubfont(char *name, Rune min)
 {
 	Memsubfont *sf;
 	Memimage *i;
@@ -45,6 +45,7 @@ openmemsubfont(char *name)
 		free(fc);
 		goto Err;
 	}
+	sf->min = min;
 	close(fd);
 	free(p);
 	return sf;

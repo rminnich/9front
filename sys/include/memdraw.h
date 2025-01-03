@@ -80,6 +80,7 @@ struct	Memsubfont
 	short	n;		/* number of chars in font */
 	uchar	height;		/* height of bitmap */
 	char	ascent;		/* top of bitmap to baseline */
+	Rune	min;		/* rune offset for first glyph in subfont */
 	Fontchar *info;		/* n+1 character descriptors */
 	Memimage	*bits;		/* of font */
 };
@@ -156,7 +157,7 @@ extern int	memimageinit(void);
  * Subfont management
  */
 extern Memsubfont*	allocmemsubfont(char*, int, int, int, Fontchar*, Memimage*);
-extern Memsubfont*	openmemsubfont(char*);
+extern Memsubfont*	openmemsubfont(char*, Rune);
 extern void	freememsubfont(Memsubfont*);
 extern Point	memsubfontwidth(Memsubfont*, char*);
 extern Memsubfont*	getmemdefont(void);

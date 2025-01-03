@@ -150,7 +150,7 @@ int	memlineendsize(int end)
 .nf
 Memsubfont*	allocmemsubfont(char *name, int n, int height,
 	   int ascent, Fontchar *info, Memimage *i)
-Memsubfont*	openmemsubfont(char *name)
+Memsubfont*	openmemsubfont(char *name, Rune min)
 void	freememsubfont(Memsubfont *f)
 Point	memsubfontwidth(Memsubfont *f, char *s)
 Memsubfont*	getmemdefont(void)
