@@ -190,7 +190,8 @@ struct {
 } fonts[128];
 static int nfonts;
 
-void memopenfont(char *name)
+void
+memopenfont(char *name)
 {
 	Biobuf *b;
 	int i;
@@ -224,7 +225,8 @@ Invalid:
 	Bterm(b);
 }
 
-Memsubfont* memgetfont(Rune r)
+Memsubfont*
+memgetfont(Rune r)
 {
 	int i;
 
@@ -241,7 +243,8 @@ Memsubfont* memgetfont(Rune r)
 	return nil;	
 }
 
-int kanji(char *s)	/* very special pleading */
+int
+kanji(char *s)		/* very special pleading */
 {			/* dump as kanji char if looks like one */
 	Rune r;
 	char hex[500];
@@ -258,7 +261,8 @@ int kanji(char *s)	/* very special pleading */
 	return 1;
 }
 
-char *pschar(char *s, char *hex, int *wid, int *ht)
+char*
+pschar(char *s, char *hex, int *wid, int *ht)
 {
 	Point chpt, spt;
 	Memimage *b;
@@ -296,7 +300,8 @@ char *pschar(char *s, char *hex, int *wid, int *ht)
 }
 
 
-void	Bgetstr(Biobuf *bp, char *s)	/* get a string */
+void
+Bgetstr(Biobuf *bp, char *s)	/* get a string */
 {
 	int c;
 
@@ -310,7 +315,8 @@ void	Bgetstr(Biobuf *bp, char *s)	/* get a string */
 	*s = 0;
 }
 
-void	Bgetline(Biobuf *bp, char *s)	/* get a line, including newline */
+void
+Bgetline(Biobuf *bp, char *s)	/* get a line, including newline */
 {
 	int c;
 
@@ -322,7 +328,8 @@ void	Bgetline(Biobuf *bp, char *s)	/* get a line, including newline */
 	*s = 0;
 }
 
-void	Bgetint(Biobuf *bp, int *n)	/* get an integer */
+void
+Bgetint(Biobuf *bp, int *n)	/* get an integer */
 {
 	double d;
 
