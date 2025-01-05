@@ -2616,7 +2616,7 @@ freetree(Bptr rb, vlong pred)
 		}
 	}
 	if(rb.gen > pred)
-		freebp(nil, rb);	/* wouldn't freeblk() be better here? */
+		freeblk(nil, b);
 	dropblk(b);
 }
 
