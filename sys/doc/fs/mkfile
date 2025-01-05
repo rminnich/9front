@@ -12,7 +12,7 @@ OBJ=\
 	p9\
 	pa\
 
-all:V: fs.ps fs.pdf fs.html
+all:V: fs.ps fs.pdf
 
 %.pdf:D: %.ps
 	cat ../docfonts $stem.ps >_$stem.ps
