@@ -26,18 +26,12 @@ setdbg(int fd, char **ap, int na)
 }
 
 static void
-sendsync(int fd, int halt)
+asend(int fd, int op)
 {
 	Amsg *a;
 
-	a = mallocz(sizeof(Amsg), 1);
-	if(a == nil){
-		fprint(fd, "alloc sync msg: %r\n");
-		free(a);
-		return;
-	}
-	a->op = AOsync;
-	a->halt = halt;
+	a = emalloc(sizeof(Amsg), 1);
+	a->op = op;
 	a->fd = fd;
 	chsend(fs->admchan, a);		
 }
@@ -45,14 +39,14 @@ sendsync(int fd, int halt)
 static void
 syncfs(int fd, char **, int)
 {
-	sendsync(fd, 0);
+	asend(fd, AOsync);
 	fprint(fd, "synced\n");
 }
 
 static void
 haltfs(int fd, char **, int)
 {
-	sendsync(fd, 1);
+	asend(fd, AOhalt);
 	fprint(fd, "gefs: ending...\n");
 }
 
@@ -129,7 +123,7 @@ snapfs(int fd, char **ap, int na)
 		strecpy(a->old, a->old+sizeof(a->old), ap[0]);
 	if(na >= 2)
 		strecpy(a->new, a->new+sizeof(a->new), ap[1]);
-	sendsync(fd, 0);
+	asend(fd, AOsync);
 	chsend(fs->admchan, a);
 }
 

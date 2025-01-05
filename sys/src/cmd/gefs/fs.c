@@ -2563,7 +2563,7 @@ runmutate(int id, void *)
 		assert(estacksz() == 0);
 		epochend(id);
 		qunlock(&fs->mutlk);
-		epochclean();
+		epochclean(0);
 
 		if(a != nil)
 			chsend(fs->admchan, a);
@@ -2612,7 +2612,7 @@ freetree(Bptr rb, vlong pred)
 			freetree(bp, pred);	/* leak b on error() */
 			qlock(&fs->mutlk);
 			qunlock(&fs->mutlk);
-			epochclean();
+			epochclean(0);
 		}
 	}
 	if(rb.gen > pred)
@@ -2648,7 +2648,7 @@ sweeptree(Tree *t)
 			freebp(nil, bp);
 		qlock(&fs->mutlk);
 		qunlock(&fs->mutlk);
-		epochclean();
+		epochclean(0);
 	}
 	btexit(&s);
 	freetree(t->bp, t->pred);
@@ -2672,20 +2672,27 @@ runsweep(int id, void*)
 	while(1){
 		am = chrecv(fs->admchan);
 		switch(am->op){
+		case AOhalt:
+			if(!agetl(&fs->rdonly)){
+				ainc(&fs->rdonly);
+				/* cycle through all epochs to clear them.  */
+				for(i = 0; i < 3; i++)
+					epochclean(1);
+				sync();
+			}
+			postnote(PNGROUP, getpid(), "halted");
+			exits(nil);
+			break;
 		case AOsync:
 			tracem("syncreq");
-			if(!fs->snap.dirty && !am->halt)
+			if(!fs->snap.dirty || agetl(&fs->rdonly))
 				goto Next;
-			if(agetl(&fs->rdonly))
-				goto Justhalt;
 			if(waserror()){
 				fprint(2, "sync error: %s\n", errmsg());
 				ainc(&fs->rdonly);
 				break;
 			}
 
-			if(am->halt)
-				ainc(&fs->rdonly);
 			for(i = 0; i < fs->narena; i++){
 				a = &fs->arenas[i];
 				oldhd[i].addr = -1;
@@ -2709,7 +2716,7 @@ runsweep(int id, void*)
 					poperror();
 				}
 				qunlock(a);
-				epochclean();
+				epochclean(0);
 			}
 
 			sync();	/* oldhd blocks leaked on error() */
@@ -2730,17 +2737,10 @@ runsweep(int id, void*)
 					epochend(id);
 					qunlock(&fs->mutlk);
 					poperror();
-					epochclean();
+					epochclean(0);
 				}
 			}
 
-Justhalt:
-			if(am->halt){
-				assert(fs->snapdl.hd.addr == -1);
-				assert(fs->snapdl.tl.addr == -1);
-				postnote(PNGROUP, getpid(), "halted");
-				exits(nil);
-			}
 			poperror();
 			break;
 
@@ -2852,7 +2852,7 @@ Justhalt:
 					epochend(id);
 					qunlock(&fs->mutlk);
 					poperror();
-					epochclean();
+					epochclean(0);
 					nm = 0;
 				}
 			}
@@ -2911,7 +2911,6 @@ runtasks(int, void *)
 		}
 		a = emalloc(sizeof(Amsg), 1);
 		a->op = AOsync;
-		a->halt = 0;
 		a->fd = -1;
 		chsend(fs->admchan, a);
 

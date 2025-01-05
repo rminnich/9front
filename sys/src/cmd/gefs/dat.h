@@ -323,6 +323,7 @@ enum {
 	AOnone,
 	AOsnap,
 	AOsync,
+	AOhalt,
 	AOclear,
 	AOrclose,
 };
@@ -398,15 +399,13 @@ struct Amsg {
 	int	op;
 	int	fd;
 	union {
+		/* AOsync, AOhalt: no data */
 		struct {	/* AOsnap */
 			char	old[128];
 			char	new[128];
 			int	flag;
 			char	delete;
 
-		};
-		struct {	/* AOsync */
-			int	halt;
 		};
 		struct {	/* AOclear, AOrclose */
 			Mount	*mnt;

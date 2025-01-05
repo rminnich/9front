@@ -59,7 +59,7 @@ void	enqueue(Blk*);
 void	epochstart(int);
 void	epochend(int);
 void	epochwait(void);
-void	epochclean(void);
+void	epochclean(int);
 void	limbo(int op, Limbo*);
 void	freeblk(Tree*, Blk*);
 void	freebp(Tree*, Bptr);
