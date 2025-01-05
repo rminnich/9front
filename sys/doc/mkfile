@@ -43,6 +43,8 @@ ALL=\
 	colophon\
 	nupas/nupas\
 	nssec\
+	fossil\
+	backup\
 
 ALLPS=${ALL:%=%.ps}
 HTML=${ALL:%=%.html} release3.html release4.html
@@ -51,7 +53,7 @@ FILES=`{mkfilelist $ALL}
 DIRS=`{mkdirlist $ALL}
 NAMES=$FILES $DIRS
 
-all:V: ${FILES:%=%.ps} dirs
+all:V: ${FILES:%=%.pdf} dirs
 
 dirs:V:
 	for(i in $DIRS) @{
@@ -136,3 +138,11 @@ IGN=${IGNHTML:%=%.html} ${IGNHTML:%=%.install}
 $IGN:QV:
 	# nothing
 
+clean:V:
+	clean=`{
+		for(i in $ALLPS $PDF){
+			echo $i
+		} | grep -v 'acme|venti|fig.\.ps'
+	}
+	rm -f $clean
+	@{ cd fs && mk clean }

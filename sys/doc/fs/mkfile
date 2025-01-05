@@ -30,4 +30,4 @@ fs.html:D: $OBJ
 	{echo $FONTS; tbl $OBJ } | eqn | htmlroff -ms -mhtml >$target
 
 clean:V:
-	rm -f fs.^(html trout ps pdf)
+	rm -f fs.^(html trout ps pdf) p10.png pa1.png

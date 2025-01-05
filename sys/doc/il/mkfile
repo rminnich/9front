@@ -1,9 +1,15 @@
 </sys/doc/fonts
 
+all:V: il.ps il.pdf
+
 il.ps:D:	il.ms transition.pic
 	{echo $FONTS; cat il.ms} | pic | troff -ms | lp -dstdout >il.ps
 	../cleanps il.ps
 
+%.pdf:D: %.ps
+	cat ../docfonts $stem.ps >_$stem.ps
+	# distill _$stem.ps && mv _$stem.pdf $stem.pdf
+	ps2pdf _$stem.ps $stem.pdf && rm -f _$stem.ps
+
 il.html:D:	il.ms transition.pic
 	pic il.ms | htmlroff -ms -mhtml >il.html
-

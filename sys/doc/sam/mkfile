@@ -1,19 +1,21 @@
 </sys/doc/fonts
 
-default:V: sam.ps sam.tut.out
+default:V: sam.ps sam.pdf
 
 sam.ps:D:	sam.ms fig1.ps fig2.ps fig3.ps fig4.ps fig5.pic fig6.pic fig7.pic refs
 	{echo $FONTS; cat sam.ms refs} | pic | tbl | troff -ms -mpictures | lp -dstdout >sam.ps
 	../cleanps sam.ps
+
+%.pdf:D: %.ps
+	cat ../docfonts $stem.ps >_$stem.ps
+	# distill _$stem.ps && mv _$stem.pdf $stem.pdf
+	ps2pdf _$stem.ps $stem.pdf && rm -f _$stem.ps
 
 sam.trout:D:	sam.ms fig1.ps fig2.ps fig3.ps fig4.ps fig5.pic fig6.pic fig7.pic refs
 	{echo $FONTS; cat sam.ms refs} | pic | tbl | troff -ms -mpictures >sam.trout
 
 sam.html:D:	sam.ms fig1.ps fig2.ps fig3.ps fig4.ps fig5.pic fig6.pic fig7.pic refs
 	pic sam.ms refs | tbl | htmlroff -ms -mhtml >sam.html
-
-sam.tut.out:D:	sam.tut
-	troff -ms sam.tut > sam.tut.out
 
 clean:V:
 	rm -f sam.ps
