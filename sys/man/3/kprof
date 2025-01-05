@@ -24,10 +24,9 @@ The size of the file depends on the size of kernel text.
 The first count
 holds the total number of clock ticks during profiling;
 the second the number of ticks that occurred while the kernel
-was running.  The rest each hold the number of ticks
-the kernel program counter was within the
-corresponding 8-byte range of kernel text, starting from the base
-of kernel text.
+was running.  The rest each hold the number of total ticks
+the kernel spent at any one program counter, indexed by
+their offset from the minimum kernel text address.
 .PP
 The file
 .B kpctl

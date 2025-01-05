@@ -6,7 +6,6 @@
 #include	"../port/error.h"
 
 
-#define	LRES	3		/* log of PC resolution */
 #define	SZ	4		/* sizeof of count cell; well known as 4 */
 
 struct
@@ -46,7 +45,6 @@ _kproftimer(uintptr pc)
 	kprof.buf[0] += TK2MS(1);
 	if(kprof.minpc<=pc && pc<kprof.maxpc){
 		pc -= kprof.minpc;
-		pc >>= LRES;
 		kprof.buf[pc] += TK2MS(1);
 	}else
 		kprof.buf[1] += TK2MS(1);
@@ -68,7 +66,7 @@ kprofattach(char *spec)
 	/* allocate when first used */
 	kprof.minpc = KTZERO;
 	kprof.maxpc = (uintptr)etext;
-	kprof.nbuf = (kprof.maxpc-kprof.minpc) >> LRES;
+	kprof.nbuf = kprof.maxpc-kprof.minpc;
 	n = kprof.nbuf*SZ;
 	if(kprof.buf == 0) {
 		kprof.buf = xalloc(n);

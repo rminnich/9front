@@ -3,8 +3,6 @@
 #include <bio.h>
 #include <mach.h>
 
-#define	PCRES	8
-
 struct COUNTER
 {
 	char 	*name;		/* function name */
@@ -82,7 +80,7 @@ main(int argc, char *argv[])
 	data = malloc(d->length);
 	if(data == 0)
 		error(1, "malloc");
-	if(read(fd, data, d->length) < 0)
+	if(readn(fd, data, d->length) != d->length)
 		error(1, "text read");
 	close(fd);
 	for(i=0; i<n; i++)
@@ -112,7 +110,6 @@ main(int argc, char *argv[])
 		if (!textsym(&s, i))	/* get next symbol */
 			break;
 		s.value -= tbase;
-		s.value /= PCRES;
 		sum = 0;
 		while (j < n && j < s.value)
 			sum += data[j++];
