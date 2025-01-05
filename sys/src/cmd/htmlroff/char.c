@@ -33,14 +33,15 @@ rune2html(Rune r)
 			sysfatal("fork: %r");
 		case 0:
 			dup(p[0], 0);
-			dup(p[1], 1);
+			dup(p[0], 1);
 			close(p[0]);
 			close(p[1]);
 			execl("/bin/tcs", "tcs", "-t", "html", nil);
 			_exits(0);
 		default:
+			close(p[0]);
 			fd = p[1];
-			Binit(&b, p[0], OREAD);
+			Binit(&b, fd, OREAD);
 			break;
 		}
 	}
