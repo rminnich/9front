@@ -13,9 +13,9 @@ case checkdone
 case go
 	echo 'You can install the following types of file systems:'
 	echo
-	echo '	cwfs64x	the cached-worm file server'
-	echo '	gefs	the good enough file system (experimental!)'
-	echo '	hjfs	the old experimental file system (unmaintained!)'
+	echo '	cwfs64x	cached-worm file server for large disks'
+	echo '	hjfs	file server for small disks'
+	echo '	gefs	good enough file system (experimental!)'
 	echo
 	prompt -d cwfs64x 'File system' cwfs64x hjfs gefs
 	fstype=$rd
