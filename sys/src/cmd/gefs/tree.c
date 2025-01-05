@@ -1238,16 +1238,12 @@ btupsert(Tree *t, Msg *msg, int nmsg)
 	for(i = 0; i < nmsg; i++)
 		sz += msgsz(&msg[i]);
 	npull = 0;
-	path = nil;
-	npath = 0;
-
 Again:
+	b = getroot(t, &height);
 	if(waserror()){
-		freepath(t, path, npath);
+		dropblk(b);
 		nexterror();
 	}
-
-	b = getroot(t, &height);
 	if(npull == 0 && b->type == Tpivot && !filledbuf(b, nmsg, sz)){
 		fastupsert(t, b, msg, nmsg);
 		poperror();
@@ -1258,9 +1254,14 @@ Again:
 	 * split, so we allocate room for one extra
 	 * node in the path.
 	 */
-	npath = 0;
 	if((path = calloc((height + 2), sizeof(Path))) == nil)
 		error(Enomem);
+	poperror();
+	if(waserror()){
+		freepath(t, path, height+2);	/* npath not volatile */
+		nexterror();
+	}
+	npath = 0;
 	path[npath].b = nil;
 	path[npath].idx = -1;
 	path[npath].midx = -1;
@@ -1278,6 +1279,7 @@ Again:
 		bp = unpackbp(sep.v, sep.nv);
 		b = getblk(bp, 0);
 		npath++;
+		assert(npath < height+2);
 	}
 	path[npath].b = b;
 	path[npath].idx = -1;
@@ -1347,6 +1349,13 @@ btlookup(Tree *t, Key *k, Kvp *r, char *buf, int nbuf)
 		dropblk(b);
 		error(Enomem);
 	}
+	if(waserror()){
+		for(i = 0; i < h; i++)
+			dropblk(p[i]);
+		dropblk(b);
+		free(p);
+		nexterror();
+	}
 	ok = 0;
 	p[0] = holdblk(b);
 	for(i = 1; i < h; i++){
@@ -1377,10 +1386,10 @@ btlookup(Tree *t, Key *k, Kvp *r, char *buf, int nbuf)
 		}
 	}
 	for(i = 0; i < h; i++)
-		if(p[i] != nil)
-			dropblk(p[i]);
+		dropblk(p[i]);
 	dropblk(b);
 	free(p);
+	poperror();
 	return ok;
 }
 
@@ -1417,6 +1426,10 @@ btenter(Tree *t, Scan *s)
 		dropblk(b);
 		error(Enomem);
 	}
+	if(waserror()){
+		btexit(s);
+		nexterror();
+	}
 	p = s->path;
 	p[0].b = b;
 	for(i = 0; i < s->ht; i++){
@@ -1443,6 +1456,7 @@ btenter(Tree *t, Scan *s)
 			p[i].vi++;
 	}
 	s->first = 0;
+	poperror();
 }
 
 int
@@ -1459,7 +1473,7 @@ Again:
 	h = s->ht;
 	start = h;
 	bufsrc = -1;
-	if(s->donescan)
+	if(p == nil || s->donescan)
 		return 0;
 	if(waserror()){
 		btexit(s);
@@ -1545,4 +1559,6 @@ btexit(Scan *s)
 	for(i = 0; i < s->ht; i++)
 		dropblk(s->path[i].b);
 	free(s->path);
+	s->path = nil;
+	s->ht = 0;
 }

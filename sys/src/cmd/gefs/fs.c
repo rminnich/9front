@@ -109,6 +109,10 @@ sync(void)
 	 *  can take a consistent snapshot.
          */
 	qlock(&fs->mutlk);
+	if(waserror()){
+		qunlock(&fs->mutlk);
+		nexterror();
+	}
 	tracem("packb");
 	for(mnt = agetp(&fs->mounts); mnt != nil; mnt = mnt->next)
 		updatesnap(&mnt->root, mnt->root, mnt->name, mnt->flag);
@@ -150,6 +154,7 @@ sync(void)
 	finalize(fs->sb1);
 	fs->snap.dirty = 0;
 	qunlock(&fs->mutlk);
+	poperror();
 
 	/*
 	 * pass 1: sync block headers; if we crash here,
@@ -429,6 +434,7 @@ truncwait(Dent *de, int id)
 	epochend(id);
 	qunlock(&fs->mutlk);
 	qlock(&de->trunclk);
+	/* should we also return when the fs becomes read-only? */
 	while(de->trunc)
 		rsleep(&de->truncrz);
 	qunlock(&de->trunclk);
@@ -495,6 +501,11 @@ writeb(Fid *f, Msg *m, Bptr *ret, char *s, vlong o, vlong n, vlong sz)
 	else
 		seq = 0;
 	b = newdblk(f->mnt->root, f->qpath, seq);
+	if(waserror()){
+		freeblk(f->mnt->root, b);
+		dropblk(b);
+		nexterror();
+	}
 	t = nil;
 	r = f->mnt->root;
 	if(btlookup(r, m, &kv, buf, sizeof(buf))){
@@ -515,10 +526,12 @@ writeb(Fid *f, Msg *m, Bptr *ret, char *s, vlong o, vlong n, vlong sz)
 			memset(b->buf+fo+n, 0, Blksz-fo-n);
 	}
 	enqueue(b);
+	poperror();
 
 	packbp(m->v, m->nv, &b->bp);
 	*ret = b->bp;
 	dropblk(b);
+
 	return n;
 }
 
@@ -537,7 +550,10 @@ getdent(Mount *mnt, vlong pqid, Xdir *d)
 			goto Out;
 		}
 	}
-
+	if(waserror()){
+		unlock(&mnt->dtablk);
+		nexterror();
+	}
 	de = emalloc(sizeof(Dent), 1);
 	de->Xdir = *d;
 	de->ref = 1;
@@ -545,18 +561,13 @@ getdent(Mount *mnt, vlong pqid, Xdir *d)
 	de->qid = d->qid;
 	de->length = d->length;
 	de->truncrz.l = &de->trunclk;
-
-	if((e = packdkey(de->buf, sizeof(de->buf), pqid, d->name)) == nil){
-		free(de);
-		de = nil;
-		goto Out;
-	}
+	e = packdkey(de->buf, sizeof(de->buf), pqid, d->name);
 	de->k = de->buf;
 	de->nk = e - de->buf;
 	de->name = de->buf + 11;
 	de->next = mnt->dtab[h];
 	mnt->dtab[h] = de;
-
+	poperror();
 Out:
 	unlock(&mnt->dtablk);
 	return de;
@@ -626,9 +637,10 @@ getmount(char *name)
 			goto Out;
 		}
 	}
-
-	if((mnt = mallocz(sizeof(*mnt), 1)) == nil)
+	if((mnt = mallocz(sizeof(*mnt), 1)) == nil){
+		qunlock(&fs->mountlk);
 		error(Enomem);
+	}
 	if(waserror()){
 		qunlock(&fs->mountlk);
 		free(mnt);
@@ -774,6 +786,7 @@ dupfid(Conn *c, u32int new, Fid *f)
  * clunkfid() removes a fid from the
  * connection fid tab and drops reference.
  * Fid must be locked.
+ * Must not raise error().
  */
 static void
 clunkfid(Conn *c, Fid *fid, Amsg **ao)
@@ -875,6 +888,7 @@ readmsg(Conn *c, Fmsg **pm)
 	return 0;
 }
 
+/* fsversion: must not raise error() */
 static void
 fsversion(Fmsg *m)
 {
@@ -901,14 +915,12 @@ fsversion(Fmsg *m)
 }
 
 static void
-authfree(AuthRpc *auth)
+authfree(AuthRpc *rpc)
 {
-	AuthRpc *rpc;
-
-	if(rpc = auth){
-		close(rpc->afd);
-		auth_freerpc(rpc);
-	}
+	if(rpc == nil)
+		return;
+	close(rpc->afd);
+	auth_freerpc(rpc);
 }
 
 AuthRpc*
@@ -986,6 +998,7 @@ authwrite(Fid *f, Fcall *r, void *data, vlong count)
 
 }
 
+/* fsauth: must not raise error() */
 static void
 fsauth(Fmsg *m)
 {
@@ -1005,10 +1018,10 @@ fsauth(Fmsg *m)
 		rerror(m, Enomem);
 		return;
 	}
-	memset(de, 0, sizeof(Dent));
 	de->auth = authnew();
 	if(de->auth == nil){
-		rerror(m, errmsg());
+		rerror(m, "%r");
+		free(de);
 		return;
 	}
 	de->ref = 0;
@@ -1034,15 +1047,15 @@ fsauth(Fmsg *m)
 	f.dmode = 0600;
 	nf = dupfid(m->conn, m->afid, &f);
 	if(nf == nil){
-		rerror(m, Efid);
 		authfree(de->auth);
 		free(de);
+		rerror(m, Efid);
 		return;
 	}
+	putfid(nf);
 	r.type = Rauth;
 	r.aqid = de->qid;
 	respond(m, &r);
-	putfid(nf);
 }
 
 static int
@@ -1145,12 +1158,6 @@ fsattach(Fmsg *m)
 	Fid f, *af, *nf;
 	int uid;
 
-	de = nil;
-	mnt = nil;
-	if(waserror()){
-		rerror(m, errmsg());
-		goto Err;
-	}
 	aname = m->aname;
 	if(aname[0] == '%')
 		aname++;
@@ -1158,6 +1165,10 @@ fsattach(Fmsg *m)
 		aname = "main";
 	if((mnt = getmount(aname)) == nil)
 		error(Enosnap);
+	if(waserror()){
+		clunkmount(mnt);
+		nexterror();
+	}
 
 	rlock(&fs->userlk);
 	n = m->uname;
@@ -1179,8 +1190,13 @@ fsattach(Fmsg *m)
 		r.count = 0;
 		if((af = getfid(m->conn, m->afid)) == nil)
 			error(Enofid);
+		if(waserror()){
+			putfid(af);
+			nexterror();
+		}
 		authread(af, &r, nil, 0);
 		putfid(af);
+		poperror();
 		if(af->uid != uid)
 			error(Ebadu);
 		m->conn->authok = 1;	/* none attach allowed now */
@@ -1195,8 +1211,7 @@ fsattach(Fmsg *m)
 		memset(&d, 0, sizeof(d));
 		filldumpdir(&d);
 	}else{
-		if((p = packdkey(dbuf, sizeof(dbuf), -1ULL, "")) == nil)
-			error(Elength);
+		p = packdkey(dbuf, sizeof(dbuf), -1ULL, "");
 		dk.k = dbuf;
 		dk.nk = p - dbuf;
 		t = agetp(&mnt->root);
@@ -1205,6 +1220,10 @@ fsattach(Fmsg *m)
 		kv2dir(&kv, &d);
 	}
 	de = getdent(mnt, -1, &d);
+	if(waserror()){
+		clunkdent(mnt, de);
+		nexterror();
+	}
 	memset(&f, 0, sizeof(Fid));
 	f.fid = NOFID;
 	f.mnt = mnt;
@@ -1225,18 +1244,20 @@ fsattach(Fmsg *m)
 	}
 	if(strcmp(aname, "dump") == 0)
 		f.fromdump = 1;
+
 	nf = dupfid(m->conn, m->fid, &f);
 	if(nf == nil)
 		error(Efid);
+	putfid(nf);
+
+	clunkdent(mnt, de);
+	poperror();
+	clunkmount(mnt);
+	poperror();
+
 	r.type = Rattach;
 	r.qid = d.qid;
 	respond(m, &r);
-	putfid(nf);
-	poperror();
-
-
-Err:	clunkdent(mnt, de);
-	clunkmount(mnt);
 }
 
 static int
@@ -1269,7 +1290,7 @@ static void
 fswalk(Fmsg *m)
 {
 	char *name, kbuf[Maxent], kvbuf[Kvmax];
-	int duid, dgid, dmode, duped;
+	int duid, dgid, dmode;
 	vlong up, upup, prev;
 	Dent *dent, *dir;
 	Fid *o, *f;
@@ -1282,16 +1303,13 @@ fswalk(Fmsg *m)
 	Key k;
 	int i;
 
-	if((o = getfid(m->conn, m->fid)) == nil){
-		rerror(m, Enofid);
-		return;
-	}
+	if((o = getfid(m->conn, m->fid)) == nil)
+		error(Enofid);
 	rlock(o);
 	if(waserror()){
-		rerror(m, errmsg());
 		runlock(o);
 		putfid(o);
-		return;
+		nexterror();
 	}
 	if(o->mode != -1)
 		error(Einuse);
@@ -1323,7 +1341,7 @@ fswalk(Fmsg *m)
 			}
 			findparent(t, up, &prev, &name, kbuf, sizeof(kbuf));
 		}else if(d.qid.path == Qdump){
-			mnt = getmount(m->wname[i]);
+			mnt = getmount(name);	/* mnt leaked on error() */
 			name = "";
 			prev = -1ULL;
 			t = mnt->root;
@@ -1342,31 +1360,39 @@ fswalk(Fmsg *m)
 	r.nwqid = i;
 	if(i == 0 && m->nwname != 0)
 		error(Esrch);
-	f = o;
-	duped = 0;
 	if(m->fid != m->newfid && i == m->nwname){
 		if((f = dupfid(m->conn, m->newfid, o)) == nil)
 			error(Efid);
-		duped = 1;
+		runlock(o);
+		putfid(o);
+	} else {
+		runlock(o);
+		f = o;
 	}
-	runlock(o);
-
+	poperror();
+	if(waserror()){
+		putfid(f);
+		nexterror();
+	}
 	if(i > 0 && i == m->nwname){
 		wlock(f);
 		ao = nil;
 		if(waserror()){
-			if(duped)
+			if(o != f)
 				clunkfid(m->conn, f, &ao);
 			assert(ao == nil);
 			wunlock(f);
 			nexterror();
 		}
+		dent = getdent(mnt, up, &d);
+		if(waserror()){
+			clunkdent(mnt, dent);
+			nexterror();
+		}
 		if(up == -1ULL){
 			/* the root contains itself, I guess */
-			dent = getdent(mnt, up, &d);
 			dir = getdent(mnt, up, &d);
 		}else{
-			dent = getdent(mnt, up, &d);
 			findparent(t, up, &upup, &name, kbuf, sizeof(kbuf));
 			dkey(&k, upup, name, kbuf, sizeof(kbuf));
 			if(!btlookup(t, &k, &kv, kvbuf, sizeof(kvbuf)))
@@ -1374,6 +1400,7 @@ fswalk(Fmsg *m)
 			kv2dir(&kv, &d);
 			dir = getdent(mnt, upup, &d);
 		}
+		poperror();	/* clunkdent(mnt, dent) */
 		clunkdent(f->mnt, f->dent);
 		clunkdent(f->mnt, f->dir);
 		if(mnt != f->mnt){
@@ -1388,14 +1415,12 @@ fswalk(Fmsg *m)
 		f->duid = duid;
 		f->dgid = dgid;
 		f->dmode = dmode;
-		poperror();
 		wunlock(f);
+		poperror();
 	}
-	if(duped)
-		putfid(o);
 	putfid(f);
-	respond(m, &r);
 	poperror();
+	respond(m, &r);
 }
 
 static void
@@ -1406,25 +1431,24 @@ fsstat(Fmsg *m)
 	Fid *f;
 	int n;
 
-	if((f = getfid(m->conn, m->fid)) == nil){
-		rerror(m, Enofid);
-		return;
-	}
-	if(waserror()){
-		rerror(m, errmsg());
-		putfid(f);
-		return;
-	}
+	if((f = getfid(m->conn, m->fid)) == nil)
+		error(Enofid);
 	rlock(f->dent);
-	if((n = dir2statbuf(f->dent, buf, sizeof(buf))) == -1)
+	if(waserror()){
+		runlock(f->dent);
+		putfid(f);
+		nexterror();
+	}
+	n = dir2statbuf(f->dent, buf, sizeof(buf));
+	if(n == -1)
 		error(Efs);
 	runlock(f->dent);
+	putfid(f);
+	poperror();
 	r.type = Rstat;
 	r.stat = (uchar*)buf;
 	r.nstat = n;
 	respond(m, &r);
-	poperror();
-	putfid(f);
 }
 
 static void
@@ -1447,18 +1471,18 @@ fswstat(Fmsg *m, int id, Amsg **ao)
 
 	*ao = nil;
 	rename = 0;
-	if((f = getfid(m->conn, m->fid)) == nil){
-		rerror(m, Enofid);
-		return;
+	if((f = getfid(m->conn, m->fid)) == nil)
+		error(Enofid);
+	if(waserror()){
+		putfid(f);
+		nexterror();
 	}
 	de = f->dent;
 	truncwait(de, id);
 	wlock(de);
 	if(waserror()){
-		rerror(m, errmsg());
-		freeamsg(*ao);
-		*ao = nil;
-		goto Err;
+		wunlock(de);
+		nexterror();
 	}
 	if(de->gone)
 		error(Ephase);
@@ -1497,8 +1521,12 @@ fswstat(Fmsg *m, int id, Amsg **ao)
 			error(Ewstatl);
 		if(d.length != de->length){
 			if(d.length < de->length){
-				if((*ao = malloc(sizeof(Amsg))) == nil)
-					error(Enomem);
+				*ao = emalloc(sizeof(Amsg), 1);
+				if(waserror()){
+					freeamsg(*ao);
+					*ao = nil;
+					nexterror();
+				}
 				qlock(&de->trunclk);
 				de->trunc = 1;
 				qunlock(&de->trunclk);
@@ -1636,15 +1664,18 @@ fswstat(Fmsg *m, int id, Amsg **ao)
 	if(rename)
 		cpkey(de, &k, de->buf, sizeof(de->buf));
 
-	r.type = Rwstat;
-	respond(m, &r);
+	if(*ao != nil)
+		poperror();
+	wunlock(de);
+	poperror();
+	putfid(f);
 	poperror();
 
-Err:	wunlock(de);
-	putfid(f);
+	r.type = Rwstat;
+	respond(m, &r);
 }
 
-
+/* fsclunk: must not raise error() */
 static void
 fsclunk(Fmsg *m, Amsg **ao)
 {
@@ -1658,9 +1689,10 @@ fsclunk(Fmsg *m, Amsg **ao)
 	wlock(f);
 	clunkfid(m->conn, f, ao);
 	wunlock(f);
+	putfid(f);
+
 	r.type = Rclunk;
 	respond(m, &r);
-	putfid(f);
 }
 
 static void
@@ -1676,40 +1708,30 @@ fscreate(Fmsg *m)
 	Fid *f;
 	Xdir d;
 
-	if((e = okname(m->name)) != nil){
-		rerror(m, e);
-		return;
-	}
-	if(m->perm & (DMMOUNT|DMAUTH)){
-		rerror(m, Ebotch);
-		return;
-	}
-	if((f = getfid(m->conn, m->fid)) == nil){
-		rerror(m, Enofid);
-		return;
+	if((e = okname(m->name)) != nil)
+		error(e);
+	if(m->perm & (DMMOUNT|DMAUTH))
+		error(Ebotch);
+	if((f = getfid(m->conn, m->fid)) == nil)
+		error(Enofid);
+	if(waserror()){
+		putfid(f);
+		nexterror();
 	}
 	wlock(f);
-
 	if(waserror()){
-		rerror(m, errmsg());
-		goto Err;
-		
+		wunlock(f);
+		nexterror();
 	}
-	if(f->mode != -1){
-		rerror(m, Einuse);
-		goto Out;
-	}
+	if(f->mode != -1)
+		error(Einuse);
 	de = f->dent;
-	if(walk1(f->mnt->root, f->qpath, m->name, &old, &oldlen) == 0){
-		rerror(m, Eexist);
-		goto Out;
-	}
-
+	if(walk1(f->mnt->root, f->qpath, m->name, &old, &oldlen) == 0)
+		error(Eexist);
 	rlock(de);
 	if(fsaccess(f, de->mode, de->uid, de->gid, DMWRITE) == -1){
-		rerror(m, Eperm);
 		runlock(de);
-		goto Out;
+		error(Eperm);
 	}
 	duid = de->uid;
 	dgid = de->gid;
@@ -1751,8 +1773,7 @@ fscreate(Fmsg *m)
 			sysfatal("ream: pack super");
 		mb[nm].k = upkbuf;
 		mb[nm].nk = p - upkbuf;
-		if((p = packdkey(upvbuf, sizeof(upvbuf), f->qpath, d.name)) == nil)
-			sysfatal("ream: pack super");
+		p = packdkey(upvbuf, sizeof(upvbuf), f->qpath, d.name);
 		mb[nm].v = upvbuf;
 		mb[nm].nv = p - upvbuf;
 		nm++;
@@ -1761,26 +1782,36 @@ fscreate(Fmsg *m)
 	assert(nm <= nelem(mb));
 	upsert(f->mnt, mb, nm);
 
+	if(m->mode & ORCLOSE){
+		f->rclose = emalloc(sizeof(Amsg), 1);
+		if(waserror()){
+			free(f->rclose);
+			f->rclose = nil;
+			nexterror();
+		}
+	}
 	de = getdent(f->mnt, f->qpath, &d);
 	clunkdent(f->mnt, f->dent);
-	f->mode = mode2bits(m->mode);
 	f->pqpath = f->qpath;
 	f->qpath = d.qid.path;
 	f->dent = de;
 	f->duid = duid;
 	f->dgid = dgid;
 	f->dmode = dmode;
+	f->mode = mode2bits(m->mode);
 	if(m->mode & ORCLOSE)
-		f->rclose = emalloc(sizeof(Amsg), 1);
+		poperror();	/* free(f->rclose) */
 
 	r.type = Rcreate;
 	r.qid = d.qid;
 	r.iounit = f->iounit;
-	respond(m, &r);
-Out:	poperror();
-Err:	wunlock(f);
+
+	wunlock(f);
+	poperror();
 	putfid(f);
-	return;
+	poperror();
+
+	respond(m, &r);
 }
 
 static char*
@@ -1816,10 +1847,8 @@ fsremove(Fmsg *m, int id, Amsg **ao)
 	Kvp kv;
 	Fid *f;
 
-	if((f = getfid(m->conn, m->fid)) == nil){
-		rerror(m, Enofid);
-		return;
-	}
+	if((f = getfid(m->conn, m->fid)) == nil)
+		error(Enofid);
 	t = f->mnt->root;
 	nm = 0;
 	wlock(f);
@@ -1827,10 +1856,12 @@ fsremove(Fmsg *m, int id, Amsg **ao)
 	truncwait(f->dent, id);
 	wlock(f->dent);
 	if(waserror()){
-		rerror(m, errmsg());
+		wunlock(f->dent);
+		wunlock(f);
+		putfid(f);
 		freeamsg(*ao);
 		*ao = nil;
-		goto Err;
+		nexterror();
 	}
 	if(f->dent->gone)
 		error(Ephase);
@@ -1880,14 +1911,13 @@ fsremove(Fmsg *m, int id, Amsg **ao)
 	assert(nm <= nelem(mb));
 	upsert(f->mnt, mb, nm);
 	f->dent->gone = 1;
-	r.type = Rremove;
-	respond(m, &r);
-	poperror();
-Err:
 	wunlock(f->dent);
 	wunlock(f);
 	putfid(f);
-	return;
+	poperror();
+
+	r.type = Rremove;
+	respond(m, &r);
 }
 
 static void
@@ -1903,14 +1933,11 @@ fsopen(Fmsg *m, int id, Amsg **ao)
 	Msg mb;
 
 	mbits = mode2bits(m->mode);
-	if((f = getfid(m->conn, m->fid)) == nil){
-		rerror(m, Enofid);
-		return;
-	}
+	if((f = getfid(m->conn, m->fid)) == nil)
+		error(Enofid);
 	if(waserror()){
-		rerror(m, errmsg());
 		putfid(f);
-		return;
+		nexterror();
 	}
 	if(m->mode & OTRUNC)
 		truncwait(f->dent, id);
@@ -1938,20 +1965,26 @@ fsopen(Fmsg *m, int id, Amsg **ao)
 	if(fsaccess(f, d.mode, d.uid, d.gid, mbits) == -1)
 		error(Eperm);
 	f->dent->length = d.length;
-	poperror();
 	wunlock(f->dent);
-	r.type = Ropen;
-	r.qid = d.qid;
-	r.iounit = f->iounit;
+	poperror();
 
 	wlock(f);
-	if(f->mode != -1){
+	if(waserror()){
 		wunlock(f);
+		nexterror();
+	}
+	if(f->mode != -1)
 		error(Einuse);
+	if(m->mode & ORCLOSE){
+		f->rclose = emalloc(sizeof(Amsg), 1);
+		if(waserror()){
+			free(f->rclose);
+			f->rclose = nil;
+			nexterror();
+		}
 	}
 	if((m->mode & OTRUNC) && !(f->dent->mode & DMAPPEND)){
 		wlock(f->dent);
-
 		if(waserror()){
 			wunlock(f->dent);
 			freeamsg(*ao);
@@ -1991,11 +2024,18 @@ fsopen(Fmsg *m, int id, Amsg **ao)
 	}
 	f->mode = mode2bits(m->mode);
 	if(m->mode & ORCLOSE)
-		f->rclose = emalloc(sizeof(Amsg), 1);
+		poperror();	/* free(f->rclose) */
+
+	r.type = Ropen;
+	r.qid = d.qid;
+	r.iounit = f->iounit;
+
 	wunlock(f);
 	poperror();
-	respond(m, &r);
 	putfid(f);
+	poperror();
+
+	respond(m, &r);
 }
 
 static void
@@ -2019,9 +2059,8 @@ readsnap(Fmsg *m, Fid *f, Fcall *r)
 		s = emalloc(sizeof(Scan), 1);
 		pfx[0] = Klabel;
 		btnewscan(s, pfx, 1);
-		if(f->scan != nil){
+		if(f->scan != nil)
 			free(f->scan);
-		}
 		f->scan = s;
 	}
 	if(s->donescan){
@@ -2047,23 +2086,27 @@ readsnap(Fmsg *m, Fid *f, Fcall *r)
 	while(1){
 		if(!btnext(s, &s->kv))
 			break;
+		if(waserror()){
+			btexit(s);
+			nexterror();
+		}
 		memcpy(d.name, s->kv.k+1, s->kv.nk-1);
 		d.name[s->kv.nk-1] = 0;
 		d.qid.path = UNPACK64(s->kv.v + 1);
 		if((ns = dir2statbuf(&d, p, n)) == -1){
 			s->overflow = 1;
+			poperror();
 			break;
 		}
 		p += ns;
 		n -= ns;
+		poperror();
 	}
 	btexit(s);
 	r->count = p - r->data;
-
 Out:
-	poperror();
 	wunlock(f);
-	return;
+	poperror();
 }
 
 static void
@@ -2112,18 +2155,24 @@ readdir(Fmsg *m, Fid *f, Fcall *r)
 	while(1){
 		if(!btnext(s, &s->kv))
 			break;
+		if(waserror()){
+			btexit(s);
+			nexterror();
+		}
 		if((ns = kv2statbuf(&s->kv, p, n)) == -1){
 			s->overflow = 1;
+			poperror();
 			break;
 		}
 		p += ns;
 		n -= ns;
+		poperror();
 	}
-	r->count = p - r->data;
 	btexit(s);
+	r->count = p - r->data;
 Out:
-	poperror();
 	wunlock(f);
+	poperror();
 }
 
 static void
@@ -2142,6 +2191,11 @@ readfile(Fmsg *m, Fid *f, Fcall *r)
 		runlock(f);
 		return;
 	}
+	if(waserror()){
+		runlock(e);
+		runlock(f);
+		nexterror();
+	}
 	p = r->data;
 	c = m->count;
 	o = m->offset;
@@ -2150,15 +2204,16 @@ readfile(Fmsg *m, Fid *f, Fcall *r)
 		c = e->length - m->offset;
 	while(c != 0){
 		n = readb(t, f, p, o, c, e->length);
-		r->count += n;
-		if(n == 0)
+		if(n <= 0)
 			break;
 		p += n;
 		o += n;
 		c -= n;
+		r->count += n;
 	}
 	runlock(e);
 	runlock(f);
+	poperror();
 }
 
 static void
@@ -2167,18 +2222,15 @@ fsread(Fmsg *m)
 	Fcall r;
 	Fid *f;
 
-	if((f = getfid(m->conn, m->fid)) == nil){
-		rerror(m, Enofid);
-		return;
-	}
+	if((f = getfid(m->conn, m->fid)) == nil)
+		error(Enofid);
 	r.type = Rread;
 	r.count = 0;
 	r.data = nil;
 	if(waserror()){
-		rerror(m, errmsg());
 		free(r.data);
 		putfid(f);
-		return;
+		nexterror();
 	}	
 	r.data = emalloc(m->count, 0);
 	if(f->dent->qid.type & QTAUTH)
@@ -2189,10 +2241,10 @@ fsread(Fmsg *m)
 		readdir(m, f, &r);
 	else
 		readfile(m, f, &r);
+	putfid(f);
+	poperror();
 	respond(m, &r);
 	free(r.data);
-	poperror();
-	putfid(f);
 }
 
 static void
@@ -2208,28 +2260,32 @@ fswrite(Fmsg *m, int id)
 	Tree *t;
 	Fid *f;
 
-	if((f = getfid(m->conn, m->fid)) == nil){
-		rerror(m, Enofid);
+	if((f = getfid(m->conn, m->fid)) == nil)
+		error(Enofid);
+	if(f->dent->qid.type & QTAUTH){
+		if(waserror()){
+			putfid(f);
+			nexterror();
+		}
+		authwrite(f, &r, m->data, m->count);
+		putfid(f);
+		poperror();
+		respond(m, &r);
 		return;
-	}
+	}	
 	wlock(f);
 	truncwait(f->dent, id);
 	wlock(f->dent);
 	if(waserror()){
-		rerror(m, errmsg());
 		wunlock(f->dent);
 		wunlock(f);
 		putfid(f);
-		return;
+		nexterror();
 	}
 	if(!(f->mode & DMWRITE))
 		error(Einuse);
 	if(f->dent->gone)
 		error(Ephase);
-	if(f->dent->qid.type & QTAUTH){
-		authwrite(f, &r, m->data, m->count);
-		goto Out;
-	}	
 
 	w = 0;
 	p = m->data;
@@ -2253,11 +2309,11 @@ fswrite(Fmsg *m, int id)
 			nexterror();
 		}
 		n = writeb(f, &kv[i], &bp[i], p, o, c, f->dent->length);
-		poperror();
 		w += n;
 		p += n;
 		o += n;
 		c -= n;
+		poperror();
 	}
 
 	p = sbuf;
@@ -2285,14 +2341,16 @@ fswrite(Fmsg *m, int id)
 
 	r.type = Rwrite;
 	r.count = w;
-Out:
-	poperror();
- 	respond(m, &r);
+
 	wunlock(f->dent);
 	wunlock(f);
 	putfid(f);	
+	poperror();
+
+ 	respond(m, &r);
 }
 
+/* fsflush: must not raise error() */
 void
 fsflush(Fmsg *m)
 {
@@ -2489,13 +2547,18 @@ runmutate(int id, void *)
 		qlock(&fs->mutlk);
 		epochstart(id);
 		fs->snap.dirty = 1;
-		switch(m->type){
-		case Tcreate:	fscreate(m);		break;
-		case Twrite:	fswrite(m, id);		break;
-		case Twstat:	fswstat(m, id, &a);	break;
-		case Tremove:	fsremove(m, id, &a);	break;
-		case Topen:	fsopen(m, id, &a);	break;
-		default:	abort();		break;
+		if(waserror())
+			rerror(m, "%s", errmsg());
+		else {
+			switch(m->type){
+			case Tcreate:	fscreate(m);		break;
+			case Twrite:	fswrite(m, id);		break;
+			case Twstat:	fswstat(m, id, &a);	break;
+			case Tremove:	fsremove(m, id, &a);	break;
+			case Topen:	fsopen(m, id, &a);	break;
+			default:	abort();		break;
+			}
+			poperror();
 		}
 		assert(estacksz() == 0);
 		epochend(id);
@@ -2515,19 +2578,25 @@ runread(int id, void *ch)
 	while(1){
 		m = chrecv(ch);
 		epochstart(id);
-		switch(m->type){
-		case Tattach:	fsattach(m);		break;
-		case Twalk:	fswalk(m);		break;
-		case Tread:	fsread(m);		break;
-		case Tstat:	fsstat(m);		break;
-		case Topen:	fsopen(m, id, nil);	break;
+		if(waserror())
+			rerror(m, "%s", errmsg());
+		else {
+			switch(m->type){
+			case Tattach:	fsattach(m);		break;
+			case Twalk:	fswalk(m);		break;
+			case Tread:	fsread(m);		break;
+			case Tstat:	fsstat(m);		break;
+			case Topen:	fsopen(m, id, nil);	break;
+			default:	abort();		break;
+			}
+			poperror();
 		}
 		assert(estacksz() == 0);
 		epochend(id);
 	}
 }
 
-void
+static void
 freetree(Bptr rb, vlong pred)
 {
 	Bptr bp;
@@ -2540,14 +2609,14 @@ freetree(Bptr rb, vlong pred)
 		for(i = 0; i < b->nval; i++){
 			getval(b, i, &kv);
 			bp = unpackbp(kv.v, kv.nv);
-			freetree(bp, pred);
+			freetree(bp, pred);	/* leak b on error() */
 			qlock(&fs->mutlk);
 			qunlock(&fs->mutlk);
 			epochclean();
 		}
 	}
 	if(rb.gen > pred)
-		freebp(nil, rb);
+		freebp(nil, rb);	/* wouldn't freeblk() be better here? */
 	dropblk(b);
 }
 
@@ -2562,7 +2631,7 @@ freetree(Bptr rb, vlong pred)
  * need to hold the mutlk, other than when we free or kill
  * blocks via epochclean.
  */
-void
+static void
 sweeptree(Tree *t)
 {
 	char pfx[1];
@@ -2642,18 +2711,25 @@ runsweep(int id, void*)
 				qunlock(a);
 				epochclean();
 			}
-			sync();
+
+			sync();	/* oldhd blocks leaked on error() */
 
 			for(i = 0; i < fs->narena; i++){
 				for(bp = oldhd[i]; bp.addr != -1; bp = nb){
 					qlock(&fs->mutlk);
 					epochstart(id);
+					if(waserror()){
+						epochend(id);
+						qunlock(&fs->mutlk);
+						nexterror();
+					}
 					b = getblk(bp, 0);
 					nb = b->logp;
 					freeblk(nil, b);
 					dropblk(b);
 					epochend(id);
 					qunlock(&fs->mutlk);
+					poperror();
 					epochclean();
 				}
 			}
@@ -2681,21 +2757,22 @@ Justhalt:
 			}
 
 			qlock(&fs->mutlk);
+			epochstart(id);
 			if(waserror()){
+				epochend(id);
 				qunlock(&fs->mutlk);
 				nexterror();
 			}
-			epochstart(id);
 			snapfs(am, &t);
 			epochend(id);
-			poperror();
 			qunlock(&fs->mutlk);
+			poperror();
 
-			sync();
+			sync();	/* t leaked on error() */
 
 			if(t != nil){
 				epochwait();
-				sweeptree(t);
+				sweeptree(t);	/* t leaked on error() */
 				closesnap(t);
 			}
 			poperror();
@@ -2721,8 +2798,16 @@ Justhalt:
 				nm++;
 			}
 			qlock(&fs->mutlk);
+			epochstart(id);
+			if(waserror()){
+				epochend(id);
+				qunlock(&fs->mutlk);
+				nexterror();
+			}
 			upsert(am->mnt, mb, nm);
+			epochend(id);
 			qunlock(&fs->mutlk);
+			poperror();
 			/* fallthrough */
 		case AOclear:
 			if(agetl(&fs->rdonly)){
@@ -2735,8 +2820,15 @@ Justhalt:
 				ainc(&fs->rdonly);
 				break;
 			}
-			if(am->dent != nil)
+			if(am->dent != nil){
 				qlock(&am->dent->trunclk);
+				if(waserror()){
+					/* what should truncwait() do now? */
+					rwakeup(&am->dent->truncrz);
+					qunlock(&am->dent->trunclk);
+					nexterror();
+				}
+			}
 			fs->snap.dirty = 1;
 			nm = 0;
 			for(off = am->off; off < am->end; off += Blksz){
@@ -2750,16 +2842,17 @@ Justhalt:
 				mb[nm].nv = 0;
 				if(++nm >= nelem(mb) || off + Blksz >= am->end){
 					qlock(&fs->mutlk);
+					epochstart(id);
 					if(waserror()){
+						epochend(id);
 						qunlock(&fs->mutlk);
 						nexterror();
 					}
-					epochstart(id);
 					upsert(am->mnt, mb, nm);
 					epochend(id);
 					qunlock(&fs->mutlk);
-					epochclean();
 					poperror();
+					epochclean();
 					nm = 0;
 				}
 			}
@@ -2767,6 +2860,7 @@ Justhalt:
 				am->dent->trunc = 0;
 				rwakeup(&am->dent->truncrz);
 				qunlock(&am->dent->trunclk);
+				poperror();
 			}
 			poperror();
 			break;

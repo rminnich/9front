@@ -154,8 +154,10 @@ dir2statbuf(Xdir *d, char *buf, int nbuf)
 		u = uid2user(nogroupid);
 	if((m = uid2user(d->muid)) == nil)
 		m = uid2user(noneid);
-	if(u == nil || g == nil || m == nil)
+	if(u == nil || g == nil || m == nil){
+		runlock(&fs->userlk);
 		error(Eperm);
+	}
 
 	p = buf;
 	nn = strlen(d->name);

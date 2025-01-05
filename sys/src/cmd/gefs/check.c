@@ -233,6 +233,10 @@ checkdata(int, Tree *t)
 	while(1){
 		if(!btnext(&s, &s.kv))
 			break;
+		if(waserror()){
+			btexit(&s);
+			nexterror();
+		}
 		bp = unpackbp(s.kv.v, s.kv.nv);
 		if(isfree(bp.addr)){
 			fprint(2, "free block in use: %B\n", bp);
@@ -240,6 +244,7 @@ checkdata(int, Tree *t)
 		}
 		b = getblk(bp, GBraw);
 		dropblk(b);
+		poperror();
 	}
 	btexit(&s);
 	return 0;
@@ -288,15 +293,27 @@ checkfs(int fd)
 		if((t = opensnap(name, nil)) == nil){
 			fprint(2, "invalid snap label %s\n", name);
 			ok = 0;
+			poperror();
 			break;
+		}
+		if(waserror()){
+			closesnap(t);
+			nexterror();
 		}
 		fprint(fd, "checking snap %s: %B\n", name, t->bp);
 		b = getroot(t, &height);
+		if(waserror()){
+			dropblk(b);
+			nexterror();
+		}
 		if(checktree(fd, b, height-1, nil, 0))
 			ok = 0;
 		if(checkdata(fd, t))
 			ok = 0;
 		dropblk(b);
+		poperror();
+		closesnap(t);
+		poperror();
 		poperror();
 	}
 	btexit(&s);
