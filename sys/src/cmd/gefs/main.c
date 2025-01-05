@@ -89,10 +89,8 @@ errorv(char *fmt, va_list ap, int broke)
 
 	c = *errctx;
 	vsnprint(c->err, sizeof(c->err), fmt, ap);
-	if(broke){
+	if(broke)
 		fprint(2, "%s\n", c->err);
-		abort();
-	}
 	assert(c->nerrlab > 0 && c->nerrlab < Estacksz);
 	longjmp(c->errlab[--c->nerrlab], -1);
 }
