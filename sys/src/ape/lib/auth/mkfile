@@ -26,12 +26,6 @@ HFILES=\
 	/sys/src/libauth/authlocal.h\
 	../9/libc.h
 
-UPDATE=\
-	mkfile\
-	$HFILES\
-	${OFILES:%.$O=%.c}\
-	${LIB:/$objtype/%=/386/%}\
-
 </sys/src/cmd/mksyslib
 
 CFLAGS=-TVwc -D_POSIX_SOURCE -D_PLAN9_SOURCE -D_NET_EXTENSION -I. -I../9 -I/sys/src/libauth

@@ -21,9 +21,4 @@ HFILES=\
 	/sys/include/memdraw.h\
 	/sys/include/draw.h
 
-UPDATE=\
-	mkfile\
-	$HFILES\
-	${OFILES:%.$O=%.c}\
-
 </sys/src/cmd/mksyslib

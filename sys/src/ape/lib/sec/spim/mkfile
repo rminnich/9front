@@ -7,6 +7,4 @@ HFILES=/sys/include/ape/libsec.h
 
 OFILES=\
 
-UPDATE=mkfile $HFILES
-
 </sys/src/cmd/mksyslib

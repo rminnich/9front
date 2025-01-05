@@ -7,9 +7,6 @@ HFILES=\
 	/sys/include/ape/mp.h\
 	../../../../libmp/port/dat.h
 
-UPDATE=mkfile\
-	$HFILES\
-
 </sys/src/cmd/mksyslib
 
 %.$O:	../../../../libmp/power64/%.s

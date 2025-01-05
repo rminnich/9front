@@ -13,12 +13,6 @@ HFILES = \
 	graffiti.h\
 	scribbleimpl.h\
 
-UPDATE=\
-	mkfile\
-	$HFILES\
-	${OFILES:%.$O=%.c}\
-	${LIB:/$objtype/%=/386/%}\
-
 all:V:	$LIB syms
 
 < /sys/src/cmd/mksyslib

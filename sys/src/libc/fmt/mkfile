@@ -37,10 +37,5 @@ OFILES=\
 HFILES=/sys/include/libc.h\
 	fmtdef.h\
 
-UPDATE=\
-	mkfile\
-	$HFILES\
-	${OFILES:%.$O=%.c}
-
 </sys/src/cmd/mksyslib
 

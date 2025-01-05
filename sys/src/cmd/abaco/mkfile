@@ -24,11 +24,6 @@ HFILES=\
 	fns.h\
 	fonts.h\
 
-UPDATE=\
-	mkfile\
-	$HFILES\
-	${OFILES:%.$O=%.c}\
-
 </sys/src/cmd/mkone
 
 syms:V:

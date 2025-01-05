@@ -56,12 +56,6 @@ TARG=\
 
 BIN=/$objtype/bin/aux
 
-UPDATE=\
-	mkfile\
-	$HFILES\
-	${OFILES:%.$O=%.c}\
-	${TARG:%=%.c}\
-
 </sys/src/cmd/mkmany
 
 DIRS=\
@@ -109,10 +103,3 @@ nukedirs:V:
 		mk nuke
 	}
 
-update:V:
-	update $UPDATEFLAGS $UPDATE
-	for (i in $DIRS) @{
-		echo update $i
-		cd $i
-		mk 'UPDATEFLAGS='$"UPDATEFLAGS update
-	}

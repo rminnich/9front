@@ -22,11 +22,6 @@ OFILES=\
 	unload.$O\
 	write.$O\
 
-UPDATE=\
-	mkfile\
-	$HFILES\
-	${OFILES:%.$O=%.c}\
-
 </sys/src/cmd/mksyslib
 
 alloc.$O draw.$O: /sys/include/pool.h

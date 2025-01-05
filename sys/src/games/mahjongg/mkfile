@@ -11,10 +11,4 @@ OFILES=\
 
 HFILES=mahjongg.h\
 
-UPDATE=\
-	mkfile\
-	$HFILES\
-	${OFILES:%.$O=%.c}\
-	`{ls /sys/games/lib/mahjongg/*}
-
 </sys/src/cmd/mkone

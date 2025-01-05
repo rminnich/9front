@@ -24,12 +24,6 @@ OFILES=\
 
 HFILES=/sys/include/ape/bio.h
 
-UPDATE=\
-	mkfile\
-	$HFILES\
-	${OFILES:%.$O=%.c}\
-	${LIB:/$objtype/%=/386/%}\
-
 </sys/src/cmd/mksyslib
 
 CFLAGS=-TVwc -D_PLAN9_SOURCE -D_POSIX_SOURCE -I. -I../9

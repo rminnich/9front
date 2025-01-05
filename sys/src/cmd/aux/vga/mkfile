@@ -69,13 +69,6 @@ HFILES=\
 	pci.h\
 	vga.h\
 
-UPDATE=\
-	mkfile\
-	$HFILES\
-	${OFILES:%.$O=%.c}\
-	/lib/vgadb\
-	riva_tbl.h\
-
 </sys/src/cmd/mkone
 
 geode.$O:	geode_modes.h

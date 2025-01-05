@@ -124,10 +124,6 @@ OFILES=	`{rc ./reduce $O $objtype $ALLOFILES}
 
 HFILES=/sys/include/libc.h
 
-UPDATE=mkfile\
-	$HFILES\
-	$CFILES\
-
 </sys/src/cmd/mksyslib
 
 profile.$O: /sys/include/tos.h

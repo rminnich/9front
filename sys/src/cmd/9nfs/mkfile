@@ -29,14 +29,6 @@ BIN=/$objtype/bin/aux
 
 all:V:
 
-
-UPDATE=\
-	mkfile\
-	$HFILES\
-	${OFILES:%.$O=%.c}\
-	${NFSSERVER:%.$O=%.c}\
-	${TARG:%=%.c}\
-
 </sys/src/cmd/mkmany
 
 $O.nfsserver: $NFSSERVER

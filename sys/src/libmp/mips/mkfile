@@ -11,10 +11,5 @@ SFILES=\
 
 HFILES=/$objtype/include/u.h /sys/include/mp.h ../port/dat.h
 
-OFILES=${SFILES:%.s=%.$O}
-
-UPDATE=mkfile\
-	$HFILES\
-	$SFILES\
-
+OFIL
 </sys/src/cmd/mksyslib

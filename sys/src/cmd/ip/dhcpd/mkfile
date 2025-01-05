@@ -18,12 +18,6 @@ HFILES=dat.h ../dhcp.h ../icmp.h
 
 BIN=/$objtype/bin/ip
 
-UPDATE=\
-	mkfile\
-	$HFILES\
-	${DOFILES:%.$O=%.c}\
-	${IOFILES:%.$O=%.c}\
-
 </sys/src/cmd/mkmany
 
 $O.dhcpd: $DOFILES

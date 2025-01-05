@@ -21,17 +21,6 @@ SEND=\
 
 BIN=/$objtype/bin/aux
 
-UPDATE=\
-	mkfile\
-	$HFILES\
-	${OFILES:%.$O=%.c}\
-	receive.c\
-	send.c\
-	fax2receive.c\
-	fax2send.c\
-	${TARG:%=%.c}\
-	${TARG:%=/386/bin/%}\
-
 </sys/src/cmd/mkmany
 
 $O.faxreceive: $RECEIVE

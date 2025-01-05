@@ -2,7 +2,6 @@ APE=/sys/src/ape
 <$APE/config
 
 LIB=/$objtype/lib/ape/libz.a
-
 OFILES=\
 	adler32.$O\
 	compress.$O\
@@ -25,12 +24,6 @@ TOOLS=${TARG:%=$O.%}
 
 HFILES=\
 	/sys/include/ape/zlib.h\
-
-UPDATE=\
-	mkfile\
-	$HFILES\
-	${OFILES:%.$O=%.c}\
-	${LIB:/$objtype/%=/386/%}\
 
 CLEANFILES=$TOOLS
 

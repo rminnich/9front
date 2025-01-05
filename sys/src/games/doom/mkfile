@@ -132,11 +132,6 @@ HFILES=\
 	wi_stuff.h\
 	z_zone.h\
 
-UPDATE=\
-	mkfile\
-	$HFILES\
-	${OFILES:%.$O=%.c}\
-
 CFLAGS=$CFLAGS `{~ $objtype mips && echo -D__BIG_ENDIAN__}
 
 </sys/src/cmd/mkone

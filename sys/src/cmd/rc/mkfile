@@ -31,13 +31,6 @@ YFILES=syn.y
 
 BIN=/$objtype/bin
 
-UPDATE=\
-	mkfile\
-	$HFILES\
-	${OFILES:%.$O=%.c}\
-	$YFILES\
-	${TARG:%=/386/bin/%}\
-
 CFLAGS=$CFLAGS -DPlan9
 
 </sys/src/cmd/mkone

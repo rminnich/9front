@@ -14,15 +14,6 @@ OFILES =\
 TARG = secstore secstored secuser aescbc	# descbc
 DEBUG = secchk
 
-UPDATE=\
-	$HFILES\
-	dirls.c\
-	${OFILES:%.$O=%.c}\
-	${TARG:%=%.c}\
-	${DEBUG:%=%.c}\
-	mkfile\
-	/sys/man/1/secstore\
-
 default:V: all
 
 $O.aescbc: aescbc.$O

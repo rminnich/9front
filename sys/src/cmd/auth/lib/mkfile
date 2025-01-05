@@ -23,10 +23,5 @@ OFILES=\
 
 HFILES=/sys/include/auth.h /sys/include/authsrv.h ../authcmdlib.h
 
-UPDATE=\
-	mkfile\
-	$HFILES\
-	${OFILES:%.$O=%.c}\
-
 </sys/src/cmd/mksyslib
 CFLAGS=$CFLAGS -I..

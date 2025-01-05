@@ -30,11 +30,6 @@ HFILES=dat.h\
 	edit.h\
 	fns.h\
 
-UPDATE=\
-	mkfile\
-	$HFILES\
-	${OFILES:%.$O=%.c}\
-
 </sys/src/cmd/mkone
 
 $O.out:	/$objtype/lib/libframe.a /$objtype/lib/libdraw.a /$objtype/lib/libthread.a

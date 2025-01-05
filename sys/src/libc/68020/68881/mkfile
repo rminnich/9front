@@ -22,9 +22,6 @@ SFILES=\
 
 OFILES=${SFILES:%.s=%.$O}
 
-UPDATE=mkfile\
-	$SFILES\
-
 </sys/src/cmd/mksyslib
 
 installall:V:

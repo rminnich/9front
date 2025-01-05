@@ -65,17 +65,3 @@ dns.safeinstall:V: $O.dns
 %.safeinstallall:V:
 	for (objtype in $CPUS)
 		mk $stem.safeinstall
-
-dns.update:V:
-	SRC=`{echo $DNSOBJ|sed 's/\.'$O'/.c/g'}
-	update $UPDATEFLAGS dns.h $SRC
-
-%.update:V:
-	update $UPDATEFLAGS $stem.c
-
-update:V:
-	mk clean
-	T=`{echo $TARG|sed 's/( |$)/.update /g'}
-	mk 'UPDATEFLAGS='$"UPDATEFLAGS $T
-	update $UPDATEFLAGS mkfile
-

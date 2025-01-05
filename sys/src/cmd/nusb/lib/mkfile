@@ -9,11 +9,6 @@ OFILES=\
 HFILES=\
 	usb.h\
 
-UPDATE=\
-	$HFILES\
-	${OFILES:%.$O=%.c}\
-	mkfile\
-
 </sys/src/cmd/mklib
 
 install:V:	$LIB

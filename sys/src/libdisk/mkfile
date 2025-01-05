@@ -8,12 +8,6 @@ OFILES=\
 HFILES=/sys/include/disk.h
 LIB=/$objtype/lib/libdisk.a
 
-UPDATE=\
-	mkfile\
-	$HFILES\
-	${OFILES:%.$O=%.c}\
-	${LIB:/$objtype/%=/386/%}\
-
 </sys/src/cmd/mksyslib
 
 $O.test: test.$O $LIB

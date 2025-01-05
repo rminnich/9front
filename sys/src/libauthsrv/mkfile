@@ -34,14 +34,6 @@ MPCFILES=\
 	spake2ee.mpc\
 	ed448.mpc\
 
-UPDATE=\
-	mkfile\
-	$HFILES\
-	${OFILES:%.$O=%.c}\
-	${MPCFILES:.mpc=%.mp}\
-	${LIB:/$objtype/%=/386/%}\
-
-
 CLEANFILES=$MPCFILES
 
 </sys/src/cmd/mksyslib

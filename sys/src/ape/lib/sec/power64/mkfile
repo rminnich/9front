@@ -6,9 +6,6 @@ OFILES=\
 
 HFILES=/sys/include/ape/libsec.h
 
-UPDATE=mkfile\
-	$HFILES\
-
 </sys/src/cmd/mksyslib
 
 %.$O:	/sys/src/libsec/$objtype/%.s

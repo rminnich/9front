@@ -55,12 +55,6 @@ OFILES=\
 HFILES=/sys/include/stdio.h\
 	iolib.h\
 
-UPDATE=\
-	mkfile\
-	$HFILES\
-	${OFILES:%.$O=%.c}\
-	${LIB:/$objtype/%=/386/%}\
-
 </sys/src/cmd/mksyslib
 # this code really can't handle any flow-analysis warnings
 CFLAGS=

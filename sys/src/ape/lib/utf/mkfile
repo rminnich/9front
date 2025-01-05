@@ -28,10 +28,6 @@ OFILES=\
 HFILES=\
 	/sys/include/ape/utf.h\
 
-UPDATE=\
-	mkfile\
-	${OFILES:%.$O=%.c}\
-
 </sys/src/cmd/mksyslib
 
 CFLAGS=-c -D_POSIX_SOURCE -D_PLAN9_SOURCE -D_BSD_EXTENSION

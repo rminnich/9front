@@ -51,10 +51,6 @@ OFILES=	`{rfork n; \
 
 HFILES=/sys/include/ape/libsec.h
 
-UPDATE=mkfile\
-	$HFILES\
-	$CFILES\
-
 </sys/src/cmd/mksyslib
 
 CFLAGS=-TVwc -+ -D_POSIX_SOURCE -D_PLAN9_SOURCE -I. -I../../9 -I../../../../libmp/port

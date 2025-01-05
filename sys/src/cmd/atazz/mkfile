@@ -6,11 +6,6 @@ HFILES = atazz.h tabs.h
 OFILES = bit.$O main.$O probe.$O
 
 BIN=/$objtype/bin
-UPDATE=\
-	mkfile\
-	$HFILES\
-	${OFILES:%.$O=%.c}\
-	${TARG:%=/386/bin/%}\
 
 %.ps:DQ:	%.ms
 	eval `{doctype macros.ms $stem.ms} | \

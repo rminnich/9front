@@ -13,10 +13,6 @@ OFILES=ppp.$O\
 HFILES=ppp.h\
 
 BIN=/$objtype/bin/ip
-UPDATE=\
-	mkfile\
-	$HFILES\
-	${OFILES:%.$O=%.c}\
 
 </sys/src/cmd/mkone
 

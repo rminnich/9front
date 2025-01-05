@@ -12,11 +12,6 @@ OFILES=\
 HFILES=dat.h fns.h
 BIN=/$objtype/bin
 
-UPDATE=\
-	mkfile\
-	${OFILES:%.$O=%.c}\
-	$HFILES\
-
 </sys/src/cmd/mkone
 
 $O.out:

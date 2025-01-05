@@ -33,11 +33,6 @@ HFILES=/sys/include/libc.h
 
 OFILES=${CFILES:%.c=%.$O} ${SFILES:%.s=%.$O}
 
-UPDATE=mkfile\
-	$HFILES\
-	$CFILES\
-	$SFILES\
-
 </sys/src/cmd/mksyslib
 
 install:V:	install.68881

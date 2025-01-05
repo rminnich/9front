@@ -10,12 +10,6 @@ OFILES=\
 HFILES=\
 	tapefs.h\
 
-UPDATE=\
-	mkfile\
-	$HFILES\
-	${OFILES:%.$O=%.c}\
-	${TARG:%=%.c}\
-
 </sys/src/cmd/mkmany
 
 zipfs.$O:	zip.h

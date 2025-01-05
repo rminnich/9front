@@ -15,10 +15,6 @@ HFILES=\
 
 OFILES=${SFILES:%.s=%.$O}
 
-UPDATE=mkfile\
-	$HFILES\
-	$SFILES\
-
 </sys/src/cmd/mksyslib
 
 %.$O:	../../../../libmp/power/%.s

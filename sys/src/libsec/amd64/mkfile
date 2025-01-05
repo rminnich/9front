@@ -2,20 +2,12 @@ objtype=amd64
 </$objtype/mkfile
 
 LIB=/$objtype/lib/libsec.a
-FILES=\
-	chachablock\
-	md5block\
-	sha1block\
-	aesni\
+OFILES=\
+	chachablock.$O\
+	md5block.$O\
+	sha1block.$O\
+	aesni.$O\
 
 HFILES=/sys/include/libsec.h
-
-SFILES=${FILES:%=%.s}
-
-OFILES=${FILES:%=%.$O}
-
-UPDATE=mkfile\
-	$HFILES\
-	$SFILES\
 
 </sys/src/cmd/mksyslib

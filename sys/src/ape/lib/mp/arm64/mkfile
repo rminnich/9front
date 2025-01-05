@@ -4,5 +4,5 @@ APE=/sys/src/ape
 objtype=arm64
 </$objtype/mkfile
 
-install clean all update:V:
+install clean all:V:
 	

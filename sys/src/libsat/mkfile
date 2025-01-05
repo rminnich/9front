@@ -15,9 +15,4 @@ HFILES=\
 	/sys/include/sat.h\
 	impl.h\
 
-UPDATE=\
-	mkfile\
-	$HFILES\
-	${OFILES:%.$O=%.c}\
-
 </sys/src/cmd/mksyslib

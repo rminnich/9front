@@ -14,9 +14,4 @@ OFILES=\
 HFILES=\
 	/sys/include/geometry.h
 
-UPDATE=\
-	mkfile\
-	$HFILES\
-	${OFILES:%.$O=%.c}\
-
 </sys/src/cmd/mksyslib

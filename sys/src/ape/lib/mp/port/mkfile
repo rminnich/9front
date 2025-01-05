@@ -59,11 +59,6 @@ HFILES=\
 
 CFILES=${FILES:%=%.c}
 
-UPDATE=\
-	mkfile\
-	$HFILES\
-	$CFILES\
-
 </sys/src/cmd/mksyslib
 
 CFLAGS=-TVwc -+ -D_POSIX_SOURCE -D_PLAN9_SOURCE -I. -I../../9

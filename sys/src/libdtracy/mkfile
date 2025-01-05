@@ -13,9 +13,4 @@ OFILES=\
 HFILES=\
 	/sys/include/dtracy.h\
 
-UPDATE=\
-	mkfile\
-	$HFILES\
-	${OFILES:%.$O=%.c}\
-
 </sys/src/cmd/mksyslib

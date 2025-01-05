@@ -12,9 +12,6 @@ DIRS=\
 	joy\
 	cam\
 
-UPDATE=\
-	mkfile\
-
 default:V: all
 
 none:VQ:
@@ -28,13 +25,6 @@ all clean nuke:VQ:
 install installall safeinstall safeinstallall:V:
 	for (i in $DIRS) @{
 		cd $i && mk $target
-	}
-
-update:V:
-	update $UPDATEFLAGS $UPDATE
-	for (i in $DIRS) @{
-		echo update $i
-		cd $i && mk 'UPDATEFLAGS='$"UPDATEFLAGS update
 	}
 
 test:

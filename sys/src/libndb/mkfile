@@ -29,12 +29,6 @@ HFILES=\
 	/sys/include/ndb.h\
 	ndbhf.h
 
-UPDATE=\
-	mkfile\
-	$HFILES\
-	${OFILES:%.$O=%.c}\
-	${LIB:/$objtype/%=/386/%}\
-
 </sys/src/cmd/mksyslib
 
 $O.out: testipinfo.$O

@@ -65,12 +65,6 @@ HFILES=\
 	/sys/include/thread.h\
 	threadimpl.h\
 
-UPDATE=mkfile\
-	/386/lib/libthread.a\
-	$HFILES\
-	$CFILES\
-	$SFILES\
-
 all:V:	$LIB sched.$objtype.acid channel.$objtype.acid
 
 spim.$O:	mips.c

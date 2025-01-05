@@ -17,11 +17,6 @@ HFILES=\
 
 BIN=/$objtype/bin/ip
 
-UPDATE=\
-	mkfile\
-	$HFILES\
-	${OFILES:%.$O=%.c}\
-
 </sys/src/cmd/mkone
 
 safeinstall:V: $O.out

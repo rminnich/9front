@@ -13,10 +13,6 @@ SFILES=${FILES:%=%.s}
 
 OFILES=${SFILES:%.s=%.$O}
 
-UPDATE=mkfile\
-	$HFILES\
-	$SFILES\
-
 </sys/src/cmd/mksyslib
 
 %.$O:	/sys/src/libsec/$objtype/%.s

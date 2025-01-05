@@ -16,11 +16,6 @@ OFILES=\
 HFILES=dat.h\
 	fns.h\
 
-UPDATE=\
-	mkfile\
-	$HFILES\
-	${OFILES:%.$O=%.c}\
-
 </sys/src/cmd/mkone
 
 $O.out:	/$objtype/lib/libdraw.a /$objtype/lib/libframe.a \

@@ -55,11 +55,4 @@ HFILES=\
 	/sys/include/mp.h\
 	dat.h\
 
-CFILES=${FILES:%=%.c}
-
-
-UPDATE=mkfile\
-	$HFILES\
-	$CFILES\
-
 </sys/src/cmd/mksyslib

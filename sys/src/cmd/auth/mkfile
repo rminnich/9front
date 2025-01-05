@@ -58,14 +58,6 @@ HFILES=/sys/include/auth.h /sys/include/authsrv.h authcmdlib.h
 
 LIB=lib.$O.a
 BIN=/$objtype/bin/auth
-CLIB=`{ls lib/*.c}
-
-UPDATE=\
-	mkfile\
-	$HFILES\
-	rsa2any.h\
-	${OTHEROFILES:%.$O=%.c}\
-	${TARG:%=%.c}\
 
 </sys/src/cmd/mkmany
 
@@ -76,13 +68,6 @@ $LIB:
 all:V:	all.dirs
 
 install:V:	install.dirs $BIN/status $BIN/enable $BIN/disable
-
-update:V:
-	update $UPDATEFLAGS $UPDATE
-	for (i in lib $DIRS) @{
-		cd $i
-		mk 'UPDATEFLAGS='$"UPDATEFLAGS update
-	}
 
 &.lib:V:
 	cd lib

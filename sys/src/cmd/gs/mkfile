@@ -112,17 +112,6 @@ x=`{mkdir obj >[2]/dev/null; mv jpeg/jmorecfg.h jpeg/jmorecfg.h.save >[2] /dev/n
 
 </sys/src/cmd/mkone
 
-UPDATE=\
-	/386/bin/gs\
-	/sys/man/1/gs\
-	/rc/bin/ps2pdf\
-	/rc/bin/pdf2ps\
-	/sys/man/1/ps2pdf\
-
-update:V:
-	update $UPDATEFLAGS $UPDATE `{cat lsr}
-
-
 CC=pcc
 CFLAGS=-c -DPlan9 -D_POSIX_SOURCE -D_BSD_EXTENSION\
 	-I. -Isrc -Ijpeg -Izlib -Iicclib -DT$objtype '-DGS_INIT="gs_init.ps"'

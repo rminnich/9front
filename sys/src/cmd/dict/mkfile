@@ -12,11 +12,6 @@ HFILES=dict.h kuten.h
 
 BIN=/$objtype/bin
 
-UPDATE=\
-	mkfile\
-	$HFILES\
-	${OFILES:%.$O=%.c}\
-
 </sys/src/cmd/mkone
 
 mkindex: mkindex.$O $LFILES utils.$O

@@ -35,12 +35,6 @@ DIRS=ftpfs cifsd dhcpd httpd ipconfig ppp snoopy
 BIN=/$objtype/bin/ip
 HFILES=dhcp.h arp.h glob.h icmp.h telnet.h
 
-UPDATE=\
-	mkfile\
-	$HFILES\
-	${OFILES:%.$O=%.c}\
-	${TARG:%=%.c}\
-
 </sys/src/cmd/mkmany
 
 all:V:	$DIRS
@@ -59,14 +53,6 @@ installdirs:V:
 		echo mk $i
 		cd $i
 		mk install
-	}
-
-update:V:
-	update $UPDATEFLAGS $UPDATE
-	for (i in $DIRS) @{
-		echo update $i
-		cd $i
-		mk 'UPDATEFLAGS='$"UPDATEFLAGS update
 	}
 
 clean:V:

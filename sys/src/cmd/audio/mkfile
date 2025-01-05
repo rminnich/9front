@@ -5,9 +5,6 @@ PROGS=pcmconv oggdec oggenc mp3dec mp3enc flacdec flacenc wavdec sundec mixfs re
 #libs must be made first
 DIRS=$LIBS $PROGS
 
-UPDATE=\
-	mkfile\
-
 all:V:
 	for (i in $DIRS) @{
 		cd $i

@@ -19,11 +19,6 @@ HFILES=\
 BIN=/$objtype/bin
 CFILES=${OFILES:%.$O=%.c}
 CFILES=${CFILES:enam.c=../8c/enam.c}
-UPDATE=\
-	mkfile\
-	$HFILES\
-	$CFILES\
-	${TARG:%=/386/bin/%}\
 
 </sys/src/cmd/mkone
 

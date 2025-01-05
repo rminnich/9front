@@ -30,12 +30,6 @@ HFILES=\
 LIB=/$objtype/lib/libauth.a /$objtype/lib/libauthsrv.a
 BIN=/$objtype/bin/auth
 
-UPDATE=\
-	mkfile\
-	$HFILES\
-	${FOFILES:%.$O=%.c}\
-	fgui.c\
-
 </sys/src/cmd/mkmany
 
 $O.factotum: $FOFILES

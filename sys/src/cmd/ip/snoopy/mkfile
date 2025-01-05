@@ -62,11 +62,6 @@ HFILES=dat.h\
 YFILES=filter.y
 
 BIN=/$objtype/bin
-UPDATE=\
-	mkfile\
-	dat.h\
-	main.c\
-	${POBJS:%.$O=%.c}\
 
 CLEANFILES=protos.c protos.h
 

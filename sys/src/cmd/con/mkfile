@@ -7,12 +7,6 @@ TARG=con\
 
 BIN=/$objtype/bin
 
-UPDATE=\
-	mkfile\
-	$HFILES\
-	${TARG:%=%.c}\
-	/sys/man/1/con\
-
 </sys/src/cmd/mkmany
 
 

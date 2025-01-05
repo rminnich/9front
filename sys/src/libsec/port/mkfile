@@ -47,10 +47,6 @@ HFILES=/sys/include/libsec.h
 
 CFLAGS=$CFLAGS -I../../libmp/port
 
-UPDATE=mkfile\
-	$HFILES\
-	$CFILES\
-
 </sys/src/cmd/mksyslib
 
 %.c:D:	%.mp

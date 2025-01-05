@@ -39,11 +39,6 @@ LIBSOFILES=\
 
 BIN=/$objtype/bin/ip/httpd
 
-UPDATE=\
-	$HFILES\
-	${LIBSOFILES:%.$O=%.c}\
-	${XTARG:%=%.c}\
-
 CLEANFILES=$LIB
 
 </sys/src/cmd/mkmany
