@@ -373,11 +373,31 @@ addethercard(char* t, int (*r)(Ether*))
 	ncard++;
 }
 
+static int
+etherqueuesize(Ether *ether)
+{
+	int lg, mb;
+	ulong bsz;
+
+	/* compute log10(mbps) into lg */
+	for(lg = 0, mb = ether->mbps; mb >= 10; lg++)
+		mb /= 10;
+	if (lg > 0)
+		lg--;
+	if (lg > 14)			/* 2^(14+17) = 2³¹ */
+		lg = 14;
+	/* allocate larger output queues for higher-speed interfaces */
+	bsz = 1UL << (lg + 17);		/* 2¹⁷ = 128K, bsz = 2ⁿ × 128K */
+	while (bsz > mainmem->maxsize / 8 && bsz > 128*1024)
+		bsz /= 2;
+if(0) print("#l%d: %d Mbps -> queue size %lud\n", ether->ctlrno, ether->mbps, bsz);
+	return (int)bsz;
+}
+
 static Ether*
 etherprobe(int cardno, int ctlrno, char *conf)
 {
-	int i, lg;
-	ulong mb, bsz;
+	int i;
 	Ether *ether;
 
 	ether = malloc(sizeof(Ether));
@@ -430,31 +450,31 @@ Nope:
 	print("#l%d: %s: %dMbps port 0x%lluX irq %d ea %E\n",
 		ctlrno, ether->type, ether->mbps, (uvlong)ether->port, ether->irq, ether->ea);
 
-	/* compute log10(ether->mbps) into lg */
-	for(lg = 0, mb = ether->mbps; mb >= 10; lg++)
-		mb /= 10;
-	if (lg > 0)
-		lg--;
-	if (lg > 14)			/* 2^(14+17) = 2³¹ */
-		lg = 14;
-	/* allocate larger output queues for higher-speed interfaces */
-	bsz = 1UL << (lg + 17);		/* 2¹⁷ = 128K, bsz = 2ⁿ × 128K */
-	while (bsz > mainmem->maxsize / 8 && bsz > 128*1024)
-		bsz /= 2;
-
-	netifinit(ether, ether->name, Ntypes, bsz);
-	if(ether->oq == nil) {
-		ether->oq = qopen(bsz, Qmsg, 0, 0);
-		ether->limit = bsz;
+	netifinit(ether, ether->name, Ntypes, etherqueuesize(ether));
+	if(ether->oq == nil){
+		ether->oq = qopen(ether->limit, Qmsg, 0, 0);
+		if(ether->oq == nil)
+			panic("etherreset %s: can't allocate output queue", ether->name);
+	} else {
+		qsetlimit(ether->oq, ether->limit);
 	}
-	if(ether->oq == nil)
-		panic("etherreset %s: can't allocate output queue of %ld bytes", ether->name, bsz);
-
 	ether->alen = Eaddrlen;
 	memmove(ether->addr, ether->ea, Eaddrlen);
 	memset(ether->bcast, 0xFF, Eaddrlen);
 
 	return ether;
+}
+
+void
+ethersetspeed(Ether *ether, int mbps)
+{
+	if(ether->mbps == mbps)
+		return;
+	ether->mbps = mbps;
+	if(mbps <= 0 || ether->oq == nil)
+		return;
+	netifsetlimit(ether, etherqueuesize(ether));
+	qsetlimit(ether->oq, ether->limit);
 }
 
 static void netconsole(int);

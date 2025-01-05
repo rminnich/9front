@@ -16,7 +16,7 @@ static int parseaddr(uchar*, char*, int);
  *  set up a new network interface
  */
 void
-netifinit(Netif *nif, char *name, int nfile, ulong limit)
+netifinit(Netif *nif, char *name, int nfile, int limit)
 {
 	if(strlen(name) >= sizeof nif->name)
 		panic("netifinit: name too long: %s", name);
@@ -27,6 +27,28 @@ netifinit(Netif *nif, char *name, int nfile, ulong limit)
 		panic("netifinit: no memory");
 	memset(nif->f, 0, nfile*sizeof(Netfile*));
 	nif->limit = limit;
+}
+
+/*
+ * adjust input queue sizes for all files
+ */
+void
+netifsetlimit(Netif *nif, int limit)
+{
+	Netfile *f;
+	int i;
+
+	qlock(nif);
+	nif->limit = limit;
+	for(i = 0; i < nif->nfile; i++){
+		f = nif->f[i];
+		if(f == nil)
+			continue;
+		qlock(f);
+		qsetlimit(f->in, nif->limit);
+		qunlock(f);
+	}
+	qunlock(nif);
 }
 
 /*

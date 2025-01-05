@@ -646,14 +646,10 @@ rtl8139interrupt(Ureg*, void* arg)
 			 */
 			msr = csr8r(ctlr, Msr);
 			if(!(msr & Linkb)){
-				if(!(msr & Speed10) && edev->mbps != 100){
-					edev->mbps = 100;
-					qsetlimit(edev->oq, 256*1024);
-				}
-				else if((msr & Speed10) && edev->mbps != 10){
-					edev->mbps = 10;
-					qsetlimit(edev->oq, 65*1024);
-				}
+				if(msr & Speed10)
+					ethersetspeed(edev, 10);
+				else
+					ethersetspeed(edev, 100);
 			}
 			isr &= ~(Clc|PunLc);
 		}

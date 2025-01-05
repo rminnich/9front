@@ -581,13 +581,14 @@ ga620event(Ether *edev, int eci, int epi)
 		case 0x06:		/* link state changed */
 			switch (code) {
 			case 1:
-				edev->mbps = 1000;
+				ethersetspeed(edev, 1000);
 				break;
 			case 2:
 				print("#l%d: link down\n", edev->ctlrno);
 				break;
 			case 3:
-				edev->mbps = 100;	/* it's 10 or 100 */
+				/* it's 10 or 100 */
+				ethersetspeed(edev, 100);
 				break;
 			}
 			if (code != 2)

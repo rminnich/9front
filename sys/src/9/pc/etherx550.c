@@ -348,10 +348,11 @@ lproc(void *v)
 		r = c->reg[Links];
 		e->link = (r & Lnkup) != 0;
 		i = 0;
-		if(e->link)
+		if(e->link){
 			i = 1 + ((r & Lnkspd) != 0);
+			ethersetspeed(e, speedtab[i]);
+		}
 		c->speeds[i]++;
-		e->mbps = speedtab[i];
 		c->lim = 0;
 		im(c, Lsc);
 		sleep(&c->lrendez, lim, c);

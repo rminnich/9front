@@ -817,7 +817,7 @@ Scan:
 	while((wn = wifi->bss) != nil){
 		ether->link = (wn->status == Sassoc) || (wn->status == Sblocked);
 		if(ether->link && (rate = wn->actrate) != nil)
-			ether->mbps = ((*rate & 0x7f)+3)/4;
+			ethersetspeed(ether, ((*rate & 0x7f)+3)/4);
 		now = MACHP(0)->ticks;
 		if(wn->status != Sneedauth && TK2SEC(now - wn->lastseen) > 20 || goodbss(wifi, wn) == 0){
 			wifideauth(wifi, wn);

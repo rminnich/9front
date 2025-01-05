@@ -159,19 +159,19 @@ ethproc(void *ved)
 			sp = "1000BASE-T";
 			while((mdread(c, MDGSTATUS) & RECVOK) != RECVOK)
 				;
-			edev->mbps = 1000;
 			c->r[NET_CFG] |= GIGE_EN;
 			slcr[GEM0_CLK_CTRL] = 1 << 20 | 8 << 8 | 1;
+			ethersetspeed(edev, 1000);
 		}else if((v & 0x20) != 0){
 			sp = "100BASE-TX";
-			edev->mbps = 100;
 			c->r[NET_CFG] = c->r[NET_CFG] & ~GIGE_EN | SPEED;
 			slcr[GEM0_CLK_CTRL] = 5 << 20 | 8 << 8 | 1;
+			ethersetspeed(edev, 100);
 		}else if((v & 0x10) != 0){
 			sp = "10BASE-T";
-			edev->mbps = 10;
 			c->r[NET_CFG] = c->r[NET_CFG] & ~(GIGE_EN | SPEED);
 			slcr[GEM0_CLK_CTRL] = 20 << 20 | 20 << 8 | 1;
+			ethersetspeed(edev, 10);
 		}else
 			sp = "???";
 		if((v & 0x08) != 0){

@@ -1222,10 +1222,11 @@ phyl79proc(void *v)
 		}
 		i = (phy>>8) & 3;
 		e->link = i != 3 && (phy & Link) != 0;
-		if(e->link == 0)
+		if(e->link)
+			ethersetspeed(e, speedtab[i]);
+		else
 			i = 3;
 		c->speeds[i]++;
-		e->mbps = speedtab[i];
 		lsleep(c, Lsc);
 	}
 }
@@ -1278,10 +1279,11 @@ phylproc(void *v)
 			phywrite(c, phyno, Phyctl, phyread(c, phyno, Phyctl) | Ran | Ean);
 next:
 		e->link = (phy & Rtlink) != 0;
-		if(e->link == 0)
+		if(e->link)
+			ethersetspeed(e, speedtab[i]);
+		else
 			i = 3;
 		c->speeds[i]++;
-		e->mbps = speedtab[i];
 		if(c->type == i82563)
 			phyerrata(e, c, phyno);
 		lsleep(c, Lsc);
@@ -1306,12 +1308,12 @@ pcslproc(void *v)
 		phy = csr32r(c, Pcsstat);
 		e->link = phy & Linkok;
 		i = 3;
-		if(e->link)
+		if(e->link){
 			i = (phy & 6) >> 1;
-		else if(phy & Anbad)
+			ethersetspeed(e, speedtab[i]);
+		}else if(phy & Anbad)
 			csr32w(c, Pcsctl, csr32r(c, Pcsctl) | Pan | Prestart);
 		c->speeds[i]++;
-		e->mbps = speedtab[i];
 		lsleep(c, Lsc | Omed);
 	}
 }
@@ -1334,10 +1336,11 @@ serdeslproc(void *v)
 		e->link = (rx & 1<<31) != 0;
 //		e->link = (csr32r(c, Status) & Lu) != 0;
 		i = 3;
-		if(e->link)
+		if(e->link){
 			i = 2;
+			ethersetspeed(e, speedtab[i]);
+		}
 		c->speeds[i]++;
-		e->mbps = speedtab[i];
 		lsleep(c, Lsc);
 	}
 }

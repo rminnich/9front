@@ -1586,8 +1586,6 @@ wpiattach(Ether *edev)
 			error("wifi disabled by switch");
 
 		if(ctlr->wifi == nil){
-			qsetlimit(edev->oq, MaxQueue);
-
 			ctlr->wifi = wifiattach(edev, transmit);
 			ctlr->wifi->rates = wpirates;
 		}

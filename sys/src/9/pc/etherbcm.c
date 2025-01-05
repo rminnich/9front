@@ -331,12 +331,12 @@ checklink(Ether *edev)
 {
 	Ctlr *ctlr;
 	ulong i;
+	int mbps;
 
 	ctlr = edev->ctlr;
 	miir(ctlr, PhyStatus); /* dummy read necessary */
 	if(!(miir(ctlr, PhyStatus) & PhyLinkStatus)) {
 		edev->link = 0;
-		edev->mbps = 1000;
 		ctlr->duplex = 1;
 		print("bcm: no link\n");
 		goto out;
@@ -345,26 +345,26 @@ checklink(Ether *edev)
 	while((miir(ctlr, PhyStatus) & PhyAutoNegComplete) == 0);
 	i = miir(ctlr, PhyGbitStatus);
 	if(i & (Phy1000FD | Phy1000HD)) {
-		edev->mbps = 1000;
+		mbps = 1000;
 		ctlr->duplex = (i & Phy1000FD) != 0;
 	} else if(i = miir(ctlr, PhyPartnerStatus), i & (Phy100FD | Phy100HD)) {
-		edev->mbps = 100;
+		mbps = 100;
 		ctlr->duplex = (i & Phy100FD) != 0;
 	} else if(i & (Phy10FD | Phy10HD)) {
-		edev->mbps = 10;
+		mbps = 10;
 		ctlr->duplex = (i & Phy10FD) != 0;
 	} else {
 		edev->link = 0;
-		edev->mbps = 1000;
 		ctlr->duplex = 1;
 		print("bcm: link partner supports neither 10/100/1000 Mbps\n"); 
 		goto out;
 	}
-	print("bcm: %d Mbps link, %s duplex\n", edev->mbps, ctlr->duplex ? "full" : "half");
+	print("bcm: %d Mbps link, %s duplex\n", mbps, ctlr->duplex ? "full" : "half");
+	ethersetspeed(edev, mbps);
 out:
 	if(ctlr->duplex) csr32(ctlr, MACMode) &= ~MACHalfDuplex;
 	else csr32(ctlr, MACMode) |= MACHalfDuplex;
-	if(edev->mbps >= 1000)
+	if(mbps >= 1000)
 		csr32(ctlr, MACMode) = (csr32(ctlr, MACMode) & MACPortMask) | MACPortGMII;
 	else
 		csr32(ctlr, MACMode) = (csr32(ctlr, MACMode) & MACPortMask) | MACPortMII;

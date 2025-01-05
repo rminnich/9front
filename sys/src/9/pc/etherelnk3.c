@@ -1972,14 +1972,14 @@ etherelnk3reset(Ether* ether)
 		}
 		XCVRDEBUG("mii anar: %uX\n", anar);
 		if(anar & 0x0100){		/* 100BASE-TXFD */
-			ether->mbps = 100;
+			ethersetspeed(ether, 100);
 			setfullduplex(port);
 		}
 		else if(anar & 0x0200){		/* 100BASE-T4 */
 			/* nothing to do */
 		}
 		else if(anar & 0x0080)		/* 100BASE-TX */
-			ether->mbps = 100;
+			ethersetspeed(ether, 100);
 		else if(anar & 0x0040)		/* 10BASE-TFD */
 			setfullduplex(port);
 		else{				/* 10BASE-T */
@@ -1998,7 +1998,7 @@ etherelnk3reset(Ether* ether)
 		outs(port+MediaStatus, x);
 
 		if(x & dataRate100)
-			ether->mbps = 100;
+			ethersetspeed(ether, 100);
 		break;
 	case xcvr10BaseT:
 		/*

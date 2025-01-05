@@ -515,7 +515,7 @@ linkproc(void *arg)
 			wr(ctlr, ENET_RCR, rcr);
 			wr(ctlr, ENET_TCR, tcr);
 
-			edev->mbps = phy->speed;
+			ethersetspeed(edev, phy->speed);
 
 			wr(ctlr, ENET_RDAR, RDAR_ACTIVE);
 		} 

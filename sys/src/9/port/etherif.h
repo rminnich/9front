@@ -51,6 +51,7 @@ struct Ether {
 	DMAT*	dmat;
 };
 
+extern void ethersetspeed(Ether*, int);
 extern void etheriq(Ether*, Block*);
 extern void addethercard(char*, int(*)(Ether*));
 extern ulong ethercrc(uchar*, int);

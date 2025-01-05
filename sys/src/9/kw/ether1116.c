@@ -1281,7 +1281,7 @@ kirkwoodmii(Ether *ether)
 		}
 	}
 
-	ether->mbps = phy->speed;
+	ethersetspeed(ether, phy->speed);
 	MIIDBG("#l%d: kirkwoodmii: fd %d speed %d tfc %d rfc %d\n",
 		ctlr->port, phy->fd, phy->speed, phy->tfc, phy->rfc);
 	MIIDBG("mii done\n");

@@ -4103,8 +4103,6 @@ iwlattach(Ether *edev)
 			error(err);
 
 		if(ctlr->wifi == nil){
-			qsetlimit(edev->oq, MaxQueue);
-
 			ctlr->wifi = wifiattach(edev, transmit);
 			/* tested with 2230, it has transmit issues using higher bit rates */
 			if(ctlr->family >= 7000 || ctlr->type != Type2030)

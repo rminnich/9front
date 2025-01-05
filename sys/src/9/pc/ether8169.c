@@ -876,7 +876,6 @@ static void
 rtl8169link(Ether* edev)
 {
 	uint r;
-	int limit;
 	Ctlr *ctlr;
 
 	ctlr = edev->ctlr;
@@ -887,18 +886,14 @@ rtl8169link(Ether* edev)
 	 * Could stall transmits if no link, maybe?
 	 */
 	edev->link = (r & Linksts) != 0;
-
-	limit = 256*1024;
-	if(r & Speed10){
-		edev->mbps = 10;
-		limit = 65*1024;
-	} else if(r & Speed100)
-		edev->mbps = 100;
-	else if(r & Speed1000)
-		edev->mbps = 1000;
-
-	if(edev->oq != nil)
-		qsetlimit(edev->oq, limit);
+	if(edev->link){
+		if(r & Speed10)
+			ethersetspeed(edev, 10);
+		else if(r & Speed100)
+			ethersetspeed(edev, 100);
+		else if(r & Speed1000)
+			ethersetspeed(edev, 1000);
+	}
 }
 
 static void

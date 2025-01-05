@@ -1275,7 +1275,6 @@ static void
 rtl8169link(Ether* edev)
 {
 	uint r;
-	int limit;
 	Ctlr *ctlr;
 
 	ctlr = edev->ctlr;
@@ -1288,22 +1287,17 @@ rtl8169link(Ether* edev)
 		}
 		return;
 	}
-	if (edev->link == 0) {
+	if(edev->link == 0) {
 		edev->link = 1;
 		csr8w(ctlr, Cr, Te|Re);
 		iprint("#l%d: link up\n", edev->ctlrno);
 	}
-	limit = 256*1024;
-	if(r & Speed10){
-		edev->mbps = 10;
-		limit = 65*1024;
-	} else if(r & Speed100)
-		edev->mbps = 100;
+	if(r & Speed10)
+		ethersetspeed(edev, 10);
+	else if(r & Speed100)
+		ethersetspeed(edev, 100);
 	else if(r & Speed1000)
-		edev->mbps = 1000;
-
-	if(edev->oq != nil)
-		qsetlimit(edev->oq, limit);
+		ethersetspeed(edev, 1000);
 }
 
 static void

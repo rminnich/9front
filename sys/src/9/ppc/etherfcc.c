@@ -870,7 +870,7 @@ fccltimer(Ureg*, Timer *t)
 		print("link lost\n");
 		return;
 	}
-	ether->mbps = phy->speed;
+	ethersetspeed(ether, phy->speed);
 
 	if(phy->fd != ctlr->duplex)
 		print("set duplex\n");

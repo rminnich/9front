@@ -768,7 +768,7 @@ linkproc(void *arg)
 			REG(ctlr->regs[ExtRgmiiOobCtrl]) = (REG(ctlr->regs[ExtRgmiiOobCtrl]) & ~OobDisable) | RgmiiLink;
 			umaccmd(ctlr, cmd, CmdSpeedMask|CmdHdEn|CmdRxPauseIgn|CmdTxPauseIgn);
 
-			edev->mbps = phy->speed;
+			ethersetspeed(edev, phy->speed);
 		}
 		edev->link = link;
 		// print("#l%d: link %d speed %d\n", edev->ctlrno, edev->link, edev->mbps);

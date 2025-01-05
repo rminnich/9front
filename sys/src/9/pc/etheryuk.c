@@ -1358,23 +1358,16 @@ static int spdtab[4] = {
 static void
 link(Ether *e)
 {
-	uint i, s, spd;
+	uint i, s;
 	Ctlr *c;
 
 	c = e->ctlr;
 	i = phyread(c, Phyint);
 	s = phyread(c, Phylstat);
 	dprint("#l%d: yuk: link %.8ux %.8ux\n", e->ctlrno, i, s);
-	spd = 0;
 	e->link = (s & Plink) != 0;
-	if(e->link && c->feat&Ffiber)
-		spd = 1000;
-	else if(e->link){
-		spd = s & Physpd;
-		spd >>= 14;
-		spd = spdtab[spd];
-	}
-	e->mbps = spd;
+	if(e->link)
+		ethersetspeed(e, (c->feat&Ffiber)? 1000: spdtab[(s & Physpd) >> 14]);
 	dprint("#l%d: yuk: link %d spd %d\n", e->ctlrno, e->link, e->mbps);
 }
 

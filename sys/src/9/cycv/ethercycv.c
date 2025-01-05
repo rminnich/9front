@@ -127,20 +127,19 @@ ethproc(void *ved)
 		}
 		v = mdread(c, MDPHYCTRL);
 		if((v & 0x40) != 0){
-			sp = "1000BASE-T";
 			while((mdread(c, MDGSTATUS) & RECVOK) != RECVOK)
 				;
-			edev->mbps = 1000;
 			c->r[MAC_CONFIG] &= ~(1<<15);
-
+			ethersetspeed(edev, 1000);
+			sp = "1000BASE-T";
 		}else if((v & 0x20) != 0){
-			sp = "100BASE-TX";
-			edev->mbps = 100;
 			c->r[MAC_CONFIG] = c->r[MAC_CONFIG] | (1<<15|1<<14);
+			ethersetspeed(edev, 100);
+			sp = "100BASE-TX";
 		}else if((v & 0x10) != 0){
-			sp = "10BASE-T";
-			edev->mbps = 10;
 			c->r[MAC_CONFIG] = c->r[MAC_CONFIG] & ~(1<<14) | 1<<15;
+			ethersetspeed(edev, 10);
+			sp = "10BASE-T";
 		}else
 			sp = "???";
 		if((v & 0x08) != 0){
