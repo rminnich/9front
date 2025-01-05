@@ -16,11 +16,11 @@ dlflush(Dlist *dl)
 	if(dl->ins == nil)
 		return;
 	traceb("dlflush", dl->ins->bp);
-	enqueue(dl->ins);
-	dropblk(dl->ins);
 	dl->hd = dl->ins->bp;
 	if(dl->tl.addr == dl->hd.addr)
 		dl->tl = dl->hd;
+	enqueue(dl->ins);
+	dropblk(dl->ins);
 	dl->ins = nil;
 	/* special case: the snap dlist has gen -1, skip it */
 	if(dl->gen != -1){
@@ -57,6 +57,7 @@ dlcachedel(Dlist *dl, int hdel)
 		dl->cprev->cnext = dl->cnext;
 	dl->cnext = nil;
 	dl->cprev = nil;
+	fs->dlcount--;
 }
 
 static Dlist*
@@ -130,11 +131,10 @@ putdl(Dlist *dl)
 	if(dl->gen == -1)
 		return;
 	dlcachedel(dl, 0);
-	while(fs->dltail != nil && fs->dlcount >= fs->dlcmax){
-		dt = fs->dltail;
-		dlflush(dt);
+	while(fs->dlcount >= fs->dlcmax && (dt = fs->dltail) != nil){
 		dlcachedel(dt, 1);
-		dropblk(dt->ins);
+		dlflush(dt);
+		assert(dt->ins == nil);
 		free(dt);
 	}
 
@@ -145,6 +145,7 @@ putdl(Dlist *dl)
 	if(fs->dlhead != nil)
 		fs->dlhead->cprev = dl;
 	fs->dlhead = dl;
+	fs->dlcount++;
 }
 
 void
@@ -267,13 +268,17 @@ reclaimblocks(vlong gen, vlong succ, vlong prev)
 		if(!btnext(&s, &s.kv))
 			break;
 		kv2dlist(&s.kv, &dl);
-
+		if(waserror()){
+			btexit(&s);
+			nexterror();
+		}
 		if(succ != -1 && dl.bgen <= prev)
 			mergedl(succ, dl.gen, dl.bgen);
 		else if(dl.bgen <= prev)
 			mergedl(prev, dl.gen, dl.bgen);
 		else
 			freedl(&dl, 1);
+		poperror();
 	}
 	btexit(&s);
 	if(succ != -1){
@@ -285,8 +290,14 @@ reclaimblocks(vlong gen, vlong succ, vlong prev)
 			if(!btnext(&s, &s.kv))
 				break;
 			kv2dlist(&s.kv, &dl);
-			if(dl.bgen > prev)
-				freedl(&dl, 1);
+			if(dl.bgen <= prev)
+				continue;
+			if(waserror()){
+				btexit(&s);
+				nexterror();
+			}
+			freedl(&dl, 1);
+			poperror();
 		}
 		btexit(&s);
 	}
