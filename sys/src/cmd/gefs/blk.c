@@ -735,18 +735,15 @@ getblk(Bptr bp, int flg)
 	}
 	if((b = cacheget(bp.addr)) != nil){
 		assert(checkflag(b, 0, Bfreed));
-		b->lasthold = getcallerpc(&bp);
-		qunlock(&fs->blklk[i]);
-		poperror();
-		return b;
+		assert(b->bp.gen == bp.gen);
+	} else {
+		b = cachepluck();
+		b->alloced = getcallerpc(&bp);
+		readblk(b, bp, flg);
+		b->bp.gen = bp.gen;
+		cacheins(b);
 	}
-	b = cachepluck();
-	b->alloced = getcallerpc(&bp);
-	b->alloced = getcallerpc(&bp);
-	readblk(b, bp, flg);
-	b->bp.gen = bp.gen;
 	b->lasthold = getcallerpc(&bp);
-	cacheins(b);
 	qunlock(&fs->blklk[i]);
 	poperror();
 
