@@ -27,13 +27,13 @@ loadarena(Arena *a, Bptr hd)
 	h0 = nil;
 	h1 = nil;
 	if(!waserror()){
-		h0 = getblk(bp, GBsoftchk);
+		h0 = getblk(bp, 0);
 		poperror();
 	}else
 		print("loading arena primary header: %s\n", errmsg());
 	bp.addr += Blksz;
 	if(!waserror()){
-		h1 = getblk(bp, GBsoftchk);
+		h1 = getblk(bp, 0);
 		poperror();
 	}else
 		print("loading arena backup header: %s\n", errmsg());

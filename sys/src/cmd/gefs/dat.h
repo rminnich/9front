@@ -269,7 +269,6 @@ enum {
 	GBraw	= 1<<0,
 	GBwrite	= 1<<1,
 	GBnochk	= 1<<2,
-	GBsoftchk = 1<<3,
 };
 
 enum {

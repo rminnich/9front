@@ -118,12 +118,8 @@ readblk(Blk *b, Bptr bp, int flg)
 		xh = bp.hash;
 		ck = blkhash(b);
 	}
-	if((!flg&GBnochk) && ck != xh){
-		if(!(flg&GBsoftchk))
-			broke("%s: %ullx %llux != %llux", Ecorrupt, bp.addr, xh, ck);
-		fprint(2, "%s: %ullx %llux != %llux", Ecorrupt, bp.addr, xh, ck);
-		error(Ecorrupt);
-	}
+	if((!flg&GBnochk) && ck != xh)
+		broke("%s: %ullx %llux != %llux", Ecorrupt, bp.addr, xh, ck);
 	assert(b->magic == Magic);
 }
 
