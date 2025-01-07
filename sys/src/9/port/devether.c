@@ -475,7 +475,6 @@ ethersetspeed(Ether *ether, int mbps)
 		return;
 	netifsetlimit(ether, etherqueuesize(ether));
 	qsetlimit(ether->oq, ether->limit);
-	print("#l%d: %s: speed %dMbps\n", ether->ctlrno, ether->type, mbps);
 }
 
 void
@@ -485,7 +484,12 @@ ethersetlink(Ether *ether, int link)
 	if(!!ether->link == link)
 		return;
 	ether->link = link;
-	print("#l%d: %s: link %s\n", ether->ctlrno, ether->type, link? "up": "down");
+	if(link)
+		print("#l%d: %s: link up: %dMbps\n",
+			ether->ctlrno, ether->type, ether->mbps);
+	else
+		print("#l%d: %s: link down\n",
+			ether->ctlrno, ether->type);
 }
 
 static void netconsole(int);
