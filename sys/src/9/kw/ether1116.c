@@ -866,9 +866,9 @@ interrupt(Ureg*, void *arg)
 		 * thus we note the link change here, and check for
 		 * that and autonegotiation done below.
 		 */
-		if(irqe & IEphystschg) {
-			ether->link = (reg->ps0 & PS0linkup) != 0;
+		if(irqe & IEphystschg){
 			ctlr->linkchg = 1;
+			ethersetlink(ether, reg->ps0 & PS0linkup);
 		}
 		if(irqe & IEtxerrq(Qno))
 			ether->oerrs++;
@@ -895,8 +895,8 @@ interrupt(Ureg*, void *arg)
 
 	if(ctlr->linkchg && (reg->ps1 & PS1an_done)) {
 		handled++;
-		ether->link = (reg->ps0 & PS0linkup) != 0;
 		ctlr->linkchg = 0;
+		ethersetlink(ether, reg->ps0 & PS0linkup);
 	}
 	ctlr->newintrs++;
 

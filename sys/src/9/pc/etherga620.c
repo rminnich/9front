@@ -583,17 +583,12 @@ ga620event(Ether *edev, int eci, int epi)
 			case 1:
 				ethersetspeed(edev, 1000);
 				break;
-			case 2:
-				print("#l%d: link down\n", edev->ctlrno);
-				break;
 			case 3:
 				/* it's 10 or 100 */
 				ethersetspeed(edev, 100);
 				break;
 			}
-			if (code != 2)
-				print("#l%d: %dMbps link up\n",
-					edev->ctlrno, edev->mbps);
+			ethersetlink(edev, code != 2);
 			break;
 		case 0x07:		/* event error */
 		default:

@@ -2118,6 +2118,8 @@ etherelnk3reset(Ether* ether)
 
 	intrenable(ether->irq, interrupt, ether, ether->tbdf, ether->name);
 
+	ether->link = ether->mbps != 0;
+
 	return 0;
 }
 

@@ -111,7 +111,6 @@ ethproc(void *ved)
 {
 	Ether *edev;
 	Ctlr *c;
-	char *sp, *dpl;
 	u16int v;
 	
 	edev = ved;
@@ -120,8 +119,7 @@ ethproc(void *ved)
 	mdwrite(c, MDCTRL, AUTONEG);
 	for(;;){
 		if((mdread(c, MDSTATUS) & LINK) == 0){
-			edev->link = 0;
-			print("eth: no link\n");
+			ethersetlink(edev, 0);
 			while((mdread(c, MDSTATUS) & LINK) == 0)
 				tsleep(&up->sleep, return0, nil, Linkdelay);
 		}
@@ -131,26 +129,19 @@ ethproc(void *ved)
 				;
 			c->r[MAC_CONFIG] &= ~(1<<15);
 			ethersetspeed(edev, 1000);
-			sp = "1000BASE-T";
 		}else if((v & 0x20) != 0){
 			c->r[MAC_CONFIG] = c->r[MAC_CONFIG] | (1<<15|1<<14);
 			ethersetspeed(edev, 100);
-			sp = "100BASE-TX";
 		}else if((v & 0x10) != 0){
 			c->r[MAC_CONFIG] = c->r[MAC_CONFIG] & ~(1<<14) | 1<<15;
 			ethersetspeed(edev, 10);
-			sp = "10BASE-T";
-		}else
-			sp = "???";
+		}
 		if((v & 0x08) != 0){
-			dpl = "full";
 			c->r[MAC_CONFIG] |= 1<<11;
 		}else{
-			dpl = "half";
 			c->r[MAC_CONFIG] &= ~(1<<11);
 		}
-		edev->link = 1;
-		print("eth: %s %s duplex link\n", sp, dpl);
+		ethersetlink(edev, 1);
 		c->r[MAC_CONFIG] |= 1<<3 | 1<<2;
 		while((mdread(c, MDSTATUS) & LINK) != 0)
 			tsleep(&up->sleep, return0, nil, Linkdelay);

@@ -519,8 +519,7 @@ linkproc(void *arg)
 
 			wr(ctlr, ENET_RDAR, RDAR_ACTIVE);
 		} 
-		edev->link = link;
-		print("#l%d: link %d speed %d\n", edev->ctlrno, edev->link, edev->mbps);
+		ethersetlink(edev, link);
 	}
 }
 

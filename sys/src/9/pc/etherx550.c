@@ -346,11 +346,13 @@ lproc(void *v)
 		;
 	for (;;) {
 		r = c->reg[Links];
-		e->link = (r & Lnkup) != 0;
-		i = 0;
-		if(e->link){
+		if(r & Lnkup){
 			i = 1 + ((r & Lnkspd) != 0);
 			ethersetspeed(e, speedtab[i]);
+			ethersetlink(e, 1);
+		} else {
+			ethersetlink(e, 0);
+			i = 0;
 		}
 		c->speeds[i]++;
 		c->lim = 0;

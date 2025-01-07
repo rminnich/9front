@@ -770,8 +770,7 @@ linkproc(void *arg)
 
 			ethersetspeed(edev, phy->speed);
 		}
-		edev->link = link;
-		// print("#l%d: link %d speed %d\n", edev->ctlrno, edev->link, edev->mbps);
+		ethersetlink(edev, link);
 	}
 }
 

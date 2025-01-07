@@ -1365,10 +1365,12 @@ link(Ether *e)
 	i = phyread(c, Phyint);
 	s = phyread(c, Phylstat);
 	dprint("#l%d: yuk: link %.8ux %.8ux\n", e->ctlrno, i, s);
-	e->link = (s & Plink) != 0;
-	if(e->link)
+	if(s & Plink){
 		ethersetspeed(e, (c->feat&Ffiber)? 1000: spdtab[(s & Physpd) >> 14]);
-	dprint("#l%d: yuk: link %d spd %d\n", e->ctlrno, e->link, e->mbps);
+		ethersetlink(e, 1);
+	} else {
+		ethersetlink(e, 0);
+	}
 }
 
 static void

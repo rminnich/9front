@@ -713,9 +713,8 @@ vgbeinterrupt(Ureg *, void* arg)
 		print("vgbe: irq: PHY interrupt\n");
 
 	if(status & Isr_LinkStatus){
-		edev->link = (riob(ctlr, PhySts0) & PhySts_Link) ? 1 : 0;
+		ethersetlink(edev, riob(ctlr, PhySts0) & PhySts_Link);
 		vgbemiip(ctlr, 1);
-		print("vgbe: irq: link status change\n");
 	}
 	if(status & Isr_RxNoDesc)
 		print("vgbe: irq: ran out of Rx descriptors\n");

@@ -1242,13 +1242,8 @@ checkstats(Ether *e, Ctlr *c, Stats *s)
 		return;
 
 	i = gbit32(s->linkstat);
-	if(c->linkstat != i){
-		e->link = i;
-		if(c->linkstat = i)
-			dprint("m10g: link up\n");
-		else
-			dprint("m10g: link down\n");
-	}
+	if(c->linkstat != i)
+		ethersetlink(e, c->linkstat = i);
 	i = gbit32(s->nrdma);
 	if(i != c->nrdma){
 		dprint("m10g: rdma timeout %ld\n", i);

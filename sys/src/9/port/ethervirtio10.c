@@ -780,7 +780,6 @@ reset(Ether* edev)
 	edev->multicast = multicast;
 	edev->promiscuous = promiscuous;
 
-
 	pcisetbme(ctlr->pcidev);
 	intrenable(edev->irq, interrupt, edev, edev->tbdf, edev->name);
 

@@ -1280,17 +1280,11 @@ rtl8169link(Ether* edev)
 	ctlr = edev->ctlr;
 
 	if(!((r = csr8r(ctlr, Phystatus)) & Linksts)){
-		if (edev->link) {
-			edev->link = 0;
+		if(edev->link) {
 			csr8w(ctlr, Cr, Re);
-			iprint("#l%d: link down\n", edev->ctlrno);
+			ethersetlink(edev, 0);
 		}
 		return;
-	}
-	if(edev->link == 0) {
-		edev->link = 1;
-		csr8w(ctlr, Cr, Te|Re);
-		iprint("#l%d: link up\n", edev->ctlrno);
 	}
 	if(r & Speed10)
 		ethersetspeed(edev, 10);
@@ -1298,6 +1292,10 @@ rtl8169link(Ether* edev)
 		ethersetspeed(edev, 100);
 	else if(r & Speed1000)
 		ethersetspeed(edev, 1000);
+	if(edev->link == 0) {
+		csr8w(ctlr, Cr, Te|Re);
+		ethersetlink(edev, 1);
+	}
 }
 
 static void

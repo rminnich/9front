@@ -1400,7 +1400,7 @@ linkdown(Ctlr *ctl)
 	if(edev == nil || ctl->status == Disconnected)
 		return;
 	ctl->status = Disconnected;
-	edev->link = 0;
+	ethersetlink(edev, 0);
 	/* send eof to aux/wpa */
 	for(i = 0; i < edev->nfile; i++){
 		f = edev->f[i];
@@ -1550,7 +1550,7 @@ bcmevent(Ctlr *ctl, uchar *p, int len)
 		break;
 	case 16:	/* E_LINK */
 		if(flags&1){	/* link up */
-			ctl->edev->link = 1;
+			ethersetlink(ctl->edev, 1);
 			break;
 		}
 	/* fall through */
@@ -1812,8 +1812,8 @@ wljoin(Ctlr *ctl, char *ssid, int chan)
 	ctl->status = Connecting;
 	switch(waitjoin(ctl)){
 		case 0:
-			ctl->edev->link = 1;
 			ctl->status = Connected;
+			ethersetlink(ctl->edev, 1);
 			break;
 		case 3:
 			ctl->status = Disconnected;

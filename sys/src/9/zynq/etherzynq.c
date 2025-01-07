@@ -141,7 +141,6 @@ ethproc(void *ved)
 {
 	Ether *edev;
 	Ctlr *c;
-	char *sp, *dpl;
 	u16int v;
 	
 	edev = ved;
@@ -149,40 +148,32 @@ ethproc(void *ved)
 	mdwrite(c, MDCTRL, AUTONEG);
 	for(;;){
 		if((mdread(c, MDSTATUS) & LINK) == 0){
-			edev->link = 0;
-			print("eth: no link\n");
+			ethersetlink(edev, 0);
 			while((mdread(c, MDSTATUS) & LINK) == 0)
 				tsleep(&up->sleep, return0, nil, Linkdelay);
 		}
 		v = mdread(c, MDPHYCTRL);
 		if((v & 0x40) != 0){
-			sp = "1000BASE-T";
 			while((mdread(c, MDGSTATUS) & RECVOK) != RECVOK)
 				;
 			c->r[NET_CFG] |= GIGE_EN;
 			slcr[GEM0_CLK_CTRL] = 1 << 20 | 8 << 8 | 1;
 			ethersetspeed(edev, 1000);
 		}else if((v & 0x20) != 0){
-			sp = "100BASE-TX";
 			c->r[NET_CFG] = c->r[NET_CFG] & ~GIGE_EN | SPEED;
 			slcr[GEM0_CLK_CTRL] = 5 << 20 | 8 << 8 | 1;
 			ethersetspeed(edev, 100);
 		}else if((v & 0x10) != 0){
-			sp = "10BASE-T";
 			c->r[NET_CFG] = c->r[NET_CFG] & ~(GIGE_EN | SPEED);
 			slcr[GEM0_CLK_CTRL] = 20 << 20 | 20 << 8 | 1;
 			ethersetspeed(edev, 10);
-		}else
-			sp = "???";
+		}
 		if((v & 0x08) != 0){
-			dpl = "full";
 			c->r[NET_CFG] |= FDEN;
 		}else{
-			dpl = "half";
 			c->r[NET_CFG] &= ~FDEN;
 		}
-		edev->link = 1;
-		print("eth: %s %s duplex link\n", sp, dpl);
+		ethersetlink(edev, 1);
 		while((mdread(c, MDSTATUS) & LINK) != 0)
 			tsleep(&up->sleep, return0, nil, Linkdelay);
 	}

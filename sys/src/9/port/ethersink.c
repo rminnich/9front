@@ -54,6 +54,7 @@ reset(Ether* ether)
 {
 	if(ether->type==nil)
 		return -1;
+	ether->link = 0;
 	ether->mbps = 1000;
 	ether->attach = attach;
 	ether->multicast = multicast;

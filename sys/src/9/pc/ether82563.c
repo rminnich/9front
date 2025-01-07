@@ -508,7 +508,7 @@ struct Ctlr {
 	uvlong	port;
 	Pcidev	*pcidev;
 	Ctlr	*next;
-	int	active;
+	Ether	*edev;
 	int	type;
 	u16int	eeprom[0x40];
 
@@ -851,7 +851,7 @@ i82563cleanup(Ctlr *c)
 			c->tb[tdh] = nil;
 			freeb(b);
 		}else
-			iprint("82563 tx underrun!\n");
+			iprint("#l%d: %s: tx underrun!\n", c->edev->ctlrno, cname(c));
 		c->tdba[tdh].status = 0;
 	}
 
@@ -914,7 +914,7 @@ i82563replenish(Ctlr *ctlr)
 	for(rdt = ctlr->rdt; NEXT(rdt, ctlr->nrd) != ctlr->rdh; rdt = NEXT(rdt, ctlr->nrd)){
 		rd = &ctlr->rdba[rdt];
 		if(ctlr->rb[rdt] != nil){
-			iprint("82563: tx overrun\n");
+			iprint("#l%d: %s: tx overrun\n", ctlr->edev->ctlrno, cname(ctlr));
 			break;
 		}
 		i++;
@@ -1097,7 +1097,7 @@ phyread(Ctlr *c, int phyno, int reg)
 		microdelay(1);
 	}
 	if((phy & (MDIe|MDIready)) != MDIready){
-		print("%s: phy %d wedged %.8ux\n", cname(c), phyno, phy);
+		print("#l%d: %s: phy %d wedged %.8ux\n", c->edev->ctlrno, cname(c), phyno, phy);
 		return ~0;
 	}
 	return phy & 0xffff;
@@ -1143,18 +1143,18 @@ static uint
 phywrite(Ctlr *c, uint phyno, uint reg, ushort v)
 {
 	if(setpage(c, phyno, reg>>8, reg & 0xff) == ~0)
-		panic("%s: bad phy reg %.4ux", cname(c), reg);
+		panic("#l%d: %s: bad phy reg %.4ux", c->edev->ctlrno, cname(c), reg);
 	return phywrite0(c, phyno, reg & 0xff, v);
 }
 
 static void
-phyerrata(Ether *e, Ctlr *c, uint phyno)
+phyerrata(Ctlr *c, uint phyno)
 {
-	if(e->mbps == 0){
+	if(c->edev->mbps == 0){
 		if(c->phyerrata == 0){
 			c->phyerrata++;
 			phywrite(c, phyno, Phyprst, Prst);	/* try a port reset */
-			print("%s: phy port reset\n", cname(c));
+			print("#l%d: %s: phy port reset\n", c->edev->ctlrno, cname(c));
 		}
 	}else
 		c->phyerrata = 0;
@@ -1174,10 +1174,11 @@ phyprobe(Ctlr *c, uint mask)
 		phy |= phyread(c, phyno, Phyid2) >> 10;
 		if(phy == 0xFFFFF || phy == 0)
 			continue;
-		print("%s: phy%d oui %#ux\n", cname(c), phyno, phy);
+		print("#l%d: %s: phy%d oui %#ux\n", c->edev->ctlrno, cname(c),
+			phyno, phy);
 		return phyno;
 	}
-	print("%s: no phy\n", cname(c));
+	print("#l%d: %s: no phy\n", c->edev->ctlrno, cname(c));
 	return ~0;
 }
 
@@ -1221,11 +1222,13 @@ phyl79proc(void *v)
 			break;
 		}
 		i = (phy>>8) & 3;
-		e->link = i != 3 && (phy & Link) != 0;
-		if(e->link)
+		if(i != 3 && (phy & Link) != 0){
 			ethersetspeed(e, speedtab[i]);
-		else
+			ethersetlink(e, 1);
+		}else{
+			ethersetlink(e, 0);
 			i = 3;
+		}
 		c->speeds[i]++;
 		lsleep(c, Lsc);
 	}
@@ -1278,14 +1281,16 @@ phylproc(void *v)
 		if(a)
 			phywrite(c, phyno, Phyctl, phyread(c, phyno, Phyctl) | Ran | Ean);
 next:
-		e->link = (phy & Rtlink) != 0;
-		if(e->link)
+		if(phy & Rtlink){
 			ethersetspeed(e, speedtab[i]);
-		else
+			ethersetlink(e, 1);
+		}else{
+			ethersetlink(e, 0);
 			i = 3;
+		}
 		c->speeds[i]++;
 		if(c->type == i82563)
-			phyerrata(e, c, phyno);
+			phyerrata(c, phyno);
 		lsleep(c, Lsc);
 	}
 }
@@ -1306,13 +1311,16 @@ pcslproc(void *v)
 		csr32w(c, Connsw, Enrgirq);
 	for(;;){
 		phy = csr32r(c, Pcsstat);
-		e->link = phy & Linkok;
-		i = 3;
-		if(e->link){
+		if(phy & Linkok){
 			i = (phy & 6) >> 1;
 			ethersetspeed(e, speedtab[i]);
-		}else if(phy & Anbad)
-			csr32w(c, Pcsctl, csr32r(c, Pcsctl) | Pan | Prestart);
+			ethersetlink(e, 1);
+		}else {
+			ethersetlink(e, 0);
+			if(phy & Anbad)
+				csr32w(c, Pcsctl, csr32r(c, Pcsctl) | Pan | Prestart);
+			i = 3;
+		}
 		c->speeds[i]++;
 		lsleep(c, Lsc | Omed);
 	}
@@ -1333,12 +1341,13 @@ serdeslproc(void *v)
 		rx = csr32r(c, Rxcw);
 		tx = csr32r(c, Txcw);
 		USED(tx);
-		e->link = (rx & 1<<31) != 0;
-//		e->link = (csr32r(c, Status) & Lu) != 0;
-		i = 3;
-		if(e->link){
+		if(rx & 1<<31){	/*(csr32r(c, Status) & Lu*/ 
 			i = 2;
 			ethersetspeed(e, speedtab[i]);
+			ethersetlink(e, 1);
+		} else {
+			ethersetlink(e, 0);
+			i = 3;
 		}
 		c->speeds[i]++;
 		lsleep(c, Lsc);
@@ -1538,7 +1547,7 @@ eeread(Ctlr *ctlr, int adr)
 	while ((csr32r(ctlr, Eerd) & EEdone) == 0 && timeout--)
 		microdelay(5);
 	if (timeout < 0) {
-		print("%s: eeread timeout\n", cname(ctlr));
+		print("#l%d: %s: eeread timeout\n", ctlr->edev->ctlrno, cname(ctlr));
 		return -1;
 	}
 	return (csr32r(ctlr, Eerd) >> 16) & 0xffff;
@@ -1589,7 +1598,7 @@ done:
 	while((f->reg[Fsts] & Fdone) == 0 && timeout--)
 		microdelay(5);
 	if(timeout < 0){
-		print("%s: fread timeout\n", cname(c));
+		print("#l%d: %s: fread timeout\n", c->edev->ctlrno, cname(c));
 		return -1;
 	}
 	if(f->reg[Fsts] & (Fcerr|Ael))
@@ -1626,7 +1635,7 @@ done:
 	while((f->reg32[Fsts/2] & Fdone) == 0 && timeout--)
 		microdelay(5);
 	if(timeout < 0){
-		print("%s: fread timeout\n", cname(c));
+		print("#l%d: %s: fread timeout\n", c->edev->ctlrno, cname(c));
 		return -1;
 	}
 	if(f->reg32[Fsts/2] & (Fcerr|Ael))
@@ -1777,7 +1786,7 @@ i82563reset(Ctlr *ctlr)
 		r = eeload(ctlr);
 
 	if(r != 0 && r != 0xbaba){
-		print("%s: bad eeprom checksum - %#.4ux", cname(ctlr), r);
+		print("#l%d: %s: bad eeprom checksum - %#.4ux", ctlr->edev->ctlrno, cname(ctlr), r);
 		if(flag & Fbadcsum)
 			print("; ignored\n");
 		else {
@@ -2101,12 +2110,12 @@ pnp(Ether *edev, int type)
 	for(ctlr = i82563ctlrhead; ; ctlr = ctlr->next){
 		if(ctlr == nil)
 			return -1;
-		if(ctlr->active)
+		if(ctlr->edev != nil)
 			continue;
 		if(type != -1 && ctlr->type != type)
 			continue;
 		if(edev->port == 0 || edev->port == ctlr->port){
-			ctlr->active = 1;
+			ctlr->edev = edev;
 			memmove(ctlr->ra, edev->ea, Eaddrlen);
 			if(setup(ctlr) == 0)
 				break;
