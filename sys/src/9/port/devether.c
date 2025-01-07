@@ -410,6 +410,7 @@ etherprobe(int cardno, int ctlrno, char *conf)
 	ether->irq = -1;
 	ether->ctlrno = ctlrno;
 	ether->mbps = 10;
+	ether->link = 0;
 	ether->minmtu = ETHERMINTU;
 	ether->maxmtu = ETHERMAXTU;
 
@@ -422,19 +423,15 @@ etherprobe(int cardno, int ctlrno, char *conf)
 			memmove(&ether->opt[0], &ether->opt[1], --ether->nopt*sizeof(ether->opt[0]));
 		} else if(isaconfig("ether", ctlrno, ether) == 0)
 			goto Nope;
-
-		for(cardno = 0; cards[cardno].type != nil; cardno++)
-			if(cistrcmp(cards[cardno].type, ether->type) == 0)
-				break;
-		if(cards[cardno].type == nil)
-			goto Nope;
-
 		for(i = 0; i < ether->nopt; i++){
 			if(strncmp(ether->opt[i], "ea=", 3) == 0){
 				if(parseether(ether->ea, &ether->opt[i][3]))
 					memset(ether->ea, 0, Eaddrlen);
 			}
 		}
+		for(cardno = 0; cards[cardno].type != nil; cardno++)
+			if(cistrcmp(cards[cardno].type, ether->type) == 0)
+				break;
 	}
 	if(cardno >= MaxEther || cards[cardno].type == nil)
 		goto Nope;
@@ -471,8 +468,10 @@ ethersetspeed(Ether *ether, int mbps)
 	if(ether->mbps == mbps)
 		return;
 	ether->mbps = mbps;
-	if(mbps <= 0 || ether->oq == nil)
+
+	if(mbps <= 0 || ether->f == nil || ether->oq == nil)
 		return;
+
 	netifsetlimit(ether, etherqueuesize(ether));
 	qsetlimit(ether->oq, ether->limit);
 }
@@ -484,6 +483,10 @@ ethersetlink(Ether *ether, int link)
 	if(!!ether->link == link)
 		return;
 	ether->link = link;
+
+	if(ether->f == nil)
+		return;
+
 	if(link)
 		print("#l%d: %s: link up: %dMbps\n",
 			ether->ctlrno, ether->type, ether->mbps);
