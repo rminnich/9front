@@ -1623,7 +1623,7 @@ srom(Ctlr* ctlr)
 		}
 	}
 
-	ctlr->fd = 0;
+	ctlr->fd = -1;
 	ctlr->medium = -1;
 
 	return 0;
@@ -1776,13 +1776,15 @@ reset(Ether* ether)
 	 * (no MII) or the autonegotiation fails.
 	 */
 	for(i = 0; i < ether->nopt; i++){
+		if(cistrcmp(ether->opt[i], "HD") == 0){
+			ctlr->fd = 0;
+			continue;
+		}
 		if(cistrcmp(ether->opt[i], "FD") == 0){
 			ctlr->fd = 1;
 			continue;
 		}
 		for(x = 0; x < nelem(mediatable); x++){
-			debug("compare <%s> <%s>\n", mediatable[x],
-				ether->opt[i]);
 			if(cistrcmp(mediatable[x], ether->opt[i]))
 				continue;
 			ctlr->medium = x;
@@ -1803,6 +1805,7 @@ reset(Ether* ether)
 	}
 
 	ether->mbps = media(ether, 1);
+	ether->link = ether->mbps != 0;
 
 	/*
 	 * Initialise descriptor rings, ethernet address.
