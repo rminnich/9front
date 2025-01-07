@@ -56,6 +56,8 @@ enum
 	Link,
 	Out,
 	Err0,
+	Overflows,
+	Soverflows,
 };
 
 struct Machine
@@ -76,8 +78,8 @@ struct Machine
 	uvlong		prevsysstat[10];
 	int		nproc;
 	int		lgproc;
-	uvlong		netetherstats[8];
-	uvlong		prevetherstats[8];
+	uvlong		netetherstats[9];
+	uvlong		prevetherstats[9];
 	uvlong		batterystats[2];
 	uvlong		temp[10];
 
@@ -114,6 +116,7 @@ enum Menu2
 	Methererr,
 	Metherin,
 	Metherout,
+	Metherovf,
 	Mfault,
 	Midle,
 	Minintr,
@@ -138,6 +141,7 @@ char	*menu2str[Nmenu2+1] = {
 	"add  ethererr",
 	"add  etherin ",
 	"add  etherout",
+	"add  etherovf",
 	"add  fault   ",
 	"add  idle    ",
 	"add  inintr  ",
@@ -159,6 +163,7 @@ char	*menu2str[Nmenu2+1] = {
 void	contextval(Machine*, uvlong*, uvlong*, int),
 	etherval(Machine*, uvlong*, uvlong*, int),
 	ethererrval(Machine*, uvlong*, uvlong*, int),
+	etherovfval(Machine*, uvlong*, uvlong*, int),
 	etherinval(Machine*, uvlong*, uvlong*, int),
 	etheroutval(Machine*, uvlong*, uvlong*, int),
 	faultval(Machine*, uvlong*, uvlong*, int),
@@ -186,6 +191,7 @@ void	(*newvaluefn[Nmenu2])(Machine*, uvlong*, uvlong*, int init) = {
 	ethererrval,
 	etherinval,
 	etheroutval,
+	etherovfval,
 	faultval,
 	idleval,
 	inintrval,
@@ -796,7 +802,7 @@ needstat(int init)
 int
 needether(int init)
 {
-	return init | present[Mether] | present[Metherin] | present[Metherout] | present[Methererr];
+	return init | present[Mether] | present[Metherin] | present[Metherout] | present[Methererr] | present[Metherovf];
 }
 
 int
@@ -1045,6 +1051,17 @@ ethererrval(Machine *m, uvlong *v, uvlong *vmax, int)
 
 	*v = 0;
 	for(i=Err0; i<nelem(m->netetherstats); i++)
+		*v += m->netetherstats[i]-m->prevetherstats[i];
+	*vmax = (sleeptime/1000)*10;
+}
+
+void
+etherovfval(Machine *m, uvlong *v, uvlong *vmax, int)
+{
+	int i;
+
+	*v = 0;
+	for(i=Overflows; i<=Soverflows; i++)
 		*v += m->netetherstats[i]-m->prevetherstats[i];
 	*vmax = (sleeptime/1000)*10;
 }
@@ -1413,6 +1430,7 @@ main(int argc, char *argv[])
 		addgraph(Metherin);
 		addgraph(Metherout);
 		addgraph(Methererr);
+		addgraph(Metherovf);
 		break;
 	case 'p':
 		addgraph(Mtlbpurge);
