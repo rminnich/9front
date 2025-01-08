@@ -148,7 +148,7 @@ snapshot are required for the file system to work correctly, and may not be remo
 .I dump:
 This is the name used to mount a list of all snapshots.
 Each snapshot in the file system will be listed in a directory.
-.IP
+.TP
 .I empty:
 This is a read-only empty snapshot.
 It contains no files or directories.
