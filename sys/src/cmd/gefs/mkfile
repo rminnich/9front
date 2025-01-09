@@ -27,13 +27,3 @@ HFILES=\
 	atomic.h
 
 </sys/src/cmd/mkone
-</sys/doc/fonts
-
-%.ps: %.ms
-	{ echo $FONTS; cat $stem.ms } | pic | tbl | eqn | troff -ms | lp -dstdout > $target
-%.pdf: %.ps
-	ps2pdf $stem.ps $stem.pdf
-
-man.install: gefs.4.man gefs.8.man
-	cp gefs.4.man /sys/man/4/gefs
-	cp gefs.8.man /sys/man/8/gefs
