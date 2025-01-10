@@ -39,14 +39,16 @@ netifsetlimit(Netif *nif, int limit)
 	int i;
 
 	qlock(nif);
-	nif->limit = limit;
-	for(i = 0; i < nif->nfile; i++){
-		f = nif->f[i];
-		if(f == nil)
-			continue;
-		qlock(f);
-		qsetlimit(f->in, nif->limit);
-		qunlock(f);
+	if(nif->limit != limit){
+		nif->limit = limit;
+		for(i = 0; i < nif->nfile; i++){
+			f = nif->f[i];
+			if(f == nil)
+				continue;
+			qlock(f);
+			qsetlimit(f->in, nif->limit);
+			qunlock(f);
+		}
 	}
 	qunlock(nif);
 }

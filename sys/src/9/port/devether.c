@@ -21,6 +21,9 @@ static Ether *etherprobe(int cardno, int ctlrno, char *conf);
 
 static void dmatproxy(Block*, int, uchar*, DMAT*);
 
+static int etheroqsize(Ether*);
+static int etheriqsize(Ether*);
+
 Chan*
 etherattach(char* spec)
 {
@@ -88,10 +91,17 @@ static void
 etherclose(Chan* chan)
 {
 	Ether *ether = etherxx[chan->dev];
+	Netfile *f;
 
-	if(NETTYPE(chan->qid.path) == Ndataqid && ether->f[NETID(chan->qid.path)]->bridge)
-		memset(ether->mactab, 0, sizeof(ether->mactab));
-
+	if(NETTYPE(chan->qid.path) == Ndataqid){
+		f = ether->f[NETID(chan->qid.path)];
+		if(f->bridge || f->bypass)
+			memset(ether->mactab, 0, sizeof(ether->mactab));
+		if(f->bypass){
+			qsetlimit(ether->oq, etheroqsize(ether));
+			netifsetlimit(ether, etheriqsize(ether));
+		}
+	}
 	netifclose(ether, chan);
 }
 
@@ -295,8 +305,14 @@ etherwrite(Chan* chan, void* buf, long n, vlong)
 
 	if(NETTYPE(chan->qid.path) != Ndataqid) {
 		nn = netifwrite(ether, chan, buf, n);
-		if(nn >= 0)
+		if(nn >= 0){
+			/* ignore mbps and use large input queue size when bypassed */
+			if(ether->f[NETID(chan->qid.path)]->bypass){
+				qflush(ether->oq);
+				netifsetlimit(ether, MB);
+			}
 			return nn;
+		}
 		cb = parsecmd(buf, n);
 		if(cb->f[0] && strcmp(cb->f[0], "nonblocking") == 0){
 			if(cb->nf <= 1)
@@ -380,7 +396,7 @@ addethercard(char* t, int (*r)(Ether*))
 }
 
 static int
-etherqueuesize(Ether *ether)
+etheroqsize(Ether *ether)
 {
 	int b, q;
 
@@ -390,6 +406,12 @@ etherqueuesize(Ether *ether)
 	if(mainmem->maxsize / 8 < q)
 		q = mainmem->maxsize / 8;
 	return q;
+}
+
+static int
+etheriqsize(Ether *ether)
+{
+	return etheroqsize(ether) * 2;
 }
 
 static Ether*
@@ -445,7 +467,7 @@ Nope:
 	print("#l%d: %s: %dMbps port 0x%lluX irq %d ea %E\n",
 		ctlrno, ether->type, ether->mbps, (uvlong)ether->port, ether->irq, ether->ea);
 
-	q = etherqueuesize(ether);
+	q = etheroqsize(ether);
 	if(ether->oq == nil){
 		ether->oq = qopen(q, Qmsg, 0, 0);
 		if(ether->oq == nil)
@@ -453,7 +475,7 @@ Nope:
 	} else {
 		qsetlimit(ether->oq, q);
 	}
-	netifinit(ether, ether->name, Ntypes, q*2);
+	netifinit(ether, ether->name, Ntypes, etheriqsize(ether));
 	ether->alen = Eaddrlen;
 	memmove(ether->addr, ether->ea, Eaddrlen);
 	memset(ether->bcast, 0xFF, Eaddrlen);
@@ -464,17 +486,13 @@ Nope:
 void
 ethersetspeed(Ether *ether, int mbps)
 {
-	int q;
-
 	if(ether->mbps == mbps)
 		return;
 	ether->mbps = mbps;
-
-	if(mbps <= 0 || ether->f == nil || ether->oq == nil)
+	if(mbps <= 0 || ether->f == nil || ether->oq == nil || ether->bypass)
 		return;
-	q = etherqueuesize(ether);
-	qsetlimit(ether->oq, q);
-	netifsetlimit(ether, q*2);
+	qsetlimit(ether->oq, etheroqsize(ether));
+	netifsetlimit(ether, etheriqsize(ether));
 }
 
 void
@@ -484,10 +502,9 @@ ethersetlink(Ether *ether, int link)
 	if(!!ether->link == link)
 		return;
 	ether->link = link;
-
-	if(ether->f == nil)
+	if(ether->f == nil || ether->bypass)
 		return;
-
+	memset(ether->mactab, 0, sizeof(ether->mactab));
 	if(link)
 		print("#l%d: %s: link up: %dMbps\n",
 			ether->ctlrno, ether->type, ether->mbps);
