@@ -49,11 +49,6 @@ typedef struct Mibstats Mibstats;
 typedef struct Rx Rx;
 typedef struct Tx Tx;
 
-static struct {
-	Lock;
-	Block	*head;
-} freeblocks;
-
 /* hardware receive buffer descriptor */
 struct Rx {
 	ulong	cs;
@@ -128,6 +123,8 @@ struct Ctlr {
 
 	Lock	initlock;
 	int	init;
+
+	Bpool	pool;
 
 	Rx	*rx;		/* receive descriptors */
 	Block	*rxb[Nrx];	/* blocks belonging to the descriptors */
@@ -515,36 +512,6 @@ static uchar zeroea[Eaddrlen];
 static void getmibstats(Ctlr *);
 
 static void
-rxfreeb(Block *b)
-{
-	b->wp = b->rp =
-		(uchar*)((uintptr)(b->lim - Rxblklen) & ~(Bufalign - 1));
-	assert(((uintptr)b->rp & (Bufalign - 1)) == 0);
-	b->free = rxfreeb;
-
-	ilock(&freeblocks);
-	b->next = freeblocks.head;
-	freeblocks.head = b;
-	iunlock(&freeblocks);
-}
-
-static Block *
-rxallocb(void)
-{
-	Block *b;
-
-	ilock(&freeblocks);
-	b = freeblocks.head;
-	if(b != nil) {
-		freeblocks.head = b->next;
-		b->next = nil;
-		b->free = rxfreeb;
-	}
-	iunlock(&freeblocks);
-	return b;
-}
-
-static void
 rxkick(Ctlr *ctlr)
 {
 	Gbereg *reg = ctlr->reg;
@@ -575,12 +542,9 @@ rxreplenish(Ctlr *ctlr)
 	Block *b;
 
 	while(ctlr->rxb[ctlr->rxtail] == nil) {
-		b = rxallocb();
-		if(b == nil) {
-			iprint("#l%d: rxreplenish out of buffers\n",
-				ctlr->ether->ctlrno);
+		b = iallocbp(&ctlr->pool);
+		if(b == nil)
 			break;
-		}
 
 		ctlr->rxb[ctlr->rxtail] = b;
 
@@ -1437,25 +1401,8 @@ static void
 ctlralloc(Ctlr *ctlr)
 {
 	int i;
-	Block *b;
 	Rx *r;
 	Tx *t;
-
-	ilock(&freeblocks);
-	for(i = 0; i < Nrxblks; i++) {
-		b = iallocb(Rxblklen+Bufalign-1);
-		if(b == nil) {
-			iprint("ether1116: no memory for rx buffers\n");
-			break;
-		}
-		b->wp = b->rp = (uchar*)
-			((uintptr)(b->lim - Rxblklen) & ~(Bufalign - 1));
-		assert(((uintptr)b->rp & (Bufalign - 1)) == 0);
-		b->free = rxfreeb;
-		b->next = freeblocks.head;
-		freeblocks.head = b;
-	}
-	iunlock(&freeblocks);
 
 	/*
 	 * allocate uncached rx ring descriptors because rings are shared
@@ -1473,6 +1420,12 @@ ctlralloc(Ctlr *ctlr)
 		ctlr->rxb[i] = nil;
 	}
 	ctlr->rxtail = ctlr->rxhead = 0;
+
+	/* allocate private buffer pool */
+	ctlr->pool.size = Rxblklen;
+	ctlr->pool.align = Bufalign;
+	growbp(&ctlr->pool, Nrx*4);
+
 	rxreplenish(ctlr);
 
 	/* allocate uncached tx ring descriptors */

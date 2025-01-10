@@ -518,6 +518,8 @@ struct Ctlr {
 	int	ntd;
 	int	rbsz;
 
+	Bpool	pool;
+
 	u32int	*nic;
 	Lock	imlock;
 	int	im;			/* interrupt mask */
@@ -907,24 +909,25 @@ static void
 i82563replenish(Ctlr *ctlr)
 {
 	uint rdt, i;
+	uvlong pa;
 	Block *bp;
 	Rd *rd;
 
 	i = 0;
 	for(rdt = ctlr->rdt; NEXT(rdt, ctlr->nrd) != ctlr->rdh; rdt = NEXT(rdt, ctlr->nrd)){
 		rd = &ctlr->rdba[rdt];
-		if(ctlr->rb[rdt] != nil){
-			iprint("#l%d: %s: tx overrun\n", ctlr->edev->ctlrno, cname(ctlr));
+		if(ctlr->rb[rdt] != nil)
 			break;
-		}
-		i++;
-		bp = allocb(ctlr->rbsz + Rbalign);
-		bp->rp = bp->wp = (uchar*)ROUND((uintptr)bp->base, Rbalign);
+		bp = iallocbp(&ctlr->pool);
+		if(bp == nil)
+			break;
 		ctlr->rb[rdt] = bp;
-		rd->addr[0] = PCIWADDR(bp->rp);
-		rd->addr[1] = 0;
+		pa = PCIWADDR(bp->rp);
+		rd->addr[0] = pa;
+		rd->addr[1] = pa>>32;
 		rd->status = 0;
 		ctlr->rdfree++;
+		i++;
 	}
 	if(i != 0){
 		coherence();
@@ -977,6 +980,13 @@ i82563rxinit(Ctlr *ctlr)
 			ctlr->rb[i] = nil;
 			freeb(bp);
 		}
+
+	if(ctlr->pool.size == 0){
+		ctlr->pool.size = ctlr->rbsz;
+		ctlr->pool.align = Rbalign;
+		growbp(&ctlr->pool, Nrb);
+	}
+
 	if(cttab[ctlr->type].flag & F75)
 		csr32w(ctlr, Rxdctl, 1<<WthreshSHIFT | 8<<PthreshSHIFT | 1<<HthreshSHIFT | Enable);
 	else
@@ -1007,6 +1017,7 @@ i82563rproc(void *arg)
 	ctlr = edev->ctlr;
 
 	i82563rxinit(ctlr);
+
 	csr32w(ctlr, Rctl, csr32r(ctlr, Rctl) | Ren);
 	if(cttab[ctlr->type].flag & F75){
 		csr32w(ctlr, Rxdctl, csr32r(ctlr, Rxdctl) | Enable);

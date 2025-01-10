@@ -121,6 +121,10 @@ sd53c8xx.$O:			../pc/sd53c8xx.i
 ../pc/sd53c8xx.i:		../pc/sd53c8xx.n
 	cd ../pc && mk sd53c8xx.i
 
+etherm10g.$O:			../pc/etherm10g2k.i ../pc/etherm10g4k.i
+../pc/etherm10g%.i:		../pc/etherm10g%.fw
+	cd ../pc && mk etherm10g$stem.i
+
 $SDEV pmmc.$O:			../port/sd.h
 sdiahci.$O:			ahci.h
 devaoe.$O sdaoe.$O:		../port/aoe.h

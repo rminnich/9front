@@ -13,31 +13,24 @@ enum
 };
 
 static Block*
-_allocb(int size)
+_allocb(ulong size, ulong align)
 {
 	Block *b;
-	uintptr addr;
 
-	size += Tlrspc;
-	size = ROUND(size, BLOCKALIGN);
-	if((b = mallocz(sizeof(Block)+BLOCKALIGN+Hdrspc+size, 0)) == nil)
+	size = ROUND(size+Tlrspc, align);
+	if((b = mallocz(sizeof(Block)+Hdrspc+size+align-1, 0)) == nil)
 		return nil;
 
 	b->next = nil;
 	b->list = nil;
-	b->free = nil;
+	b->pool = nil;
 	b->flag = 0;
 
 	/* align start of data portion by rounding up */
-	addr = (uintptr)b;
-	addr = ROUND(addr + sizeof(Block), BLOCKALIGN);
-	b->base = (uchar*)addr;
+	b->base = (uchar*)ROUND((uintptr)&b[1], (uintptr)align);
 
 	/* align end of data portion by rounding down */
-	b->lim = (uchar*)b + msize(b);
-	addr = (uintptr)b->lim;
-	addr &= ~(BLOCKALIGN-1);
-	b->lim = (uchar*)addr;
+	b->lim = (uchar*)(((uintptr)b + msize(b)) & ~((uintptr)align-1));
 
 	/* leave room at beginning for added headers */
 	b->wp = b->rp = b->lim - size;
@@ -55,7 +48,7 @@ allocb(int size)
 	 */
 	if(up == nil)
 		panic("allocb without up: %#p", getcallerpc(&size));
-	while((b = _allocb(size)) == nil){
+	while((b = _allocb(size, BLOCKALIGN)) == nil){
 		if(up->nlocks || m->ilockdepth || !islo()){
 			xsummary();
 			mallocsummary();
@@ -76,7 +69,7 @@ iallocb(int size)
 {
 	Block *b;
 
-	if((b = _allocb(size)) == nil){
+	if((b = _allocb(size, BLOCKALIGN)) == nil){
 		static ulong nerr;
 		if((nerr++%10000)==0){
 			if(nerr > 10000000){
@@ -97,20 +90,20 @@ iallocb(int size)
 void
 freeb(Block *b)
 {
+	Bpool *p;
 	void *dead = (void*)Bdead;
 
 	if(b == nil)
 		return;
 
-	/*
-	 * drivers which perform non cache coherent DMA manage their own buffer
-	 * pool of uncached buffers and provide their own free routine.
-	 */
-	if(b->free != nil) {
+	if((p = b->pool) != nil) {
 		b->next = nil;
-		b->list = nil;
-
-		b->free(b);
+		b->rp = b->wp = b->lim - ROUND(p->size+Tlrspc, p->align);
+		b->flag = BINTR;
+		ilock(p);
+		b->list = p->head;
+		p->head = b;
+		iunlock(p);
 		return;
 	}
 
@@ -121,8 +114,80 @@ freeb(Block *b)
 	b->wp = dead;
 	b->lim = dead;
 	b->base = dead;
+	b->pool = dead;
 
 	free(b);
+}
+
+static ulong
+_alignment(ulong align)
+{
+	if(align <= BLOCKALIGN)
+		return BLOCKALIGN;
+
+	/* make it a power of two */
+	align--;
+	align |= align>>1;
+	align |= align>>2;
+	align |= align>>4;
+	align |= align>>8;
+	align |= align>>16;
+	align++;
+
+	return align;
+}
+
+Block*
+iallocbp(Bpool *p)
+{
+	Block *b;
+
+	ilock(p);
+	if((b = p->head) != nil){
+		p->head = b->list;
+		b->list = nil;
+		iunlock(p);
+	} else {
+		iunlock(p);
+		p->align = _alignment(p->align);
+		b = _allocb(p->size, p->align);
+		if(b == nil)
+			return nil;
+		setmalloctag(b, getcallerpc(&p));
+		b->pool = p;
+		b->flag = BINTR;
+	}
+
+	return b;
+}
+
+void
+growbp(Bpool *p, int n)
+{
+	ulong size;
+	Block *b;
+	uchar *a;
+
+	if(n < 1)
+		return;
+	if((b = malloc(sizeof(Block)*n)) == nil)
+		return;
+	p->align = _alignment(p->align);
+	size = ROUND(p->size+Hdrspc+Tlrspc, p->align);
+	if((a = mallocalign(size*n, p->align, 0, 0)) == nil){
+		free(b);
+		return;
+	}
+	setmalloctag(b, getcallerpc(&p));
+	while(n > 0){
+		b->base = a;
+		a += size;
+		b->lim = a;
+		b->pool = p;
+		freeb(b);
+		b++;
+		n--;
+	}
 }
 
 void
@@ -132,14 +197,14 @@ checkb(Block *b, char *msg)
 
 	if(b == dead)
 		panic("checkb b %s %#p", msg, b);
-	if(b->base == dead || b->lim == dead || b->next == dead
-	  || b->rp == dead || b->wp == dead){
-		print("checkb: base %#p lim %#p next %#p\n",
-			b->base, b->lim, b->next);
+	if(b->base == dead || b->lim == dead
+	|| b->next == dead || b->list == dead || b->pool == dead
+	|| b->rp == dead || b->wp == dead){
+		print("checkb: base %#p lim %#p next %#p list %#p pool %#p\n",
+			b->base, b->lim, b->next, b->list, b->pool);
 		print("checkb: rp %#p wp %#p\n", b->rp, b->wp);
 		panic("checkb dead: %s", msg);
 	}
-
 	if(b->base > b->lim)
 		panic("checkb 0 %s %#p %#p", msg, b->base, b->lim);
 	if(b->rp < b->base)

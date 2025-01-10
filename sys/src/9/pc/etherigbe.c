@@ -492,6 +492,8 @@ typedef struct Ctlr {
 	uchar	ra[Eaddrlen];		/* receive address */
 	ulong	mta[128];		/* multicast table array */
 
+	Bpool	pool;
+
 	Rendez	rrendez;
 	int	rim;
 	int	rdfree;
@@ -858,6 +860,7 @@ igbetxinit(Ctlr* ctlr)
 {
 	int i, r;
 	Block *bp;
+	uvlong pa;
 
 	csr32w(ctlr, Tctl, (0x0F<<CtSHIFT)|Psp|(66<<ColdSHIFT));
 	switch(ctlr->id){
@@ -887,8 +890,9 @@ igbetxinit(Ctlr* ctlr)
 	csr32w(ctlr, Ait, 0);
 	csr32w(ctlr, Txdmac, 0);
 
-	csr32w(ctlr, Tdbal, PCIWADDR(ctlr->tdba));
-	csr32w(ctlr, Tdbah, 0);
+	pa = PCIWADDR(ctlr->tdba);
+	csr32w(ctlr, Tdbal, pa);
+	csr32w(ctlr, Tdbah, pa >> 32);
 	csr32w(ctlr, Tdlen, ctlr->ntd*sizeof(Td));
 	ctlr->tdh = PREV(0, ctlr->ntd);
 	csr32w(ctlr, Tdh, 0);
@@ -942,6 +946,7 @@ igbetransmit(Ether* edev)
 	Block *bp;
 	Ctlr *ctlr;
 	int tdh, tdt;
+	uvlong pa;
 
 	ctlr = edev->ctlr;
 
@@ -969,7 +974,9 @@ igbetransmit(Ether* edev)
 		if((bp = qget(edev->oq)) == nil)
 			break;
 		td = &ctlr->tdba[tdt];
-		td->addr[0] = PCIWADDR(bp->rp);
+		pa = PCIWADDR(bp->rp);
+		td->addr[0] = pa;
+		td->addr[1] = pa >> 32;
 		td->control = ((BLEN(bp) & LenMASK)<<LenSHIFT);
 		td->control |= Dext|Ifcs|Teop|DtypeDD;
 		ctlr->tb[tdt] = bp;
@@ -995,17 +1002,19 @@ igbereplenish(Ctlr* ctlr)
 	Rd *rd;
 	int rdt;
 	Block *bp;
+	uvlong pa;
 
 	rdt = ctlr->rdt;
 	while(NEXT(rdt, ctlr->nrd) != ctlr->rdh){
 		rd = &ctlr->rdba[rdt];
 		if(ctlr->rb[rdt] == nil){
-			bp = allocb(Rbsz);
-			bp->rp = bp->lim - Rbsz;
-			bp->wp = bp->rp;
+			bp = iallocbp(&ctlr->pool);
+			if(bp == nil)
+				break;
 			ctlr->rb[rdt] = bp;
-			rd->addr[0] = PCIWADDR(bp->rp);
-			rd->addr[1] = 0;
+			pa = PCIWADDR(bp->rp);
+			rd->addr[0] = pa;
+			rd->addr[1] = pa >> 32;
 		}
 		coherence();
 		rd->status = 0;
@@ -1021,12 +1030,14 @@ igberxinit(Ctlr* ctlr)
 {
 	int i;
 	Block *bp;
+	uvlong pa;
 
 	/* temporarily keep Mpe on */
 	csr32w(ctlr, Rctl, Dpf|Bsize2048|Bam|RdtmsHALF|Mpe);
 
-	csr32w(ctlr, Rdbal, PCIWADDR(ctlr->rdba));
-	csr32w(ctlr, Rdbah, 0);
+	pa = PCIWADDR(ctlr->rdba);
+	csr32w(ctlr, Rdbal, pa);
+	csr32w(ctlr, Rdbah, pa >> 32);
 	csr32w(ctlr, Rdlen, ctlr->nrd*sizeof(Rd));
 	ctlr->rdh = 0;
 	csr32w(ctlr, Rdh, 0);
@@ -1040,6 +1051,10 @@ igberxinit(Ctlr* ctlr)
 			ctlr->rb[i] = nil;
 			freeb(bp);
 		}
+	}
+	if(ctlr->pool.size == 0){
+		ctlr->pool.size = Rbsz;
+		growbp(&ctlr->pool, Nrb);
 	}
 	igbereplenish(ctlr);
 

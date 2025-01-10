@@ -242,6 +242,8 @@ struct Ctlr
 	Lock;
 	u32int	*regs;
 
+	Bpool	pool[1];
+
 	Desc	rd[256];
 	Desc	td[256];
 
@@ -315,9 +317,10 @@ setdma(Desc *d, void *v)
 }
 
 static void
-replenish(Desc *d)
+replenish(Ctlr *c, Desc *d)
 {
-	d->b = allocb(Rbsz);
+	while((d->b = iallocbp(c->pool)) == nil)
+		resrcwait("out of genet rx buffers");
 	dmaflush(1, d->b->rp, Rbsz);
 	setdma(d, d->b->rp);
 }
@@ -355,7 +358,7 @@ recvproc(void *arg)
 		b = d->b;
 		dmaflush(0, b->rp, Rbsz);
 		s = REG(d->d[0]);
-		replenish(d);
+		replenish(ctlr, d);
 		coherence();
 		ctlr->rx->rp = (ctlr->rx->rp + 1) & 0xFFFF;
 		REG(ctlr->rx->regs[RxRP]) = ctlr->rx->rp;
@@ -503,15 +506,22 @@ allocbufs(Ctlr *ctlr)
 {
 	int i;
 
+	if(ctlr->pool->size == 0){
+		ctlr->pool->size = Rbsz;
+		growbp(ctlr->pool, nelem(ctlr->rd)*4);
+	}
+
 	if(scratch == nil){
-		scratch = allocb(Rbsz);
+		scratch = iallocbp(ctlr->pool);
+		if(scratch == nil)
+			error("out of rx buffers");
 		memset(scratch->rp, 0xFF, Rbsz);
 		dmaflush(1, scratch->rp, Rbsz);
 	}
 
 	for(i = 0; i < nelem(ctlr->rd); i++){
 		ctlr->rd[i].d = &ctlr->regs[RdmaOffset + i*3];
-		replenish(&ctlr->rd[i]);
+		replenish(ctlr, &ctlr->rd[i]);
 	}
 
 	for(i = 0; i < nelem(ctlr->td); i++){

@@ -66,6 +66,7 @@ link
 #	etherelnk3	pci
 #	etherga620	pci
 	etherigbe	pci ethermii
+#	etherm10g	pci
 #	ethervgbe	pci ethermii
 #	ethervt6102	pci ethermii
 #	ethervt6105m	pci ethermii

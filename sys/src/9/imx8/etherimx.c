@@ -216,6 +216,8 @@ struct Ctlr
 	u32int	*regs;
 	u32int	intmask;
 
+	Bpool	pool;
+
 	struct {
 		Block	*b[256];
 		Descr	*d;
@@ -441,7 +443,9 @@ rxproc(void *arg)
 			etheriq(edev, b);
 
 			/* replenish */
-			b = allocb(R_BUF_SIZE);
+			while((b = iallocbp(&ctlr->pool)) == nil)
+				resrcwait("out of imx rx buffers");
+
 			ctlr->rx->b[i] = b;
 			dmaflush(1, b->rp, R_BUF_SIZE);
 			d->addr = PADDR(b->rp); 
@@ -569,11 +573,23 @@ attach(Ether *edev)
 
 	if(ctlr->rx->d == nil)
 		ctlr->rx->d = ucalloc(sizeof(Descr) * nelem(ctlr->rx->b));
+
+	if(ctlr->pool.size == 0){
+		ctlr->pool.size = R_BUF_SIZE;
+		ctlr->pool.align = BLOCKALIGN;
+		growbp(&ctlr->pool, 4*nelem(ctlr->rx->b));
+	}
+
 	for(i=0; i<nelem(ctlr->rx->b); i++){
-		Block *b = allocb(R_BUF_SIZE);
-		ctlr->rx->b[i] = b;
-		d = &ctlr->rx->d[i];
+		Block *b = ctlr->rx->b[i];
+		if(b == nil){
+			b = iallocbp(&ctlr->pool);
+			if(b == nil)
+				error("out of rx buffers");
+			ctlr->rx->b[i] = b;
+		}
 		dmaflush(1, b->rp, R_BUF_SIZE);
+		d = &ctlr->rx->d[i];
 		d->addr = PADDR(b->rp);
 		d->status = RD_E;
 	}

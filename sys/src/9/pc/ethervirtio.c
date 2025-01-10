@@ -156,6 +156,8 @@ struct Ctlr {
 	ulong	feat;
 	int	nqueue;
 
+	Bpool	pool;
+
 	/* virtioether has 3 queues: rx, tx and ctl */
 	Vqueue	queue[3];
 };
@@ -275,6 +277,9 @@ rxproc(void *v)
 	header = smalloc(VheaderSize);
 	blocks = smalloc(sizeof(Block*) * (q->qsize/2));
 
+	ctlr->pool.size = ETHERMAXTU;
+	growbp(&ctlr->pool, q->qsize*2);
+
 	for(i = 0; i < q->qsize/2; i++){
 		j = i << 1;
 		q->desc[j].addr = PADDR(header);
@@ -300,7 +305,7 @@ rxproc(void *v)
 			i = q->avail->idx & (q->qmask >> 1);
 			if(blocks[i] != nil)
 				break;
-			if((b = iallocb(ETHERMAXTU)) == nil)
+			if((b = iallocbp(&ctlr->pool)) == nil)
 				break;
 			blocks[i] = b;
 			j = (i << 1) | 1;

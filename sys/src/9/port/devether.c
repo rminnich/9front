@@ -212,16 +212,22 @@ ethermux(Ether *ether, Block *bp, Netfile **from)
 			etherrtrace(f, pkt, len);
 			continue;
 		}
-		if(dispose && x == nil)
+		if(dispose && x == nil){
 			x = f;
-		else if((xbp = iallocb(len)) != nil){
+			continue;
+		}
+		if(bp->pool != nil && len <= bp->pool->size)
+			xbp = iallocbp(bp->pool);
+		else
+			xbp = iallocb(len);
+		if(xbp != nil){
 			memmove(xbp->wp, pkt, len);
 			xbp->wp += len;
-			xbp->flag = bp->flag;
-			if(qpass(f->in, xbp) < 0)
-				ether->soverflows++;
-		} else
-			ether->soverflows++;
+			xbp->flag |= bp->flag & ~(BINTR|BFREE);
+			if(qpass(f->in, xbp) >= 0)
+				continue;
+		}
+		ether->soverflows++;
 	}
 	if(x != nil){
 		if(qpass(x->in, bp) < 0)
@@ -376,28 +382,20 @@ addethercard(char* t, int (*r)(Ether*))
 static int
 etherqueuesize(Ether *ether)
 {
-	int lg, mb;
-	ulong bsz;
+	int b, q;
 
-	/* compute log10(mbps) into lg */
-	for(lg = 0, mb = ether->mbps; mb >= 10; lg++)
-		mb /= 10;
-	if (lg > 0)
-		lg--;
-	if (lg > 14)			/* 2^(14+17) = 2³¹ */
-		lg = 14;
-	/* allocate larger output queues for higher-speed interfaces */
-	bsz = 1UL << (lg + 17);		/* 2¹⁷ = 128K, bsz = 2ⁿ × 128K */
-	while (bsz > mainmem->maxsize / 8 && bsz > 128*1024)
-		bsz /= 2;
-if(0) print("#l%d: %d Mbps -> queue size %lud\n", ether->ctlrno, ether->mbps, bsz);
-	return (int)bsz;
+	b = ether->mbps * 2*125;	/* 2ms */
+	for(q = 128*1024; q < b; q <<= 1)
+		;
+	if(mainmem->maxsize / 8 < q)
+		q = mainmem->maxsize / 8;
+	return q;
 }
 
 static Ether*
 etherprobe(int cardno, int ctlrno, char *conf)
 {
-	int i;
+	int i, q;
 	Ether *ether;
 
 	ether = malloc(sizeof(Ether));
@@ -447,14 +445,15 @@ Nope:
 	print("#l%d: %s: %dMbps port 0x%lluX irq %d ea %E\n",
 		ctlrno, ether->type, ether->mbps, (uvlong)ether->port, ether->irq, ether->ea);
 
-	netifinit(ether, ether->name, Ntypes, etherqueuesize(ether));
+	q = etherqueuesize(ether);
 	if(ether->oq == nil){
-		ether->oq = qopen(ether->limit, Qmsg, 0, 0);
+		ether->oq = qopen(q, Qmsg, 0, 0);
 		if(ether->oq == nil)
 			panic("etherreset %s: can't allocate output queue", ether->name);
 	} else {
-		qsetlimit(ether->oq, ether->limit);
+		qsetlimit(ether->oq, q);
 	}
+	netifinit(ether, ether->name, Ntypes, q*2);
 	ether->alen = Eaddrlen;
 	memmove(ether->addr, ether->ea, Eaddrlen);
 	memset(ether->bcast, 0xFF, Eaddrlen);
@@ -465,15 +464,17 @@ Nope:
 void
 ethersetspeed(Ether *ether, int mbps)
 {
+	int q;
+
 	if(ether->mbps == mbps)
 		return;
 	ether->mbps = mbps;
 
 	if(mbps <= 0 || ether->f == nil || ether->oq == nil)
 		return;
-
-	netifsetlimit(ether, etherqueuesize(ether));
-	qsetlimit(ether->oq, ether->limit);
+	q = etherqueuesize(ether);
+	qsetlimit(ether->oq, q);
+	netifsetlimit(ether, q*2);
 }
 
 void

@@ -308,6 +308,8 @@ typedef struct Ctlr {
 	int	nrd;
 	int	ntd;
 
+	Bpool	pool;
+
 	Ds*	rd;
 	Ds*	rdh;
 
@@ -358,10 +360,6 @@ static Ctlr* vt6105Mctlrtail;
 #define csr8w(c, r, b)	(outb((c)->port+(r), (int)(b)))
 #define csr16w(c, r, w)	(outs((c)->port+(r), (ushort)(w)))
 #define csr32w(c, r, w)	(outl((c)->port+(r), (ulong)(w)))
-
-static Lock vt6105Mrblock;			/* receive Block freelist */
-static Block* vt6105Mrbpool;
-static uint vt6105Mrbpoolsz;
 
 typedef struct Regs Regs;
 typedef struct Regs {
@@ -472,7 +470,6 @@ vt6105Mifstat(void *arg, char *p, char *e)
 	p = seprint(p, e, "tuok: %ud\n", ctlr->tuok);
 	p = seprint(p, e, "ipok: %ud\n", ctlr->ipok);
 
-	p = seprint(p, e, "rbpoolsz: %ud\n", vt6105Mrbpoolsz);
 	p = seprint(p, e, "totalt: %uld\n", ctlr->totalt);
 
 	for(i = 0; regs[i].name != nil; i++){
@@ -575,38 +572,6 @@ enable:
 }
 
 static void
-vt6105Mrbfree(Block* bp)
-{
-	bp->rp = bp->lim - (Rdbsz+3);
-	bp->wp = bp->rp;
- 	bp->flag &= ~(Bipck | Budpck | Btcpck | Bpktck);
-
-	ilock(&vt6105Mrblock);
-	bp->next = vt6105Mrbpool;
-	vt6105Mrbpool = bp;
-	iunlock(&vt6105Mrblock);
-}
-
-static Block*
-vt6105Mrballoc(void)
-{
-	Block *bp;
-
-	ilock(&vt6105Mrblock);
-	if((bp = vt6105Mrbpool) != nil){
-		vt6105Mrbpool = bp->next;
-		bp->next = nil;
-	}
-	iunlock(&vt6105Mrblock);
-
-	if(bp == nil && (bp = iallocb(Rdbsz+3)) != nil){
-		bp->free = vt6105Mrbfree;
-		vt6105Mrbpoolsz++;
-	}
-	return bp;
-}
-
-static void
 vt6105Mattach(Ether* edev)
 {
 	Ctlr *ctlr;
@@ -655,6 +620,12 @@ vt6105Mattach(Ether* edev)
 		nexterror();
 	}
 
+	if(ctlr->pool.size == 0){
+		ctlr->pool.size = Rdbsz;
+		ctlr->pool.align = 4;
+		growbp(&ctlr->pool, ctlr->nrd);
+	}
+
 	prev = (Ds*)(alloc + (ctlr->nrd-1)*dsz);
 	for(i = 0; i < ctlr->nrd; i++){
 		ds = (Ds*)alloc;
@@ -663,10 +634,8 @@ vt6105Mattach(Ether* edev)
 		ds->control = Ipkt|Tcpkt|Udpkt|Rdbsz;
 		ds->branch = PCIWADDR(alloc);
 
-		ds->bp = vt6105Mrballoc();
-		if(ds->bp == nil)
-			error("vt6105M: can't allocate receive ring\n");
-		ds->bp->rp = (uchar*)ROUNDUP((ulong)ds->bp->rp, 4);
+		if((ds->bp = iallocbp(&ctlr->pool)) == nil)
+			error(Enomem);
 		ds->addr = PCIWADDR(ds->bp->rp);
 
 		ds->next = (Ds*)alloc;
@@ -853,7 +822,7 @@ vt6105Mreceive(Ether* edev)
 					ctlr->rxstats[i]++;
 			}
 		}
-		else if(bp = vt6105Mrballoc()){
+		else if(bp = iallocbp(&ctlr->pool)){
 			if(ds->control & Tuok){
 				ds->bp->flag |= Btcpck|Budpck;
 				ctlr->tuok++;
@@ -865,7 +834,6 @@ vt6105Mreceive(Ether* edev)
 			len = ((ds->status & LengthMASK)>>LengthSHIFT)-4;
 			ds->bp->wp = ds->bp->rp+len;
 			etheriq(edev, ds->bp);
-			bp->rp = (uchar*)ROUNDUP((ulong)bp->rp, 4);
 			ds->addr = PCIWADDR(bp->rp);
 			ds->bp = bp;
 		}

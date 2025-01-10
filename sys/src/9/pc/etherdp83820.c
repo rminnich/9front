@@ -362,6 +362,8 @@ typedef struct Ctlr {
 
 	Mii*	mii;
 
+	Bpool	pool;
+
 	Lock	rdlock;			/* receive */
 	Desc*	rd;
 	int	nrd;
@@ -394,9 +396,6 @@ typedef struct Ctlr {
 
 static Ctlr* dp83820ctlrhead;
 static Ctlr* dp83820ctlrtail;
-
-static Lock dp83820rblock;		/* free receive Blocks */
-static Block* dp83820rbpool;
 
 static char* dp83820mibs[Nmibd] = {
 	"RXErroredPkts",
@@ -497,47 +496,25 @@ dp83820miimiw(Mii* mii, int pa, int ra, int data)
 }
 
 static Block *
-dp83820rballoc(Desc* desc)
+dp83820rballoc(Ctlr *ctlr, Desc* desc)
 {
 	Block *bp;
 
-	if(desc->bp == nil){
-		ilock(&dp83820rblock);
-		if((bp = dp83820rbpool) == nil){
-			iunlock(&dp83820rblock);
-			desc->bp = nil;
+	bp = desc->bp;
+	if(bp == nil){
+		desc->bp = iallocbp(&ctlr->pool);
+		if(desc->bp == nil){
 			desc->cmdsts = Own;
 			return nil;
 		}
-		dp83820rbpool = bp->next;
-		bp->next = nil;
-		iunlock(&dp83820rblock);
-	
 		desc->bufptr = PCIWADDR(bp->rp);
 		desc->bp = bp;
-	}
-	else{
-		bp = desc->bp;
-		bp->rp = bp->lim - Rbsz;
-		bp->wp = bp->rp;
 	}
 
 	coherence();
 	desc->cmdsts = Intr|Rbsz;
 
 	return bp;
-}
-
-static void
-dp83820rbfree(Block *bp)
-{
-	bp->rp = bp->lim - Rbsz;
-	bp->wp = bp->rp;
-
-	ilock(&dp83820rblock);
-	bp->next = dp83820rbpool;
-	dp83820rbpool = bp;
-	iunlock(&dp83820rblock);
 }
 
 static void
@@ -635,6 +612,11 @@ dp83820init(Ether* edev)
 
 	dp83820halt(ctlr);
 
+	if(ctlr->pool.size == 0){
+		ctlr->pool.size = Rbsz;
+		growbp(&ctlr->pool, ctlr->nrb);
+	}
+
 	/*
 	 * Receiver
 	 */
@@ -646,7 +628,7 @@ dp83820init(Ether* edev)
 	for(i = 0; i < ctlr->nrd; i++){
 		desc = &ctlr->rd[i];
 		desc->link = PCIWADDR(&ctlr->rd[NEXT(i, ctlr->nrd)]);
-		if(dp83820rballoc(desc) == nil)
+		if(dp83820rballoc(ctlr, desc) == nil)
 			continue;
 	}
 	csr32w(ctlr, Rxdphi, 0);
@@ -698,7 +680,6 @@ dp83820init(Ether* edev)
 static void
 dp83820attach(Ether* edev)
 {
-	Block *bp;
 	Ctlr *ctlr;
 
 	ctlr = edev->ctlr;
@@ -739,14 +720,6 @@ dp83820attach(Ether* edev)
 	ctlr->alloc = mallocz((ctlr->nrd+ctlr->ntd)*sizeof(Desc) + 7, 0);
 	if(ctlr->alloc == nil)
 		error(Enomem);
-
-	for(ctlr->nrb = 0; ctlr->nrb < Nrb; ctlr->nrb++){
-		if((bp = allocb(Rbsz)) == nil)
-			break;
-		bp->free = dp83820rbfree;
-		dp83820rbfree(bp);
-	}
-
 	dp83820init(edev);
 
 	qunlock(&ctlr->alock);
@@ -848,7 +821,7 @@ dp83820interrupt(Ureg*, void* arg)
 						iprint(" %2.2uX", bp->rp[i]);
 					iprint("\n");
 				}
-				dp83820rballoc(desc);
+				dp83820rballoc(ctlr, desc);
 
 				x = NEXT(x, ctlr->nrd);
 				desc = &ctlr->rd[x];

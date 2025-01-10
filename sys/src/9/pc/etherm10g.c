@@ -26,8 +26,8 @@
 #define	pcicapdbg(...)
 #define malign(n)	mallocalign((n), 4*KiB, 0, 0)
 
-#include "etherm10g2k.i"
-#include "etherm10g4k.i"
+#include "../pc/etherm10g2k.i"
+#include "../pc/etherm10g4k.i"
 
 static int 	debug		= 0;
 static char	Etimeout[]	= "timeout";
@@ -137,18 +137,8 @@ typedef struct {
 } Tx;
 
 typedef struct {
-	Lock;
-	Block	*head;
-	uint	size;		/* buffer size of each block */
-	uint	n;		/* n free buffers */
-	uint	cnt;
-} Bpool;
+	Bpool	pool;
 
-static Bpool	smpool 	= { .size = 128, };
-static Bpool	bgpool	= { .size = Maxmtu, };
-
-typedef struct {
-	Bpool	*pool;		/* free buffers */
 	ulong	*lanai;		/* rx ring; we have no permanent host shadow */
 	Block	**host;		/* called "info" in myricom driver */
 //	uchar	*wcfifo;	/* cmd submission fifo */
@@ -254,51 +244,6 @@ enum {
 };
 
 static int
-pcicap(Pcidev *p, int cap)
-{
-	int i, c, off;
-
-	pcicapdbg("pcicap: %x:%d\n", p->vid, p->did);
-	off = 0x34;			/* 0x14 for cardbus */
-	for(i = 48; i--; ){
-		pcicapdbg("\t" "loop %x\n", off);
-		off = pcicfgr8(p, off);
-		pcicapdbg("\t" "pcicfgr8 %x\n", off);
-		if(off < 0x40)
-			break;
-		off &= ~3;
-		c = pcicfgr8(p, off);
-		pcicapdbg("\t" "pcicfgr8 %x\n", c);
-		if(c == 0xff)
-			break;
-		if(c == cap)
-			return off;
-		off++;
-	}
-	return 0;
-}
-
-/*
- * this function doesn't work because pcicgr32 doesn't have access
- * to the pcie extended configuration space.
- */
-static int
-pciecap(Pcidev *p, int cap)
-{
-	uint off, i;
-
-	off = 0x100;
-	while(((i = pcicfgr32(p, off)) & 0xffff) != cap){
-		off = i >> 20;
-		print("m10g: pciecap offset = %ud",  off);
-		if(off < 0x100 || off >= 4*KiB - 1)
-			return 0;
-	}
-	print("m10g: pciecap found = %ud",  off);
-	return off;
-}
-
-static int
 setpcie(Pcidev *p)
 {
 	int off;
@@ -328,7 +273,7 @@ whichfw(Pcidev *p)
 	lanes = (cap>>4) & 0x3f;
 
 	/* check AERC register.  we need it on.  */
-	off = pciecap(p, PcieAERC);
+	off = pcicap(p, PcieAERC);
 	print("; offset %d returned\n", off);
 	cap = 0;
 	if(off != 0){
@@ -486,7 +431,6 @@ cmd(Ctlr *c, int type, uvlong data)
 	iprint("m10g: cmd timeout [%ux %ux] cmd=%d\n",
 		cmd->i[0], cmd->i[1], type);
 	error(Etimeout);
-	return ~0;			/* silence! */
 }
 
 ulong
@@ -525,7 +469,6 @@ maccmd(Ctlr *c, int type, uchar *m)
 	iprint("m10g: maccmd timeout [%ux %ux] cmd=%d\n",
 		cmd->i[0], cmd->i[1], type);
 	error(Etimeout);
-	return ~0;			/* silence! */
 }
 
 /* remove this garbage after testing */
@@ -564,7 +507,6 @@ dmatestcmd(Ctlr *c, int type, uvlong addr, int len)
 		tsleep(&up->sleep, return0, 0, 5);
 	}
 	error(Etimeout);
-	return ~0;			/* silence! */
 }
 
 ulong
@@ -594,8 +536,6 @@ rdmacmd(Ctlr *c, int on)
 		tsleep(&up->sleep, return0, 0, 1);
 	}
 	error(Etimeout);
-	iprint("m10g: rdmacmd timeout\n");
-	return ~0;			/* silence! */
 }
 
 static int
@@ -741,7 +681,6 @@ reset(Ether *e, Ctlr *c)
 	if(waserror()){
 		print("m10g: reset error\n");
 		nexterror();
-		return -1;
 	}
 
 	chkfw(c);
@@ -811,7 +750,7 @@ setmem(Pcidev *p, Ctlr *c)
 		print("m10g: can't map %llux\n", raddr);
 		return -1;
 	}
-	dprint("%llux <- vmap(mem[0].size = %d)\n", raddr, p->mem[0].size);
+	dprint("%llux <- vmap(mem[0].size = %llud)\n", raddr, p->mem[0].size);
 	c->port = raddr;
 	c->ram = mem;
 	c->cmd = malign(sizeof *c->cmd);
@@ -836,81 +775,35 @@ setmem(Pcidev *p, Ctlr *c)
 static Rx*
 whichrx(Ctlr *c, int sz)
 {
-	if(sz <= smpool.size)
+	if(sz <= c->sm.pool.size)
 		return &c->sm;
 	return &c->bg;
-}
-
-static Block*
-balloc(Rx* rx)
-{
-	Block *bp;
-
-	ilock(rx->pool);
-	if((bp = rx->pool->head) != nil){
-		rx->pool->head = bp->next;
-		bp->next = nil;
-		rx->pool->n--;
-	}
-	iunlock(rx->pool);
-	return bp;
-}
-
-static void
-rbfree(Block *b, Bpool *p)
-{
-	b->rp = b->wp = (uchar*)PGROUND((uintptr)b->base);
- 	b->flag &= ~(Bipck | Budpck | Btcpck | Bpktck);
-
-	ilock(p);
-	b->next = p->head;
-	p->head = b;
-	p->n++;
-	p->cnt++;
-	iunlock(p);
-}
-
-static void
-smbfree(Block *b)
-{
-	rbfree(b, &smpool);
-}
-
-static void
-bgbfree(Block *b)
-{
-	rbfree(b, &bgpool);
 }
 
 static void
 replenish(Rx *rx)
 {
 	ulong buf[16], i, idx, e;
-	Bpool *p;
+	uvlong pa;
 	Block *b;
 
-	p = rx->pool;
-	if(p->n < 8)
-		return;
-	memset(buf, 0, sizeof buf);
 	e = (rx->i - rx->cnt) & ~7;
 	e += rx->n;
-	while(p->n >= 8 && e){
+	while(e){
 		idx = rx->cnt & rx->m;
 		for(i = 0; i < 8; i++){
-			b = balloc(rx);
-			buf[i*2]   = pbit32((uvlong)PCIWADDR(b->wp) >> 32);
-			buf[i*2+1] = pbit32(PCIWADDR(b->wp));
+			while((b = iallocbp(&rx->pool)) == nil)
+				resrcwait("out of m10g rx buffers");
+			pa = PCIWADDR(b->wp);
+			buf[i*2+0] = pbit32(pa >> 32);
+			buf[i*2+1] = pbit32(pa);
 			rx->host[idx+i] = b;
-			assert(b);
 		}
-		memmove(rx->lanai + 2*idx, buf, sizeof buf);
+		memmove(rx->lanai + 2*idx, buf, sizeof(buf));
 		coherence();
 		rx->cnt += 8;
 		e -= 8;
 	}
-	if(e && p->n > 7+1)
-		print("m10g: should panic? pool->n = %d", p->n);
 }
 
 /*
@@ -947,8 +840,7 @@ emalign(int sz)
 static void
 open0(Ether *e, Ctlr *c)
 {
-	Block *b;
-	int i, sz, entries;
+	int entries;
 
 	entries = cmd(c, CGsendrgsz, 0) / sizeof *c->tx.lanai;
 	c->tx.lanai = (Send*)(c->ram + cmd(c, CGsendoff, 0));
@@ -958,35 +850,24 @@ open0(Ether *e, Ctlr *c)
 	c->tx.m = entries-1;
 
 	entries = cmd(c, CGrxrgsz, 0)/8;
-	c->sm.pool = &smpool;
-	cmd(c, CSsmallsz, c->sm.pool->size);
+	c->sm.pool.size = 128;
+	c->sm.pool.align = BY2PG;
+	cmd(c, CSsmallsz, c->sm.pool.size);
 	c->sm.lanai = (ulong*)(c->ram + cmd(c, CGsmallrxoff, 0));
 	c->sm.n = entries;
 	c->sm.m = entries-1;
 	c->sm.host = emalign(entries * sizeof *c->sm.host);
 
-	c->bg.pool = &bgpool;
-	c->bg.pool->size = nextpow(2 + e->maxmtu);  /* 2-byte alignment pad */
-	cmd(c, CSbigsz, c->bg.pool->size);
+	c->bg.pool.size = nextpow(2 + e->maxmtu);	/* 2-byte alignment pad */
+	c->bg.pool.align = BY2PG;
+	cmd(c, CSbigsz, c->bg.pool.size);
 	c->bg.lanai = (ulong*)(c->ram + cmd(c, CGbigrxoff, 0));
 	c->bg.n = entries;
 	c->bg.m = entries-1;
 	c->bg.host = emalign(entries * sizeof *c->bg.host);
 
-	sz = c->sm.pool->size + BY2PG;
-	for(i = 0; i < c->sm.n; i++){
-		if((b = allocb(sz)) == 0)
-			break;
-		b->free = smbfree;
-		freeb(b);
-	}
-	sz = c->bg.pool->size + BY2PG;
-	for(i = 0; i < c->bg.n; i++){
-		if((b = allocb(sz)) == 0)
-			break;
-		b->free = bgbfree;
-		freeb(b);
-	}
+	growbp(&c->sm.pool, c->sm.n);
+	growbp(&c->bg.pool, c->bg.n);
 
 	cmd(c, CSstatsdma, c->statsprt);
 	c->linkstat = ~0;
@@ -1332,17 +1213,6 @@ m10gdetach(Ctlr *c)
 	return -1;
 }
 
-static int
-lstcount(Block *b)
-{
-	int i;
-
-	i = 0;
-	for(; b; b = b->next)
-		i++;
-	return i;
-}
-
 static char*
 m10gifstat(void *arg, char *p, char *e)
 {
@@ -1364,9 +1234,7 @@ m10gifstat(void *arg, char *p, char *e)
 		"tx pkt = %lud\n"  "tx bytes = %lld\n"
 		"tx cnt = %ud\n"  "tx n = %ud\n"	"tx i = %ud\n"
 		"sm cnt = %ud\n"  "sm i = %ud\n"	"sm n = %ud\n"
-		"sm lst = %ud\n"
 		"bg cnt = %ud\n"  "bg i = %ud\n"	"bg n = %ud\n"
-		"bg lst = %ud\n"
 		"segsz = %lud\n"   "coal = %lud\n",
 		gbit32(s.txcnt),  gbit32(s.linkstat),	gbit32(s.dlink),
 		gbit32(s.derror), gbit32(s.drunt),	gbit32(s.doverrun),
@@ -1374,8 +1242,8 @@ m10gifstat(void *arg, char *p, char *e)
 		s.txstopped,  s.down, s.updated, s.valid,
 		c->tx.npkt, c->tx.nbytes,
 		c->tx.cnt, c->tx.n, c->tx.i,
-		c->sm.cnt, c->sm.i, c->sm.pool->n, lstcount(c->sm.pool->head),
-		c->bg.cnt, c->bg.i, c->bg.pool->n, lstcount(c->bg.pool->head),
+		c->sm.cnt, c->sm.i, c->sm.n,
+		c->bg.cnt, c->bg.i, c->bg.n,
 		c->tx.segsz, gbit32((uchar*)c->coal));
 }
 
@@ -1595,15 +1463,15 @@ m10gpnp(Ether *e)
 
 	e->attach = m10gattach;
 	e->transmit = m10gtransmit;
-	e->interrupt = m10ginterrupt;
 	e->ctl = m10gctl;
-//	e->power = m10gpower;
 	e->shutdown = m10gshutdown;
 
 	e->arg = e;
 	e->ifstat = m10gifstat;
 	e->promiscuous = m10gpromiscuous;
 	e->multicast = m10gmulticast;
+
+	intrenable(e->irq, m10ginterrupt, e, e->tbdf, e->name);
 
 	return 0;
 }

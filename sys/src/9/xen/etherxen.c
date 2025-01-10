@@ -236,18 +236,13 @@ vifrecvdone(Ether *ether, netif_rx_response_t *rr)
 		vifrecv(ctlr, rx);
 		return 1;
 	}
-
 	ctlr->receives++;
-	memmove(bp->base, rx->page + rr->offset, len);
-	vifrecv(ctlr, rx);
-
-	bp->rp = bp->base;
-	bp->wp = bp->rp + len;
-	bp->free = 0;
-	bp->next = 0;
-	bp->list = 0;
 	if (rr->flags & NETRXF_data_validated)
 		bp->flag |= Btcpck|Budpck;
+	bp->rp = bp->base;
+	bp->wp = bp->rp + len;
+	memmove(bp->rp, rx->page + rr->offset, len);
+	vifrecv(ctlr, rx);
 	etheriq(ether, bp);
 	return 0;
 }

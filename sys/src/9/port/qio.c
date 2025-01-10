@@ -300,7 +300,12 @@ copyblock(Block *bp, int count)
 	assert(count >= 0);
 
 	QDEBUG checkb(bp, "copyblock 0");
-	nbp = allocb(count);
+	if(bp->pool == nil
+	|| count > bp->pool->size
+	|| (nbp = iallocbp(bp->pool)) == nil)
+		nbp = allocb(count);
+	nbp->flag |= bp->flag & ~(BINTR|BFREE);
+
 	for(; count > 0 && bp != nil; bp = bp->next){
 		l = BLEN(bp);
 		if(l > count)

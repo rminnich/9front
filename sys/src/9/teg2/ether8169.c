@@ -316,8 +316,6 @@ struct Ctlr {
 	int	ntdfree;
 	int	ntq;
 
-	int	nrb;
-
 //	Lock	rlock;			/* receive */
 	Rendez	rrendez;
 	D*	rd;			/* descriptor ring */
@@ -327,6 +325,8 @@ struct Ctlr {
 	int	rdh;			/* head - producer index (NIC) */
 	int	rdt;			/* tail - consumer index (host) */
 	int	nrdfree;
+
+	Bpool	pool;
 
 	Lock	reglock;
 	int	tcr;			/* transmit configuration register */
@@ -352,9 +352,6 @@ struct Ctlr {
 
 static Ctlr* rtl8169ctlrhead;
 static Ctlr* rtl8169ctlrtail;
-
-static Lock rblock;			/* free receive Blocks */
-static Block* rbpool;
 
 #define csr8r(c, r)	(*((uchar *) ((c)->nic)+(r)))
 #define csr16r(c, r)	(*((u16int *)((c)->nic)+((r)/2)))
@@ -451,32 +448,6 @@ rtl8169mii(Ctlr* ctlr)
 	iunlock(&ctlr->reglock);
 
 	return 0;
-}
-
-static Block*
-rballoc(void)
-{
-	Block *bp;
-
-	ilock(&rblock);
-	if((bp = rbpool) != nil){
-		rbpool = bp->next;
-		bp->next = nil;
-	}
-	iunlock(&rblock);
-	return bp;
-}
-
-static void
-rbfree(Block *bp)
-{
-	bp->wp = bp->rp = bp->lim - Mps;
- 	bp->flag &= ~(Bipck | Budpck | Btcpck | Bpktck);
-
-	ilock(&rblock);
-	bp->next = rbpool;
-	rbpool = bp;
-	iunlock(&rblock);
 }
 
 static void
@@ -700,6 +671,7 @@ rtl8169replenish(Ether *edev)
 	Block *bp;
 	Ctlr *ctlr;
 	D *d;
+	uvlong pa;
 
 	ctlr = edev->ctlr;
 	if (ctlr->nrd == 0) {
@@ -718,15 +690,14 @@ rtl8169replenish(Ether *edev)
 			break;
 		}
 		if(ctlr->rb[rdt] == nil){
-			bp = rballoc();
-			if(bp == nil){
-				iprint("rtl8169: no available buffers\n");
+			bp = iallocbp(&ctlr->pool);
+			if(bp == nil)
 				break;
-			}
 			ctlr->rb[rdt] = bp;
-			d->addrhi = 0;
+			pa = PCIWADDR(bp->rp);
+			d->addrhi = pa >> 32;
 			coherence();
-			d->addrlo = PCIWADDR(bp->rp);
+			d->addrlo = pa;
 			coherence();
 		} else
 			iprint("8169: replenish: rx overrun\n");
@@ -1199,9 +1170,8 @@ rtl8169init(Ether* edev)
 static void
 rtl8169attach(Ether* edev)
 {
-	int timeo, s, i;
+	int timeo, s;
 	char name[KNAMELEN];
-	Block *bp;
 	Ctlr *ctlr;
 
 	ctlr = edev->ctlr;
@@ -1233,13 +1203,9 @@ rtl8169attach(Ether* edev)
 	   ctlr->rb == nil || ctlr->dtcc == nil)
 		error(Enomem);
 
-	/* allocate private receive-buffer pool */
-	ctlr->nrb = Nrb;
-	for(i = 0; i < Nrb; i++){
-		if((bp = allocb(Mps)) == nil)
-			error(Enomem);
-		bp->free = rbfree;
-		freeb(bp);
+	if(ctlr->pool.size == 0){
+		ctlr->pool.size = Mps;
+		growbp(&ctlr->pool, Nrb);
 	}
 
 	rtl8169init(edev);

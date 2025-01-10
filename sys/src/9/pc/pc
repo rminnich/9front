@@ -55,8 +55,6 @@ link
 	ether8003	ether8390
 	ether8139	pci
 	ether8169	pci ethermii
-# should be obsoleted by igbe
-#	ether82543gc	pci
 	ether82557	pci
 	ether82563	pci
 	ether82598	pci
@@ -68,6 +66,7 @@ link
 	etherelnk3	pci
 	etherga620	pci
 	etherigbe	pci ethermii
+#	etherm10g	pci
 	ethervgbe	pci ethermii
 	ethervt6102	pci ethermii
 	ethervt6105m	pci ethermii

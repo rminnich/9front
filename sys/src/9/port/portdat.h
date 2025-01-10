@@ -1,5 +1,6 @@
 typedef struct Alarms	Alarms;
 typedef struct Block	Block;
+typedef struct Bpool	Bpool;
 typedef struct Chan	Chan;
 typedef struct Cmdbuf	Cmdbuf;
 typedef struct Cmdtab	Cmdtab;
@@ -151,13 +152,22 @@ struct Block
 	uchar*	wp;			/* first empty byte */
 	uchar*	lim;			/* 1 past the end of the buffer */
 	uchar*	base;			/* start of the buffer */
-	void	(*free)(Block*);
+	Bpool*	pool;
 	ushort	flag;
 	ushort	checksum;		/* IP checksum of complete packet (minus media header) */
 };
 
 #define BLEN(s)	((s)->wp - (s)->rp)
 #define BALLOC(s) ((s)->lim - (s)->base)
+
+struct Bpool
+{
+	ulong	size;			/* block size */
+	ulong	align;			/* block alignment */
+
+	Lock;
+	Block	*head;			/* freelist head */
+};
 
 struct Chan
 {

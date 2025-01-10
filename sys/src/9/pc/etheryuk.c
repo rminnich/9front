@@ -696,6 +696,7 @@ struct Ctlr {
 	Block	*tbring[Tringcnt];
 	Sring	rx;
 	Block	*rbring[Rringcnt];
+	Bpool	pool;
 	Kproc	txmit;
 	Kproc	rxmit;
 	Kproc	iproc;
@@ -1197,6 +1198,10 @@ rxinit(Ether *e)
 		qrwrite(c, Qr + Qcsr, Qsumen);
 	}
 	macwrite32(c, Gfrxctl, Gftroff);
+
+	c->pool.size = c->rbsz;
+	c->pool.align = Rbalign;
+	growbp(&c->pool, Nrb);
 }
 
 /* debug; remove */
@@ -1235,13 +1240,13 @@ replenish(Ether *e, Ctlr *c)
 	if(lim > 128)
 		lim = 128;		/* hw limit? */
 	for(n = 0; n < lim; n++){
-		b = iallocb(c->rbsz + Rbalign);
-		if(b == nil || getnslot(r, &wp, tab, 1 + is64()) == -1){
+		b = iallocbp(&c->pool);
+		if(b == nil)
+			break;
+		if(getnslot(r, &wp, tab, 1 + is64()) == -1){
 			freeb(b);
 			break;
 		}
-		b->rp = b->wp = (uchar*)ROUND((uintptr)b->base, Rbalign);
-
 		t = tab[is64()];
 		if(rxscrew(e, r, t, wp) == -1){
 			freeb(b);

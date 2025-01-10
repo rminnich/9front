@@ -306,6 +306,8 @@ typedef struct Ctlr {
 	int	rdt;			/* tail - consumer index (host) */
 	int	nrq;
 
+	Bpool	pool;
+
 	int	tcr;			/* transmit configuration register */
 	int	rcr;			/* receive configuration register */
 	int	imr;
@@ -646,11 +648,9 @@ rtl8169replenish(Ctlr* ctlr)
 
 	x = ctlr->rdt;
 	while(NEXT(x, ctlr->nrd) != ctlr->rdh){
-		bp = iallocb(Mps);
-		if(bp == nil){
-			iprint("rtl8169: no available buffers\n");
+		bp = iallocbp(&ctlr->pool);
+		if(bp == nil)
 			break;
-		}
 		ctlr->rb[x] = bp;
 		ctlr->nrq++;
 		pa = PCIWADDR(bp->rp);
@@ -698,7 +698,10 @@ rtl8169init(Ether* edev)
 			ctlr->rb[i] = nil;
 			freeb(bp);
 		}
-
+	if(ctlr->pool.size == 0){
+		ctlr->pool.size = Mps;
+		growbp(&ctlr->pool, ctlr->nrd*4);
+	}
 	rtl8169replenish(ctlr);
 
 	cplusc = csr16r(ctlr, Cplusc);
