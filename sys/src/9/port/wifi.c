@@ -601,6 +601,8 @@ wifideauth(Wifi *wifi, Wnode *wn)
 static int
 goodbss(Wifi *wifi, Wnode *wn)
 {
+	if(wifi->ether->bypass)
+		return 0;	/* we'r bypassed, dont try to associate */ 
 	if(memcmp(wifi->bssid, wifi->ether->bcast, Eaddrlen) != 0){
 		if(memcmp(wifi->bssid, wn->bssid, Eaddrlen) != 0)
 			return 0;	/* bssid doesnt match */
@@ -803,7 +805,7 @@ wifsproc(void *arg)
 Scan:
 	/* scan for access point */
 	while(wifi->bss == nil){
-		ether->link = 0;
+		ethersetlink(ether, 0);
 		wnscan.channel = 1 + ((wnscan.channel+4) % 13);
 		wifiprobe(wifi, &wnscan);
 		do {
@@ -819,11 +821,10 @@ Scan:
 			if((rate = wn->actrate) != nil)
 				ethersetspeed(ether, ((*rate & 0x7f)+3)/4);
 			ethersetlink(ether, 1);
-		} else {
-			ethersetlink(ether, 0);
 		}
 		now = MACHP(0)->ticks;
-		if(wn->status != Sneedauth && TK2SEC(now - wn->lastseen) > 20 || goodbss(wifi, wn) == 0){
+		if(wn->status != Sneedauth && TK2SEC(now - wn->lastseen) > 20
+		|| goodbss(wifi, wn) == 0){
 			wifideauth(wifi, wn);
 			wifi->bss = nil;
 			break;
@@ -833,9 +834,8 @@ Scan:
 				wifideauth(wifi, wn);	/* stuck in auth, start over */
 			if(wn->status == Sconn || wn->status == Sunauth)
 				sendauth(wifi, wn);
-			if(wn->status == Sauth){
+			if(wn->status == Sauth)
 				sendassoc(wifi, wn);
-			}
 		}
 		tsleep(&up->sleep, return0, 0, 500);
 	}
