@@ -587,7 +587,7 @@ static int
 recvrahost(uchar buf[], int pktlen, ulong now)
 {
 	char dnsdomain[sizeof(conf.dnsdomain)];
-	int m, n, optype, seen;
+	int m, n, optype, seen, needrefresh;
 	Lladdropt *llao;
 	Mtuopt *mtuo;
 	Prefixopt *prfo;
@@ -705,12 +705,14 @@ recvrahost(uchar buf[], int pktlen, ulong now)
 
 	/* remove expired prefixes */
 	issuedel6(&conf);
+	ipmove(conf.laddr, IPnoaddr);
 
-	/* managed netork: prefixes are acquired with dhcpv6 */
+	/* managed network: prefixes are acquired with dhcpv6 */
 	if(dodhcp && conf.mflag)
 		return 0;
 
 	/* process new prefixes */
+	needrefresh = 0;
 	m = sizeof *ra;
 	while(pktlen - m >= 8) {
 		n = m;
@@ -819,10 +821,10 @@ recvrahost(uchar buf[], int pktlen, ulong now)
 		if(validip(conf.gaddr))
 			adddefroute(conf.gaddr, conf.lladdr, conf.laddr, conf.raddr, conf.mask);
 
-		putndb(1);
-		refresh();
+		needrefresh |= 1<<(putndb(1) != 0);
 	}
-
+	if(needrefresh > 1 || (needrefresh == 0 && putndb(0)))
+		refresh();
 	return 0;
 }
 

@@ -141,7 +141,7 @@ int	pnames(uchar*, int, char*);
 int	gnames(char*, int, uchar*, int);
 Ndb*	opendatabase(void);
 void	ndb2conf(Ndb *db, uchar *ip);
-void	putndb(int);
+int	putndb(int);
 void	refresh(void);
 ulong	randint(ulong low, ulong hi);
 int	validip(uchar*);

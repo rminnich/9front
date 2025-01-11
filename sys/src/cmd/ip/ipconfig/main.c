@@ -556,8 +556,8 @@ doadd(void)
 	}
 
 	/* leave everything we've learned somewhere other procs can find it */
-	putndb(1);
-	refresh();
+	if(putndb(1))
+		refresh();
 }
 
 static void
@@ -578,8 +578,8 @@ dodel(void)
 		warning("can't delete %I %M: %r", conf.laddr, conf.mask);
 
 	/* remove ndb entries matching our ip address */
-	putndb(0);
-	refresh();
+	if(putndb(0))
+		refresh();
 }
 
 static void
@@ -749,7 +749,7 @@ putnames(char *p, char *e, char *attr, char *s)
 }
 
 /* make an ndb entry and put it into /net/ndb for the servers to see */
-void
+int
 putndb(int doadd)
 {
 	static char buf[16*1024];
@@ -757,9 +757,11 @@ putndb(int doadd)
 	Ndbtuple *t, *nt;
 	Ndb *db;
 	int fd;
+	static uchar csum[SHA1dlen];
+	uchar newcsum[SHA1dlen];
 
 	if(beprimary == 0 || noconfig)
-		return;
+		return 0;
 
 	p = buf;
 	e = buf + sizeof buf;
@@ -811,7 +813,8 @@ putndb(int doadd)
 			if(nt != nil && (ipnet == nil || strcmp(nt->val, ipnet) != 0)
 			|| nt == nil && ((nt = ndbfindattr(t, t, "ip")) == nil
 				|| parseip(ip, nt->val) == -1
-				|| ipcmp(ip, conf.laddr) != 0 && myip(allifcs, ip))){
+				|| (!doadd || !validip(conf.laddr) || ipcmp(ip, conf.laddr) != 0) 
+					 && myip(allifcs, ip))){
 				if(p > buf)
 					p = seprint(p, e, "\n");
 				for(nt = t; nt != nil; nt = nt->entry)
@@ -822,10 +825,18 @@ putndb(int doadd)
 		}
 		ndbclose(db);
 	}
+
+	/* only write if something has changed since last time */
+	sha1((uchar *)buf, p-buf, newcsum, nil);
+	if(memcmp(csum, newcsum, SHA1dlen) == 0)
+		return 0;
+	memcpy(csum, newcsum, SHA1dlen);
+
 	if((fd = open(file, OWRITE|OTRUNC)) < 0)
-		return;
+		return 0;
 	write(fd, buf, p-buf);
 	close(fd);
+	return 1;
 }
 
 static int
