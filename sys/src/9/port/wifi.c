@@ -580,21 +580,23 @@ wifideauth(Wifi *wifi, Wnode *wn)
 	freewifikeys(wifi, wn);
 	wn->aid = 0;
 
-	if(wn == wifi->bss){
-		/* notify driver about node aid association */
-		(*wifi->transmit)(wifi, wn, nil);
+	if(wn != wifi->bss)
+		return;
 
-		/* notify aux/wpa with a zero length packet that we got deassociated from the ap */
-		ether = wifi->ether;
-		for(i=0; i<ether->nfile; i++){
-			f = ether->f[i];
-			if(f == nil || f->in == nil || f->inuse == 0 || f->type != 0x888e)
-				continue;
-			qflush(f->in);
-			qwrite(f->in, 0, 0);
-		}
-		qflush(ether->oq);
+	/* notify driver about node aid association */
+	(*wifi->transmit)(wifi, wn, nil);
+
+	/* notify aux/wpa with a zero length packet that we got deassociated from the ap */
+	ether = wifi->ether;
+	for(i=0; i<ether->nfile; i++){
+		f = ether->f[i];
+		if(f == nil || !f->inuse || f->type != 0x888e || waserror())
+			continue;
+		qflush(f->in);
+		qwrite(f->in, 0, 0);
+		poperror();
 	}
+	qflush(ether->oq);
 }
 
 /* check if a node qualifies as our bss matching bssid and essid */

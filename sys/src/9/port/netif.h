@@ -31,8 +31,6 @@ enum
  */
 struct Netfile
 {
-	QLock;
-
 	int	inuse;
 	ulong	mode;
 	char	owner[KNAMELEN];

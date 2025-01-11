@@ -1401,13 +1401,17 @@ linkdown(Ctlr *ctl)
 		return;
 	ctl->status = Disconnected;
 	ethersetlink(edev, 0);
+
 	/* send eof to aux/wpa */
 	for(i = 0; i < edev->nfile; i++){
 		f = edev->f[i];
-		if(f == nil || f->in == nil || f->inuse == 0 || f->type != 0x888e)
+		if(f == nil || !f->inuse || f->type != 0x888e || waserror())
 			continue;
+		qflush(f->in);
 		qwrite(f->in, 0, 0);
+		poperror();
 	}
+	qflush(edev->oq);
 }
 
 /*

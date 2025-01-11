@@ -7,9 +7,9 @@
 #include	"../port/netif.h"
 
 static int netown(Netfile*, char*, int);
-static int openfile(Netif*, int);
+static int openfile(Netif*, int, int);
 static char* matchtoken(char*, char*);
-static char* netmulti(Netif*, Netfile*, uchar*, int);
+static void netmulti(Netif*, Netfile*, uchar*, int);
 static int parseaddr(uchar*, char*, int);
 
 /*
@@ -43,11 +43,9 @@ netifsetlimit(Netif *nif, int limit)
 		nif->limit = limit;
 		for(i = 0; i < nif->nfile; i++){
 			f = nif->f[i];
-			if(f == nil)
+			if(f == nil || !f->inuse)
 				continue;
-			qlock(f);
 			qsetlimit(f->in, nif->limit);
-			qunlock(f);
 		}
 	}
 	qunlock(nif);
@@ -118,7 +116,7 @@ netifgen(Chan *c, char*, Dirtab *vp, int, int i, Dir *dp)
 			i -= 4;
 			if(i >= nif->nfile)
 				return -1;
-			if(nif->f[i] == 0)
+			if(nif->f[i] == nil)
 				return 0;
 			q.type = QTDIR;
 			q.path = NETQID(i, N3rdqid);
@@ -131,7 +129,7 @@ netifgen(Chan *c, char*, Dirtab *vp, int, int i, Dir *dp)
 
 	/* third level */
 	f = nif->f[NETID(c->qid.path)];
-	if(f == 0)
+	if(f == nil)
 		return 0;
 	if(*f->owner){
 		o = f->owner;
@@ -183,9 +181,7 @@ Chan*
 netifopen(Netif *nif, Chan *c, int omode)
 {
 	int id;
-	Netfile *f;
 
-	id = 0;
 	if(c->qid.type & QTDIR){
 		if(omode != OREAD)
 			error(Eperm);
@@ -194,23 +190,15 @@ netifopen(Netif *nif, Chan *c, int omode)
 		case Ndataqid:
 		case Nctlqid:
 			id = NETID(c->qid.path);
-			openfile(nif, id);
+			openfile(nif, id, omode);
 			break;
 		case Ncloneqid:
-			id = openfile(nif, -1);
+			id = openfile(nif, -1, omode);
 			c->qid.path = NETQID(id, Nctlqid);
 			break;
 		default:
 			if(omode != OREAD)
 				error(Ebadarg);
-		}
-		switch(NETTYPE(c->qid.path)){
-		case Ndataqid:
-		case Nctlqid:
-			f = nif->f[id];
-			if(netown(f, up->user, omode&7) < 0)
-				error(Eperm);
-			break;
 		}
 	}
 	c->mode = openmode(omode);
@@ -317,7 +305,7 @@ typeinuse(Netif *nif, int type)
 	efp = &nif->f[nif->nfile];
 	for(fp = nif->f; fp < efp; fp++){
 		f = *fp;
-		if(f == 0)
+		if(f == nil)
 			continue;
 		if(f->type == type)
 			return 1;
@@ -348,8 +336,8 @@ netifwrite(Netif *nif, Chan *c, void *a, long n)
 		qunlock(nif);
 		nexterror();
 	}
-
 	qlock(nif);
+
 	f = nif->f[NETID(c->qid.path)];
 	if((p = matchtoken(buf, "connect")) != 0){
 		type = strtoul(p, 0, 0);
@@ -361,7 +349,7 @@ netifwrite(Netif *nif, Chan *c, void *a, long n)
 	} else if(matchtoken(buf, "promiscuous")){
 		if(f->prom == 0){
 			if(nif->prom == 0 && nif->promiscuous != nil)
-				nif->promiscuous(nif->arg, 1);
+				(*nif->promiscuous)(nif->arg, 1);
 			f->prom = 1;
 			nif->prom++;
 		}
@@ -372,7 +360,7 @@ netifwrite(Netif *nif, Chan *c, void *a, long n)
 			if(type < 5)
 				type = 5;
 			if(nif->scanbs != nil)
-				nif->scanbs(nif->arg, type);
+				(*nif->scanbs)(nif->arg, type);
 			f->scan = type;
 			nif->scan++;
 		}
@@ -388,16 +376,12 @@ netifwrite(Netif *nif, Chan *c, void *a, long n)
 	} else if((p = matchtoken(buf, "addmulti")) != nil){
 		if(parseaddr(binaddr, p, nif->alen) < 0)
 			error("bad address");
-		p = netmulti(nif, f, binaddr, 1);
-		if(p)
-			error(p);
+		netmulti(nif, f, binaddr, 1);
 	} else if((p = matchtoken(buf, "delmulti")) != nil
 		||(p = matchtoken(buf, "remmulti")) != nil){
 		if(parseaddr(binaddr, p, nif->alen) < 0)
 			error("bad address");
-		p = netmulti(nif, f, binaddr, 0);
-		if(p)
-			error(p);
+		netmulti(nif, f, binaddr, 0);
 	} else
 		n = -1;
 	qunlock(nif);
@@ -408,16 +392,9 @@ netifwrite(Netif *nif, Chan *c, void *a, long n)
 int
 netifwstat(Netif *nif, Chan *c, uchar *db, int n)
 {
-	Dir *dir;
 	Netfile *f;
+	Dir *dir;
 	int m;
-
-	f = nif->f[NETID(c->qid.path)];
-	if(f == 0)
-		error(Enonexist);
-
-	if(netown(f, up->user, OWRITE) < 0)
-		error(Eperm);
 
 	dir = smalloc(sizeof(Dir)+n);
 	if(waserror()){
@@ -427,13 +404,25 @@ netifwstat(Netif *nif, Chan *c, uchar *db, int n)
 	m = convM2D(db, n, &dir[0], (char*)&dir[1]);
 	if(m == 0)
 		error(Eshortstat);
+	if(waserror()){
+		qunlock(nif);
+		nexterror();
+	}
+	qlock(nif);
+	f = nif->f[NETID(c->qid.path)];
+	if(f == nil)
+		error(Enonexist);
+	if(netown(f, up->user, OWRITE) < 0)
+		error(Eperm);
 	if(!emptystr(dir[0].uid)){
 		strncpy(f->owner, dir[0].uid, KNAMELEN-1);
 		f->owner[KNAMELEN-1] = 0;
 	}
 	if(dir[0].mode != ~0UL)
 		f->mode = dir[0].mode;
+	qunlock(nif);
 	free(dir);
+	poperror();
 	poperror();
 	return m;
 }
@@ -458,55 +447,50 @@ netifclose(Netif *nif, Chan *c)
 	if(t != Ndataqid && t != Nctlqid)
 		return;
 
+	qlock(nif);
 	f = nif->f[NETID(c->qid.path)];
-	qlock(f);
-	if(--(f->inuse) == 0){
-		if(f->bypass){
-			qlock(nif);
-			nif->bypass = nil;
-			qunlock(nif);
-			f->bypass = 0;
-		}
-		if(f->prom){
-			qlock(nif);
-			if(--(nif->prom) == 0 && nif->promiscuous != nil)
-				nif->promiscuous(nif->arg, 0);
-			qunlock(nif);
-			f->prom = 0;
-		}
-		if(f->scan){
-			qlock(nif);
-			if(--(nif->scan) == 0 && nif->scanbs != nil)
-				nif->scanbs(nif->arg, 0);
-			qunlock(nif);
-			f->prom = 0;
-			f->scan = 0;
-		}
-		if(f->nmaddr){
-			qlock(nif);
-			t = 0;
-			for(ap = nif->maddr; ap; ap = ap->next){
-				if(f->maddr[t/8] & (1<<(t%8)))
-					netmulti(nif, f, ap->addr, 0);
-			}
-			qunlock(nif);
-			f->nmaddr = 0;
-		}
-		if(f->type < 0){
-			qlock(nif);
-			--(nif->all);
-			qunlock(nif);
-		}
-		f->owner[0] = 0;
-		f->type = 0;
-		f->bridge = 0;
-		f->headersonly = 0;
-		qclose(f->in);
+	if(f == nil || --(f->inuse) != 0){
+		qunlock(nif);
+		return;
 	}
-	qunlock(f);
+	if(f->bypass){
+		nif->bypass = nil;
+		f->bypass = 0;
+	}
+	if(f->prom){
+		if(--(nif->prom) == 0 && nif->promiscuous != nil && !waserror()){
+			(*nif->promiscuous)(nif->arg, 0);
+			poperror();
+		}
+		f->prom = 0;
+	}
+	if(f->scan){
+		if(--(nif->scan) == 0 && nif->scanbs != nil && !waserror()){
+			(*nif->scanbs)(nif->arg, 0);
+			poperror();
+		}
+		f->prom = 0;
+		f->scan = 0;
+	}
+	if(f->nmaddr){
+		t = 0;
+		for(ap = nif->maddr; ap != nil; ap = ap->next){
+			if(f->maddr[t/8] & (1<<(t%8)) && !waserror()){
+				netmulti(nif, f, ap->addr, 0);
+				poperror();
+			}
+		}
+		f->nmaddr = 0;
+	}
+	if(f->type < 0)
+		nif->all--;
+	f->owner[0] = 0;
+	f->type = 0;
+	f->bridge = 0;
+	f->headersonly = 0;
+	qclose(f->in);
+	qunlock(nif);
 }
-
-Lock netlock;
 
 static int
 netown(Netfile *p, char *o, int omode)
@@ -515,7 +499,6 @@ netown(Netfile *p, char *o, int omode)
 	int mode;
 	int t;
 
-	lock(&netlock);
 	if(*p->owner){
 		if(strncmp(o, p->owner, KNAMELEN) == 0)	/* User */
 			mode = p->mode;
@@ -525,18 +508,14 @@ netown(Netfile *p, char *o, int omode)
 			mode = p->mode<<6;		/* Other */
 
 		t = access[omode&3];
-		if((t & mode) == t){
-			unlock(&netlock);
+		if((t & mode) == t)
 			return 0;
-		} else {
-			unlock(&netlock);
+		else
 			return -1;
-		}
 	}
 	strncpy(p->owner, o, KNAMELEN-1);
 	p->owner[KNAMELEN-1] = 0;
 	p->mode = 0660;
-	unlock(&netlock);
 	return 0;
 }
 
@@ -545,51 +524,48 @@ netown(Netfile *p, char *o, int omode)
  *  If id < 0, return an unused ether device.
  */
 static int
-openfile(Netif *nif, int id)
+openfile(Netif *nif, int id, int omode)
 {
 	Netfile *f, **fp, **efp;
-
-	if(id >= 0){
-		f = nif->f[id];
-		if(f == 0)
-			error(Enodev);
-		qlock(f);
-		qreopen(f->in);
-		f->inuse++;
-		qunlock(f);
-		return id;
-	}
 
 	qlock(nif);
 	if(waserror()){
 		qunlock(nif);
 		nexterror();
 	}
+	if(id >= 0){
+		f = nif->f[id];
+		if(f == nil)
+			error(Enodev);
+		if(netown(f, up->user, omode&7) < 0)
+			error(Eperm);
+		f->inuse++;
+		qreopen(f->in);
+		qsetlimit(f->in, nif->limit);
+		qunlock(nif);
+		poperror();
+		return id;
+	}
 	efp = &nif->f[nif->nfile];
 	for(fp = nif->f; fp < efp; fp++){
 		f = *fp;
-		if(f == 0){
+		if(f == nil){
 			f = malloc(sizeof(Netfile));
-			if(f == 0)
+			if(f == nil)
 				exhausted("memory");
 			f->in = qopen(nif->limit, Qmsg, 0, 0);
 			if(f->in == nil){
 				free(f);
 				exhausted("memory");
 			}
+			coherence();
 			*fp = f;
-			qlock(f);
-		} else {
-			qlock(f);
-			if(f->inuse){
-				qunlock(f);
-				continue;
-			}
-		}
+		} else if(f->inuse)
+			continue;
 		f->inuse = 1;
 		qreopen(f->in);
+		qsetlimit(f->in, nif->limit);
 		netown(f, up->user, 0);
-		qunlock(f);
 		qunlock(nif);
 		poperror();
 		return fp - nif->f;
@@ -693,13 +669,9 @@ activemulti(Netif *nif, uchar *addr, int alen)
 {
 	Netaddr *hp;
 
-	for(hp = nif->mhash[hash(addr, alen)]; hp; hp = hp->hnext)
-		if(memcmp(addr, hp->addr, alen) == 0){
-			if(hp->ref)
-				return 1;
-			else
-				break;
-		}
+	for(hp = nif->mhash[hash(addr, alen)]; hp != nil; hp = hp->hnext)
+		if(memcmp(addr, hp->addr, alen) == 0)
+			return hp->ref > 0;
 	return 0;
 }
 
@@ -729,19 +701,19 @@ parseaddr(uchar *to, char *from, int alen)
 /*
  *  keep track of multicast addresses
  */
-static char*
+static void
 netmulti(Netif *nif, Netfile *f, uchar *addr, int add)
 {
 	Netaddr **l, *ap;
-	int i;
 	ulong h;
+	int i;
 
 	if(nif->multicast == nil)
-		return "interface does not support multicast";
+		error("interface does not support multicast");
 
-	l = &nif->maddr;
 	i = 0;
-	for(ap = *l; ap; ap = *l){
+	l = &nif->maddr;
+	for(ap = *l; ap != nil; ap = *l){
 		if(memcmp(addr, ap->addr, nif->alen) == 0)
 			break;
 		i++;
@@ -749,20 +721,23 @@ netmulti(Netif *nif, Netfile *f, uchar *addr, int add)
 	}
 
 	if(add){
-		if(ap == 0){
-			*l = ap = smalloc(sizeof(*ap));
+		if(ap == nil){
+			ap = malloc(sizeof(*ap));
+			if(ap == nil)
+				error(Enomem);
 			memmove(ap->addr, addr, nif->alen);
-			ap->next = 0;
-			ap->ref = 1;
-			h = hash(addr, nif->alen);
+			h = hash(ap->addr, nif->alen);
 			ap->hnext = nif->mhash[h];
+			ap->ref = 1;
+			coherence();
 			nif->mhash[h] = ap;
+			*l = ap;
 		} else {
 			ap->ref++;
 		}
 		if(ap->ref == 1){
 			nif->nmaddr++;
-			nif->multicast(nif->arg, addr, 1);
+			(*nif->multicast)(nif->arg, addr, 1);
 		}
 		if(i < 8*sizeof(f->maddr)){
 			if((f->maddr[i/8] & (1<<(i%8))) == 0)
@@ -770,12 +745,12 @@ netmulti(Netif *nif, Netfile *f, uchar *addr, int add)
 			f->maddr[i/8] |= 1<<(i%8);
 		}
 	} else {
-		if(ap == 0 || ap->ref == 0)
-			return 0;
+		if(ap == nil || ap->ref == 0)
+			return;
 		ap->ref--;
 		if(ap->ref == 0){
 			nif->nmaddr--;
-			nif->multicast(nif->arg, addr, 0);
+			(*nif->multicast)(nif->arg, addr, 0);
 		}
 		if(i < 8*sizeof(f->maddr)){
 			if((f->maddr[i/8] & (1<<(i%8))) != 0)
@@ -783,5 +758,4 @@ netmulti(Netif *nif, Netfile *f, uchar *addr, int add)
 			f->maddr[i/8] &= ~(1<<(i%8));
 		}
 	}
-	return 0;
 }
