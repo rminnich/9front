@@ -335,6 +335,8 @@ struct Ctlr
 	uchar maddrs[32][Eaddrlen];
 	uint camidx;
 
+	Bpool pool;
+
 	RxDesc*	rx_ring;
 	Block*	rx_blocks[RxCount];
 
@@ -531,7 +533,7 @@ vgbenewrx(Ctlr* ctlr, int i)
 	Block* block;
 	RxDesc* desc;
 
-	block = iallocb(RxSize);
+	block = iallocbp(&ctlr->pool);
 	if(block == nil)
 		return -1;
 
@@ -660,6 +662,25 @@ vgbetxeof(Ether* edev)
 }
 
 static void
+vgbelink(Ether *edev)
+{
+	Ctlr *ctlr;
+	uchar status;
+
+	ctlr = edev->ctlr;
+	status = riob(ctlr, PhySts0);
+
+	if(status & PhySts_Speed1000)
+		ethersetspeed(edev, 1000);
+	else if(status & PhySts_Speed10)
+		ethersetspeed(edev, 10);
+	else
+		ethersetspeed(edev, 100);
+
+	ethersetlink(edev, status & PhySts_Link);
+}
+
+static void
 vgbeinterrupt(Ureg *, void* arg)
 {
 	Ether* edev;
@@ -713,7 +734,7 @@ vgbeinterrupt(Ureg *, void* arg)
 		print("vgbe: irq: PHY interrupt\n");
 
 	if(status & Isr_LinkStatus){
-		ethersetlink(edev, riob(ctlr, PhySts0) & PhySts_Link);
+		vgbelink(edev);
 		vgbemiip(ctlr, 1);
 	}
 	if(status & Isr_RxNoDesc)
@@ -834,6 +855,9 @@ vgbeattach(Ether* edev)
 	}
 	ctlr->rx_ring = rxdesc;
 	ctlr->tx_ring = txdesc;
+
+	ctlr->pool.size = RxSize;
+	growbp(&ctlr->pool, RxCount*4);
 
 	/* Allocate Rx blocks, initialize Rx ring. */
 	for(i = 0; i < RxCount; i++)
@@ -1258,8 +1282,6 @@ vgbepnp(Ether* edev)
 	edev->port = ctlr->port;
 	edev->irq = ctlr->pdev->intl;
 	edev->tbdf = ctlr->pdev->tbdf;
-	edev->mbps = 1000;
-	edev->link = (riob(ctlr, PhySts0) & PhySts_Link) ? 1 : 0;
 	memmove(edev->ea, ctlr->ea, Eaddrlen);
 	edev->attach = vgbeattach;
 	edev->transmit = vgbetransmit;
@@ -1269,6 +1291,8 @@ vgbepnp(Ether* edev)
 	edev->ifstat = vgbeifstat;
 	edev->ctl = vgbectl;
 	edev->arg = edev;
+
+	vgbelink(edev);
 
 	intrenable(edev->irq, vgbeinterrupt, edev, edev->tbdf, edev->name);
 
