@@ -63,7 +63,6 @@ static Font *f;
 static Fontdir *dirs, *cdir;
 static int ndirs, idir;
 static char lasterr[256];
-int mainstacksize = 32768;
 
 static void
 redraw(void)
@@ -238,21 +237,19 @@ usage(void)
 static void
 loadtext(int f)
 {
-	Biobuf b;
+	Biobuf *b;
 	int i;
 
-	if(f < 0 || Binit(&b, f, OREAD) != 0)
+	if(f < 0 || (b = Bfdopen(f, OREAD)) == nil)
 		sysfatal("loadtext: %r");
 
-	text = nil;
-	for(i = 0; i < 256; i++){
-		if((text = realloc(text, (i+1)*sizeof(char*))) == nil)
-			sysfatal("memory");
-		if((text[i] = Brdstr(&b, '\n', 1)) == nil)
+	if((text = calloc(256+1, sizeof(char*))) == nil)
+		sysfatal("memory");
+	for(i = 0; i < 256; i++)
+		if((text[i] = Brdstr(b, '\n', 1)) == nil)
 			break;
-	}
 
-	close(f);
+	Bterm(b);
 }
 
 void
