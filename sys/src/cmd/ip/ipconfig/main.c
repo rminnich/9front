@@ -556,8 +556,8 @@ doadd(void)
 	}
 
 	/* leave everything we've learned somewhere other procs can find it */
-	if(putndb(1))
-		refresh();
+	putndb(1);
+	refresh();
 }
 
 static void
@@ -578,8 +578,8 @@ dodel(void)
 		warning("can't delete %I %M: %r", conf.laddr, conf.mask);
 
 	/* remove ndb entries matching our ip address */
-	if(putndb(0))
-		refresh();
+	putndb(0);
+	refresh();
 }
 
 static void
