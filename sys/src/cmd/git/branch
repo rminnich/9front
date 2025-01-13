@@ -4,7 +4,7 @@ rfork en
 
 gitup
 
-flagfmt='a:listall, b:baseref ref, d:delete, n:newbr, s:stay, m:merge, M:nomod'
+flagfmt='a:listall, b:baseref ref, r:remove, n:newbr, s:stay, m:merge, M:nomod'
 args='[branch]'
 eval `''{aux/getflags $*} || exec aux/usage
 

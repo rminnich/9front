@@ -14,7 +14,7 @@ git/pull, git/rm, git/serve \- Manage git repositories.
 .PP
 .B git/branch
 [
-.B -admns
+.B -armns
 ]
 [
 .B -b
@@ -382,8 +382,8 @@ When passed the
 .B -s
 option, the branch is created but the files are not checked out.
 When passed the
-.B -d
-option, the branch is deleted.
+.B -r
+option, the branch is removed.
 .PP
 When switching branches, git/branch will refuse to clobber
 modifications.
@@ -647,14 +647,14 @@ for copy-paste compatibility with Unix git.
 .PP
 In order to create a new repository, run
 .B git/init:
-.PP
+.IP
 .EX
 git/init myrepo
 .EE
 
 .PP
 To clone an existing repository from a git server, run:
-.PP
+.IP
 .EX
 git/clone https://github.com/Harvey-OS/harvey
 cd harvey
@@ -665,7 +665,7 @@ git/push
 
 .PP
 To set a user and email for commits, run:
-.PP
+.IP
 .EX
 % mkdir $home/lib/git
 % >$home/lib/git/config echo '
@@ -702,4 +702,17 @@ Repositories with submodules are effectively read-only.
 .PP
 There are some missing commands, features, and tools.
 .PP
-git/compat only works within a git repository.
+Git/compat only works within a git repository.
+.PP
+Sharing git repositories between Plan 9 and Linux leads to indexes going out of sync.
+To work around this, reset the state of the tracked files on Plan 9 with git/add:
+.IP
+.EX
+git/add `{@{git/fs && git/walk -c}}
+.EE
+.PP
+And on Linux, with:
+.IP
+.EX
+git checkout HEAD -- $(find . -type f)
+.EE
