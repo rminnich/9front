@@ -24,7 +24,6 @@ Memimage*
 allocmemimaged(Rectangle r, ulong chan, Memdata *md)
 {
 	int d;
-	ulong l;
 	Memimage *i;
 
 	if((d = chantodepth(chan)) == 0) {
@@ -36,21 +35,15 @@ allocmemimaged(Rectangle r, ulong chan, Memdata *md)
 		return nil;
 	}
 
-	l = wordsperline(r, d);
-
 	i = mallocz(sizeof(Memimage), 1);
 	if(i == nil)
 		return nil;
 
 	i->data = md;
-	i->zero = sizeof(ulong)*l*r.min.y;
-	
-	if(r.min.x >= 0)
-		i->zero += (r.min.x*d)/8;
-	else
-		i->zero -= (-r.min.x*d+7)/8;
+	i->width = wordsperline(r, d);
+	i->zero = r.min.y*(int)(sizeof(ulong)*i->width) + ((r.min.x*d) >> 3);
 	i->zero = -i->zero;
-	i->width = l;
+
 	i->r = r;
 	i->clipr = r;
 	i->flags = 0;
@@ -67,8 +60,8 @@ Memimage*
 allocmemimage(Rectangle r, ulong chan)
 {
 	int d;
+	ulong nw;
 	uchar *p;
-	ulong l, nw;
 	Memdata *md;
 	Memimage *i;
 
@@ -80,10 +73,8 @@ allocmemimage(Rectangle r, ulong chan)
 		werrstr("bad rectangle %R", r);
 		return nil;
 	}
+	nw = wordsperline(r, d)*Dy(r);
 
-	l = wordsperline(r, d);
-
-	nw = l*Dy(r);
 	md = malloc(sizeof(Memdata));
 	if(md == nil)
 		return nil;
@@ -141,23 +132,8 @@ wordaddr(Memimage *i, Point p)
 uchar*
 byteaddr(Memimage *i, Point p)
 {
-	uchar *a;
-
-	a = i->data->bdata+i->zero+(int)(sizeof(ulong)*p.y*i->width);
-	if(i->depth < 8){
-		/*
-		 * We need to always round down,
-		 * but C rounds toward zero.
-		 */
-		int np;
-		np = 8/i->depth;
-		if(p.x < 0)
-			return a+(p.x-np+1)/np;
-		else
-			return a+p.x/np;
-	}
-	else
-		return a+p.x*(i->depth/8);
+	uchar *a = i->data->bdata+i->zero;
+	return a + p.y*(int)(sizeof(ulong)*i->width) + ((p.x*i->depth) >> 3);
 }
 
 int
