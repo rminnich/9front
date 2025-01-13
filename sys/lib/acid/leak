@@ -80,7 +80,7 @@ emitsum()
 defn
 sxpc(addr)
 {
-	if objtype == "amd64" && addr & 0x80000000 then {
+	if (objtype == "amd64" || objtype == "arm64") && addr & 0x80000000 then {
 		return addr | 0xffffffff00000000;
 	}
 	return addr;
