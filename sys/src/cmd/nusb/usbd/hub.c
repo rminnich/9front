@@ -187,7 +187,7 @@ Done:
 Hub*
 newhub(char *fn, Dev *d)
 {
-	Hub *h;
+	Hub *h, **hl;
 	int i;
 	Usbdev *ud;
 
@@ -232,8 +232,11 @@ newhub(char *fn, Dev *d)
 		for(i = 1; i <= h->nport; i++)
 			portfeature(h, i, Fportindicator, 1);
 	}
-	h->next = hubs;
-	hubs = h;
+	/* link to tail, so we always enumarte from the root */
+	h->next = nil;
+	for(hl = &hubs; *hl != nil; hl = &(*hl)->next)
+		;
+	*hl = h;
 	nhubs++;
 	dprint(2, "%s: %s: hub %#p allocated:", argv0, fn, h);
 	dprint(2, " ports %d pwrms %d max curr %d pwrm %d cmp %d leds %d\n",
