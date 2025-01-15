@@ -426,16 +426,15 @@ cmdrep(Dev *d, void *buf, int nb)
 int
 usbcmd(Dev *d, int type, int req, int value, int index, uchar *data, int count)
 {
-	int i, r, nerr;
-	char err[64];
+	char err[ERRMAX];
+	int r, tries;
 
 	/*
 	 * Some devices do not respond to commands some times.
 	 * Others even report errors but later work just fine. Retry.
 	 */
-	r = -1;
 	*err = 0;
-	for(i = nerr = 0; i < Uctries; i++){
+	for(tries = 1;; tries++){
 		if(type & Rd2h)
 			r = cmdreq(d, type, req, value, index, nil, count);
 		else
@@ -449,22 +448,16 @@ usbcmd(Dev *d, int type, int req, int value, int index, uchar *data, int count)
 			if(r == 0)
 				werrstr("no data from device");
 		}
-
-		/* don't retry GET_STATUS requests */
-		if(type == (Rd2h|Rclass|Rother)
-		&& req == Rgetstatus
-		&& value == 0)
-			break;
-
-		nerr++;
 		if(*err == 0)
 			rerrstr(err, sizeof(err));
+		if(tries >= Uctries)
+			break;
 		sleep(Ucdelay);
 	}
-	if(r >= 0 && i >= 2)
+	if(r >= 0 && tries > 1)
 		/* let the user know the device is not in good shape */
-		fprint(2, "%s: usbcmd: %s: required %d attempts (%s)\n",
-			argv0, d->dir, i, err);
+		fprint(2, "%s: usbcmd: %s: %s required %d attempts (%s)\n",
+			argv0, d->dir, reqstr(type, req), tries, err);
 	return r;
 }
 
