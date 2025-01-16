@@ -627,6 +627,8 @@ apply(Patch *p, char *fname)
 	curfile = nil;
 	h = nil;
 	prevh = nil;
+	nchanged = 0;
+	changed = nil;
 	for(i = 0; i < p->nhunk; i++){
 		h = &p->hunk[i];
 		if(strcmp(h->newpath, "/dev/null") == 0)
@@ -723,8 +725,9 @@ main(int argc, char **argv)
 		}
 		freepatch(p);
 		Bterm(f);
+		finish(ok);
 	}else{
-		for(i = 0; i < argc; i++){
+		for(i = 0; ok && i < argc; i++){
 			if((f = Bopen(argv[i], OREAD)) == nil)
 				sysfatal("open %s: %r", argv[i]);
 			if((p = parse(f, argv[i])) == nil)
@@ -735,8 +738,8 @@ main(int argc, char **argv)
 			}
 			freepatch(p);
 			Bterm(f);
+			finish(ok);
 		}
 	}
-	finish(ok);
 	exits(nil);
 }

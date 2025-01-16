@@ -22,6 +22,10 @@ will scan the input file for matching context, applying the patch up to 250 line
 its original location.
 If a hunk does not apply, then the file is left untouched.
 .PP
+When multiple patch files are provided, they are applied in order,
+interrupting the process in case of error.
+Successfully applied patches are not rolled back.
+.PP
 The following options are supported:
 .TP
 .B -R
