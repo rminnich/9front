@@ -225,7 +225,7 @@ yylex(void)
 	peekrune = ' ';
 
 loop:
-	if((c >= '0' && c <= '9') || c == '.')
+	if((c >= '0' && c <= '9') || c == '.' || c == '-' || c == '+')
 		goto numb;
 	if(ralpha(c))
 		goto alpha;
