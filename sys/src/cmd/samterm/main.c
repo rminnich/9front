@@ -37,6 +37,8 @@ threadmain(int argc, char *argv[])
 	Flayer *nwhich;
 	ulong p;
 
+	rfork(RFENVG|RFNAMEG);
+
 	getscreen(argc, argv);
 	iconinit();
 	initio();

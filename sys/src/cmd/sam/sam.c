@@ -36,6 +36,8 @@ void main(int argc, char *argv[])
 	String *t;
 	char *termargs[10], **ap;
 	
+	rfork(RFENVG|RFNAMEG);
+
 	ap = termargs;
 	*ap++ = "samterm";
 	ARGBEGIN{
