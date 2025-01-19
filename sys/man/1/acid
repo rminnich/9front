@@ -478,7 +478,8 @@ acid: cont()
 .IR 2c (1),
 .IR 2l (1),
 .IR mk (1),
-.IR db (1)
+.IR db (1),
+.IR snap (4)
 .br
 Phil Winterbottom,
 ``Acid Manual''.

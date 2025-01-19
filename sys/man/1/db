@@ -986,7 +986,8 @@ $C
 .SH "SEE ALSO"
 .IR acid (1),
 .IR nm (1),
-.IR proc (3)
+.IR proc (3),
+.IR snap (4)
 .SH SOURCE
 .B /sys/src/cmd/db
 .SH DIAGNOSTICS
