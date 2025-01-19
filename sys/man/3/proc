@@ -544,6 +544,7 @@ Children inherit the parent's base priority.
 .IR trace (1),
 .IR debugger (2),
 .IR mach (2),
-.IR cons (3)
+.IR cons (3),
+.IR snap (4)
 .SH SOURCE
 .B /sys/src/9/port/devproc.c
