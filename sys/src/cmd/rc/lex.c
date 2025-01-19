@@ -81,6 +81,7 @@ epilog:
 	if(c=='\\' && !lex->inquote){
 		c = rchr(lex->input);
 		if(c=='\n' && !lex->incomm){		/* don't continue a comment */
+			lex->line++;
 			doprompt = 1;
 			c=' ';
 		}
