@@ -126,10 +126,9 @@ mksubfonts(TFont *f)
 }
 
 static void
-blit(uchar *t, int x, int y, int tstride, uchar *s, int w, int h)
+blit8(uchar *t, int x, int y, int tstride, uchar *s, int w, int h)
 {
 	int tx, ty, sx, sy;
-	u16int b;
 	uchar *tp, *sp;
 	
 	if(y < 0) y = 0;
@@ -137,15 +136,68 @@ blit(uchar *t, int x, int y, int tstride, uchar *s, int w, int h)
 	sp = s;
 	for(sy = 0; sy < h; sy++, ty++){
 		tx = x;
-		tp = t + ty * tstride + (tx >> 3);
-		b = 0;
-		for(sx = 0; sx < w; sx += 8){
-			b |= *sp++ << 8 - (tx & 7);
-			*tp++ |= b >> 8;
-			b <<= 8;
+		tp = t + ty * tstride + (tx);
+		for(sx = 0; sx < w; sx ++){
+			*tp++ = *sp++;
 		}
-		*tp |= b >> 8;
 	}
+}
+
+// Allocate an 8bpp bitmap.  We can remove this if we update libttf to support 8 bit bitmaps.
+static TTBitmap *
+newbitmap8(int w, int h, int depth) 
+{
+	TTBitmap *b;
+	if(!(depth == 1 || depth == 8)) {
+		return nil;
+	}
+	b = mallocz(sizeof(TTBitmap), 1);
+	if(b == nil) return nil;
+	b->width = w;
+	b->height = h;
+	switch (depth) {
+	case 1:
+		b->stride = (w + 7) >> 3;
+		break;
+	case 8:
+		b->stride = w;
+		break;
+	}
+	
+	b->bit = mallocz(b->stride * h, 1);
+	if(b->bit == nil){
+		free(b);
+		return nil;
+	}
+	return b;
+}
+
+static void
+freebitmap8(TTBitmap *b) {
+	if(b == nil) return;
+	free(b->bit);
+	free(b);
+}
+
+
+TTBitmap *
+scaledown(TTBitmap *b)
+{
+	TTBitmap *a;
+	int i, j;
+	int scale;
+
+	scale = 8;
+	a = newbitmap8((b->width + 7)>>3 , (b->height +7)>>3, 8);
+	if(a == nil) sysfatal("ttfnewbitmap: %r");
+	for(j = 0; j < b->height; j++)
+		for(i = 0; i < b->width; i++){
+			if((b->bit[j * b->stride + (i>>3)] >> 7 - (i & 7) & 1) != 0)
+				a->bit[j/scale * a->stride + i/scale]++;
+			if(j % scale == scale - 1 && i % scale == scale - 1)
+				a->bit[j/scale * a->stride + i/scale] = ((a->bit[j/scale * a->stride + i/scale] * 255 + scale * scale / 2) / (scale * scale));
+		}
+	return a;
 }
 
 static void
@@ -153,10 +205,12 @@ compilesub(TFont *f, TSubfont *s)
 {
 	int n, i, w, x, h, g, sz;
 	char *d, *p;
-	TTGlyph **gs;
-	TTFont *t;
+	TTGlyph **gs, *gts;
+	TTFont *t, *tscaled;
+	TTBitmap *scaleddown;
 	
 	t = f->ttf;
+	tscaled = ttfscale(t, t->ppem * 8, 0);
 	n = s->end - s->start + 1;
 	gs = emalloc9p(sizeof(TTGlyph *) * n);
 	w = 0;
@@ -166,20 +220,22 @@ compilesub(TFont *f, TSubfont *s)
 			g = 0;
 		else
 			g = ttffindchar(t, s->start + i);
-		if((gs[i] = ttfgetglyph(t, g, 1)) == nil && g != 0)
-			gs[i] = ttfgetglyph(t, 0, 1);
+		if((gs[i] = ttfgetglyph(tscaled, g, 1)) == nil && g != 0)
+			gs[i] = ttfgetglyph(tscaled, 0, 1);
 		assert(gs[i] != nil);
-	   w += gs[i]->width;
+	   	w += (gs[i]->width + 7)>>3;
 	}
-	sz = 5 * 12 + (w+7>>3) * h + 3 * 12 + (n + 1) * 6;
+	sz = 5 * 12 + w  * h + 3 * 12 + (n + 1) * 6;
 	d = emalloc(sz);
-	p = d + sprint(d, "%11s %11d %11d %11d %11d ", "k1", 0, 0, w, h);
+	p = d + sprint(d, "%11s %11d %11d %11d %11d ", "k8", 0, 0, w, h);
 	x = 0;
 	for(i = 0; i < n; i++){
-		blit((uchar*)p, x, t->ascentpx - gs[i]->ymaxpx, w+7>>3, gs[i]->bit, gs[i]->width, gs[i]->height);
-		x += gs[i]->width;
+		scaleddown = scaledown(gs[i]);
+		blit8((uchar*)p, x, t->ascentpx - ((gs[i]->ymaxpx+7)>>3), w, scaleddown->bit, scaleddown->width, scaleddown->height);
+		x += scaleddown->width;
+		freebitmap8(scaleddown);
 	}
-	p += (w+7>>3) * h;
+	p += w * h;
 	p += sprint(p, "%11d %11d %11d ", n, h, t->ascentpx);
 	x = 0;
 	for(i = 0; i < n; i++){
@@ -187,12 +243,12 @@ compilesub(TFont *f, TSubfont *s)
 		*p++ = x >> 8;
 		*p++ = 0;
 		*p++ = h;
-		*p++ = gs[i]->xminpx;
+		*p++ = (gs[i]->xminpx+7)>>3;
 		if(gs[i]->advanceWidthpx != 0)
-			*p++ = gs[i]->advanceWidthpx;
+			*p++ = (gs[i]->advanceWidthpx + 7)>>3; // Already at the right scale from when we grabbed it from gts
 		else
-			*p++ = gs[i]->width;
-		x += gs[i]->width;
+			*p++ = (gs[i]->width+7)>>3;
+		x += (gs[i]->width+7)>>3;
 	}
 	*p++ = x;
 	*p = x >> 8;
@@ -200,7 +256,7 @@ compilesub(TFont *f, TSubfont *s)
 	s->ndata = sz;
 	for(i = 0; i < n; i++)
 		ttfputglyph(gs[i]);
-	free(gs);
+	free(gs); 
 }
 
 

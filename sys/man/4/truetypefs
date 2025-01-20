@@ -29,6 +29,8 @@ For example,
 is a
 .IR font (6)
 file generated for GNU Unifont at a size of 16.
+The generated fonts are supersampled to generate filtered 8 bit fonts instead of the
+1 bit fonts libttf generates.
 
 .SH EXAMPLES
 Use size 16 GNU Unifont for
@@ -48,3 +50,8 @@ acme -c 1 /lib/glass
 .SH HISTORY
 .I Truetypefs
 first appeared in 9front (October, 2018).
+.SH BUGS
+The filtering generates blurry fonts for small point sizes.
+At small point sizes it is better to use a specialty bitmapped font.
+
+The filtering should happen natively in libttf, not in its dependents.
