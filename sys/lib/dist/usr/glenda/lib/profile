@@ -1,30 +1,38 @@
-bind -a $home/bin/rc /bin
-bind -a $home/bin/$cputype /bin
-if(! syscall create /tmp/xxx 1 0666 >[2]/dev/null)
-	ramfs	# in case we're running off a cd
+bind -a /usr/bin/rc /bin
+bind -a /usr/bin/$x^cputype /bin
+mount -qC /srv/cwfs /n/other other
+bind -qc /n/other/usr/$x^user/tmp /usr/tmp
+bind -c /usr/tmp /tmp
 font=/lib/font/bit/vga/unicode.font
-switch($service){
+switch($x^service){
 case terminal
-	if(! webcookies >[2]/dev/null)
-		webcookies -f /tmp/webcookies
+	webcookies
 	webfs
 	plumber
 	echo -n accelerated > '#m/mousectl'
 	echo -n 'res 3' > '#m/mousectl'
 	prompt=('term% ' '	')
-	fn term%{ $* }
+	fn term%{ $x^* }
 	rio -i riostart
 case cpu
 	bind /mnt/term/dev/cons /dev/cons
 	bind -q /mnt/term/dev/consctl /dev/consctl
 	>[2] /dev/null {
 		cp /dev/sysname /mnt/term/dev/label
-		if(test -s /mnt/term/env/wsys)
-			wsys=/mnt/term^`{cat /mnt/term/env/wsys}
+		if(wsys=`{cat /mnt/term/env/wsys})
+			wsys=/mnt/term^$x^wsys
 	} 
 	bind -a /mnt/term/dev /dev
 	prompt=('cpu% ' '	')
-	fn cpu%{ $* }
+	fn cpu%{ $x^* }
+	if(! test -e /mnt/term/dev/wsys){
+		# call from drawterm
+		auth/factotum
+		webcookies
+		webfs
+		plumber
+		rio
+	}
 case con
 	prompt=('cpu% ' '	')
 }

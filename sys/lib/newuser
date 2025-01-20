@@ -29,7 +29,7 @@ case terminal
 	echo -n 'res 3' > '#m/mousectl'
 	prompt=('term% ' '	')
 	fn term%{ $x^* }
-	rio
+	rio -i riostart
 case cpu
 	bind /mnt/term/dev/cons /dev/cons
 	bind -q /mnt/term/dev/consctl /dev/consctl
@@ -63,6 +63,12 @@ case con
 	prompt=('cpu% ' '	')
 }
 !
+
+cat > bin/rc/riostart <<!
+#!/bin/rc
+!
+chmod +x bin/rc/riostart
+
 cat > lib/plumbing <<!
 # to update: cp $$home/lib/plumbing /mnt/plumb/rules
 
