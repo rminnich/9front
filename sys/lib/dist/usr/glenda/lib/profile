@@ -1,10 +1,10 @@
 bind -a /usr/bin/rc /bin
-bind -a /usr/bin/$x^cputype /bin
+bind -a /usr/bin/$cputype /bin
 mount -qC /srv/cwfs /n/other other
-bind -qc /n/other/usr/$x^user/tmp /usr/tmp
+bind -qc /n/other/usr/$user/tmp /usr/tmp
 bind -c /usr/tmp /tmp
 font=/lib/font/bit/vga/unicode.font
-switch($x^service){
+switch($service){
 case terminal
 	webcookies
 	webfs
@@ -12,7 +12,7 @@ case terminal
 	echo -n accelerated > '#m/mousectl'
 	echo -n 'res 3' > '#m/mousectl'
 	prompt=('term% ' '	')
-	fn term%{ $x^* }
+	fn term%{ $* }
 	rio -i riostart
 case cpu
 	bind /mnt/term/dev/cons /dev/cons
@@ -20,11 +20,11 @@ case cpu
 	>[2] /dev/null {
 		cp /dev/sysname /mnt/term/dev/label
 		if(wsys=`{cat /mnt/term/env/wsys})
-			wsys=/mnt/term^$x^wsys
+			wsys=/mnt/term^$wsys
 	} 
 	bind -a /mnt/term/dev /dev
 	prompt=('cpu% ' '	')
-	fn cpu%{ $x^* }
+	fn cpu%{ $* }
 	if(! test -e /mnt/term/dev/wsys){
 		# call from drawterm
 		auth/factotum
