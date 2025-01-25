@@ -621,10 +621,8 @@ Brune(Rune r)
 		Bprint(&bout, "&lt;");
 	else if(r == '>')
 		Bprint(&bout, "&gt;");
-	else if(r < Runeself || utf8)
-		Bprint(&bout, "%C", r);
 	else
-		Bprint(&bout, "%S", rune2html(r));
+		Bprint(&bout, "%C", r);
 }
 
 void
