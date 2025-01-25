@@ -1,65 +1,6 @@
 #include "a.h"
 
 /*
- * Translate Unicode to HTML by asking tcs(1).
- * This way we don't have yet another table.
- */
-Rune*
-rune2html(Rune r)
-{
-	static Biobuf b;
-	static int fd = -1;
-	static Rune **tcscache[256];
-	int p[2];
-	char *q;
-	
-	if(r == '\n')
-		return L("\n");
-
-	if(((uint)r&~0xFFFF) != 0){
-		/* The cache must grow a lot to handle them */
-		fprint(2, "%s: can't handle rune '%C'\n", argv0, r);
-		return L("?");
-	}
-
-	if(tcscache[r>>8] && tcscache[r>>8][r&0xFF])
-		return tcscache[r>>8][r&0xFF];
-
-	if(fd < 0){
-		if(pipe(p) < 0)
-			sysfatal("pipe: %r");
-		switch(fork()){
-		case -1:
-			sysfatal("fork: %r");
-		case 0:
-			dup(p[0], 0);
-			dup(p[0], 1);
-			close(p[0]);
-			close(p[1]);
-			execl("/bin/tcs", "tcs", "-t", "html", nil);
-			_exits(0);
-		default:
-			close(p[0]);
-			fd = p[1];
-			Binit(&b, fd, OREAD);
-			break;
-		}
-	}
-	/* HACK: extra newlines force rune+\n through tcs now */
-	fprint(fd, "%C\n\n\n\n", r);
-	q = Brdline(&b, '\n');
-	while (q != nil && *q == '\n')
-		q = Brdline(&b, '\n');
-	if(q == nil)
-		sysfatal("tcs: early eof");
-	q[Blinelen(&b)-1] = 0;
-	if(tcscache[r>>8] == nil)
-		tcscache[r>>8] = emalloc(256*sizeof tcscache[0][0]);
-	tcscache[r>>8][r&0xFF] = erunesmprint("%s", q);
-	return tcscache[r>>8][r&0xFF];
-}
-
-/*
  * Translate troff to Unicode by looking in troff's utfmap.
  * This way we don't have yet another hard-coded table.
  */

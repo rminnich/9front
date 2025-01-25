@@ -137,7 +137,6 @@ extern	int		dot;
 extern	int		inputmode;
 extern	int		inrequest;
 extern	int		tick;
-extern	int		utf8;
 extern	int		verbose;
 extern	int		linepos;
 

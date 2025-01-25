@@ -7,7 +7,6 @@
 Biobuf	bout;
 char*	tmacdir;
 int		verbose;
-int		utf8 = 0;
 
 void
 usage(void)
@@ -46,7 +45,7 @@ main(int argc, char **argv)
 		_nr(buf, erunesmprint("%s", p+1));
 		break;
 	case 'u':
-		utf8 = 1;
+		/* legacy, now default */
 		break;
 	case 'v':
 		verbose = 1;
