@@ -18,4 +18,4 @@ sam.html:D:	sam.ms fig1.ps fig2.ps fig3.ps fig4.ps fig5.pic fig6.pic fig7.pic re
 	pic sam.ms refs | tbl | htmlroff -ms -mhtml >sam.html
 
 clean:V:
-	rm -f sam.ps
+	rm -f sam.ps sam.pdf sam*.png sam.html
