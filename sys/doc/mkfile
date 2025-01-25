@@ -1,8 +1,3 @@
-# Changes made in this directory are invisible to the
-# external web server.  To publish changed documents
-# to the external web server, mk install or name.install
-# To publish changed ps/pdf files, see the install rule.
-
 < /sys/doc/fonts
 NPROC = 1
 
@@ -109,22 +104,15 @@ index.html: contents.html
 
 pdf:V: $PDF
 
-^(8½|acme|fs|il|net|sam|venti)/([^/]*\.(pdf|ps|html))'$':R:
+^(8½|acme|fs|il|net|nupas|sam|venti)/([^/]*\.(pdf|ps|html))'$':R:
 	cd $stem1
 	mk $stem2
 
-^(8½|acme|fs|il|net|sam|venti)\.html'$':R: \1/\1.html
+^(8½|acme|fs|il|net|nupas|sam|venti)\.html'$':R: \1/\1.html
 	cp $stem1/$stem1.html .
 
 %.all:V:
 	mk $stem.ps $stem.pdf $stem.html
-
-%.install:V: %.html
-	9fs other
-	files=`{ls $stem.html $stem^*.png $stem/*.png $stem/*.html >[2]/dev/null}
-	whatis stem
-	whatis files
-	cp $files /n/other/crp/sources.copy/sys/doc
 
 %.page:V:	%.ps
 	page -w $stem.ps
@@ -140,9 +128,9 @@ $IGN:QV:
 
 clean:V:
 	clean=`{
-		for(i in $ALLPS $PDF){
+		for(i in $ALLPS $PDF $HTML *.png */*.png){
 			echo $i
-		} | grep -v 'acme|venti|fig.\.ps'
+		} | grep -v 'acme\.(pdf|ps)|venti|fig.\.ps'
 	}
 	rm -f $clean
 	@{ cd fs && mk clean }
