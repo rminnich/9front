@@ -559,6 +559,8 @@ loop:
 void
 usedset(Node *n, int o)
 {
+	if(n == Z)
+		return;
 	if(n->op == OLIST) {
 		usedset(n->left, o);
 		usedset(n->right, o);
