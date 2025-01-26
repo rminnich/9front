@@ -1,10 +1,14 @@
 </sys/doc/fonts
 
-default:V: sam.ps sam.pdf
+default:V: sam.ps sam.pdf samtut.ps samtut.pdf
 
 sam.ps:D:	sam.ms fig1.ps fig2.ps fig3.ps fig4.ps fig5.pic fig6.pic fig7.pic refs
 	{echo $FONTS; cat sam.ms refs} | pic | tbl | troff -ms -mpictures | lp -dstdout >sam.ps
 	../cleanps sam.ps
+
+samtut.ps:D:	sam.tut
+	troff -ms $prereq | dpost > samtut.ps
+	../cleanps samtut.ps
 
 %.pdf:D: %.ps
 	cat ../docfonts $stem.ps >_$stem.ps
@@ -18,4 +22,4 @@ sam.html:D:	sam.ms fig1.ps fig2.ps fig3.ps fig4.ps fig5.pic fig6.pic fig7.pic re
 	pic sam.ms refs | tbl | htmlroff -ms -mhtml >sam.html
 
 clean:V:
-	rm -f sam.ps sam.pdf sam*.png sam.html
+	rm -f sam.ps sam.pdf sam*.png sam.html samtut.pdf samtut.ps
