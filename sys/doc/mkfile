@@ -21,6 +21,7 @@ ALL=\
 	8½/8½\
 	rc\
 	sam/sam\
+	sam/samtut\
 	acme/acme\
 	plumb\
 	utf\
@@ -104,11 +105,11 @@ index.html: contents.html
 
 pdf:V: $PDF
 
-^(8½|acme|fs|il|net|nupas|sam|venti)/([^/]*\.(pdf|ps|html))'$':R:
+^(8½|acme|fs|il|net|nupas|sam(tut)?|venti)/([^/]*\.(pdf|ps|html))'$':R:
 	cd $stem1
 	mk $stem2
 
-^(8½|acme|fs|il|net|nupas|sam|venti)\.html'$':R: \1/\1.html
+^(8½|acme|fs|il|net|nupas|sam(tut)?|venti)\.html'$':R: \1/\1.html
 	cp $stem1/$stem1.html .
 
 %.all:V:
