@@ -504,12 +504,12 @@ parseqid(char *s)
 	e = s;
 	q.path = strtoull(e, &e, 16);
 	if(*e != '.')
-		sysfatal("corrupt qid: %s (%s)\n", s, e);
+		sysfatal("corrupt qid: %s (%s)", s, e);
 	q.vers = strtoul(e+1, &e, 10);
 	if(*e != '.')
-		sysfatal("corrupt qid: %s (%s)\n", s, e);
+		sysfatal("corrupt qid: %s (%s)", s, e);
 	q.type = strtoul(e+1, &e, 16);
 	if(*e != '\0')
-		sysfatal("corrupt qid: %s (%x)\n", s, *e);
+		sysfatal("corrupt qid: %s (%x)", s, *e);
 	return q;
 }

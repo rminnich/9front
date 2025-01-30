@@ -478,7 +478,7 @@ main(int argc, char **argv)
 	qsort(idx, nidx, sizeof(Idxent), idxcmp);
 	r = treeify(t, argv, argv + argc, 0, &th);
 	if(r == -1)
-		sysfatal("could not commit: %r\n");
+		sysfatal("could not commit: %r");
 	mkcommit(&ch, date, th);
 	print("%H\n", ch);
 	exits(nil);

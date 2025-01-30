@@ -215,7 +215,7 @@ sendpack(Conn *c)
 		if(strcmp(sp[0], "unpack") == 0 && strcmp(sp[1], "ok") != 0)
 			werrstr("unpack %s", sp[1]);
 		else if(strcmp(sp[0], "ng") == 0)
-			werrstr("failed update: %s %s\n", sp[1], sp[2]);
+			werrstr("failed update: %s %s", sp[1], sp[2]);
 		else
 			continue;
 		return -1;
