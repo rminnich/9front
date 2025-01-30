@@ -204,7 +204,7 @@ sendpack(Conn *c)
 		if(chattygit)
 			fprint(2, "done sending pack, status %s\n", buf);
 		nsp = getfields(buf, sp, nelem(sp), 1, " \t\n\r");
-		if(nsp < 2) 
+		if(nsp < 2)
 			continue;
 		if(nsp < 3)
 			sp[2] = "";
@@ -213,9 +213,9 @@ sendpack(Conn *c)
 		 * surrounding scripts.
 		 */
 		if(strcmp(sp[0], "unpack") == 0 && strcmp(sp[1], "ok") != 0)
-			fprint(2, "unpack %s\n", sp[1]);
+			werrstr("unpack %s", sp[1]);
 		else if(strcmp(sp[0], "ng") == 0)
-			fprint(2, "failed update: %s\n", sp[1]);
+			werrstr("failed update: %s %s\n", sp[1], sp[2]);
 		else
 			continue;
 		return -1;
