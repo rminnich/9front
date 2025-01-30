@@ -37,13 +37,13 @@ int
 entcmp(void *pa, void *pb)
 {
 	Dirent *ae, *be;
-	char *a, *b;
+	uchar *a, *b;
 	int ca, cb;
 
 	ae = pa;
 	be = pb;
-	a = ae->name;
-	b = be->name;
+	a = (uchar*)ae->name;
+	b = (uchar*)be->name;
 	/*
 	 * If the files have the same name, they're equal.
 	 * Otherwise, If they're trees, they sort as thoug
