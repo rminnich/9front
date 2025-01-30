@@ -929,7 +929,7 @@ parsetree(Object *o)
 		t = &ent[nent++];
 		m = strtol(p, &p, 8);
 		if(*p != ' ')
-			sysfatal("malformed tree %H: *p=(%d) %c\n", o->hash, *p, *p);
+			sysfatal("malformed tree %H: *p=(%d) %c", o->hash, *p, *p);
 		p++;
 		/*
 		 * only the stored permissions for the user
