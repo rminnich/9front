@@ -15,7 +15,7 @@
 #include "mem.h"
 
 /* where the fuck is this defined */
-#define PTPGSHFT 12
+#define PTPGSHIFT 12
 /*
  * Some machine instructions not handled well by [68][al].
  * This is a messy piece of code, requiring instructions in real mode,
@@ -117,7 +117,7 @@ MODE $32
  * the C-style array-index macros into a page table byte
  * offset.
  */
-#define PMX(v, l)	(((v)>>((((l)-1)*PTPGSHFT)+PGSHFT)) & ((1<<PTPGSHFT)-1))
+#define PMX(v, l)	(((v)>>((((l)-1)*PTPGSHIFT)+PGSHIFT)) & ((1<<PTPGSHIFT)-1))
 #define PML4O(v)	((PMX((v), 4))<<3)
 #define PDPO(v)		((PMX((v), 3))<<3)
 #define PDO(v)		((PMX((v), 2))<<3)
@@ -142,12 +142,12 @@ TEXT _protected<>(SB), 1, $-4
 	MOVL	PML4O(KZERO)(AX), DX		/* PML4E for KZERO, PMAPADDR */
 	MOVL	DX, PML4O(0)(AX)		/* PML4E for identity map */
 
-	ANDL	$~((1<<PTPGSHFT)-1), DX		/* lop off attribute bits */
+	ANDL	$~((1<<PTPGSHIFT)-1), DX		/* lop off attribute bits */
 	MOVL	DX, AX				/* PDP for KZERO */
 	MOVL	PDPO(KZERO)(AX), DX		/* PDPE for KZERO, PMAPADDR */
 	MOVL	DX, PDPO(0)(AX)			/* PDPE for identity map */
 
-	ANDL	$~((1<<PTPGSHFT)-1), DX		/* lop off attribute bits */
+	ANDL	$~((1<<PTPGSHIFT)-1), DX		/* lop off attribute bits */
 	MOVL	DX, AX				/* PD for KZERO */
 
 	MOVL	PDO(KZERO)(AX), DX		/* PDE for KZERO 0-2MiB */
@@ -164,21 +164,21 @@ TEXT _protected<>(SB), 1, $-4
  */
 TEXT _lme<>(SB), 1, $-4
 	MOVL	CR4, AX
-	ANDL	$~Pse, AX			/* Page Size */
-	ORL	$(Pge|Pae), AX			/* Page Global, Phys. Address */
+	ANDL	$~PTESIZE, AX			/* Page Size */
+	ORL	$(0x00000080|0x00000020), AX			/* Page Global, Phys. Address */
 	MOVL	AX, CR4
 
-	MOVL	$Efer, CX			/* Extended Feature Enable */
+	MOVL	$0xc0000080, CX			/* Extended Feature Enable */
 	RDMSR
-	ORL	$Lme, AX			/* Long Mode Enable */
+	ORL	$0x00000100, AX			/* Long Mode Enable */
 	WRMSR
 
 	MOVL	CR0, DX
-	ANDL	$~(Cd|Nw|Ts|Mp), DX
-	ORL	$(Pg|Wp), DX			/* Paging Enable */
+	ANDL	$~(0x40000000|0x20000000|0x00000008|0x00000002), DX /*Cd|Nw|Ts|Mp*/
+	ORL	$(0x80000000|0x00010000), DX			/* Paging Enable | Wp*/
 	MOVL	DX, CR0
 
-	pFARJMP32(SSEL(3, SsTIGDT|SsRPL0), _identity<>-KZERO(SB))
+	pFARJMP32(KESEL, _identity<>-KZERO(SB))
 
 /*
  * Long mode. Welcome to 2003.
@@ -212,12 +212,12 @@ TEXT _start64v<>(SB), 1, $-4
 	MOVQ	AX, SP				/* set stack */
 
 	MOVQ	PML4O(0)(AX), BX		/* PDPE identity map physical */
-	ANDQ	$~((1<<PTPGSHFT)-1), BX		/* lop off attribute bits */
+	ANDQ	$~((1<<PTPGSHIFT)-1), BX		/* lop off attribute bits */
 	ADDQ	$KZERO, BX			/* PDP identity map virtual */
 	MOVQ	DX, PML4O(0)(AX)		/* zap identity map PML4E */
 
 	MOVQ	PDPO(0)(BX), AX			/* PDE identity map physical */
-	ANDQ	$~((1<<PTPGSHFT)-1), AX		/* lop off attribute bits */
+	ANDQ	$~((1<<PTPGSHIFT)-1), AX		/* lop off attribute bits */
 	ADDQ	$KZERO, AX			/* PD identity map virtual */
 	MOVQ	DX, PDPO(0)(BX)			/* zap identity map PDPE */
 
@@ -241,7 +241,7 @@ TEXT _start64v<>(SB), 1, $-4
 
 	MOVQ	AX, SP				/* set stack */
 
-	ADDQ	$(4*PTPGSZ+PGSZ), AX		/* PML4+PDP+PD+PT+vsvm */
+	ADDQ	$(4*PTSZ+4096), AX		/* PML4+PDP+PD+PT+vsvm */
 	MOVQ	AX, RMACH			/* Mach */
 	MOVQ	DX, RUSER
 
