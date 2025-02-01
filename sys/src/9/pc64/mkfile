@@ -56,6 +56,7 @@ OBJ=\
 	memory.$O\
 	mmu.$O\
 	irq.$O\
+	tcore.$O\
 	trap.$O\
 	bootargs.$O\
 	$CONF.root.$O\
