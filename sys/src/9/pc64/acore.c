@@ -321,6 +321,23 @@ acinit(void)
 	assert((uintptr)&mp->stack == 24);
 }
 
+/* support -- put it here for now */
+void
+acfpusysprocsetup(Proc *p)
+{
+#define Init 0
+#define Idle 2
+	panic("acfpusysprocsetup fixme");
+#ifdef xxx
+	if(p->fpustate == Init){
+		/* The FPU is initialized in the TC but we must initialize
+		 * it in the AC.
+		 */
+		p->fpustate = Idle;
+		panic("fpusysprocsetup(p);");
+	}
+#endif
+}
 /* debug -- put them here, not in main.c */
 void
 DONE(void)
@@ -337,4 +354,10 @@ HERE(void)
 	print("here\n");
 	prflush();
 	delay(5000);
+}
+
+void ndnr(void)
+{
+	while (1)
+		;
 }
