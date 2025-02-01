@@ -39,6 +39,7 @@ enum {
 	IrqSPURIOUS	= 31,		/* must have bits [3-0] == 0x0F */
 	MaxIrqLAPIC	= 31,
 
+	VectorIPI	= 62,
 	VectorSYSCALL	= 64,
 
 	VectorAPIC	= 65,		/* external APIC interrupts */
@@ -66,6 +67,13 @@ typedef struct Vctl {
 
 	char	name[KNAMELEN];		/* of driver */
 } Vctl;
+
+typedef struct ACVctl {
+	char*	(*f)(Ureg*,void*);
+	void*	a;
+	int	vno;
+	char	name[KNAMELEN];		/* of driver */
+} ACVctl;
 
 enum {
 	MaxEISA		= 16,

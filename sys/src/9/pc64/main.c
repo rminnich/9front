@@ -215,6 +215,10 @@ main(void)
 	preallocpages();
 	pageinit();
 	userinit();
+// We are mach 0. test ac 1
+	print("Calling testicc ...\n");
+	testicc(1);
+	print("Done\n");
 	schedinit();
 }
 

@@ -248,6 +248,7 @@ void		prflush(void);
 void		printinit(void);
 ulong		procalarm(ulong);
 void		procctl(void);
+void		_procctl(Proc*);
 int		procfdprint(Chan*, int, char*, int);
 void		procflushseg(Segment*);
 void		procflushpseg(Physseg*);

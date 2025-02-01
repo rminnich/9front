@@ -1390,6 +1390,11 @@ pexit(char *exitstr, int freemem)
 	}
 	qunlock(&up->seglock);
 
+	/* free the AC from this process. */
+	stopac();
+	/* the nix kproc uses syscall queues so we never
+	 * have to relinquish the AC for system calls. */
+	/* stopnixproc(); TODO: bring in the nixkproc */
 	edfstop(up);
 	if(up->edf != nil){
 		free(up->edf);
@@ -1648,11 +1653,13 @@ kproc(char *name, void (*func)(void *), void *arg)
  *  reasoning.
  */
 void
-procctl(void)
+_procctl(Proc *p)
 {
+	void runacore(void);
+	void stopac(void);
 	char *state;
 
-	switch(up->procctl) {
+	switch(p->procctl) {
 	case Proc_exitbig:
 		spllo();
 		pprint("Killed: Insufficient physical memory\n");
@@ -1663,28 +1670,52 @@ procctl(void)
 		pexit("Killed", 1);
 
 	case Proc_traceme:
-		if(up->nnote == 0)
+		if(p->nnote == 0)
 			return;
 		/* No break */
 
 	case Proc_stopme:
-		up->procctl = 0;
-		state = up->psstate;
-		up->psstate = statename[Stopped];
+		p->procctl = 0;
+		state = p->psstate;
+		p->psstate = statename[Stopped];
 		/* free a waiting debugger */
 		spllo();
-		qlock(&up->debug);
-		if(up->pdbg != nil) {
-			wakeup(&up->pdbg->sleep);
-			up->pdbg = nil;
+		qlock(&p->debug);
+		if(p->pdbg != nil) {
+			wakeup(&p->pdbg->sleep);
+			p->pdbg = nil;
 		}
-		qunlock(&up->debug);
+		qunlock(&p->debug);
 		splhi();
-		up->state = Stopped;
+		p->state = Stopped;
 		sched();
-		up->psstate = state;
+		p->psstate = state;
+		return;
+	case Proc_toac:
+		p->procctl = 0;
+		/*
+		 * This pretends to return from the system call,
+		 * by moving to a core, but never returns (unless
+		 * the process gets moved back to a TC.)
+		 */
+		spllo();
+		runacore();
+		return;
+
+	case Proc_totc:
+		p->procctl = 0;
+		if(p != up)
+			panic("procctl: stopac: p != up");
+		spllo();
+		stopac();
 		return;
 	}
+}
+
+void
+procctl(void)
+{
+	_procctl(up);
 }
 
 #include "errstr.h"

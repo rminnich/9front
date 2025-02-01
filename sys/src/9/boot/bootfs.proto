@@ -7,11 +7,13 @@ $objtype
 			kbdfs
 			wpa
 		bind
+		brekky
 		cat
 		cfs
 		chmod
 		dd
 		echo
+		ftq
 		grep
 		ip
 			ipconfig
@@ -22,15 +24,20 @@ $objtype
 		mv
 		ndb
 			dnsgetip
+		ramfs
+		ratrace
 		rc
 		rm
 		sed
 		sleep
 		srv
+		syscall
 		test
 		tlsclient
 		unmount
 		xd
+env
+	timezone
 rc
 	lib
 		rcmain

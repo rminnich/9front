@@ -8,7 +8,7 @@
 #include "fns.h"
 
 #include "/sys/src/libc/9syscall/sys.h"
-
+#define EXECAC 55 // XXX
 // WE ARE OVERRUNNING SOMEHOW
 static void
 fmtrwdata(Fmt* f, char* a, int n, char* suffix)
@@ -109,6 +109,23 @@ syscallfmt(ulong syscallno, uintptr pc, va_list list)
 	case ALARM:
 		l = va_arg(list, unsigned long);
 		fmtprint(&fmt, "%#lud ", l);
+		break;
+	case EXECAC:
+		i[0] = va_arg(list, int);
+		fmtprint(&fmt, "%d", i[0]);
+		a = va_arg(list, char*);
+		fmtuserstring(&fmt, a, " ");
+		argv = va_arg(list, char**);
+		evenaddr(PTR2UINT(argv));
+		for(;;){
+			validaddr((uintptr)argv, sizeof(char**), 0);
+			a = *(char **)argv;
+			if(a == nil)
+				break;
+			fmtprint(&fmt, " ");
+			fmtuserstring(&fmt, a, "");
+			argv++;
+		}
 		break;
 	case EXEC:
 		a = va_arg(list, char*);
@@ -329,6 +346,7 @@ sysretfmt(ulong syscallno, va_list list, uintptr ret, uvlong start, uvlong stop)
 
 	errstr = "\"\"";
 	switch(syscallno){
+	case EXECAC:
 	case EXEC:
 	case SEGBRK:
 	case SEGATTACH:

@@ -141,6 +141,26 @@ extern	int	fmtstrcpy(Fmt*, char*);
 extern	char*	fmtstrflush(Fmt*);
 
 /*
+ * NIX core types
+ */
+enum
+{
+	NIXTC = 0,
+	NIXKC,
+	NIXAC,
+	NIXXC,
+	NIXROLES,
+};
+
+/* execac */
+enum
+{
+	EXTC = 0,	/* exec on time-sharing */
+	EXAC,		/* want an AC for the exec'd image */
+	EXXC,		/* want an XC for the exec'd image */
+};
+
+/*
  * one-of-a-kind
  */
 extern	char*	cleanname(char*);
@@ -246,3 +266,7 @@ struct Waitmsg
 	ulong	time[3];	/* of loved one and descendants */
 	char	msg[ERRMAX];	/* actually variable-size in user mode */
 };
+
+/* NIX */
+void HERE(void);
+void DONE(void);

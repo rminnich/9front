@@ -119,6 +119,7 @@ mmuinit(void)
 	ltr(TSSSEL);
 
 	wrmsr(FSbase, 0ull);
+	print("cpu%d:gsbase %p\n", m->machno, &machp[m->machno]);
 	wrmsr(GSbase, (uvlong)&machp[m->machno]);
 	wrmsr(KernelGSbase, 0ull);
 
@@ -128,7 +129,10 @@ mmuinit(void)
 	wrmsr(Efer, v);
 
 	wrmsr(Star, ((uvlong)UE32SEL << 48) | ((uvlong)KESEL << 32));
-	wrmsr(Lstar, (uvlong)syscallentry);
+	if(m->nixtype != NIXAC)
+		wrmsr(Lstar, (uvlong)syscallentry);
+	else
+		wrmsr(Lstar, (uvlong)acsyscallentry);
 	wrmsr(Sfmask, 0x200);
 }
 
@@ -140,7 +144,7 @@ void*
 kaddr(uintptr pa)
 {
 	if(pa >= (uintptr)-KZERO)
-		panic("kaddr: pa=%#p pc=%#p", pa, getcallerpc(&pa));
+		panic("kaddr: pa=%#p pc=%#p, -KZERO is %p", pa, getcallerpc(&pa), (uintptr)-KZERO);
 	return (void*)(pa+KZERO);
 }
 

@@ -150,6 +150,7 @@ matherror(Ureg *ureg, void*)
 		return;
 	}
 	if(up->fpstate != FPinactive){
+		print("C");
 		_clts();
 		fpsave(up->fpsave);
 		up->fpstate = FPinactive;
@@ -447,15 +448,18 @@ fpcheck(FPsave *save, int kernel)
 static void
 mathemu(Ureg *ureg, void*)
 {
+	print("math emulation");
 	if(!userureg(ureg)){
 		if(up == nil){
 			switch(m->fpstate){
 			case FPinit:
+				print("matchemu: init\n");
 				m->fpsave = fpalloc();
 				m->fpstate = FPactive;
 				fpinit();
 				break;
 			case FPinactive:
+				print("mathemu: FPinactive: m->fpsave %p\n", m->fpsave);
 				fpcheck(m->fpsave, 1);
 				fprestore(m->fpsave);
 				m->fpstate = FPactive;
@@ -467,6 +471,7 @@ mathemu(Ureg *ureg, void*)
 		}
 
 		if(up->fpstate == FPprotected){
+			print("mathemu: FPprotected, clts and fpsave\n");
 			_clts();
 			fpsave(up->fpsave);
 			up->fpstate = FPinactive;
@@ -474,11 +479,13 @@ mathemu(Ureg *ureg, void*)
 
 		switch(up->kfpstate){
 		case FPinit:
+			print("matchemu, switch is FPinit\n");
 			up->kfpsave = fpalloc();
 			up->kfpstate = FPactive;
 			fpinit();
 			break;
 		case FPinactive:
+			print("matchemu, switch is FPinactive\n");
 			fpcheck(up->kfpsave, 1);
 			fprestore(up->kfpsave);
 			up->kfpstate = FPactive;
@@ -490,27 +497,32 @@ mathemu(Ureg *ureg, void*)
 	}
 
 	if(up->fpstate & FPillegal){
+		print("matchemu, sendnote\n");
 		postnote(up, 1, "sys: floating point in note handler", NDebug);
 		return;
 	}
 	switch(up->fpstate){
 	case FPinit:
+		print("mathemu switch 2, state is FPinit\n");
 		if(up->fpsave == nil)
 			up->fpsave = fpalloc();
 		up->fpstate = FPactive;
 		fpinit();
 		break;
 	case FPinactive:
+		print("mathemu switch 2, state is FPinactive, up is %p up->fpsave is %p\n", up, up->fpsave);
 		if(fpcheck(up->fpsave, 0))
 			break;
 		fprestore(up->fpsave);
 		up->fpstate = FPactive;
 		break;
 	case FPprotected:
+		print("mathemu switch 2, state is FPprotected\n");
 		up->fpstate = FPactive;
 		_clts();
 		break;
 	case FPactive:
+		print("mathemu switch 2, state is FPactive\n");
 		postnote(up, 1, "sys: floating point error", NDebug);
 		break;
 	}
