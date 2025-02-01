@@ -46,6 +46,7 @@ PORT=\
 
 OBJ=\
 	l.$O\
+	acore.$O\
 	cga.$O\
 	fpu.$O\
 	i8253.$O\
@@ -54,12 +55,14 @@ OBJ=\
 	memory.$O\
 	mmu.$O\
 	irq.$O\
+	tcore.$O\
 	trap.$O\
 	bootargs.$O\
 	$CONF.root.$O\
 	$CONF.rootc.$O\
 	$DEVS\
 	$PORT\
+	nix.$O\
 
 LIB=\
 	/$objtype/lib/libmemlayer.a\

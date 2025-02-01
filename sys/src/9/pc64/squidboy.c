@@ -12,6 +12,7 @@ static void
 squidboy(Apic* apic)
 {
 	machinit();
+	acmodeset(m->machno == 1 ? NIXAC : NIXTC);
 	mmuinit();
 	cpuidentify();
 	if(arch->clockinit)
@@ -19,12 +20,31 @@ squidboy(Apic* apic)
 	cpuidprint();
 	syncclock();
 	active.machs[m->machno] = 1;
-	apic->online = 1;
-	lapicinit(apic);
-	lapiconline();
-	timersinit();
-	schedinit();
+	/* always set up an icc, in case we want to move back and forth. */
+	m->icc = mallocalign(sizeof *m->icc, ICCLNSZ, 0, 0);
+	m->icc->fn = nil;
+	switch(m->nixtype){
+	case NIXAC:
+		print("Startup up AC %d\n", m->machno);
+		m->online = 1;
+		acmmuswitch();
+		acinit();
+//		adec(&active.nbooting);
+//		ainc(&active.nonline);	/* this was commented out */
+		apic->online = 1;
+		acsched();
+		panic("%d: squidboy", m->machno);
+		break;
+	case NIXTC:
+		print("Startup up TC %d\n", m->machno);
+		apic->online = 1;
+		lapicinit(apic);
+		lapiconline();
+		timersinit();
+		schedinit();
+	}
 }
+
 
 void
 mpstartap(Apic* apic)

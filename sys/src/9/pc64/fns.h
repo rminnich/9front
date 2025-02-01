@@ -42,6 +42,7 @@ void	fpuprocrestore(Proc*);
 void	fpuprocsave(Proc*);
 void	fpuprocsetup(Proc*);
 
+Mach*	getac(Proc*, int);
 u64int	getcr0(void);
 u64int	getcr2(void);
 u64int	getcr3(void);
@@ -177,3 +178,18 @@ void	rdrandbuf(void*, ulong);
 #define	userureg(ur)	(((ur)->cs & 3) == 3)
 #define	KADDR(a)	kaddr(a)
 #define PADDR(a)	paddr((void*)(a))
+
+// NIX
+void acsyscallentry(void);
+void ndnr(void);
+void acinit(void);
+void acmmuswitch(void);
+void acmodeset(int mode);
+void acsched(void);
+void actouser(void);
+void apicipi(int apicno);
+void dumpptepg(int lvl, uvlong pa);
+void fpusysrfork(Ureg*);
+void nixprepage(int);
+void stopac(void);
+void testicc(int i);

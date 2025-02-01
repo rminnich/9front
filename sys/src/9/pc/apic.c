@@ -444,3 +444,58 @@ lapicnmidisable(void)
 {
 	lapicw(LapicPCINT, ApicIMASK);
 }
+
+/* not in 9front, not sure why */
+enum {						/* Iclo */
+	Lassert		= 0x00004000,		/* Assert level */
+
+	DSnone		= 0x00000000,		/* Use Destination Field */
+	DSself		= 0x00040000,		/* Self is only destination */
+	DSallinc	= 0x00080000,		/* All including self */
+	DSallexc	= 0x000c0000,		/* All Excluding self */
+};
+
+/*
+ * Common bits for
+ *	IOAPIC Redirection Table Entry (RDT);
+ *	APIC Local Vector Table Entry (LVT);
+ *	APIC Interrupt Command Register (ICR).
+ * [10:8] Message Type
+ * [11] Destination Mode (RW)
+ * [12] Delivery Status (RO)
+ * [13] Interrupt Input Pin Polarity (RW)
+ * [14] Remote IRR (RO)
+ * [15] Trigger Mode (RW)
+ * [16] Interrupt Mask
+ */
+enum {
+	MTf		= 0x00000000,		/* Fixed */
+	MTlp		= 0x00000100,		/* Lowest Priority */
+	MTsmi		= 0x00000200,		/* SMI */
+	MTrr		= 0x00000300,		/* Remote Read */
+	MTnmi		= 0x00000400,		/* NMI */
+	MTir		= 0x00000500,		/* INIT/RESET */
+	MTsipi		= 0x00000600,		/* Startup IPI */
+	MTei		= 0x00000700,		/* ExtINT */
+
+	Pm		= 0x00000000,		/* Physical Mode */
+	Lm		= 0x00000800,		/* Logical Mode */
+
+	Ds		= 0x00001000,		/* Delivery Status */
+	IPhigh		= 0x00000000,		/* IIPP High */
+	IPlow		= 0x00002000,		/* IIPP Low */
+	Rirr		= 0x00004000,		/* Remote IRR */
+	TMedge		= 0x00000000,		/* Trigger Mode Edge */
+	TMlevel		= 0x00008000,		/* Trigger Mode Level */
+	Im		= 0x00010000,		/* Interrupt Mask */
+};
+
+void
+apicipi(int apicno)
+{
+	lapicw(LapicICRHI, apicno<<24);
+	lapicw(LapicICRLO, DSnone|TMedge|Lassert|MTf|VectorIPI);
+	while(lapicr(LapicICRLO) & Ds)
+		;
+}
+

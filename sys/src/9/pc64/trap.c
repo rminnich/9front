@@ -17,6 +17,7 @@ void	noted(Ureg*, ulong);
 static void debugexc(Ureg*, void*);
 static void debugbpt(Ureg*, void*);
 static void faultamd64(Ureg*, void*);
+static void faulttss(Ureg*, void*);
 static void doublefault(Ureg*, void*);
 static void unexpected(Ureg*, void*);
 static void _dumpstack(Ureg*);
@@ -76,6 +77,7 @@ trapinit(void)
 	trapenable(VectorDE, debugexc, 0, "debugexc");
 	trapenable(VectorBPT, debugbpt, 0, "debugpt");
 	trapenable(VectorPF, faultamd64, 0, "faultamd64");
+	trapenable(10, faulttss, 0, "faulttss");
 	trapenable(Vector2F, doublefault, 0, "doublefault");
 	trapenable(Vector15, unexpected, 0, "unexpected");
 }
@@ -376,11 +378,17 @@ faultnote(Ureg *ureg, char *access, uintptr addr)
 
 	if(!userureg(ureg)){
 		dumpregs(ureg);
-		panic("fault: %s addr=%#p", access, addr);
+		panic("cpu%d:fault: %s addr=%#p", m->machno, access, addr);
 	}
 	checkpages();
 	snprint(buf, sizeof(buf), "sys: trap: fault %s addr=%#p", access, addr);
 	postnote(up, 1, buf, NDebug);
+}
+
+static void
+faulttss(Ureg*ureg, void *v)
+{
+	panic("invalidtss: what the shit: %p, %p, %p\n", ureg->pc, ureg->sp, v);
 }
 
 static void
@@ -461,7 +469,7 @@ syscall(Ureg* ureg)
 			validaddr(sp, sizeof(Sargs)+BY2WD, 0);
 
 		up->s = *((Sargs*)(sp+BY2WD));
-		if(0){
+		if(up->printsyscall){
 			syscallfmt(scallnr, ureg->pc, (va_list)up->s.args);
 			print("syscall: %s\n", up->syscalltrace);
 		}
@@ -473,7 +481,9 @@ syscall(Ureg* ureg)
 			procctl();
 			splx(s);
 			startns = todget(nil);
-		}
+		}else if(up->procctl == Proc_totc || up->procctl == Proc_toac)
+		_procctl(up);
+
 		if(scallnr >= nsyscall || systab[scallnr] == nil){
 			postnote(up, 1, "sys: bad sys call", NDebug);
 			error(Ebadarg);
@@ -498,7 +508,7 @@ syscall(Ureg* ureg)
 	}
 	ureg->ax = ret;
 
-	if(0){
+	if(up->printsyscall){
 		print("syscallret: %lud %s %s ret=%lld\n", 
 			up->pid, up->text, sysctab[scallnr], ret);
 	}

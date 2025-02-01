@@ -235,6 +235,7 @@ panic(char *fmt, ...)
 
 	s = splhi();
 	strcpy(buf, "panic: ");
+	seprint(buf+strlen(buf), buf+sizeof(buf), "cpu%d:", m->machno);
 	va_start(arg, fmt);
 	vseprint(buf+strlen(buf), buf+sizeof(buf), fmt, arg);
 	va_end(arg);

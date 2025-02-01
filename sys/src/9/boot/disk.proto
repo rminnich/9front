@@ -11,6 +11,9 @@ $objtype
 		dossrv
 		gefs
 		hjfs
+		execac
+		date
+		ratrace
 rc
 	lib
 		local.rc 555 sys sys ../boot/local.rc

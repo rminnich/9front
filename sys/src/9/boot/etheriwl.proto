@@ -9,6 +9,6 @@ lib
 		iwn-5150
 		iwn-6000
 		iwn-6005
-		iwn-6030
+#		iwn-6030
 		iwn-6050
 		iwn-license

@@ -1,0 +1,16 @@
+#!/bin/rc
+dossrv -f /dev/sdUb9c95/dos
+mount -c /srv/dos /n/dos
+ls -l /n/dos
+cp 9pc64 /n/dos
+ls -l /n/dos
+
+unmount /n/dos
+rm -f /srv/dos
+
+
+exit 0
+9fs 9fat
+mk
+cp 9pc64 /n/9fat/9pc64nix
+ls -l /n/9fat

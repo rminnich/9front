@@ -72,6 +72,9 @@ fn main{
 			# 'flatten' for the next boot
 			echo -n $bootloop > '#ec/bootloop'
 		}
+		echo have a shell
+		/bin/rc
+		echo all done shell
 		if(~ $#nobootprompt 0){
 			echo
 			showlocaldevs
