@@ -1,14 +1,14 @@
-#include "u.h"
-#include "../port/lib.h"
-#include "mem.h"
-#include "dat.h"
-#include "fns.h"
+#include	"u.h"
+#include	"tos.h"
+#include	"../port/lib.h"
+#include	"mem.h"
+#include	"dat.h"
+#include	"fns.h"
+#include	"io.h"
+#include	"../port/pci.h"
+#include	"ureg.h"
 
-#include <tos.h>
-#include <pool.h>
-#include "amd64.h"
-#include "ureg.h"
-#include "io.h"
+#define DBG print
 
 Lock nixaclock;	/* NIX AC lock; held while assigning procs to cores */
 
@@ -25,7 +25,6 @@ getac(Proc *p, int core)
 	int i;
 	Mach *mp;
 
-	mp = nil;
 	if(core == 0)
 		panic("can't getac for a %s", rolename[NIXTC]);
 	lock(&nixaclock);
@@ -34,9 +33,9 @@ getac(Proc *p, int core)
 		nexterror();
 	}
 	if(core > 0){
-		if(core >= MACHMAX)
+		if(core >= MAXMACH)
 			error("no such core");
-		mp = sys->machptr[core];
+		mp = machp[core];
 		if(mp == nil || mp->online == 0 || mp->proc != nil)
 			error("core not online or busy");
 		if(mp->nixtype != NIXAC)
@@ -44,8 +43,8 @@ getac(Proc *p, int core)
 	Found:
 		mp->proc = p;
 	}else{
-		for(i = 0; i < MACHMAX; i++)
-			if((mp = sys->machptr[i]) != nil && mp->online && mp->nixtype == NIXAC)
+		for(i = 0; i < MAXMACH; i++)
+			if((mp = machp[i]) != nil && mp->online && mp->nixtype == NIXAC)
 				if(mp->proc == nil)
 					goto Found;
 		error("not enough cores");
