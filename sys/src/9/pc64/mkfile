@@ -46,6 +46,7 @@ PORT=\
 
 OBJ=\
 	l.$O\
+	acore.$O\
 	cga.$O\
 	fpu.$O\
 	i8253.$O\

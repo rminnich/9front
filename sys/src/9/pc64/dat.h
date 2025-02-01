@@ -1,14 +1,17 @@
+typedef struct ACVctl ACVctl;
 typedef struct Conf	Conf;
 typedef struct Confmem	Confmem;
 typedef struct FPssestate	FPssestate;
 typedef struct FPavxstate	FPavxstate;
 typedef struct FPsave	FPsave;
 typedef struct PFPU	PFPU;
+typedef struct ICC ICC;
 typedef struct ISAConf	ISAConf;
 typedef struct Label	Label;
 typedef struct Lock	Lock;
 typedef struct MMU	MMU;
 typedef struct Mach	Mach;
+typedef struct NIX NIX;
 typedef struct PCArch	PCArch;
 typedef struct Pcidev	Pcidev;
 typedef struct PCMmap	PCMmap;
@@ -46,6 +49,38 @@ struct Label
 {
 	uintptr	sp;
 	uintptr	pc;
+};
+
+struct NIX
+{
+	ICC*	icc;			/* inter-core call */
+	int	nixtype;	
+};
+
+/*
+ * Inter core calls
+ */
+enum
+{
+	ICCLNSZ =	128,	/* Cache line size for inter core calls */
+
+
+	ICCOK = 0,		/* Return codes: Ok; trap; syscall */
+	ICCTRAP,
+	ICCSYSCALL
+};
+
+struct ICC
+{
+	/* fn is kept in its own cache line */
+	union{
+		void	(*fn)(void);
+		uchar	_ln1_[ICCLNSZ];
+	};
+	int	flushtlb;	/* on the AC, before running fn */
+	int	rc;		/* return code from AC to TC */
+	char*	note;		/* to be posted in the TC after returning */
+	uchar	data[ICCLNSZ];	/* sent to the AC */
 };
 
 struct FPssestate
@@ -177,6 +212,8 @@ struct Mach
 	int	machno;			/* physical id of processor */
 	uintptr	splpc;			/* pc of last caller to splhi */
 	Proc*	proc;			/* current process on this processor */
+	int apicno;			/* keep here, known to assembly. */
+	int online;			/* keep here, known to assembly. */
 
 	PMach;
 
@@ -217,6 +254,8 @@ struct Mach
 	MMU*	mmufree;		/* freelist for MMU structures */
 	ulong	mmucount;		/* number of MMU structures in freelist */
 	u64int	mmumap[4];		/* bitmap of pml4 entries for zapping */
+
+	NIX;
 
 	uintptr	stack[1];
 };

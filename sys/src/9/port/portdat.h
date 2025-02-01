@@ -664,6 +664,19 @@ struct Schedq
 	int	n;
 };
 
+typedef union Ar0 Ar0;
+union Ar0 {
+	int	i;
+	long	l;
+	uintptr	p;
+	usize	u;
+	void*	v;
+};
+
+typedef struct Nixpctl Nixpctl;
+#pragma incomplete Nixpctl
+
+
 struct Proc
 {
 	Label	sched;		/* known to l.s */
@@ -788,6 +801,27 @@ struct Proc
 	void	*ureg;		/* User registers for notes */
 	void	*dbgreg;	/* User registers for devproc */
 
+
+	/* NIX */
+	Mach	*ac;
+	Page	*acpml4;
+	// no clear we need it. NixSem	*waitsem;
+	int	prepagemem;
+	// not sure we need it.Nixpctl *nixpctl;	/* NIX queue based system calls */
+
+	uint	ntrap;		/* # of traps while in this process */
+	uint	nintr;		/* # of intrs while in this process */
+	uint	nsyscall;	/* # of syscalls made by the process */
+	uint	nactrap;	/* # of traps in the AC for this process */
+	uint	nacsyscall;	/* # of syscalls in the AC for this process */
+	uint	nicc;		/* # of ICCs for the process */
+	uvlong	actime1;		/* ticks as of last call in AC */
+	uvlong	actime;		/* ∑time from call in AC to ret to AC, and... */
+	uvlong	tctime;		/* ∑time from call received to call handled */
+	int	nqtrap;		/* # of traps in last quantum */
+	int	nqsyscall;	/* # of syscalls in the last quantum */
+	int	nfullq;
+	/* End NIX */
 	PFPU;			/* machine specific fpu state */
 	PMMU;			/* machine specific mmu state */
 
