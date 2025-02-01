@@ -116,8 +116,14 @@ unquote(char *s, char **ps)
 	char *p;
 
 	if(*s != '"'){
-		p = strpbrk(s, " \t\r\n");
-		*p++ = 0;
+		p = s;
+		while(*p){
+			if(strchr(" \t\r\n", *p) != nil){
+				*p++ = 0;
+				break;
+			}
+			p++;
+		}
 		*ps = p;
 		return s;
 	}
