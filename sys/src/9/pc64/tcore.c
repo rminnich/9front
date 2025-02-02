@@ -96,7 +96,7 @@ stopac(void)
 	if(mp == nil)
 		return;
 	if(mp->proc != up)
-		panic("stopac");
+		panic("stopac: mp->proc %p != up %p", mp->proc, up);
 
 	lock(&nixaclock);
 	up->ac = nil;
@@ -131,12 +131,12 @@ runac(Mach *mp, APfunc func, int flushtlb, void *a, long n)
 	uchar *dpg, *spg;
 
 	if (n > sizeof(mp->icc->data))
-		panic("runac: args too long");
+		panic("runac: args %d: > sizeof mp->icc->data %d", n, mp->icc->data);
 
 	if(mp->online == 0)
-		panic("Bad core");
+		panic("mp %d not online; Bad core", m->machno);
 	if(mp->proc != nil && mp->proc != up)
-		panic("runapfunc: mach is busy with another proc?");
+		panic("runapfunc: mach %d is busy with up %p, not proc %p", mp->machno, mp->proc, up);
 
 	memmove(mp->icc->data, a, n);
 	if (flushtlb) panic("flushtlb");
@@ -202,6 +202,33 @@ fakeretfromsyscall(Ureg *ureg)
 	kexit(ureg);
 }
 
+void
+dumpptepg(int lvl, u64int *va)
+{
+/* surely there is one of these in 9front?*/
+#ifdef xxx
+	PTE *pte;
+	int tab, i;
+
+	tab = 4 - lvl;
+	pte = UINT2PTR(KADDR(pa));
+	for(i = 0; i < PTSZ/sizeof(PTE); i++)
+		if(pte[i] & PteP){
+			tabs(tab);
+			print("l%d %#p[%#05x]: %#ullx\n", lvl, pa, i, pte[i]);
+
+			/* skip kernel mappings */
+			if((pte[i]&PteU) == 0){
+				tabs(tab+1);
+				print("...kern...\n");
+				continue;
+			}
+			if(lvl > 2)
+				dumpptepg(lvl-1, PPN(pte[i]));
+		}
+#endif
+}
+
 /*
  * Move the current process to an application core.
  * This is performed at the end of execac(), and
@@ -231,6 +258,7 @@ runacore(void)
 	char *n;
 	uvlong t1;
 	void syscall(Ureg*);
+	void trap(Ureg *ureg);
 
 	if(waserror())
 		panic("runacore: error: %s\n", up->errstr);
@@ -273,18 +301,15 @@ runacore(void)
 				ureg->type = VectorIPI;		/* NOP */
 				break;
 			default:
-				panic("FIX ME");
-#ifdef x
-				putcr3(m->pml4->pa);
+				putcr3(PADDR(m->pml4));
 				if(0 && ureg->type == VectorPF){
 					print("before PF:\n");
 					print("AC:\n");
-					dumpptepg(4, up->ac->pml4->pa);
+					dumpptepg(4, up->ac->pml4);
 					print("\n%s:\n", rolename[NIXTC]);
-					dumpptepg(4, m->pml4->pa);
+					dumpptepg(4, m->pml4);
 				}
 				trap(ureg);
-#endif
 			}
 			splx(s);
 			flush = 1;
@@ -293,7 +318,7 @@ runacore(void)
 		case ICCSYSCALL:
 			DBG("runacore: syscall ax %#ullx ureg %#p\n",
 				ureg->ax, ureg);
-			panic("FIXME putcr3"); // cr3put(m->pml4->pa);
+			putcr3(PADDR(m->pml4));
 			syscall(ureg); // XXX used to be AX, is now BP? 
 			flush = 1;
 			fn = acsysret;
@@ -336,7 +361,7 @@ actrapenable(int vno, char* (*f)(Ureg*, void*), void* a, char *name)
 	v->name[KNAMELEN-1] = 0;
 
 	if(acvctl[vno])
-		panic("AC traps can't be shared");
+		panic("vector %d: AC traps can't be shared", vno);
 	acvctl[vno] = v;
 }
 
