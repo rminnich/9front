@@ -139,7 +139,16 @@ runac(Mach *mp, APfunc func, int flushtlb, void *a, long n)
 		panic("runapfunc: mach %d is busy with up %p, not proc %p", mp->machno, mp->proc, up);
 
 	memmove(mp->icc->data, a, n);
-	if (flushtlb) panic("flushtlb");
+	if (flushtlb)
+		putcr3(getcr3());
+	// FIXME ? MAYBE
+	// This is called "flushtlb"
+	// I suspect it was more than that: it was moving the 
+	// source page (spg) to the destination page (dpg)
+	// i.e. reloading the pml4 on the ac. But who knows.
+	// just reloading the cr3 will do this, but .. NOT on the ac.
+	// This needs a full look to go over how we managed the AC 
+	// pml4 PTEs
 #ifdef x
 	if(flushtlb){
 		DBG("runac flushtlb: cppml4 %#p %#p\n", mp->pml4->pa, m->pml4->pa);
