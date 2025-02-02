@@ -139,6 +139,8 @@ runac(Mach *mp, APfunc func, int flushtlb, void *a, long n)
 		panic("runapfunc: mach is busy with another proc?");
 
 	memmove(mp->icc->data, a, n);
+	if (flushtlb) panic("flushtlb");
+#ifdef x
 	if(flushtlb){
 		DBG("runac flushtlb: cppml4 %#p %#p\n", mp->pml4->pa, m->pml4->pa);
 		dpg = UINT2PTR(mp->pml4->va);
@@ -152,6 +154,7 @@ runac(Mach *mp, APfunc func, int flushtlb, void *a, long n)
 			dumpptepg(4, up->ac->pml4->pa);
 		}
 	}
+#endif
 	mp->icc->flushtlb = flushtlb;
 	mp->icc->rc = ICCOK;
 
@@ -186,7 +189,7 @@ fakeretfromsyscall(Ureg *ureg)
 	if(up->procctl == Proc_tracesyscall){	/* Would this work? */
 		up->procctl = Proc_stopme;
 		s = splhi();
-		procctl(up);
+		_procctl(up);
 		splx(s);
 	}
 
@@ -227,6 +230,7 @@ runacore(void)
 	int rc, flush, s;
 	char *n;
 	uvlong t1;
+	void syscall(Ureg*);
 
 	if(waserror())
 		panic("runacore: error: %s\n", up->errstr);
@@ -248,16 +252,16 @@ runacore(void)
 			DBG("runacore: trap %ulld cr2 %#ullx ureg %#p\n",
 				ureg->type, m->cr2, ureg);
 			switch(ureg->type){
-			case IdtIPI:
+			case VectorIPI:
 				if(up->procctl || up->nnote)
 					notify(up->dbgreg);
 				if(up->ac == nil)
 					goto ToTC;
 				kexit(up->dbgreg);
 				break;
-			case IdtNM:
-			case IdtMF:
-			case IdtXF:
+			case VectorNMI:
+			case VectorCERR:
+			case VectorSIMD:
 				/* these are handled in the AC;
 				 * If we get here, they left in m->icc->data
 				 * a note to be posted to the process.
@@ -266,11 +270,13 @@ runacore(void)
 				n = up->ac->icc->note;
 				if(n != nil)
 					postnote(up, 1, n, NDebug);
-				ureg->type = IdtIPI;		/* NOP */
+				ureg->type = VectorIPI;		/* NOP */
 				break;
 			default:
-				cr3put(m->pml4->pa);
-				if(0 && ureg->type == IdtPF){
+				panic("FIX ME");
+#ifdef x
+				putcr3(m->pml4->pa);
+				if(0 && ureg->type == VectorPF){
 					print("before PF:\n");
 					print("AC:\n");
 					dumpptepg(4, up->ac->pml4->pa);
@@ -278,6 +284,7 @@ runacore(void)
 					dumpptepg(4, m->pml4->pa);
 				}
 				trap(ureg);
+#endif
 			}
 			splx(s);
 			flush = 1;
@@ -286,8 +293,8 @@ runacore(void)
 		case ICCSYSCALL:
 			DBG("runacore: syscall ax %#ullx ureg %#p\n",
 				ureg->ax, ureg);
-			cr3put(m->pml4->pa);
-			syscall(ureg->ax, ureg);
+			panic("FIXME putcr3"); // cr3put(m->pml4->pa);
+			syscall(ureg); // XXX used to be AX, is now BP? 
 			flush = 1;
 			fn = acsysret;
 			if(0)

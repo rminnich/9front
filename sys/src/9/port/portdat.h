@@ -629,6 +629,7 @@ enum
 	Stopped,
 	Rendezvous,
 	Waitrelease,
+	Exotic,			/* NIX */
 
 	Proc_stopme = 1, 	/* devproc requests */
 	Proc_exitme,

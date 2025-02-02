@@ -1648,11 +1648,11 @@ kproc(char *name, void (*func)(void *), void *arg)
  *  reasoning.
  */
 void
-procctl(void)
+_procctl(Proc *p)
 {
 	char *state;
 
-	switch(up->procctl) {
+	switch(p->procctl) {
 	case Proc_exitbig:
 		spllo();
 		pprint("Killed: Insufficient physical memory\n");
@@ -1663,28 +1663,34 @@ procctl(void)
 		pexit("Killed", 1);
 
 	case Proc_traceme:
-		if(up->nnote == 0)
+		if(p->nnote == 0)
 			return;
 		/* No break */
 
 	case Proc_stopme:
-		up->procctl = 0;
-		state = up->psstate;
-		up->psstate = statename[Stopped];
+		p->procctl = 0;
+		state = p->psstate;
+		p->psstate = statename[Stopped];
 		/* free a waiting debugger */
 		spllo();
-		qlock(&up->debug);
-		if(up->pdbg != nil) {
-			wakeup(&up->pdbg->sleep);
-			up->pdbg = nil;
+		qlock(&p->debug);
+		if(p->pdbg != nil) {
+			wakeup(&p->pdbg->sleep);
+			p->pdbg = nil;
 		}
-		qunlock(&up->debug);
+		qunlock(&p->debug);
 		splhi();
-		up->state = Stopped;
+		p->state = Stopped;
 		sched();
-		up->psstate = state;
+		p->psstate = state;
 		return;
 	}
+}
+
+void
+procctl(void)
+{
+	_procctl(up);
 }
 
 #include "errstr.h"

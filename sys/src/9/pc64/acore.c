@@ -361,3 +361,25 @@ void ndnr(void)
 	while (1)
 		;
 }
+
+/* do we need this? */
+void
+fpusysrfork(Ureg*)
+{
+	/*
+	 * Called early in the non-interruptible path of
+	 * sysrfork() via the machine-dependent syscall() routine.
+	 * Save the state so that it can be easily copied
+	 * to the child process later.
+	 */
+	panic("fpusysrfork");
+#ifdef x
+	if(up->fpustate != Busy)
+		return;
+
+	_fxsave(up->fpusave);
+	_stts();
+	up->fpustate = Idle;
+#endif
+}
+

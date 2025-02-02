@@ -181,3 +181,5 @@ void	rdrandbuf(void*, ulong);
 
 // NIX
 void	ndnr(void);
+void actouser(void);
+void fpusysrfork(Ureg*);
