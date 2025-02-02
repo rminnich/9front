@@ -183,3 +183,4 @@ void	rdrandbuf(void*, ulong);
 void	ndnr(void);
 void actouser(void);
 void fpusysrfork(Ureg*);
+void apicipi(int apicno);

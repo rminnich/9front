@@ -77,7 +77,7 @@ intrac(Proc *p)
 	 * It's ok if the AC gets idle in the mean time.
 	 */
 	DBG("intrac: ipi to cpu%d\n", ac->machno);
-	panic("mpstartap(apic); -- find an apic");
+	apicipi(ac->apicno);
 }
 
 void
