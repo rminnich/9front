@@ -128,10 +128,10 @@ extern int notify(Ureg*);
 int
 runac(Mach *mp, APfunc func, int flushtlb, void *a, long n)
 {
-	uchar *dpg, *spg;
+	u64int *dpg, *spg;
 
 	if (n > sizeof(mp->icc->data))
-		panic("runac: args %d: > sizeof mp->icc->data %d", n, mp->icc->data);
+		panic("runac: args %ld: > sizeof mp->icc->data %p", n, mp->icc->data);
 
 	if(mp->online == 0)
 		panic("mp %d not online; Bad core", m->machno);
@@ -139,31 +139,26 @@ runac(Mach *mp, APfunc func, int flushtlb, void *a, long n)
 		panic("runapfunc: mach %d is busy with up %p, not proc %p", mp->machno, mp->proc, up);
 
 	memmove(mp->icc->data, a, n);
-	if (flushtlb)
-		putcr3(getcr3());
-	// FIXME ? MAYBE
 	// This is called "flushtlb"
-	// I suspect it was more than that: it was moving the 
-	// source page (spg) to the destination page (dpg)
-	// i.e. reloading the pml4 on the ac. But who knows.
-	// just reloading the cr3 will do this, but .. NOT on the ac.
-	// This needs a full look to go over how we managed the AC 
-	// pml4 PTEs
-#ifdef x
+	// but it really means: flush the tlb on the ac.
+	// Going beyond that, it means we are changing pml4 on the AC.
+	// mp is the mach for the process on the mach.
+	// m is our mach pml4, which is by definition for this process, since
+	// this process is the one running this code.
 	if(flushtlb){
-		DBG("runac flushtlb: cppml4 %#p %#p\n", mp->pml4->pa, m->pml4->pa);
-		dpg = UINT2PTR(mp->pml4->va);
-		spg = UINT2PTR(m->pml4->va);
+		DBG("runac flushtlb: cp pml4 PA %#p %#p\n", PADDR(mp->pml4), PADDR(m->pml4));
+		dpg = mp->pml4;
+		spg = m->pml4;
 		/* We should copy less:
 		 *	memmove(dgp, spg, m->pml4->daddr * sizeof(PTE));
 		 */
 		memmove(dpg, spg, PTSZ);
 		if(0){
-			print("runac: upac pml4 %#p\n", up->ac->pml4->pa);
-			dumpptepg(4, up->ac->pml4->pa);
+			print("runac: upac pml4 %#p\n", up->ac->pml4);
+			dumpptepg(4, PADDR(up->ac->pml4));
 		}
 	}
-#endif
+
 	mp->icc->flushtlb = flushtlb;
 	mp->icc->rc = ICCOK;
 
@@ -211,23 +206,28 @@ fakeretfromsyscall(Ureg *ureg)
 	kexit(ureg);
 }
 
+static void 
+tabs(int i)
+{
+	while(i--)
+		print("\t");
+}
+
 void
-dumpptepg(int lvl, u64int *va)
+dumpptepg(int lvl, u64int pa)
 {
 /* surely there is one of these in 9front?*/
-#ifdef xxx
-	PTE *pte;
+	PTE *pte = KADDR(pa);
 	int tab, i;
 
 	tab = 4 - lvl;
-	pte = UINT2PTR(KADDR(pa));
 	for(i = 0; i < PTSZ/sizeof(PTE); i++)
-		if(pte[i] & PteP){
+		if(pte[i] & PTEVALID){
 			tabs(tab);
 			print("l%d %#p[%#05x]: %#ullx\n", lvl, pa, i, pte[i]);
 
 			/* skip kernel mappings */
-			if((pte[i]&PteU) == 0){
+			if((pte[i]&PTEUSER) == 0){
 				tabs(tab+1);
 				print("...kern...\n");
 				continue;
@@ -235,7 +235,6 @@ dumpptepg(int lvl, u64int *va)
 			if(lvl > 2)
 				dumpptepg(lvl-1, PPN(pte[i]));
 		}
-#endif
 }
 
 /*
@@ -314,9 +313,9 @@ runacore(void)
 				if(0 && ureg->type == VectorPF){
 					print("before PF:\n");
 					print("AC:\n");
-					dumpptepg(4, up->ac->pml4);
+					dumpptepg(4, PADDR(up->ac->pml4));
 					print("\n%s:\n", rolename[NIXTC]);
-					dumpptepg(4, m->pml4);
+					dumpptepg(4, PADDR(m->pml4));
 				}
 				trap(ureg);
 			}

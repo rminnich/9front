@@ -391,3 +391,6 @@ struct DevConf
 };
 
 extern char *rolename[];
+
+/* NIX */
+typedef u64int PTE;

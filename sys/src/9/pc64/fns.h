@@ -184,3 +184,4 @@ void	ndnr(void);
 void actouser(void);
 void fpusysrfork(Ureg*);
 void apicipi(int apicno);
+void dumpptepg(int lvl, uvlong pa);
