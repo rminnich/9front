@@ -90,11 +90,10 @@ acmmuswitch(void)
 {
 	extern Page mach0pml4;
 
-	panic("acmmuswitch");
-	//DBG("acmmuswitch mpl4 %#p mach0pml4 %#p m0pml4 %#p\n", m->pml4->pa, mach0pml4.pa, sys->machptr[0]->pml4->pa);
+	DBG("acmmuswitch mpl4 %#p mach0pml4 %#p m0pml4 %#p\n", PADDR(m->pml4), m->pml4, PADDR(machp[0]->pml4));
 
 
-//	cr3put(m->pml4->pa);
+	putcr3(PADDR(m->pml4));
 }
 
 /*
@@ -189,7 +188,6 @@ actrap(Ureg *u)
 		panic("apiceoi(VectorIPI);");
 		break;
 	case IrqTIMER:
-		panic("apiceoi(IrqTIMER);");
 		panic("timer interrupt in an AC");
 		break;
 	case VectorPF:
@@ -300,16 +298,11 @@ acmodeset(int mode)
 void
 acinit(void)
 {
+#ifdef x
 	Mach *mp;
 	Proc *pp;
 
-	/*
-	 * Lower the priority of the apic to 0,
-	 * to accept interrupts.
-	 * Raise it later if needed to disable them.
-	 */
-	panic("apicpri(0);");
-
+	Fix these for 9front, maybe.
 	/*
 	 * Be sure a few  assembler assumptions still hold.
 	 * Someone moved m->stack and I had fun debugging...
@@ -319,24 +312,27 @@ acinit(void)
 	assert((uintptr)&mp->proc == 16);
 	assert((uintptr)&pp->dbgreg == 24);
 	assert((uintptr)&mp->stack == 24);
+#endif
+	void lapicintron(void);
+	/*
+	 * Lower the priority of the apic to 0,
+	 * to accept interrupts.
+	 * Raise it later if needed to disable them.
+	 */
+	lapicintron();
 }
 
 /* support -- put it here for now */
 void
 acfpusysprocsetup(Proc *p)
 {
-#define Init 0
-#define Idle 2
-	panic("acfpusysprocsetup fixme");
-#ifdef xxx
-	if(p->fpustate == Init){
+	if(p->fpstate == FPinit){
 		/* The FPU is initialized in the TC but we must initialize
 		 * it in the AC.
 		 */
-		p->fpustate = Idle;
+		p->fpstate = FPinactive;
 		panic("fpusysprocsetup(p);");
 	}
-#endif
 }
 /* debug -- put them here, not in main.c */
 void
