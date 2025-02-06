@@ -153,7 +153,7 @@ runac(Mach *mp, APfunc func, int flushtlb, void *a, long n)
 		 *	memmove(dgp, spg, m->pml4->daddr * sizeof(PTE));
 		 */
 		memmove(dpg, spg, PTSZ);
-		if(0){
+		if(1){
 			print("runac: upac pml4 %#p\n", up->ac->pml4);
 			dumpptepg(4, PADDR(up->ac->pml4));
 		}
