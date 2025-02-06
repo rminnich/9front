@@ -19,12 +19,27 @@ squidboy(Apic* apic)
 	cpuidprint();
 	syncclock();
 	active.machs[m->machno] = 1;
-	apic->online = 1;
-	lapicinit(apic);
-	lapiconline();
-	timersinit();
-	schedinit();
+	acmodeset(m->machno == 1 ? NIXAC : NIXTC);
+	switch(m->nixtype){
+	case NIXAC:
+		print("Startup up AC %d\n", m->machno);
+		acmmuswitch();
+		acinit();
+//		adec(&active.nbooting);
+//		ainc(&active.nonline);	/* this was commented out */
+		acsched();
+		panic("%d: squidboy", m->machno);
+		break;
+	case NIXTC:
+		print("Startup up TC %d\n", m->machno);
+		apic->online = 1;
+		lapicinit(apic);
+		lapiconline();
+		timersinit();
+		schedinit();
+	}
 }
+
 
 void
 mpstartap(Apic* apic)

@@ -185,3 +185,7 @@ void actouser(void);
 void fpusysrfork(Ureg*);
 void apicipi(int apicno);
 void dumpptepg(int lvl, uvlong pa);
+void acinit(void);
+void acmodeset(int mode);
+void acmmuswitch(void);
+void acsched(void);
