@@ -68,8 +68,11 @@ testicc(int i)
 		mp->icc->flushtlb = 0;
 		snprint((char*)mp->icc->data, ICCLNSZ, "<%d>", i);
 		mfence();
+		print("Set testicc to %p\n", testiccfn);
 		mp->icc->fn = testiccfn;
+		print("wait ...\n");
 		_mwait(&mp->icc->fn, testiccfn);
+		print("done\n");
 	}
 }
 

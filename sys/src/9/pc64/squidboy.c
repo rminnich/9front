@@ -26,6 +26,7 @@ squidboy(Apic* apic)
 	switch(m->nixtype){
 	case NIXAC:
 		print("Startup up AC %d\n", m->machno);
+		m->online = 1;
 		acmmuswitch();
 		acinit();
 //		adec(&active.nbooting);
