@@ -46,7 +46,6 @@ PORT=\
 
 OBJ=\
 	l.$O\
-	l64sipi.$O\
 	acore.$O\
 	cga.$O\
 	fpu.$O\
@@ -63,6 +62,7 @@ OBJ=\
 	$CONF.rootc.$O\
 	$DEVS\
 	$PORT\
+	nix.$O\
 
 LIB=\
 	/$objtype/lib/libmemlayer.a\
