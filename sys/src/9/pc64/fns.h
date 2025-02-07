@@ -190,3 +190,4 @@ void acmodeset(int mode);
 void acmmuswitch(void);
 void acsched(void);
 void testicc(int i);
+void nixprepage(int);

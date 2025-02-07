@@ -636,6 +636,7 @@ enum
 	Proc_traceme,
 	Proc_exitbig,
 	Proc_tracesyscall,
+	Proc_toac,
 
 	TUser = 0, 		/* Proc.time */
 	TSys,

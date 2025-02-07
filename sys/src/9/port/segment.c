@@ -949,3 +949,36 @@ segio(Segio *sio, Segment *s, void *a, long n, vlong off, int read)
 	}
 	return n;
 }
+
+// NIX
+#define DBG print
+static void
+prepageseg(int i)
+{
+	int fixfault(Segment *s, uintptr addr, int read);
+	Segment *s;
+	uintptr addr, pgsz;
+
+	s = up->seg[i];
+	if(s == nil)
+		return;
+	DBG("prepage: base %#p top %#p\n", s->base, s->top);
+	pgsz = 4068; // XXX pull in nix pgsz stuff. m->pgsz[s->pgszi];
+	for(addr = s->base; addr < s->top; addr += pgsz)
+		fixfault(s, addr, i == TSEG);
+}
+
+/*
+ * BUG: should depend only in segment attributes, not in
+ * the slot used in up->seg.
+ */
+void
+nixprepage(int i)
+{
+	if(i >= 0)
+		prepageseg(i);
+	else
+		for(i = 0; i < NSEG; i++)
+			prepageseg(i);
+}
+
