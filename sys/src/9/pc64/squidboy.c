@@ -31,6 +31,7 @@ squidboy(Apic* apic)
 		acinit();
 //		adec(&active.nbooting);
 //		ainc(&active.nonline);	/* this was commented out */
+		apic->online = 1;
 		acsched();
 		panic("%d: squidboy", m->machno);
 		break;
