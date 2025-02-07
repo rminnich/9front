@@ -14,11 +14,6 @@
  * This is the "AC kernel".
  */
 
-void _mwait(void **v, void *val)
-{
-	while (*v == val)
-		;
-}
 /*
  * FPU:
  *
@@ -71,7 +66,9 @@ testicc(int i)
 		print("Set testicc to %p\n", testiccfn);
 		mp->icc->fn = testiccfn;
 		print("wait ...\n");
-		_mwait(&mp->icc->fn, testiccfn);
+		// mwait is allowed to return with nothing changed.
+		while(mp->icc->fn == testiccfn)
+			mwait(&mp->icc->fn);
 		print("done\n");
 	}
 }
@@ -119,11 +116,9 @@ acsched(void)
 	for(;;){
 		acstackok();
 		print("acstackok is ok\n");
-		print("m is %p\n", m);
-		print("m->icc is %p\n", m ? m->icc : nil);
-		print("m->icc->fn is %p\n", m ? m->icc ? m->icc->fn : nil : nil);
 		print("&m->icc->fn %p\n", &m->icc->fn);
-		_mwait(&m->icc->fn, nil);
+		while(m->icc->fn == nil)
+			mwait(&m->icc->fn);
 		if(m->icc->flushtlb)
 			acmmuswitch();
 		print("acsched: cpu%d: fn %#p\n", m->machno, m->icc->fn);
@@ -222,7 +217,8 @@ Post:
 	m->icc->fn = nil;
 	ready(m->proc);
 
-	_mwait(&m->icc->fn, nil);
+	while (m->icc->fn == nil)
+		mwait(&m->icc->fn);
 
 	if(m->icc->flushtlb)
 		acmmuswitch();
