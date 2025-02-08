@@ -8,6 +8,8 @@ usage(void)
 	exits("usage");
 }
 
+int	sysr1(int, char*, char*[]);
+int execac(int, char *name, char* argv[]);
 void
 main(int argc, char *argv[])
 {
@@ -25,7 +27,8 @@ main(int argc, char *argv[])
 	if (argc < 1)
 		usage();
 
-	execac(core, argv[0], &argv[0]);
+
+	sysr1/*execac*/(core, argv[0], &argv[0]);
 	print("Returned? %r\n");
 }
 
