@@ -964,8 +964,10 @@ prepageseg(int i)
 		return;
 	DBG("prepage: base %#p top %#p\n", s->base, s->top);
 	pgsz = 4068; // XXX pull in nix pgsz stuff. m->pgsz[s->pgszi];
-	for(addr = s->base; addr < s->top; addr += pgsz)
+	for(addr = s->base; addr < s->top; addr += pgsz){
+		qlock(s);
 		fixfault(s, addr, i == TSEG);
+	}
 }
 
 /*
