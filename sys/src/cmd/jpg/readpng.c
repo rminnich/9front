@@ -486,7 +486,7 @@ readslave(Biobuf *b)
 	err = inflatezlib(&zw, zwrite, &zr, zread);
 
 	if(err)
-		sysfatal("inflatezlib %s\n", flateerr(err));
+		sysfatal("inflatezlib %s", flateerr(err));
 
 	free(buf);
 	free(zw.scan);

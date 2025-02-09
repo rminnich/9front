@@ -1520,7 +1520,7 @@ readfield(Tif *t, Fld *f)
 		readval = readlong;
 		break;
 	default:
-		werrstr("unsupported type\n");
+		werrstr("unsupported type");
 		return -1;
 	}
 	if((f->val = malloc(f->cnt*sizeof *f->val)) == nil)
