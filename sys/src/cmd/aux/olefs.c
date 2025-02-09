@@ -114,7 +114,7 @@ oreadblock(Ofile *f, int block, ulong off, char *buf, int nbuf)
 	int n;
 
 	if(block < 0 || block >= f->nblock) {
-		werrstr("attempt to read %x/%lux\n", block, f->nblock);
+		werrstr("attempt to read %x/%lux", block, f->nblock);
 		return -1;
 	}
 
