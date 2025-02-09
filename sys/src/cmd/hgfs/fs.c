@@ -793,10 +793,10 @@ main(int argc, char *argv[])
 
 	snprint(buf, sizeof(buf), "%s/.hg/store/00changelog", workdir);
 	if(revlogopen(&changelog, buf, OREAD) < 0)
-		sysfatal("can't open changelog: %r\n");
+		sysfatal("can't open changelog: %r");
 	snprint(buf, sizeof(buf), "%s/.hg/store/00manifest", workdir);
 	if(revlogopen(&manifest, buf, OREAD) < 0)
-		sysfatal("can't open menifest: %r\n");
+		sysfatal("can't open menifest: %r");
 
 	postmountsrv(&fs, srv, mtpt, MREPL);
 
