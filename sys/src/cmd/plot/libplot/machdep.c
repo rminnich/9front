@@ -119,7 +119,7 @@ void m_initialize(char*)
 /////	einit(Emouse);
 	offscreen = allocimage(display, insetrect(screen->r, 4), screen->chan, 0, -1);
 	if(offscreen == nil)
-		sysfatal("Can't double buffer\n");
+		sysfatal("Can't double buffer");
 	clipminx = mapminx = screen->r.min.x+4;
 	clipminy = mapminy = screen->r.min.y+4;
 	clipmaxx = mapmaxx = screen->r.max.x-5;

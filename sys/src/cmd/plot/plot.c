@@ -157,7 +157,7 @@ void
 eresized(int new)
 {
 	if(new && getwindow(display, Refnone) < 0)
-		sysfatal("plot: can't reattach to window: %r\n");
+		sysfatal("plot: can't reattach to window: %r");
 //	resizeto((Point){Dx(offscreen->r)+4, Dy(offscreen->r)+4});
 	m_swapbuf();
 }
@@ -408,7 +408,7 @@ numargs(int n){
 		}while(strchr(" \t\n", c) || c!='.' && c!='+' && c!='-' && ispunct(c));
 		fsp->peekc=c;
 		if(!numstring())
-			sysfatal("%s:%d: number expected\n", fsp->name, fsp->lineno);
+			sysfatal("%s:%d: number expected", fsp->name, fsp->lineno);
 		x[i]=atof(argstr)*fsp->scale;
 	}
 }
@@ -525,7 +525,7 @@ process(Biobuf *fd){
 			fsp->peekc=c;
 		}
 		if(!pplots)
-			sysfatal("%s:%d: no command\n", fsp->name, fsp->lineno);
+			sysfatal("%s:%d: no command", fsp->name, fsp->lineno);
 		switch(pplots-plots){
 		case ARC:	numargs(7); rarc(x[0],x[1],x[2],x[3],x[4],x[5],x[6]); break;
 		case BOX:	numargs(4); box(x[0], x[1], x[2], x[3]); break;
@@ -564,7 +564,7 @@ process(Biobuf *fd){
 		case TEXT:	strarg();   text(argstr); pplots=0; break;
 		case VEC:	numargs(2); vec(x[0], x[1]); break;
 		default:
-			sysfatal("%s:%d: plot: missing case %zd\n", fsp->name, fsp->lineno, pplots-plots);
+			sysfatal("%s:%d: plot: missing case %zd", fsp->name, fsp->lineno, pplots-plots);
 		}
 	}
 	return 1;
@@ -582,7 +582,7 @@ void define(char *a){
 	ap = a;
 	while(isalpha(*ap))ap++;
 	if(ap == a)
-		sysfatal("plot: no name with define\n");
+		sysfatal("plot: no name with define");
 	i = ap - a;
 	if(names+i+1 > enames){
 		names = malloc((unsigned)512);
