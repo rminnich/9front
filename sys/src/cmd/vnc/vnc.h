@@ -141,8 +141,6 @@ extern	void		vncwrpoint(Vnc*, Point);
 extern	void		vnclock(Vnc*);		/* for writing */
 extern	void		vncunlock(Vnc*);
 
-extern	void		hexdump(void*, int);
-
 /* implemented by clients of the io library */
 extern	void		vnchungup(Vnc*);
 
