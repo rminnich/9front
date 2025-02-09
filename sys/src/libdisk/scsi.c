@@ -140,7 +140,7 @@ _scsicmd(Scsi *s, uchar *cmd, int ccount, void *data, int dcount, int io, int do
 
 	memset(resp, 0, sizeof(resp));
 	if(read(s->rawfd, resp, sizeof(resp)) < 0) {
-		werrstr("resp read: %r\n");
+		werrstr("resp read: %r");
 		if(dolock)
 			qunlock(s);
 		return -1;
