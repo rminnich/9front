@@ -94,7 +94,8 @@ getsize(char *s)
 void
 usage(void)
 {
-	sysfatal("Usage: %s [ -x width ] [ -y height ] [ file ]\n", argv0);
+	fprint(2, "Usage: %s [ -x width ] [ -y height ] [ file ]\n", argv0);
+	exits("usage");
 }
 
 void
