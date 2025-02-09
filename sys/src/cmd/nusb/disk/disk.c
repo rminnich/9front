@@ -1074,6 +1074,7 @@ main(int argc, char **argv)
 	}ARGEND
 	if(argc != 1)
 		usage();
+	fmtinstall('H', encodefmt);	/* for usbdebug */
 	dev = getdev(*argv);
 	if(dev == nil)
 		sysfatal("getdev: %r");
