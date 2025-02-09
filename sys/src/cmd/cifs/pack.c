@@ -33,7 +33,7 @@ ppath(Pkt *p, char *str)
 		while(*str){
 			str += chartorune(&r, str);
 			if(r > Bits16)
-				sysfatal("ppath: %C/%x utf too wide for windows\n", r, r);
+				sysfatal("ppath: %C/%x utf too wide for windows", r, r);
 			if(r == L'/')
 				r = L'\\';
 			pl16(p, r);
@@ -65,7 +65,7 @@ pstr(Pkt *p, char *str)
 		while(*str){
 			str += chartorune(&r, str);
 			if(r > Bits16)
-				sysfatal("pstr: %C/%x utf too wide for windows\n", r, r);
+				sysfatal("pstr: %C/%x utf too wide for windows", r, r);
 			pl16(p, r);
 		}
 		pl16(p, 0);

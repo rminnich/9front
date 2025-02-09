@@ -1258,10 +1258,10 @@ main(int argc, char **argv)
 	   (Sess = cifsdial(Host, "*SMBSERVER", sysname)) != nil)
 		goto connected;
 
-	sysfatal("%s - cannot dial, %r\n", Host);
+	sysfatal("%s - cannot dial, %r", Host);
 connected:
 	if(CIFSnegotiate(Sess, &svrtime, windom, sizeof windom, cname, sizeof cname) == -1)
-		sysfatal("%s - cannot negioate common protocol, %r\n", Host);
+		sysfatal("%s - cannot negioate common protocol, %r", Host);
 
 #ifndef DEBUG_MAC
 	Sess->secmode &= ~SECMODE_SIGN_ENABLED;
@@ -1274,7 +1274,7 @@ connected:
 		Sess->challen);
 
 	if(CIFSsession(Sess) < 0)
-		sysfatal("session authentication failed, %r\n");
+		sysfatal("session authentication failed, %r");
 
 	Sess->slip = svrtime - time(nil);
 	Sess->cname = estrdup9p(cname);
