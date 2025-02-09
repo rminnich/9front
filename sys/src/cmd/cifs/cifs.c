@@ -209,7 +209,7 @@ print("MAC signature bad\n");
 		 * catch that too.
 		 */
 		if(p->s->seqrun && seq != p->seq && seq != 0){
-			werrstr("bad sequence number (%d != %d)\n", p->seq, seq);
+			werrstr("bad sequence number (%d != %d)", p->seq, seq);
 			return -1;
 		}
 	}
