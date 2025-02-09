@@ -155,7 +155,7 @@ mklkup(int fd, char *label, int *map, Param *p)
 	if(fd >= 0){
 		for(i = 0; i < NRUNES; i++)
 			if(map[i] != lkup(p, idx1, idx2dest, data, i))
-				sysfatal("mismatch in %s at %d %d %d\n", label, i, map[i], lkup(p, idx1, idx2dest, data, i));
+				sysfatal("mismatch in %s at %d %d %d", label, i, map[i], lkup(p, idx1, idx2dest, data, i));
 	}
 
 	size = mkarrvar(fd, smprint("_%sdata", label), data, ndata);
