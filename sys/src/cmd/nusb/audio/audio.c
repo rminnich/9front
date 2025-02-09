@@ -718,7 +718,7 @@ Done:
 		setalt(adev, c->zb);
 
 	if(setalt(adev, e->iface) < 0){
-		werrstr("setalt: %r\n");
+		werrstr("setalt: %r");
 		return nil;
 	}
 
