@@ -91,14 +91,14 @@ ev(void)
 		case 12: *p++ = 0x7e; break;
 		case 13: *p++ = 0x7f; break;
 		case 14: *p++ = 0x79; break;
-		default: sysfatal("unknown system event %ux\n", v);
+		default: sysfatal("unknown system event %ux", v);
 		}
 		*p++ = 0;
 		break;
 	case 4:
 		v = r8();
 		if(v > 9)
-			sysfatal("unknown controller %ux\n", v);
+			sysfatal("unknown controller %ux", v);
 		*p++ = 0xb0 | e & 15;
 		switch(v){
 		case 1: *p++ = 0x00; break;
@@ -122,7 +122,7 @@ ev(void)
 		t.done++;
 		break;
 	default:
-		sysfatal("unknown event %ux\n", e >> 4 & 7);
+		sysfatal("unknown event %ux", e >> 4 & 7);
 	}
 	if((e & 15) == 9)
 		cmd[0] |= 6;
