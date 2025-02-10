@@ -8,7 +8,7 @@
 
 enum {
 	NBUF = 8*1024,
-	NDELAY = 512,	/* ~11.6ms */
+	NDELAY = 1764,	/* 25.0ms */
 	NQUANTA = 64,	/* ~1.45ms */
 	NCHAN = 2,
 	ABUF = NBUF*NCHAN*2,
@@ -50,6 +50,7 @@ int	vol64k[2] = {65536, 65536};
 Pcmdesc	fmt;
 Lock	fmtlock;
 int	fmtchanged;
+int delay;
 
 int
 s16(uchar *p)
@@ -184,6 +185,8 @@ found:
 		name = smprint("%.*svolume%s", (int)(p - name), name, p+5);
 		volfd = open(name, ORDWR);
 		free(name);
+		if(volfd >= 0)
+			fprint(volfd, "delay %d\n", delay);
 		updfmt();
 	}
 	return 0;
@@ -268,6 +271,7 @@ audioproc(void *)
 	bufconv = nil;
 	sweep = 0;
 	rate = fmt.rate;
+	delay = NDELAY;
 
 	for(;;){
 		m = NBUF;
@@ -280,7 +284,7 @@ audioproc(void *)
 						s->run = 0;
 					else if(n < m)
 						m = n;
-					if(n < NDELAY)
+					if(n < delay)
 						rwakeup(s);
 				} else {
 					n = (long)(mixrp - s->rp);
@@ -486,6 +490,14 @@ fswrite(Req *r)
 			vol64k[0] = 65.536 * (exp(volume[0] * 0.0690876) - 1.0);
 			vol64k[1] = 65.536 * (exp(volume[1] * 0.0690876) - 1.0);
 		}else if(volfd >= 0){
+			if(nf > 1 && strcmp(f[0], "delay") == 0){
+				n = atoi(f[1]);
+				if(n < NQUANTA || n > NBUF){
+					responderror(r);
+					return;
+				}
+				delay = n;
+			}
 			if(write(volfd, r->ifcall.data, r->ifcall.count) < 0){
 				responderror(r);
 				return;
@@ -536,7 +548,7 @@ fswrite(Req *r)
 
 		n -= m;
 	}
-	if((long)(s->wp - mixrp) >= NDELAY && !s->flush){
+	if((long)(s->wp - mixrp) >= delay && !s->flush){
 		s->run = 1;
 		rsleep(s);
 	}
