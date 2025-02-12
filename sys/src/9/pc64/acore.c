@@ -371,19 +371,7 @@ void ndnr(void)
 void
 fpusysrfork(Ureg*)
 {
-	extern void _fxsave(void*);
-	extern void _stts(void);
-	/*
-	 * Called early in the non-interruptible path of
-	 * sysrfork() via the machine-dependent syscall() routine.
-	 * Save the state so that it can be easily copied
-	 * to the child process later.
-	 */
-	if(up->fpstate == FPinactive)
-		return;
-
-	_fxsave(up->fpsave);
-	_stts();
-	up->fpstate = FPinactive;
+	void fpuprocfork(Proc *p);
+	fpuprocfork(up);
 }
 
