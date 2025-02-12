@@ -473,7 +473,9 @@ syscall(Ureg* ureg)
 			procctl();
 			splx(s);
 			startns = todget(nil);
-		}
+		}else if(up->procctl == Proc_totc || up->procctl == Proc_toac)
+		_procctl(up);
+
 		if(scallnr >= nsyscall || systab[scallnr] == nil){
 			postnote(up, 1, "sys: bad sys call", NDebug);
 			error(Ebadarg);

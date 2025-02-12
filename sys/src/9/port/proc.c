@@ -1650,6 +1650,8 @@ kproc(char *name, void (*func)(void *), void *arg)
 void
 _procctl(Proc *p)
 {
+	void runacore(void);
+	void stopac(void);
 	char *state;
 
 	switch(p->procctl) {
@@ -1683,6 +1685,24 @@ _procctl(Proc *p)
 		p->state = Stopped;
 		sched();
 		p->psstate = state;
+		return;
+	case Proc_toac:
+		p->procctl = 0;
+		/*
+		 * This pretends to return from the system call,
+		 * by moving to a core, but never returns (unless
+		 * the process gets moved back to a TC.)
+		 */
+		spllo();
+		runacore();
+		return;
+
+	case Proc_totc:
+		p->procctl = 0;
+		if(p != up)
+			panic("procctl: stopac: p != up");
+		spllo();
+		stopac();
 		return;
 	}
 }

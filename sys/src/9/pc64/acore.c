@@ -8,7 +8,7 @@
 #include	"../port/pci.h"
 #include	"ureg.h"
 
-#define DBG print
+#define DBG iprint
 /*
  * NIX code run at the AC.
  * This is the "AC kernel".
@@ -46,7 +46,7 @@ ACVctl *acvctl[256];
 static void
 testiccfn(void)
 {
-	print("called: %s\n", (char*)m->icc->data);
+	iprint("called: %s\n", (char*)m->icc->data);
 }
 
 void
@@ -56,20 +56,20 @@ testicc(int i)
 
 	if((mp = machp[i]) != nil && mp->online != 0){
 		if(mp->nixtype != NIXAC){
-			print("testicc: core %d is not an AC\n", i);
+			iprint("testicc: core %d is not an AC\n", i);
 			return;
 		}
-		print("calling core %d... ", i);
+		iprint("calling core %d... ", i);
 		mp->icc->flushtlb = 0;
 		snprint((char*)mp->icc->data, ICCLNSZ, "<%d>", i);
 		mfence();
-		print("Set testicc to %p\n", testiccfn);
+		iprint("Set testicc to %p\n", testiccfn);
 		mp->icc->fn = testiccfn;
-		print("wait ...\n");
+		iprint("wait ...\n");
 		// mwait is allowed to return with nothing changed.
 		while(mp->icc->fn == testiccfn)
 			mwait(&mp->icc->fn);
-		print("done\n");
+		iprint("done\n");
 	}
 }
 
@@ -85,7 +85,7 @@ acstackok(void)
 
 	sstart = (char *)m - BY2PG - 4*PTSZ - MACHSIZE; // is that the same? MACHSTKSZ;
 	if(&dummy < sstart + 4*KiB){
-		print("ac kernel stack overflow, cpu%d stopped\n", m->machno);
+		iprint("ac kernel stack overflow, cpu%d stopped\n", m->machno);
 		DONE();
 	}
 }
@@ -115,15 +115,15 @@ acsched(void)
 	acmmuswitch();
 	for(;;){
 		acstackok();
-		print("acstackok is ok\n");
-		print("&m->icc->fn %p\n", &m->icc->fn);
+		iprint("acstackok is ok\n");
+		iprint("&m->icc->fn %p\n", &m->icc->fn);
 		while(m->icc->fn == nil)
 			mwait(&m->icc->fn);
 		if(m->icc->flushtlb)
 			acmmuswitch();
-		print("acsched: cpu%d: fn %#p\n", m->machno, m->icc->fn);
+		iprint("acsched: cpu%d: fn %#p\n", m->machno, m->icc->fn);
 		m->icc->fn();
-		print("acsched: cpu%d: idle\n", m->machno);
+		iprint("acsched: cpu%d: idle\n", m->machno);
 		mfence();
 		m->icc->fn = nil;
 	}
@@ -141,7 +141,7 @@ actouser(void)
 	acfpusysprocsetup(m->proc);
 
 	u = m->proc->dbgreg;
-	print("cpu%d: touser usp = %#p entry %#p\n", m->machno, u->sp, u->pc);
+	iprint("cpu%d: touser usp = %#p entry %#p\n", m->machno, u->sp, u->pc);
 	xactouser(u->sp);
 	panic("actouser");
 }
@@ -187,7 +187,7 @@ actrap(Ureg *u)
 	}
 	switch(u->type){
 	case Vector2F:
-		print("AC: double fault\n");
+		iprint("AC: double fault\n");
 		dumpregs(u);
 		ndnr();
 	case VectorIPI:
@@ -204,7 +204,7 @@ actrap(Ureg *u)
 		DBG("actrap: cpu%d: PF cr2 %#ullx\n", m->machno, getcr2());
 		break;
 	default:
-		print("actrap: cpu%d: %ulld\n", m->machno, u->type);
+		iprint("actrap: cpu%d: %ulld\n", m->machno, u->type);
 	}
 Post:
 	m->icc->rc = ICCTRAP;
@@ -277,7 +277,7 @@ acsysret(void)
 void
 dumpreg(void *u)
 {
-	print("reg is %p\n", u);
+	iprint("reg is %p\n", u);
 	ndnr();
 }
 
@@ -347,7 +347,7 @@ acfpusysprocsetup(Proc *p)
 void
 DONE(void)
 {
-	print("DONE\n");
+	iprint("DONE\n");
 	prflush();
 	delay(10000);
 	ndnr();
@@ -356,7 +356,7 @@ DONE(void)
 void
 HERE(void)
 {
-	print("here\n");
+	iprint("here\n");
 	prflush();
 	delay(5000);
 }
