@@ -140,7 +140,7 @@ void*
 kaddr(uintptr pa)
 {
 	if(pa >= (uintptr)-KZERO)
-		panic("kaddr: pa=%#p pc=%#p", pa, getcallerpc(&pa));
+		panic("kaddr: pa=%#p pc=%#p, -KZERO is %p", pa, getcallerpc(&pa), (uintptr)-KZERO);
 	return (void*)(pa+KZERO);
 }
 

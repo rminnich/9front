@@ -339,8 +339,9 @@ acfpusysprocsetup(Proc *p)
 		/* The FPU is initialized in the TC but we must initialize
 		 * it in the AC.
 		 */
+		iprint("NOTE: fpu not set up. FIXME\n");
 		p->fpstate = FPinactive;
-		panic("fpusysprocsetup(p);");
+		//panic("fpusysprocsetup(p);");
 	}
 }
 /* debug -- put them here, not in main.c */

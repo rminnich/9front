@@ -232,6 +232,11 @@ dumpptepg(int lvl, u64int pa)
 				print("...kern...\n");
 				continue;
 			}
+			if (! cankaddr(pte[i])){
+				// WTF.
+				print("Not addressable? WTF\n");
+				continue;
+			}
 			if(lvl > 2)
 				dumpptepg(lvl-1, PPN(pte[i]));
 		}
