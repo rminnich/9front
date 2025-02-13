@@ -9,7 +9,7 @@
 #define UREG_CS 152
 #define UREG_PC 144
 #define UREG_DS 120
-#define UREG_eS 122
+#define UREG_ES 122
 #define UREG_FS 124
 #define UREG_GS 126
 #define UREG_AX 0
@@ -24,28 +24,28 @@ MODE $64
 TEXT acsyscallentry(SB), 1, $-4
 	SWAPGS
 	BYTE $0x65; MOVQ 0, RMACH		/* m-> (MOVQ GS:0x0, R15) */
-	MOVQ	16(RMACH), RUSER		/* m->proc */
-FIXME	MOVQ	24(RUSER), R12		/* m->proc->dbgregs */
+	MOVQ	M_PROC(RMACH), RUSER		/* m->proc */
+	MOVQ	PROC_DBGREG(RUSER), R12		/* m->proc->dbgregs */
 
 	/* save sp to r13; set up kstack so we can call acsyscall */
 	MOVQ	SP, R13
-FIXME	MOVQ	24(RMACH), SP			/* m->stack */
-CHECKME	ADDQ	$8192, SP // XXX WHOA this can't work.
+	MOVQ	M_STACK(RMACH), SP			/* m->stack */
+	ADDQ	$8192, SP // XXX WHOA this can't work.
 
 	MOVQ	$UDSEG, BX		/* old stack segment */
-FIXME	MOVQ	BX, 176(R12)				/* save ss */
-FIXME	MOVQ	R13, 168(R12)				/* old sp */
-FIXME	MOVQ	R11, 160(R12)				/* old flags */
+	MOVQ	BX, UREG_SS(R12)				/* save ss */
+	MOVQ	R13, UREG_SP(R12)				/* old sp */
+	MOVQ	R11, UREG_FLAGS(R12)				/* old flags */
 	MOVQ	$UESEG, BX		/* old code segment */
-FIXME	MOVQ	BX, 152(R12)				/* save cs */
-FIXME	MOVQ	CX, 144(R12)				/* old ip */
+	MOVQ	BX, UREG_CS(R12)				/* save cs */
+	MOVQ	CX, UREG_PC(R12)				/* old ip */
 
-FIXME	MOVW	$UDSEG, 120(R12)
-FIXME	MOVW	ES,  122(R12)
-FIXME	MOVW	FS,  124(R12)
-FIXME	MOVW	GS,  126(R12)
+	MOVW	$UDSEG, UREG_DS(R12)
+	MOVW	ES,  UREG_ES(R12)
+	MOVW	FS,  UREG_FS(R12)
+	MOVW	GS,  UREG_GS(R12)
 
-FIXME	MOVQ	RARG, 	0(R12)			/* system call number: up->dbgregs->ax  */
+	MOVQ	RARG, 	UREG_AX(R12)			/* system call number: up->dbgregs->ax  */
 	CALL	acsyscall(SB)
 NDNR:	JMP NDNR
 
@@ -53,20 +53,19 @@ TEXT _acsysret(SB), 1, $-4
 	CLI
 	SWAPGS
 
-FIXME	MOVQ	24(RUSER), R12			/* m->proc->dbgregs */
-FIXME	MOVQ	0(R12), AX			/* m->proc->dbgregs->ax */
-FIXME	MOVQ	(6*8)(R12),	BP		/* m->proc->dbgregs->bp */
-FIXME	ADDQ	$(15*8), R12			/* after ax--r15, 8 bytes each */
+	MOVQ	PROC_DBGREG(RUSER), R12			/* m->proc->dbgregs */
+	MOVQ	UREG_AX(R12), AX			/* m->proc->dbgregs->ax */
+	MOVQ	UREG_BP(R12),	BP		/* m->proc->dbgregs->bp */
 
-FIXME	MOVW	0(R12), DS
-FIXME	MOVW	2(R12), ES
-FIXME	MOVW	4(R12), FS
-FIXME	MOVW	6(R12), GS
-FIXME
-FIXME	MOVQ	24(R12), CX			/* ip */
-FIXME	MOVQ	40(R12), R11			/* flags */
-FIXME
-FIXME	MOVQ	48(R12), SP			/* sp */
+	MOVW	UREG_DS(R12), DS
+	MOVW	UREG_ES(R12), ES
+	MOVW	UREG_FS(R12), FS
+	MOVW	UREG_GS(R12), GS
+
+	MOVQ	UREG_PC(R12), CX			/* ip */
+	MOVQ	UREG_FLAGS(R12), R11			/* flags */
+
+	MOVQ	UREG_SP(R12), SP			/* sp */
 
 	BYTE $0x48; SYSRET			/* SYSRETQ */
 
@@ -80,9 +79,9 @@ loop:
 	CLI
 	BYTE $0x65; MOVQ 0, RMACH		/* m-> (MOVQ GS:0x0, R15) */
 	MOVQ	16(RMACH), RUSER		/* m->proc */
-FIXME 	MOVQ	24(RUSER), R12			/* m->proc->dbgregs */
-FIXME	MOVQ	144(R12), CX			/* old ip */
-FIXME	MOVQ	0(R12), BX				/* save AX */
+ 	MOVQ	PROC_DBGREG(RUSER), R12			/* m->proc->dbgregs */
+	MOVQ	UREG_PC(R12), CX			/* old ip */
+	MOVQ	UREG_AX(R12), BX				/* save AX */
 	SWAPGS
 	MOVQ	$UDSEG, AX
 	MOVW	AX, DS

@@ -24,7 +24,7 @@ main()
 	print("#define UREG_PC %d\n", offsetof(Ureg, pc));
 
 	print("#define UREG_DS %d\n", offsetof(Ureg, ds));
-	print("#define UREG_eS %d\n", offsetof(Ureg, es));
+	print("#define UREG_ES %d\n", offsetof(Ureg, es));
 	print("#define UREG_FS %d\n", offsetof(Ureg, fs));
 	print("#define UREG_GS %d\n", offsetof(Ureg, gs));
 
@@ -33,5 +33,5 @@ main()
 	print("#define UREG_CX %d\n", offsetof(Ureg, cx));
 	print("#define UREG_R11 %d\n", offsetof(Ureg, r11));
 
-
+	/* 6c -c struct.c; 6l -o 6.struct struct.6 */
 }
