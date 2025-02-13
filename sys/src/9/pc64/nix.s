@@ -1,5 +1,22 @@
 #include "mem.h"
 // NIX stuff, just keep it here.
+#define M_PROC 16
+#define PROC_DBGREG 2056
+#define M_STACK 368
+#define UREG_SS 176
+#define UREG_SP 168
+#define UREG_FLAGS 160
+#define UREG_CS 152
+#define UREG_PC 144
+#define UREG_DS 120
+#define UREG_eS 122
+#define UREG_FS 124
+#define UREG_GS 126
+#define UREG_AX 0
+#define UREG_BP 48
+#define UREG_CX 16
+#define UREG_R11 80
+
 MODE $64
 
 /*
@@ -13,7 +30,7 @@ FIXME	MOVQ	24(RUSER), R12		/* m->proc->dbgregs */
 	/* save sp to r13; set up kstack so we can call acsyscall */
 	MOVQ	SP, R13
 FIXME	MOVQ	24(RMACH), SP			/* m->stack */
-CHECKME	ADDQ	$8192, SP // XXX
+CHECKME	ADDQ	$8192, SP // XXX WHOA this can't work.
 
 	MOVQ	$UDSEG, BX		/* old stack segment */
 FIXME	MOVQ	BX, 176(R12)				/* save ss */
