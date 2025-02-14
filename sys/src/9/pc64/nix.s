@@ -91,5 +91,6 @@ TEXT xactouser(SB), 1, $-4
 	MOVQ	$0x00000200, R11			/* Interrupt flags */
 
 	MOVQ	RARG, SP			/* sp */
-loop: JMP loop
+loop: JMP loop // at this point, qemu shows sp is ok
+// but when it dies in sysretq path, SP is 0. wtf.
 	BYTE $0x48; SYSRET			/* SYSRETQ */
