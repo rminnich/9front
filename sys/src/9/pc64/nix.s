@@ -74,9 +74,6 @@ TEXT _acsysret(SB), 1, $-4
  * DX is ar0->p by the time we call it. See syscall()
  */
 TEXT xactouser(SB), 1, $-4
-loop:
-	// in case of debug break glass.
-	JMP loop /* for qemu. */
 	CLI
 	BYTE $0x65; MOVQ 0, RMACH		/* m-> (MOVQ GS:0x0, R15) */
 	MOVQ	16(RMACH), RUSER		/* m->proc */
@@ -84,15 +81,15 @@ loop:
 	MOVQ	UREG_PC(R12), CX			/* old ip */
 	MOVQ	UREG_AX(R12), BX				/* save AX */
 	SWAPGS
-	MOVQ	$UDSEG, AX
+	MOVQ	$UDSEL, AX
 	MOVW	AX, DS
-//	MOVW	AX, ES
-//	MOVW	AX, FS
-//	MOVW	AX, GS
+	MOVW	AX, ES
+	MOVW	AX, FS
+	MOVW	AX, GS
 
 	MOVQ	BX, AX			/* restore AX */
 	MOVQ	$0x00000200, R11			/* Interrupt flags */
 
 	MOVQ	RARG, SP			/* sp */
-l2:JMP l2
+loop: JMP loop
 	BYTE $0x48; SYSRET			/* SYSRETQ */
