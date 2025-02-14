@@ -30,8 +30,8 @@ TEXT acsyscallentry(SB), 1, $-4
 	/* save sp to r13; set up kstack so we can call acsyscall */
 	MOVQ	SP, R13
 	MOVQ	M_STACK(RMACH), SP			/* m->stack */
-	ADDQ	$8192, SP // XXX WHOA this can't work.
-
+	//ADDQ	$8192, SP // XXX WHOA this can't work.
+	ADDQ $512, SP
 	MOVQ	$UDSEG, BX		/* old stack segment */
 	MOVQ	BX, UREG_SS(R12)				/* save ss */
 	MOVQ	R13, UREG_SP(R12)				/* old sp */
@@ -75,7 +75,8 @@ TEXT _acsysret(SB), 1, $-4
  */
 TEXT xactouser(SB), 1, $-4
 loop:
-// in case of debug break glass.	JMP loop /* for qemu. */
+	// in case of debug break glass.
+	JMP loop /* for qemu. */
 	CLI
 	BYTE $0x65; MOVQ 0, RMACH		/* m-> (MOVQ GS:0x0, R15) */
 	MOVQ	16(RMACH), RUSER		/* m->proc */
@@ -85,13 +86,13 @@ loop:
 	SWAPGS
 	MOVQ	$UDSEG, AX
 	MOVW	AX, DS
-	MOVW	AX, ES
-	MOVW	AX, FS
-	MOVW	AX, GS
+//	MOVW	AX, ES
+//	MOVW	AX, FS
+//	MOVW	AX, GS
 
 	MOVQ	BX, AX			/* restore AX */
 	MOVQ	$0x00000200, R11			/* Interrupt flags */
 
 	MOVQ	RARG, SP			/* sp */
-
+l2:JMP l2
 	BYTE $0x48; SYSRET			/* SYSRETQ */

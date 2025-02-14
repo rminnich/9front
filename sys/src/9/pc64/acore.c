@@ -142,8 +142,9 @@ actouser(void)
 
 	u = m->proc->dbgreg;
 	iprint("cpu%d: touser usp = %#p entry %#p\n", m->machno, u->sp, u->pc);
+	//while(1);
 	xactouser(u->sp);
-	panic("actouser");
+	panic("actouser RETURNED, can't happen");
 }
 
 void
