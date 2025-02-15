@@ -8,7 +8,7 @@ qsort \- quicker sort
 .PP
 .B
 .nf
-void qsort(void *base, long nel, long width,
+void qsort(void *base, usize nel, usize width,
 .B
 	    int (*compar)(void*, void*))
 .fi
