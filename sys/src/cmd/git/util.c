@@ -513,3 +513,56 @@ parseqid(char *s)
 		sysfatal("corrupt qid: %s (%x)", s, *e);
 	return q;
 }
+
+/*
+ * Checks the rules for valid ref names, as defined in
+ *   git/Documentation/protocol-common.txt.
+ * It does not check that the ref begins with refs/
+ * or is called HEAD, since that's only needed in the
+ * clone protocol.
+ */
+int
+okref(char *ref)
+{
+	int slashed;
+	char *p;
+
+	slashed = 0;
+	if(*ref == '/')
+		return 0;
+	for(p = ref; *p != 0; p++) {
+		switch(*p){
+		case '.':
+			if(p[1]== 0 || p[1] == '.')
+				return 0;
+			if(strcmp(p, ".lock") == 0)
+				return 0;
+			break;
+		case '/':
+			if(p[1] == 0 || p[1] == '.')
+				return 0;
+			slashed = 1;
+			break;
+		case '@':
+			if(p[1] == '{')
+				return 0;
+			break;
+		case ' ':
+		case '~':
+		case '^':
+		case ':':
+		case '?':
+		case '*':
+		case '[':
+		case '\\':
+		case 0x7f: /* DEL */
+			return 0;
+		default:
+			if(*p < 0x20)
+				return 0;
+		}
+	}
+	if(ref == p)
+		return 0;
+	return slashed;
+}

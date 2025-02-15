@@ -10,14 +10,14 @@ fn update{
 	if(! ~ $#debug 0)
 		dflag='-d'
 	{git/get $dflag -u $upstream $url >[2=3] || die $status} | awk '
-	/^remote/{
-		if($2=="HEAD")
-			next
+	/^remote refs\/(heads|tags)\//{
 		ref=$2
 		hash=$3
 		gsub("^refs/heads", "refs/remotes/'$upstream'", ref)
 		outfile = ".git/"ref
-		system("mkdir -p `{basename -d "outfile"}");
+		print outfile > "/env/outfile"
+		system("mkdir -p `$nl{basename -d $outfile}");\
+		close("/env/outfile")
 		print hash > outfile;
 		close(outfile);
 	}
