@@ -114,7 +114,7 @@ acsched(void)
 {
 	acmmuswitch();
 	for(;;){
-		acstackok();
+		if (0)acstackok();
 		iprint("acstackok is ok\n");
 		iprint("&m->icc->fn %p\n", &m->icc->fn);
 		while(m->icc->fn == nil)
@@ -141,6 +141,7 @@ actouser(void)
 	acfpusysprocsetup(m->proc);
 
 	u = m->proc->dbgreg;
+	iprint("cpu%d: touser m %p m->proc %p m->stack %p\n", m->machno, m, m->proc, m->stack);
 	iprint("cpu%d: touser usp = %#p entry %#p\n", m->machno, u->sp, u->pc);
 	//while(1);
 	xactouser(u->sp);

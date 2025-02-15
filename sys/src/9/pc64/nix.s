@@ -2,7 +2,10 @@
 // NIX stuff, just keep it here.
 #define M_PROC 16
 #define PROC_DBGREG 2056
-#define M_STACK 368
+// in 9front, the proc pointer it also top of stack.
+// this simplifies a lot of things.
+// I doubt we need stackok() any more.
+#define M_TOP_OF_STACK M_PROC
 #define UREG_SS 176
 #define UREG_SP 168
 #define UREG_FLAGS 160
@@ -29,10 +32,10 @@ TEXT acsyscallentry(SB), 1, $-4
 
 	/* save sp to r13; set up kstack so we can call acsyscall */
 	MOVQ	SP, R13
-this stack is garbage. Fix me.
-	MOVQ	M_STACK(RMACH), SP			/* m->stack */
-	//ADDQ	$8192, SP // XXX WHOA this can't work.
-	ADDQ $512, SP
+	// in 9front, m->proc is the proc pointer but ALSO the
+	// top of the pre-decremented stack. A bit dangerous, I think
+	// a kernel stack guard would be nice.
+	MOVQ	RUSER, SP			/* m->Proc, loaded above, is also SP */
 	MOVQ	$UDSEG, BX		/* old stack segment */
 	MOVQ	BX, UREG_SS(R12)				/* save ss */
 	MOVQ	R13, UREG_SP(R12)				/* old sp */

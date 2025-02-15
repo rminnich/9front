@@ -119,6 +119,7 @@ mmuinit(void)
 	ltr(TSSSEL);
 
 	wrmsr(FSbase, 0ull);
+	print("cpu%d:gsbase %p\n", m->machno, &machp[m->machno]);
 	wrmsr(GSbase, (uvlong)&machp[m->machno]);
 	wrmsr(KernelGSbase, 0ull);
 
