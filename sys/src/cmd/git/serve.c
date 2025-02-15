@@ -179,10 +179,7 @@ validref(char *s)
 	cleanname(s);
 	if(strncmp(s, "refs/", 5) != 0)
 		return 0;
-	for(; *s != '\0'; s++)
-		if(!isalnum(*s) && strchr("/-_.", *s) == nil)
-			return 0;
-	return 1;
+	return okref(s);
 }
 
 int
@@ -328,6 +325,28 @@ mkdir(char *dir)
 }
 
 int
+mkpath(char *path)
+{
+	char *p;
+
+	p = path;
+	/*
+	 * we assume that the path has been
+	 * checked with validref(), so there
+	 * are no double '/' or odd characters.
+	 */
+	while(1){
+		p = strchr(p, '/');
+		if(p == nil)
+			return 0;
+		*p = 0;
+		if(mkdir(path) == -1)
+			return -1;
+		*p++ = '/';
+	}
+}
+
+int
 updatepack(Conn *c)
 {
 	char buf[Pktmax], packtmp[128], idxtmp[128], ebuf[ERRMAX];
@@ -445,6 +464,10 @@ updaterefs(Conn *c, Hash *cur, Hash *upd, char **ref, int nupd)
 			newidx = i;
 		}
 		unref(o);
+		if(mkpath(refpath) == -1){
+			snprint(buf, sizeof(buf), "create path: %r");
+			goto error;
+		}
 		if((fd = create(refpath, OWRITE|OTRUNC, 0644)) == -1){
 			snprint(buf, sizeof(buf), "open ref: %r");
 			goto error;
