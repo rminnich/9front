@@ -91,7 +91,7 @@ TEXT xactouser(SB), 1, $-4
 	MOVW	AX, FS
 	MOVW	AX, GS
 loop:	CMPQ AX,$0
-	JNE loop
+	//JNE loop useful if you are debugging in qemu.
 	MOVQ	BX, AX			/* restore AX */
 	MOVQ	$0x00000200, R11			/* Interrupt flags */
 
