@@ -29,6 +29,7 @@ TEXT acsyscallentry(SB), 1, $-4
 
 	/* save sp to r13; set up kstack so we can call acsyscall */
 	MOVQ	SP, R13
+this stack is garbage. Fix me.
 	MOVQ	M_STACK(RMACH), SP			/* m->stack */
 	//ADDQ	$8192, SP // XXX WHOA this can't work.
 	ADDQ $512, SP
@@ -86,11 +87,95 @@ TEXT xactouser(SB), 1, $-4
 	MOVW	AX, ES
 	MOVW	AX, FS
 	MOVW	AX, GS
-
+loop:	CMPQ AX,$0
+	JNE loop
 	MOVQ	BX, AX			/* restore AX */
 	MOVQ	$0x00000200, R11			/* Interrupt flags */
 
 	MOVQ	RARG, SP			/* sp */
-loop: JMP loop // at this point, qemu shows sp is ok
-// but when it dies in sysretq path, SP is 0. wtf.
+
 	BYTE $0x48; SYSRET			/* SYSRETQ */
+
+/*
+ * Interrupt/exception handling.
+ */
+
+MODE $64
+
+TEXT _acintrp<>(SB), 1, $-4			/* no error code pushed */
+	PUSHQ	AX				/* save AX */
+	MOVQ	8(SP), AX			/* idthandlers(SB) PC */
+	JMP	_acintrcommon
+
+TEXT _acintre<>(SB), 1, $-4			/* error code pushed */
+	XCHGQ	AX, (SP)
+_acintrcommon:
+	MOVBQZX	(AX), AX
+	XCHGQ	AX, (SP)
+
+	SUBQ	$24, SP				/* R1[45], [DEFG]S */
+	CMPW	48(SP), $KESEL	/* old CS */
+	JEQ	_acintrnested
+
+	MOVQ	RUSER, 0(SP)
+	MOVQ	RMACH, 8(SP)
+	MOVW	DS, 16(SP)
+	MOVW	ES, 18(SP)
+	MOVW	FS, 20(SP)
+	MOVW	GS, 22(SP)
+
+	SWAPGS
+	BYTE $0x65; MOVQ 0, RMACH		/* m-> (MOVQ GS:0x0, R15) */
+	MOVQ	16(RMACH), RUSER		/* up */
+
+_acintrnested:
+	PUSHQ	R13
+	PUSHQ	R12
+	PUSHQ	R11
+	PUSHQ	R10
+	PUSHQ	R9
+	PUSHQ	R8
+	PUSHQ	BP
+	PUSHQ	DI
+	PUSHQ	SI
+	PUSHQ	DX
+	PUSHQ	CX
+	PUSHQ	BX
+	PUSHQ	AX
+
+	MOVQ	SP, RARG
+	PUSHQ	SP
+	CALL	actrap(SB)
+
+TEXT _acintrr<>(SB), 1, $-4			/* so ktrace can pop frame */
+	POPQ	AX
+
+	POPQ	AX
+	POPQ	BX
+	POPQ	CX
+	POPQ	DX
+	POPQ	SI
+	POPQ	DI
+	POPQ	BP
+	POPQ	R8
+	POPQ	R9
+	POPQ	R10
+	POPQ	R11
+	POPQ	R12
+	POPQ	R13
+
+	CMPQ	48(SP), $KESEL
+	JEQ	_aciretnested
+
+	SWAPGS
+	MOVW	22(SP), GS
+	MOVW	20(SP), FS
+	MOVW	18(SP), ES
+	MOVW	16(SP), DS
+	MOVQ	8(SP), RMACH
+	MOVQ	0(SP), RUSER
+
+_aciretnested:
+	ADDQ	$40, SP
+	IRETQ
+

@@ -128,7 +128,10 @@ mmuinit(void)
 	wrmsr(Efer, v);
 
 	wrmsr(Star, ((uvlong)UE32SEL << 48) | ((uvlong)KESEL << 32));
-	wrmsr(Lstar, (uvlong)syscallentry);
+	if(m->nixtype != NIXAC)
+		wrmsr(Lstar, (uvlong)syscallentry);
+	else
+		wrmsr(Lstar, (uvlong)acsyscallentry);
 	wrmsr(Sfmask, 0x200);
 }
 

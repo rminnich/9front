@@ -180,14 +180,15 @@ void	rdrandbuf(void*, ulong);
 #define PADDR(a)	paddr((void*)(a))
 
 // NIX
-void	ndnr(void);
+void acsyscallentry(void);
+void ndnr(void);
+void acinit(void);
+void acmmuswitch(void);
+void acmodeset(int mode);
+void acsched(void);
 void actouser(void);
-void fpusysrfork(Ureg*);
 void apicipi(int apicno);
 void dumpptepg(int lvl, uvlong pa);
-void acinit(void);
-void acmodeset(int mode);
-void acmmuswitch(void);
-void acsched(void);
-void testicc(int i);
+void fpusysrfork(Ureg*);
 void nixprepage(int);
+void testicc(int i);

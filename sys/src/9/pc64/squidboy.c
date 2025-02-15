@@ -12,6 +12,7 @@ static void
 squidboy(Apic* apic)
 {
 	machinit();
+	acmodeset(m->machno == 1 ? NIXAC : NIXTC);
 	mmuinit();
 	cpuidentify();
 	if(arch->clockinit)
@@ -22,7 +23,6 @@ squidboy(Apic* apic)
 	/* always set up an icc, in case we want to move back and forth. */
 	m->icc = mallocalign(sizeof *m->icc, ICCLNSZ, 0, 0);
 	m->icc->fn = nil;
-	acmodeset(m->machno == 1 ? NIXAC : NIXTC);
 	switch(m->nixtype){
 	case NIXAC:
 		print("Startup up AC %d\n", m->machno);
