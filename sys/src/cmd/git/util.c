@@ -528,7 +528,7 @@ okref(char *ref)
 	char *p;
 
 	slashed = 0;
-	if(*ref == '/')
+	if(*ref == '/' || *ref == '.')
 		return 0;
 	for(p = ref; *p != 0; p++) {
 		switch(*p){
@@ -539,7 +539,7 @@ okref(char *ref)
 				return 0;
 			break;
 		case '/':
-			if(p[1] == 0 || p[1] == '.')
+			if(p[1] == 0 || p[1] == '.' || p[1] == '/')
 				return 0;
 			slashed = 1;
 			break;
