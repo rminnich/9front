@@ -333,6 +333,11 @@ runacore(void)
 		case ICCSYSCALL:
 			DBG("cpu%d:runacore: syscall bp %#ullx ureg %#p\n", m->machno, ureg->bp, ureg);
 			putcr3(PADDR(m->pml4));
+			if(1){
+				up->s = *((Sargs*)((uintptr)ureg->sp+BY2WD));
+				syscallfmt(ureg->bp, ureg->pc, (va_list)up->s.args);
+				print("syscall: %s\n", up->syscalltrace);
+			}
 			syscall(ureg);
 			flush = 1;
 			fn = acsysret;
