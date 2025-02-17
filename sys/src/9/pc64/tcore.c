@@ -331,9 +331,9 @@ runacore(void)
 			fn = actrapret;
 			break;
 		case ICCSYSCALL:
-			DBG("runacore: syscall ax %#ullx ureg %#p\n", ureg->ax, ureg);
+			DBG("cpu%d:runacore: syscall bp %#ullx ureg %#p\n", m->machno, ureg->bp, ureg);
 			putcr3(PADDR(m->pml4));
-			syscall(ureg); // XXX used to be AX, is now BP? 
+			syscall(ureg);
 			flush = 1;
 			fn = acsysret;
 			if(0)

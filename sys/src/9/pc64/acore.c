@@ -273,9 +273,10 @@ acsyscall(void)
 void
 acsysret(void)
 {
-	DBG("acsysret\n");
+	DBG("acsysret m %p m->machno %d m->proc %p\n", m, m->machno, m->proc);
 	if(m->proc != nil)
 		m->proc->actime += fastticks2us(fastticks(nil) - m->proc->actime1);
+	DBG("Call _acsysret\n");
 	_acsysret();
 }
 

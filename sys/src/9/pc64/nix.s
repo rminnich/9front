@@ -33,10 +33,8 @@ TEXT acsyscallentry(SB), 1, $-4
 
 	/* save sp to r13; set up kstack so we can call acsyscall */
 	MOVQ	SP, R13
-	// in 9front, m->proc is the proc pointer but ALSO the
-	// top of the pre-decremented stack. A bit dangerous, I think
-	// a kernel stack guard would be nice.
-	MOVQ	M_STACK(RMACH), SP			/* use the Mach stack, not the proc stack. */
+	MOVQ	RMACH, SP			/* use the Mach stack, not the proc stack. */
+	ADDQ 	$MACHSIZE, SP // yuck
 	MOVQ	$UDSEL, BX		/* old stack segment */
 	MOVQ	BX, UREG_SS(R12)				/* save ss */
 	MOVQ	R13, UREG_SP(R12)				/* old sp */
@@ -50,7 +48,7 @@ TEXT acsyscallentry(SB), 1, $-4
 	MOVW	FS,  UREG_FS(R12)
 	MOVW	GS,  UREG_GS(R12)
 
-	MOVQ	RARG, 	UREG_AX(R12)			/* system call number: up->dbgregs->ax  */
+	MOVQ	BP, 	UREG_BP(R12)			/* system call number: up->dbgregs->bp  */
 	CALL	acsyscall(SB)
 NDNR:	JMP NDNR
 
