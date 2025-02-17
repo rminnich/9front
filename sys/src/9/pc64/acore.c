@@ -116,9 +116,10 @@ acsched(void)
 	for(;;){
 		if (0)acstackok();
 		iprint("acstackok is ok\n");
-		iprint("&m->icc->fn %p\n", &m->icc->fn);
+		iprint("&m->icc->fn %p fn %p\n", &m->icc->fn, m->icc->fn);
 		while(m->icc->fn == nil)
 			mwait(&m->icc->fn);
+		iprint("m %p m->icc->flushtlb %d m->icc->fn %p\n", m, m->icc->flushtlb, m->icc->fn);
 		if(m->icc->flushtlb)
 			acmmuswitch();
 		iprint("acsched: cpu%d: fn %#p\n", m->machno, m->icc->fn);
@@ -254,7 +255,9 @@ acsyscall(void)
 	//_pmcupdate(m);
 	mfence();
 	m->icc->fn = nil;
+	DBG("acsyscall: m is %p, m->proc is %p\n", m, m->proc);
 	ready(p);
+	DBG("back from ready, now call sched\n");
 	/*
 	 * The next call is probably going to make us jmp
 	 * into user code, forgetting all our state in this

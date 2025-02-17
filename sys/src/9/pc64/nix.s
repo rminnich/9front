@@ -2,10 +2,11 @@
 // NIX stuff, just keep it here.
 #define M_PROC 16
 #define PROC_DBGREG 2056
-// in 9front, the proc pointer it also top of stack.
-// this simplifies a lot of things.
-// I doubt we need stackok() any more.
-#define M_TOP_OF_STACK M_PROC
+/* On AC, we have to have a stack.
+ * We can not use the Proc stack; that's 
+ * already in use on the TC.
+ * For acsyscallentry, we need to use the Mach stack, not the Proc stack. */
+#define M_STACK 368
 #define UREG_SS 176
 #define UREG_SP 168
 #define UREG_FLAGS 160
@@ -35,16 +36,16 @@ TEXT acsyscallentry(SB), 1, $-4
 	// in 9front, m->proc is the proc pointer but ALSO the
 	// top of the pre-decremented stack. A bit dangerous, I think
 	// a kernel stack guard would be nice.
-	MOVQ	RUSER, SP			/* m->Proc, loaded above, is also SP */
-	MOVQ	$UDSEG, BX		/* old stack segment */
+	MOVQ	M_STACK(RMACH), SP			/* use the Mach stack, not the proc stack. */
+	MOVQ	$UDSEL, BX		/* old stack segment */
 	MOVQ	BX, UREG_SS(R12)				/* save ss */
 	MOVQ	R13, UREG_SP(R12)				/* old sp */
 	MOVQ	R11, UREG_FLAGS(R12)				/* old flags */
-	MOVQ	$UESEG, BX		/* old code segment */
+	MOVQ	$UESEL, BX		/* old code segment */
 	MOVQ	BX, UREG_CS(R12)				/* save cs */
 	MOVQ	CX, UREG_PC(R12)				/* old ip */
 
-	MOVW	$UDSEG, UREG_DS(R12)
+	MOVW	$UDSEL, UREG_DS(R12)
 	MOVW	ES,  UREG_ES(R12)
 	MOVW	FS,  UREG_FS(R12)
 	MOVW	GS,  UREG_GS(R12)

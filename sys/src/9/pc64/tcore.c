@@ -174,8 +174,10 @@ runac(Mach *mp, APfunc func, int flushtlb, void *a, long n)
 	qunlock(&up->debug);
 	poperror();
 	mfence();
+	print("cpu%d waits in sched mach is %p\n", m->machno, m);
 	mp->icc->fn = func;
 	sched();
+	print("cpu%d returns from waiting for AC, m is %p\n", m->machno, m);
 	return mp->icc->rc;
 }
 
@@ -329,8 +331,7 @@ runacore(void)
 			fn = actrapret;
 			break;
 		case ICCSYSCALL:
-			DBG("runacore: syscall ax %#ullx ureg %#p\n",
-				ureg->ax, ureg);
+			DBG("runacore: syscall ax %#ullx ureg %#p\n", ureg->ax, ureg);
 			putcr3(PADDR(m->pml4));
 			syscall(ureg); // XXX used to be AX, is now BP? 
 			flush = 1;

@@ -376,7 +376,7 @@ faultnote(Ureg *ureg, char *access, uintptr addr)
 
 	if(!userureg(ureg)){
 		dumpregs(ureg);
-		panic("fault: %s addr=%#p", access, addr);
+		panic("cpu%d:fault: %s addr=%#p", m->machno, access, addr);
 	}
 	checkpages();
 	snprint(buf, sizeof(buf), "sys: trap: fault %s addr=%#p", access, addr);
