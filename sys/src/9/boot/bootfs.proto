@@ -27,6 +27,7 @@ $objtype
 		sed
 		sleep
 		srv
+		syscall
 		test
 		tlsclient
 		unmount
