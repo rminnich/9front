@@ -273,9 +273,11 @@ acsyscall(void)
 void
 acsysret(void)
 {
+	Ureg *u = m->proc->dbgreg;
 	DBG("acsysret m %p m->machno %d m->proc %p\n", m, m->machno, m->proc);
 	if(m->proc != nil)
 		m->proc->actime += fastticks2us(fastticks(nil) - m->proc->actime1);
+	DBG("cpu%d:acsysret: pc %p, sp %p\n", m->machno, u->pc, u->sp);
 	DBG("Call _acsysret\n");
 	_acsysret();
 }
