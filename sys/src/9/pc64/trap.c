@@ -461,7 +461,7 @@ syscall(Ureg* ureg)
 			validaddr(sp, sizeof(Sargs)+BY2WD, 0);
 
 		up->s = *((Sargs*)(sp+BY2WD));
-		if(0){
+		if(up->printsyscall){
 			syscallfmt(scallnr, ureg->pc, (va_list)up->s.args);
 			print("syscall: %s\n", up->syscalltrace);
 		}
@@ -500,7 +500,7 @@ syscall(Ureg* ureg)
 	}
 	ureg->ax = ret;
 
-	if(0){
+	if(up->printsyscall){
 		print("syscallret: %lud %s %s ret=%lld\n", 
 			up->pid, up->text, sysctab[scallnr], ret);
 	}

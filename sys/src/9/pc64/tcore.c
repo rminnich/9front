@@ -338,6 +338,7 @@ runacore(void)
 				syscallfmt(ureg->bp, ureg->pc, (va_list)up->s.args);
 				print("syscall: %s\n", up->syscalltrace);
 			}
+			up->printsyscall = 1;
 			syscall(ureg);
 			flush = 1;
 			fn = acsysret;

@@ -824,6 +824,7 @@ struct Proc
 	int	nqtrap;		/* # of traps in last quantum */
 	int	nqsyscall;	/* # of syscalls in the last quantum */
 	int	nfullq;
+	int printsyscall;
 	/* End NIX */
 	PFPU;			/* machine specific fpu state */
 	PMMU;			/* machine specific mmu state */
