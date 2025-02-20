@@ -405,8 +405,10 @@ ibrk(uintptr addr, int seg)
 	if(s == nil)
 		error(Ebadarg);
 
-	if(addr == 0)
+	if(addr == 0){
+		print("addr 0 return %p\n", s->base);
 		return s->base;
+	}
 
 	qlock(s);
 

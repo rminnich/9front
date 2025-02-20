@@ -17,6 +17,7 @@ void	noted(Ureg*, ulong);
 static void debugexc(Ureg*, void*);
 static void debugbpt(Ureg*, void*);
 static void faultamd64(Ureg*, void*);
+static void faulttss(Ureg*, void*);
 static void doublefault(Ureg*, void*);
 static void unexpected(Ureg*, void*);
 static void _dumpstack(Ureg*);
@@ -76,6 +77,7 @@ trapinit(void)
 	trapenable(VectorDE, debugexc, 0, "debugexc");
 	trapenable(VectorBPT, debugbpt, 0, "debugpt");
 	trapenable(VectorPF, faultamd64, 0, "faultamd64");
+	trapenable(10, faulttss, 0, "faulttss");
 	trapenable(Vector2F, doublefault, 0, "doublefault");
 	trapenable(Vector15, unexpected, 0, "unexpected");
 }
@@ -381,6 +383,12 @@ faultnote(Ureg *ureg, char *access, uintptr addr)
 	checkpages();
 	snprint(buf, sizeof(buf), "sys: trap: fault %s addr=%#p", access, addr);
 	postnote(up, 1, buf, NDebug);
+}
+
+static void
+faulttss(Ureg*ureg, void *v)
+{
+	panic("invalidtss: what the shit: %p, %p, %p\n", ureg->pc, ureg->sp, v);
 }
 
 static void

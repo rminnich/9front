@@ -345,8 +345,12 @@ runacore(void)
 			if(0)
 			if(up->nqtrap > 2 || up->nsyscall > 1)
 				goto ToTC;
-			if(up->ac == nil)
+			if(up->ac == nil){
+				print("up->ac is now nil; going ToTC\n");
 				goto ToTC;
+			}
+			if(0)
+			nixprepage(-1);
 			break;
 		default:
 			panic("runacore: unexpected rc = %d", rc);
