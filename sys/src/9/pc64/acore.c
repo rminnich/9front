@@ -178,6 +178,9 @@ actrap(Ureg *u)
 		m->proc->nactrap++;
 		m->proc->actime1 = fastticks(nil);
 	}
+	/* there are a few traps we handle quickly, in particular
+	 * API timer interrupts and such. */
+	print("ACTRAP: %d\n", u->type);
 	if(u->type < nelem(acvctl)){
 		v = acvctl[u->type];
 		if(v != nil){

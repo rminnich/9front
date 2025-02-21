@@ -49,6 +49,9 @@ TEXT acsyscallentry(SB), 1, $-4
 	MOVW	GS,  UREG_GS(R12)
 
 	MOVQ	BP, 	UREG_BP(R12)			/* system call number: up->dbgregs->bp  */
+
+	MOVQ	R12, RARG 						// ureg
+
 	CALL	acsyscall(SB)
 NDNR:	JMP NDNR
 
