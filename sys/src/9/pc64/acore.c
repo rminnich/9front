@@ -233,20 +233,21 @@ Post:
 		m->proc->actime += fastticks2us(fastticks(nil) - m->proc->actime1);
 }
 
+static uintptr sp;
 void
-acsyscall(void)
+acsyscall(Ureg *ureg)
 {
 	Proc *p;
-
 	/*
 	 * If we saved the Ureg into m->proc->dbgregs,
 	 * There's nothing else we have to do.
 	 * Otherwise, we should m->proc->dbgregs = u;
 	 */
-	DBG("acsyscall: cpu%d\n", m->machno);
 
 	//_pmcupdate(m);
 	p = m->proc;
+	sp = ureg->sp;
+	DBG("acsyscall: cpu%d, pc %p, sp %p\n", m->machno, ureg->pc, ureg->sp);
 	p->actime1 = fastticks(nil);
 	m->syscall++;	/* would also count it in the TS core */
 	m->icc->rc = ICCSYSCALL;
@@ -274,7 +275,9 @@ void
 acsysret(void)
 {
 	Ureg *u = m->proc->dbgreg;
-	DBG("acsysret m %p m->machno %d m->proc %p\n", m, m->machno, m->proc);
+	DBG("acsysret m %p m->machno %d m->proc %p u->sp %p sp %p\n", m, m->machno, m->proc, u->sp, sp);
+	if (sp != u->sp)
+		DBG("THIS CAN NOT HAPPEN: SP %p != u->sp %p", sp, u->sp);
 	if(m->proc != nil)
 		m->proc->actime += fastticks2us(fastticks(nil) - m->proc->actime1);
 	DBG("cpu%d:acsysret: pc %p, sp %p\n", m->machno, u->pc, u->sp);
