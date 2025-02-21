@@ -11,7 +11,7 @@ if(! bind -a '#u' /dev)
 		if(~ $#* 5 && ! test -e /env/nousbhname)
 			id=$1:$5
 		switch($2$3){
-		case 12d11003 1a867523 10c4ea60 0403* 1a867523 # HUAWEI, Prolific, CP2102, FTDI, pine64
+		case 12d11003 067b2303 10c4ea60 0403* 1a867523 # HUAWEI, Prolific, CP2102, FTDI, pine64
 			nusb/serial $id
 		case 59862113
 			nusb/cam $id
