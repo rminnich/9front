@@ -849,6 +849,7 @@ epochstart(int tid)
 {
 	ulong ge;
 
+	assert(tid >= 0);
 	ge = agetl(&fs->epoch);
 	asetl(&fs->lepoch[tid], ge | Eactive);
 }
@@ -858,6 +859,7 @@ epochend(int tid)
 {
 	ulong le;
 
+	assert(tid >= 0);
 	le = agetl(&fs->lepoch[tid]);
 	asetl(&fs->lepoch[tid], le &~ Eactive);
 }
