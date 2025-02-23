@@ -596,7 +596,7 @@ main(int argc, char **argv)
 	if(strncmp(repo, "../", 3) == 0)
 		fail(&c, "invalid path %s\n", repo);
 	if(bind(repo, "/", MREPL) == -1)
-		fail(&c, "no such repo", repo);
+		fail(&c, "no such repo: %s", repo);
 	if(chdir("/") == -1)
 		fail(&c, "no such repo");
 	if(access(".git", AREAD) == -1)
