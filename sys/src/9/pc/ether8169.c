@@ -787,9 +787,6 @@ rtl8169init(Ether* edev)
 	r = csr16r(ctlr, Mulint) & 0xF000;
 	csr16w(ctlr, Mulint, r);
 
-	if(ctlr->macv == Macv51)
-		csr8w(ctlr, Cr, Te|Re);
-
 	ctlr->imr = Serr|Fovw|Punlc|Rdu|Ter|Rer|Rok|Tdu;
 	csr16w(ctlr, Imr, ctlr->imr);
 
