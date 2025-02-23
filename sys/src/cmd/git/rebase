@@ -13,7 +13,7 @@ if(~ $#abort 1){
 	src=`{cat .git/rebase.src}
 	rm -f .git/rebase.^(src todo)
 	git/branch $src
-	git/branch -d $tmp
+	git/branch -r $tmp
 	exit
 }
 if(test -f .git/rebase.todo){
@@ -86,5 +86,5 @@ while(! ~ $#todo 0){
 
 fn sigexit
 git/branch -nb $tmp $src
-git/branch -d $tmp
+git/branch -r $tmp
 rm .git/rebase.todo .git/rebase.src
