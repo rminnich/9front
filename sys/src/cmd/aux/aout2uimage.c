@@ -7,6 +7,7 @@
 int infd, outfd;
 ulong dcrc;
 ulong *tab;
+ulong lie = 23;	/* plan9 */
 uchar buf[65536];
 
 enum {
@@ -67,7 +68,7 @@ put(uchar *p, u32int v)
 void
 usage(void)
 {
-	fprint(2, "usage: %s a.out\n", argv0);
+	fprint(2, "usage: %s [-o outfile] [-Z kzero] [-l ostype] a.out\n", argv0);
 	exits("usage");
 }
 
@@ -109,6 +110,7 @@ main(int argc, char **argv)
 	ofile = nil;
 	ARGBEGIN {
 	case 'Z': kzero = strtoull(EARGF(usage()), 0, 0); break;
+	case 'l': lie = strtoul(EARGF(usage()), 0, 0); break;
 	case 'o': ofile = strdup(EARGF(usage())); break;
 	default: usage();
 	} ARGEND;
@@ -152,7 +154,7 @@ main(int argc, char **argv)
 	put(&header[16], fhdr.txtaddr - kzero); /* load address */
 	put(&header[20], fhdr.entry - kzero); /* entry point */
 	put(&header[24], dcrc); /* data crc */
-	header[28] = 23; /* os = plan 9 */
+	header[28] = lie;
 	header[29] = arch;
 	header[30] = 2; /* type = kernel */
 	header[31] = 0; /* compressed = no */
