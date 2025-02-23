@@ -61,7 +61,8 @@ enum {					/* registers */
 };
 
 enum {					/* Dtccr */
-	Cmd		= 0x00000008,	/* Command */
+	Reset		= 0x00000001,	/* Reset */
+	Dump		= 0x00000008,	/* Dump */
 };
 
 enum {					/* Cr */
@@ -425,7 +426,7 @@ rtl8169mii(Ether *edev)
 		csr8w(ctlr, Ldps, 1);				/* magic */
 		rtl8169miimiw(ctlr->mii, 1, 0x0B, 0x0000);	/* magic */
 	}
-	
+
 	if(mii(ctlr->mii, (1<<1)) == 0 || (phy = ctlr->mii->curphy) == nil){
 		error("no phy");
 	}
@@ -524,6 +525,7 @@ static char*
 rtl8169ifstat(void *arg, char *p, char *e)
 {
 	Ether *edev = arg;
+	u64int pa;
 	Ctlr *ctlr;
 	Dtcc *dtcc;
 	int i, r, timeo;
@@ -535,14 +537,15 @@ rtl8169ifstat(void *arg, char *p, char *e)
 		nexterror();
 	}
 
-	csr32w(ctlr, Dtccr+4, 0);
-	csr32w(ctlr, Dtccr, PCIWADDR(ctlr->dtcc)|Cmd);
+	pa = PCIWADDR(ctlr->dtcc)|Dump;
+	csr32w(ctlr, Dtccr+4, pa >> 32);
+	csr32w(ctlr, Dtccr, pa);
 	for(timeo = 0; timeo < 1000; timeo++){
-		if(!(csr32r(ctlr, Dtccr) & Cmd))
+		if(!(csr32r(ctlr, Dtccr) & (Reset|Dump)))
 			break;
 		delay(1);
 	}
-	if(csr32r(ctlr, Dtccr) & Cmd)
+	if(csr32r(ctlr, Dtccr) & (Reset|Dump))
 		error(Eio);
 	dtcc = ctlr->dtcc;
 
@@ -667,7 +670,7 @@ rtl8169replenish(Ctlr* ctlr)
 static void
 rtl8169init(Ether* edev)
 {
-	int i;
+	int i, timeo;
 	u32int r;
 	Block *bp;
 	Ctlr *ctlr;
@@ -728,6 +731,19 @@ rtl8169init(Ether* edev)
 	pa = PCIWADDR(ctlr->rd);
 	csr32w(ctlr, Rdsar+4, pa>>32);
 	csr32w(ctlr, Rdsar, pa);
+
+	pa = PCIWADDR(ctlr->dtcc)|Reset;
+	csr32w(ctlr, Dtccr+4, pa >> 32);
+	csr32w(ctlr, Dtccr, pa);
+	for(timeo = 0; timeo < 1000; timeo++){
+		if(!(csr32r(ctlr, Dtccr) & (Reset|Dump)))
+			break;
+		delay(1);
+	}
+	if(csr32r(ctlr, Dtccr) & (Reset|Dump)){
+		iunlock(ctlr);
+		error("reset failed");
+	}
 
 	/* pre-RTL8168G controllers need TX/RX before configuration */
 	switch(ctlr->macv){
