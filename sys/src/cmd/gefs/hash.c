@@ -31,26 +31,8 @@
 #include "dat.h"
 #include "fns.h"
 
-#define _le64toh(x) \
-	GBIT64((char*)&x)
-
-
-#define ROTATE(x, b) (u64int)( ((x) << (b)) | ( (x) >> (64 - (b))) )
-
-#define HALF_ROUND(a,b,c,d,s,t)			\
-	a += b; c += d;				\
-	b = ROTATE(b, s) ^ a;			\
-	d = ROTATE(d, t) ^ c;			\
-	a = ROTATE(a, 32);
-
-#define DOUBLE_ROUND(v0,v1,v2,v3)		\
-	HALF_ROUND(v0,v1,v2,v3,13,16);		\
-	HALF_ROUND(v2,v1,v0,v3,17,21);		\
-	HALF_ROUND(v0,v1,v2,v3,13,16);		\
-	HALF_ROUND(v2,v1,v0,v3,17,21);
-
 #define rotate_right(v, k)\
-	((v >> k) | (v << (64 - k)))
+	(((v) >> (k)) | ((v) << (64 - (k))))
 #define read_u64(ptr) \
 	(*(u64int*)ptr)
 #define read_u32(ptr) \

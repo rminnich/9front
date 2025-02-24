@@ -346,7 +346,7 @@ struct Bptr {
 	vlong	gen;
 };
 
-struct Key{
+struct Key {
 	char	*k;
 	int	nk;
 };
