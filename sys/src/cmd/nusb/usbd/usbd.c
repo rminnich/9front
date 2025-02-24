@@ -559,7 +559,11 @@ main(int argc, char **argv)
 	} ARGEND;
 
 	quotefmtinstall();
+
+	/* for usbdebug */
 	fmtinstall('U', Ufmt);
+	fmtinstall('H', encodefmt);
+
 	initevent();
 
 	hubs = nil;

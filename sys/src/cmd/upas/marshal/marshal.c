@@ -344,7 +344,7 @@ main(int argc, char **argv)
 		saveto=argc>0?argv[0]:to->v;
 	fd = sendmail(to, cc, bcc, &pid, saveto);
 	if(fd < 0)
-		sysfatal("execing sendmail: %r\n:");
+		sysfatal("execing sendmail: %r");
 	if(xflag || lbflag || dflag){
 		close(fd);
 		exits(waitforsubprocs());

@@ -1074,6 +1074,7 @@ main(int argc, char **argv)
 	}ARGEND
 	if(argc != 1)
 		usage();
+	fmtinstall('H', encodefmt);	/* for usbdebug */
 	dev = getdev(*argv);
 	if(dev == nil)
 		sysfatal("getdev: %r");
@@ -1082,7 +1083,7 @@ main(int argc, char **argv)
 	ums->maxlun = -1;
 	if(findendpoints(ums, Protobulk) < 0
 	&& findendpoints(ums, Protouas) < 0)
-		sysfatal("findendpoints: %r\n");
+		sysfatal("findendpoints: %r");
 
 	/*
 	 * SanDISK 512M gets residues wrong.
@@ -1091,7 +1092,7 @@ main(int argc, char **argv)
 		ums->wrongresidues = 1;
 
 	if(umsinit() < 0)
-		sysfatal("umsinit: %r\n");
+		sysfatal("umsinit: %r");
 
 	for(i = 0; i <= ums->maxlun; i++){
 		lun = &ums->lun[i];

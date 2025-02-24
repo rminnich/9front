@@ -161,7 +161,7 @@ cifsrpc(Pkt *p)
 	qunlock(&p->s->rpclock);
 
 	if(got < 32+NBHDRLEN){
-		werrstr("cifs packet too small (%d < %d)\n", got, 32+NBHDRLEN);
+		werrstr("cifs packet too small (%d < %d)", got, 32+NBHDRLEN);
 		return -1;
 	}
 
@@ -209,7 +209,7 @@ print("MAC signature bad\n");
 		 * catch that too.
 		 */
 		if(p->s->seqrun && seq != p->seq && seq != 0){
-			werrstr("bad sequence number (%d != %d)\n", p->seq, seq);
+			werrstr("bad sequence number (%d != %d)", p->seq, seq);
 			return -1;
 		}
 	}
@@ -348,7 +348,7 @@ CIFSsession(Session *s)
 		for(q = Sess->auth->resp[0]; *q; ){
 			q += chartorune(&r, q);
 			if(r > Bits16)
-				sysfatal("CIFSsession: '%C' utf too wide for windows\n", r);
+				sysfatal("CIFSsession: '%C' utf too wide for windows", r);
 			pl16(p, toupperrune(r));
 		}
 		pl16(p, 0);
@@ -356,7 +356,7 @@ CIFSsession(Session *s)
 		for(q = Sess->auth->resp[0]; *q; ){
 			q += chartorune(&r, q);
 			if(r > Bits16)
-				sysfatal("CIFSsession: '%C' utf too wide for windows\n", r);
+				sysfatal("CIFSsession: '%C' utf too wide for windows", r);
 			pl16(p, r);
 		}
 		pl16(p, 0);

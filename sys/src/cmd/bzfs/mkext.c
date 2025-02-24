@@ -155,7 +155,7 @@ main(int argc, char **argv)
 if(chatty) fprint(2, "searching for bz\n");
 		for(i=0;; i++){
 			if((n = readn(fd, blk, sizeof blk)) != sizeof blk)
-				sysfatal("read %d gets %d: %r\n", i, n);
+				sysfatal("read %d gets %d: %r", i, n);
 			if(strncmp(blk, "bzfilesystem\n", 13) == 0)
 				break;
 		}

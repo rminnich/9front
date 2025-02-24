@@ -59,7 +59,7 @@ postmesg(Comp *c, char **, int nf)
 		return;
 	}
 	if(pipe(c->fd) == -1)
-		sysfatal("pipe: %r\n");
+		sysfatal("pipe: %r");
 
 	c->sync = chancreate(sizeof(ulong), 0);
 	procrfork(execmarshal, c, Stack, RFNOTEG);

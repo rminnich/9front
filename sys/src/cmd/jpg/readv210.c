@@ -92,7 +92,7 @@ BreadV210(Biobuf *bp, int colourspace)
 	}
 
 	if(looksize("/lib/video.specs", sz, &pixels, &lines, &chunk) == -1){
-		werrstr("file spec not in /lib/video.specs\n");
+		werrstr("file spec not in /lib/video.specs");
 		return nil;
 	}
 

@@ -1042,7 +1042,7 @@ threadmain(int argc, char **argv)
 	if(usbep[In]->dfd < 0 || usbep[Out]->dfd < 0)
 		sysfatal("open endpoints: %r");
 	if(usbep[In]->maxpkt < 12 || usbep[In]->maxpkt > sizeof(Ptprpc))
-		sysfatal("bad packet size: %d\n", usbep[In]->maxpkt);
+		sysfatal("bad packet size: %d", usbep[In]->maxpkt);
 	iochan = chancreate(sizeof(Ioproc*), 1);
 	sendp(iochan, ioproc());
 

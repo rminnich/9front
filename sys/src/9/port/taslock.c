@@ -16,7 +16,7 @@ uintptr maxilockpc;
 uintptr ilockpcs[0x100] = { [0xff] = 1 };
 #endif
 
-void
+static void
 lockloop(Lock *l, uintptr pc)
 {
 	Proc *p;

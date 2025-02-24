@@ -195,7 +195,7 @@ interrupt(int src)
 		r[15] = 0x08;
 		break;
 	default:
-		sysfatal("unknown exception %x\n", src);
+		sysfatal("unknown exception %x", src);
 	}
 	pipeflush();
 }

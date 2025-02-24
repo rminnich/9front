@@ -1075,7 +1075,7 @@ fs_read(Chan* chan, Fcall* f, Fcall* r, uchar* data)
 		p1 = dnodebuf1(p, d, addr, 0, file->uid);
 		p = nil;
 		if(p1 != nil){
-			if(checktag(p1, Tfile, QPNONE)){
+			if(checktag(p1, Tfile, d->qid.path)){
 				error = Ephase;
 				putbuf(p1);
 				goto out;
@@ -1193,7 +1193,7 @@ fs_write(Chan* chan, Fcall* f, Fcall* r)
 	Dentry *d;
 	File *file;
 	Tlock *t;
-	Off offset, addr, qpath;
+	Off offset, addr;
 	Timet tim;
 	int count, error, nwrite, o, n;
 
@@ -1270,14 +1270,13 @@ fs_write(Chan* chan, Fcall* f, Fcall* r)
 		n = BUFSIZE - o;
 		if(n > count)
 			n = count;
-		qpath = d->qid.path;
 		p1 = dnodebuf1(p, d, addr, Tfile, file->uid);
 		p = nil;
 		if(p1 == nil) {
 			error = Efull;
 			goto out;
 		}
-		if(checktag(p1, Tfile, qpath)){
+		if(checktag(p1, Tfile, d->qid.path)){
 			putbuf(p1);
 			error = Ephase;
 			goto out;

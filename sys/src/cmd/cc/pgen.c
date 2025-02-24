@@ -127,12 +127,13 @@ uncomma(Node *n)
 void
 gen(Node *n)
 {
-	Node *l, nod, rn;
+	Node *l, *r, nod, rn;
 	Prog *sp, *spc, *spb;
 	Case *cn;
 	long sbc, scc;
 	int snbreak, sncontin;
 	int f, o, oldreach;
+	vlong i, end;
 
 loop:
 	if(n == Z)
@@ -279,6 +280,7 @@ loop:
 	case OCASE:
 		canreach = 1;
 		l = n->left;
+		r = n->right;
 		if(cases == C)
 			diag(n, "case/default outside a switch");
 		if(l == Z) {
@@ -296,11 +298,27 @@ loop:
 			diag(n, "case expression must be integer constant");
 			goto rloop;
 		}
-		casf();
-		cases->val = l->vconst;
-		cases->def = 0;
-		cases->label = pc;
-		cases->isv = typev[l->type->etype];
+		if(r != Z){
+			complex(r);
+			if(r->op != OCONST || !typeswitch[r->type->etype]) {
+				diag(n, "case expression must be integer constant");
+				goto rloop;
+			}
+			if(r->vconst < l->vconst){
+				diag(n, "case range must be increasing");
+				goto rloop;
+			}
+			end = r->vconst;
+		} else
+			end = l->vconst;
+
+		for(i = l->vconst; i <= end; i++){
+			casf();
+			cases->val = i;
+			cases->def = 0;
+			cases->label = pc;
+			cases->isv = typev[l->type->etype];
+		}
 		goto rloop;
 
 	case OSWITCH:

@@ -373,7 +373,6 @@ cmdreq(Dev *d, int type, int req, int value, int index, uchar *data, int count)
 	int ndata, n;
 	uchar *wp;
 	uchar buf[8];
-	char *hd, *rs;
 
 	assert(d != nil);
 	if(data == nil){
@@ -390,12 +389,10 @@ cmdreq(Dev *d, int type, int req, int value, int index, uchar *data, int count)
 	PUT2(wp+4, index);
 	PUT2(wp+6, count);
 	if(usbdebug>2){
-		hd = hexstr(wp, ndata+8);
-		rs = reqstr(type, req);
-		fprint(2, "%s: %s val %d|%d idx %d cnt %d out[%d] %s\n",
-			d->dir, rs, value>>8, value&0xFF,
-			index, count, ndata+8, hd);
-		free(hd);
+		fprint(2, "%s: %s val %d|%d idx %d cnt %d out[%d] %.*H\n",
+			d->dir, reqstr(type, req), value>>8, value&0xFF,
+			index, count, ndata+8,
+			ndata+8, wp);
 	}
 	n = write(d->dfd, wp, 8+ndata);
 	if(wp != buf)
@@ -412,14 +409,9 @@ cmdreq(Dev *d, int type, int req, int value, int index, uchar *data, int count)
 static int
 cmdrep(Dev *d, void *buf, int nb)
 {
-	char *hd;
-
 	nb = read(d->dfd, buf, nb);
-	if(nb > 0 && usbdebug > 2){
-		hd = hexstr(buf, nb);
-		fprint(2, "%s: in[%d] %s\n", d->dir, nb, hd);
-		free(hd);
-	}
+	if(nb > 0 && usbdebug > 2)
+		fprint(2, "%s: in[%d] %.*H\n", d->dir, nb, nb, buf);
 	return nb;
 }
 

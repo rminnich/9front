@@ -6,15 +6,6 @@
 
 #include	"../port/error.h"
 
-struct {
-	ulong rlock;
-	ulong rlockq;
-	ulong wlock;
-	ulong wlockq;
-	ulong qlock;
-	ulong qlockq;
-} rwstats;
-
 void
 eqlock(QLock *q)
 {
@@ -27,13 +18,8 @@ eqlock(QLock *q)
 		print("eqlock: %#p: ilockdepth %d\n", pc, m->ilockdepth);
 	if(up != nil && up->nlocks)
 		print("eqlock: %#p: nlocks %d\n", pc, up->nlocks);
-	if(up != nil && up->eql != nil)
-		print("eqlock: %#p: eql %p\n", pc, up->eql);
-	if(q->use.key == 0x55555555)
-		panic("eqlock: %#p: q %#p, key 5*", pc, q);
 
 	lock(&q->use);
-	rwstats.qlock++;
 	if(!q->locked) {
 		q->pc = pc;
 		q->locked = 1;
@@ -47,7 +33,6 @@ eqlock(QLock *q)
 		unlock(&q->use);
 		interrupted();
 	}
-	rwstats.qlockq++;
 	p = q->tail;
 	if(p == nil)
 		q->head = up;
@@ -79,12 +64,8 @@ qlock(QLock *q)
 		print("qlock: %#p: ilockdepth %d\n", pc, m->ilockdepth);
 	if(up != nil && up->nlocks)
 		print("qlock: %#p: nlocks %d\n", pc, up->nlocks);
-	if(up != nil && up->eql != nil)
-		print("qlock: %#p: eql %p\n", pc, up->eql);
-	if(q->use.key == 0x55555555)
-		panic("qlock: %#p: q %#p, key 5*", pc, q);
+
 	lock(&q->use);
-	rwstats.qlock++;
 	if(!q->locked) {
 		q->pc = pc;
 		q->locked = 1;
@@ -93,7 +74,6 @@ qlock(QLock *q)
 	}
 	if(up == nil)
 		panic("qlock");
-	rwstats.qlockq++;
 	p = q->tail;
 	if(p == nil)
 		q->head = up;
@@ -129,9 +109,12 @@ qunlock(QLock *q)
 	Proc *p;
 
 	lock(&q->use);
-	if (q->locked == 0)
+	if(!q->locked){
+		unlock(&q->use);
 		print("qunlock called with qlock not held, from %#p\n",
 			getcallerpc(&q));
+		return;
+	}
 	p = q->head;
 	if(p != nil){
 		if(p->state != Queueing)
@@ -159,15 +142,12 @@ rlock(RWlock *q)
 		print("rlock: %#p: nlocks %d\n", getcallerpc(&q), up->nlocks);
 
 	lock(&q->use);
-	rwstats.rlock++;
 	if(q->writer == 0 && q->head == nil){
 		/* no writer, go for it */
 		q->readers++;
 		unlock(&q->use);
 		return;
 	}
-
-	rwstats.rlockq++;
 	p = q->tail;
 	if(up == nil)
 		panic("rlock");
@@ -220,7 +200,6 @@ wlock(RWlock *q)
 		print("wlock: %#p: nlocks %d\n", pc, up->nlocks);
 
 	lock(&q->use);
-	rwstats.wlock++;
 	if(q->readers == 0 && q->writer == 0){
 		/* noone waiting, go for it */
 		q->wpc = pc;
@@ -230,7 +209,6 @@ wlock(RWlock *q)
 	}
 
 	/* wait */
-	rwstats.wlockq++;
 	p = q->tail;
 	if(up == nil)
 		panic("wlock");
@@ -290,7 +268,6 @@ int
 canrlock(RWlock *q)
 {
 	lock(&q->use);
-	rwstats.rlock++;
 	if(q->writer == 0 && q->head == nil){
 		/* no writer, go for it */
 		q->readers++;

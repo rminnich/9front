@@ -80,7 +80,8 @@ xscmd(int fd, enum xsd_sockmsg_type cmd, char *s, char *val)
 void
 usage(void)
 {
-	sysfatal("Usage: xenstore [lrwdme] path [value]\n");
+	fprint(2, "Usage: xenstore [lrwdme] path [value]\n");
+	exits("usage");
 }
 
 void

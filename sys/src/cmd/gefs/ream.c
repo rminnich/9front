@@ -234,7 +234,7 @@ reamfs(char *dev)
 	int i;
 
 	if(waserror())
-		sysfatal("ream %s: %s\n", dev, errmsg());
+		sysfatal("ream %s: %s", dev, errmsg());
 	if((fs->fd = open(dev, ORDWR)) == -1)
 		sysfatal("open %s: %r", dev);
 	if((d = dirfstat(fs->fd)) == nil)
@@ -391,7 +391,7 @@ growfs(char *dev)
 	Dir *d;
 
 	if(waserror())
-		sysfatal("grow %s: %s\n", dev, errmsg());
+		sysfatal("grow %s: %s", dev, errmsg());
 	if((fs->fd = open(dev, ORDWR)) == -1)
 		sysfatal("open %s: %r", dev);
 	if((d = dirfstat(fs->fd)) == nil)

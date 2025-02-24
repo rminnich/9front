@@ -338,6 +338,7 @@ int	readphase(Conn *);
 int	writephase(Conn *);
 void	closeconn(Conn *);
 void	parsecaps(char *, Conn *);
+int	okref(char*);
 
 /* queues */
 void	qinit(Objq*);

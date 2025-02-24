@@ -7,6 +7,20 @@ char *fetchbranch;
 char *upstream = "origin";
 int listonly;
 
+/*
+ * Checks the rules for a refname at
+ * git/Documentation/protocol-common.txt
+ */
+int
+okrefname(char *s)
+{
+	if(strcmp(s, "HEAD") == 0)
+		return 1;
+	if(strncmp(s, "refs/", 5) == 0)
+		return okref(s);
+	return 0;
+}
+
 int
 resolveremote(Hash *h, char *ref)
 {
@@ -247,6 +261,8 @@ fetchpack(Conn *c)
 		getfields(buf, sp, nelem(sp), 1, " \t\n\r");
 		if(strstr(sp[1], "^{}"))
 			continue;
+		if(!okrefname(sp[1]))
+			sysfatal("remote side sent invalid ref: %s", sp[1]);
 		if(fetchbranch && !branchmatch(sp[1], fetchbranch))
 			continue;
 		if(refsz == nref + 1){

@@ -374,7 +374,7 @@ Connect:
 			recv("l", &reply);
 			switch(reply){
 			default:
-				sysfatal("unknown reply %x\n", reply);
+				sysfatal("unknown reply %x", reply);
 				break;
 			case 0x2a:
 				recv("____w", &n);

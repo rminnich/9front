@@ -189,24 +189,37 @@ initfs(vlong cachesz)
 	}
 }
 
-static void
-launch(void (*f)(int, void *), void *arg, char *text)
+static int
+launch(void (*f)(int, void *), void *arg, long id, char *text)
 {
-	long pid, id;
+	long pid;
 
-	assert(fs->nworker < nelem(fs->lepoch));
+	assert(id == -1 || id < nelem(fs->lepoch));
+	if(aincl(&fs->nprocs, 1) >= Maxprocs){
+		werrstr("too many worker procs\n");
+		return -1;
+	}
 	pid = rfork(RFPROC|RFMEM|RFNOWAIT);
 	if (pid < 0)
-		sysfatal("can't fork: %r");
+		werrstr("fork: %r");
 	if (pid == 0) {
-		id = aincl(&fs->nworker, 1);
 		if((*errctx = mallocz(sizeof(Errctx), 1)) == nil)
 			sysfatal("malloc: %r");
 		(*errctx)->tid = id;
 		procsetname("%s.%ld", text, id);
 		(*f)(id, arg);
+		aincl(&fs->nprocs, -1);
 		exits("child returned");
 	}
+	return pid;
+}
+
+/* launches a proc that must start, kills the file system if it fails */
+static void
+xlaunch(void (*f)(int, void*), void *arg, long id, char *text)
+{
+	if(launch(f, arg, id, text) == -1)
+		sysfatal("setting up initial proc set failed: %r");
 }
 
 static int
@@ -255,7 +268,10 @@ runannounce(int, void *arg)
 			close(fd);
 			continue;
 		}
-		launch(runfs, c, "netio");
+		if(launch(runfs, c, -1, "netio") == -1){
+			fprint(2, "listener failed: %r");
+			putconn(c);
+		}
 	}
 	close(actl);
 }
@@ -411,25 +427,25 @@ main(int argc, char **argv)
 		fs->arenas[i].sync = &fs->syncq[i%fs->nsyncers];
 	srvfd = postfd(srvname, "", 0666);
 	ctlfd = postfd(srvname, ".cmd", 0600);
-	launch(runcons, (void*)ctlfd, "ctl");
-	launch(runmutate, nil, "mutate");
-	launch(runsweep, nil, "sweep");
-	launch(runtasks, nil, "tasks");
+	xlaunch(runcons, (void*)ctlfd, aincl(&fs->nworker, 1), "ctl");
+	xlaunch(runmutate, nil, aincl(&fs->nworker, 1), "mutate");
+	xlaunch(runsweep, nil, aincl(&fs->nworker, 1), "sweep");
+	xlaunch(runtasks, nil, aincl(&fs->nworker, 1), "tasks");
 	for(i = 0; i < fs->nreaders; i++)
-		launch(runread, fs->rdchan[i], "readio");
+		xlaunch(runread, fs->rdchan[i], aincl(&fs->nworker, 1), "readio");
 	for(i = 0; i < fs->nsyncers; i++)
-		launch(runsync, &fs->syncq[i], "syncio");
+		xlaunch(runsync, &fs->syncq[i], aincl(&fs->nworker, 1), "syncio");
 	for(i = 0; i < nann; i++)
-		launch(runannounce, ann[i], "announce");
+		xlaunch(runannounce, ann[i], -1, "announce");
 	if(srvfd != -1){
 		if((c = newconn(srvfd, srvfd, -1)) == nil)
 			sysfatal("%r");
-		launch(runfs, c, "srvio");
+		xlaunch(runfs, c, -1, "srvio");
 	}
 	if(stdio){
 		if((c = newconn(0, 1, -1)) == nil)
 			sysfatal("%r");
-		launch(runfs, c, "stdio");
+		xlaunch(runfs, c, -1, "stdio");
 	}
 	exits(nil);
 }

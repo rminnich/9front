@@ -64,7 +64,6 @@ void	limbo(int op, Limbo*);
 void	freeblk(Tree*, Blk*);
 void	freebp(Tree*, Bptr);
 int	logbarrier(Arena *, vlong);
-void	dlappend(Dlist *dl, Bptr);
 void	killblk(Tree*, Bptr);
 ushort	blkfill(Blk*);
 uvlong	blkhash(Blk*);

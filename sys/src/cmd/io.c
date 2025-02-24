@@ -2,6 +2,14 @@
 #include <libc.h>
 
 char *datac[] = {0,"#P/iob","#P/iow",0,"#P/iol",0,0,0,"#P/msr"};
+char *file;
+
+void
+usage(void)
+{
+	fprint(2, "%s: [-f file] [ -WLME ] [-r | -w] address [ value ]\n", argv0);
+	exits("usage");
+}
 
 void
 main(int argc, char** argv) {
@@ -14,21 +22,22 @@ main(int argc, char** argv) {
 	size = 1;
 	op = -1;
 	ARGBEGIN {
+		case 'f': file = EARGF(usage()); break;
 		case 'W': size = 2; break;
 		case 'L': size = 4; break;
 		case 'M': size = 8; break;
 		case 'E': datac[1] = datac[2] = datac[4] = datac[8] = "#P/ec"; break;
 		case 'r': op = OREAD; break;
 		case 'w': op = OWRITE; break;
-		default: sysfatal("bad flag %c", ARGC());
+		default: usage();
 	} ARGEND;
-	if(op == -1) sysfatal("no operation selected");
-	if(argc < 1) sysfatal("no port selected");
-	if(op == OWRITE && argc < 2) sysfatal("no data selected");
+	if(op == -1) usage();
+	if(argc < 1) usage();
+	if(op == OWRITE && argc < 2) usage();
 	port = strtoul(argv[0], 0, 0);
 	if(op == OWRITE) data = strtoull(argv[1], 0, 0);
 	
-	fd = open(datac[size], op);
+	fd = open(file==nil?datac[size]:file, op);
 	if(fd == -1) sysfatal("open: %r");
 	
 	if(op == OWRITE) {
