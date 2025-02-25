@@ -45,43 +45,44 @@
 uvlong
 metrohash64_1(void * key, u64int len, u32int seed)
 {
-	static const u64int k0 = 0xC83A91E1;
-	static const u64int k1 = 0x8648DBDB;
-	static const u64int k2 = 0x7BDEC03B;
-	static const u64int k3 = 0x2F5870A5;
+	enum {
+		k0 = 0xC83A91E1ULL,
+		k1 = 0x8648DBDBULL,
+		k2 = 0x7BDEC03BULL,
+		k3 = 0x2F5870A5ULL,
+	};
 
 	const uchar * ptr = key;
 	const uchar * const end = ptr + len;
+	u64int v0, v1, v2, v3, t;
 	
 	u64int hash = ((((u64int) seed) + k2) * k0) + len;
 	
 	if(len >= 32){
-		u64int v[4];
-		v[0] = hash;
-		v[1] = hash;
-		v[2] = hash;
-		v[3] = hash;
+		v0 = hash;
+		v1 = hash;
+		v2 = hash;
+		v3 = hash;
 		
 		do{
-			v[0] += read_u64(ptr) * k0; ptr += 8; v[0] = rotate_right(v[0],29) + v[2];
-			v[1] += read_u64(ptr) * k1; ptr += 8; v[1] = rotate_right(v[1],29) + v[3];
-			v[2] += read_u64(ptr) * k2; ptr += 8; v[2] = rotate_right(v[2],29) + v[0];
-			v[3] += read_u64(ptr) * k3; ptr += 8; v[3] = rotate_right(v[3],29) + v[1];
-		}
-		while(ptr <= (end - 32));
+			v0 += read_u64(ptr) * k0; v0 = rotate_right(v0, 29) + v2; ptr += 8;
+			v1 += read_u64(ptr) * k1; v1 = rotate_right(v1, 29) + v3; ptr += 8;
+			v2 += read_u64(ptr) * k2; v2 = rotate_right(v2, 29) + v0; ptr += 8;
+			v3 += read_u64(ptr) * k3; v3 = rotate_right(v3, 29) + v1; ptr += 8;
+		}while(ptr <= (end - 32));
 
-		v[2] ^= rotate_right(((v[0] + v[3]) * k0) + v[1], 33) * k1;
-		v[3] ^= rotate_right(((v[1] + v[2]) * k1) + v[0], 33) * k0;
-		v[0] ^= rotate_right(((v[0] + v[2]) * k0) + v[3], 33) * k1;
-		v[1] ^= rotate_right(((v[1] + v[3]) * k1) + v[2], 33) * k0;
-		hash += v[0] ^ v[1];
+		t = ((v0 + v3) * k0) + v1; v2 ^= rotate_right(t, 33) * k1;
+		t = ((v1 + v2) * k1) + v0; v3 ^= rotate_right(t, 33) * k0;
+		t = ((v0 + v2) * k0) + v3; v0 ^= rotate_right(t, 33) * k1;
+		t = ((v1 + v3) * k1) + v2; v1 ^= rotate_right(t, 33) * k0;
+		hash += v0 ^ v1;
 	}
 	
 	if((end - ptr) >= 16){
-		u64int v0 = hash + (read_u64(ptr) * k0); ptr += 8; v0 = rotate_right(v0,33) * k1;
-		u64int v1 = hash + (read_u64(ptr) * k1); ptr += 8; v1 = rotate_right(v1,33) * k2;
-		v0 ^= rotate_right(v0 * k0, 35) + v1;
-		v1 ^= rotate_right(v1 * k3, 35) + v0;
+		v0 = hash + (read_u64(ptr) * k0); ptr += 8; v0 = rotate_right(v0, 33) * k1;
+		v1 = hash + (read_u64(ptr) * k1); ptr += 8; v1 = rotate_right(v1, 33) * k2;
+		t = v0 * k0; v0 ^= rotate_right(t, 35) + v1;
+		t = v1 * k3; v1 ^= rotate_right(t, 35) + v0;
 		hash += v1;
 	}
 	
