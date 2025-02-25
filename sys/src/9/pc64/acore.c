@@ -180,7 +180,7 @@ actrap(Ureg *u)
 	}
 	/* there are a few traps we handle quickly, in particular
 	 * API timer interrupts and such. */
-	print("ACTRAP: %d\n", u->type);
+	print("ACTRAP: %ld\n", u->type);
 	if(u->type < nelem(acvctl)){
 		v = acvctl[u->type];
 		if(v != nil){
@@ -345,17 +345,19 @@ acinit(void)
 	lapicintron();
 }
 
-/* support -- put it here for now */
+/* The old classic setup in plan 9 differs from 9front. Still trying to work it out. */
 void
 acfpusysprocsetup(Proc *p)
 {
+	extern void _clts(void);
 	if(p->fpstate == FPinit){
 		/* The FPU is initialized in the TC but we must initialize
 		 * it in the AC.
 		 */
-		iprint("NOTE: fpu not set up. FIXME\n");
+		/* follow, roughly, what we do in a fork and exec. That's what NIX did */
 		p->fpstate = FPinactive;
-		//panic("fpusysprocsetup(p);");
+		//p->fpstate = FPactive;
+		//fpuprocrestore(p);
 	}
 }
 /* debug -- put them here, not in main.c */
