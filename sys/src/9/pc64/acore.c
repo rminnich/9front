@@ -308,7 +308,7 @@ void
 acsysret(void)
 {
 	Ureg *u = m->proc->dbgreg;
-	fpukexit(u, nil);
+	fpukexit(u, m->proc->fpsave);
 	iprint("  AX %.16lluX  BX %.16lluX  CX %.16lluX\n",
 		u->ax, u->bx, u->cx);
 	iprint("  DX %.16lluX  SI %.16lluX  DI %.16lluX\n",
@@ -414,7 +414,7 @@ acfpusysprocsetup(Proc *p)
 		panic("p is nil");
 	if (p->dbgreg == nil)
 		panic("m %p p %p dbgreg is nil", m, p);
-	fpukexit(p->dbgreg, nil);
+	fpukexit(p->dbgreg, p->fpsave);
 	return;
 	extern void _clts(void);
 	if(p->fpstate == FPinit){
