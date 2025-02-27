@@ -395,6 +395,7 @@ putimage(Image *i)
 uintptr
 ibrk(uintptr addr, int seg)
 {
+	static void	prepageseg(int);
 	Segment *s, *ns;
 	uintptr newtop;
 	ulong newsize;
@@ -472,6 +473,8 @@ ibrk(uintptr addr, int seg)
 	s->top = newtop;
 	s->size = newsize;
 	qunlock(s);
+	if (seg == BSEG)
+		prepageseg(seg);
 	return 0;
 }
 
@@ -965,7 +968,7 @@ prepageseg(int i)
 	if(s == nil)
 		return;
 	DBG("prepage: base %#p top %#p\n", s->base, s->top);
-	pgsz = 4068; // XXX pull in nix pgsz stuff. m->pgsz[s->pgszi];
+	pgsz = 4096; // XXX pull in nix pgsz stuff. m->pgsz[s->pgszi];
 	for(addr = s->base; addr < s->top; addr += pgsz){
 		qlock(s);
 		fixfault(s, addr, i == TSEG);

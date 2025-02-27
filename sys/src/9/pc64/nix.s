@@ -63,10 +63,11 @@ TEXT _acsysret(SB), 1, $-4
 	MOVQ	UREG_AX(R12), AX			/* m->proc->dbgregs->ax */
 	MOVQ	UREG_BP(R12),	BP		/* m->proc->dbgregs->bp */
 
-	MOVW	UREG_DS(R12), DS
-	MOVW	UREG_ES(R12), ES
-	MOVW	UREG_FS(R12), FS
-	MOVW	UREG_GS(R12), GS
+	MOVW	$UDSEL, CX
+	MOVW	CX, DS
+	MOVW	CX, ES
+	MOVW	CX, FS
+	MOVW	CX, GS
 
 	MOVQ	UREG_PC(R12), CX			/* ip */
 	MOVQ	UREG_FLAGS(R12), R11			/* flags */
