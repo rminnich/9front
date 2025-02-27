@@ -4,6 +4,11 @@
 void
 main(int ac, char *av[])
 {
+	float f = 1.8;
+	//f = 1.8 ; //* (float)ac;
+	return;
+	write(1, &f, sizeof(f));
+	exits("we tried");
 	int x = brk((void *)0x406ff8);
 	int y = brk(nil);
 

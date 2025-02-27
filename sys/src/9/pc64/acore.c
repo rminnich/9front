@@ -389,6 +389,6 @@ void
 fpusysrfork(Ureg*)
 {
 	void fpuprocfork(Proc *p);
-	fpuprocfork(up);
+	fpuprocsave(up);
 }
 
