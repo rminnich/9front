@@ -141,6 +141,7 @@ actouser(void)
 
 	acfpusysprocsetup(m->proc);
 
+	fpinit();
 	u = m->proc->dbgreg;
 	iprint("  AX %.16lluX  BX %.16lluX  CX %.16lluX\n",
 		u->ax, u->bx, u->cx);
