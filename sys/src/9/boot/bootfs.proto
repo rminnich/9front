@@ -13,6 +13,7 @@ $objtype
 		chmod
 		dd
 		echo
+		ftq
 		grep
 		ip
 			ipconfig
@@ -23,6 +24,7 @@ $objtype
 		mv
 		ndb
 			dnsgetip
+		ramfs
 		ratrace
 		rc
 		rm
@@ -34,6 +36,8 @@ $objtype
 		tlsclient
 		unmount
 		xd
+env
+	timezone
 rc
 	lib
 		rcmain

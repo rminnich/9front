@@ -141,7 +141,38 @@ actouser(void)
 
 	acfpusysprocsetup(m->proc);
 
+	fpinit();
 	u = m->proc->dbgreg;
+	iprint("  AX %.16lluX  BX %.16lluX  CX %.16lluX\n",
+		u->ax, u->bx, u->cx);
+	iprint("  DX %.16lluX  SI %.16lluX  DI %.16lluX\n",
+		u->dx, u->si, u->di);
+	iprint("  BP %.16lluX  R8 %.16lluX  R9 %.16lluX\n",
+		u->bp, u->r8, u->r9);
+	iprint(" R10 %.16lluX R11 %.16lluX R12 %.16lluX\n",
+		u->r10, u->r11, u->r12);
+	iprint(" R13 %.16lluX R14 %.16lluX R15 %.16lluX\n",
+		u->r13, u->r14, u->r15);
+	iprint("  CS %.4lluX   SS %.4lluX    PC %.16lluX  SP %.16lluX\n",
+		u->cs & 0xffff, u->ss & 0xffff, u->pc, u->sp);
+	iprint("TYPE %.2lluX  ERROR %.4lluX FLAGS %.8lluX\n",
+		u->type & 0xff, u->error & 0xffff, u->flags & 0xffffffff);
+
+	/*
+	 * Processor control registers.
+	 * If machine check exception, time stamp counter, page size extensions
+	 * or enhanced virtual 8086 mode extensions are supported, there is a
+	 * CR4. If there is a CR4 and machine check extensions, read the machine
+	 * check address and machine check type registers if RDMSR supported.
+	 */
+	iprint(" CR0 %8.8llux CR2 %16.16llux CR3 %16.16llux",
+		getcr0(), getcr2(), getcr3());
+	if(m->cpuiddx & (Mce|Tsc|Pse|Vmex)){
+		iprint(" CR4 %16.16llux\n", getcr4());
+		if(u->type == 18)
+			dumpmcregs();
+	}
+	iprint("  ur %#p up %#p\n", u, up);
 	iprint("cpu%d: touser m %p m->proc %p m->stack %p\n", m->machno, m, m->proc, m->stack);
 	iprint("cpu%d: touser usp = %#p entry %#p\n", m->machno, u->sp, u->pc);
 	//while(1);
@@ -180,7 +211,7 @@ actrap(Ureg *u)
 	}
 	/* there are a few traps we handle quickly, in particular
 	 * API timer interrupts and such. */
-	print("ACTRAP: %d\n", u->type);
+	print("ACTRAP: %ld\n", u->type);
 	if(u->type < nelem(acvctl)){
 		v = acvctl[u->type];
 		if(v != nil){
@@ -250,7 +281,7 @@ acsyscall(Ureg *ureg)
 	//_pmcupdate(m);
 	p = m->proc;
 	sp = ureg->sp;
-	DBG("acsyscall: cpu%d, pc %p, sp %p\n", m->machno, ureg->pc, ureg->sp);
+	DBG("acsyscall: cpu%d, pc %p, sp %p savesp %p\n", m->machno, ureg->pc, ureg->sp, sp);
 	p->actime1 = fastticks(nil);
 	m->syscall++;	/* would also count it in the TS core */
 	m->icc->rc = ICCSYSCALL;
@@ -278,12 +309,43 @@ void
 acsysret(void)
 {
 	Ureg *u = m->proc->dbgreg;
+	fpukexit(u, m->proc->fpsave);
+	iprint("  AX %.16lluX  BX %.16lluX  CX %.16lluX\n",
+		u->ax, u->bx, u->cx);
+	iprint("  DX %.16lluX  SI %.16lluX  DI %.16lluX\n",
+		u->dx, u->si, u->di);
+	iprint("  BP %.16lluX  R8 %.16lluX  R9 %.16lluX\n",
+		u->bp, u->r8, u->r9);
+	iprint(" R10 %.16lluX R11 %.16lluX R12 %.16lluX\n",
+		u->r10, u->r11, u->r12);
+	iprint(" R13 %.16lluX R14 %.16lluX R15 %.16lluX\n",
+		u->r13, u->r14, u->r15);
+	iprint("  CS %.4lluX   SS %.4lluX    PC %.16lluX  SP %.16lluX\n",
+		u->cs & 0xffff, u->ss & 0xffff, u->pc, u->sp);
+	iprint("TYPE %.2lluX  ERROR %.4lluX FLAGS %.8lluX\n",
+		u->type & 0xff, u->error & 0xffff, u->flags & 0xffffffff);
+
+	/*
+	 * Processor control registers.
+	 * If machine check exception, time stamp counter, page size extensions
+	 * or enhanced virtual 8086 mode extensions are supported, there is a
+	 * CR4. If there is a CR4 and machine check extensions, read the machine
+	 * check address and machine check type registers if RDMSR supported.
+	 */
+	iprint(" CR0 %8.8llux CR2 %16.16llux CR3 %16.16llux",
+		getcr0(), getcr2(), getcr3());
+	if(m->cpuiddx & (Mce|Tsc|Pse|Vmex)){
+		iprint(" CR4 %16.16llux\n", getcr4());
+		if(u->type == 18)
+			dumpmcregs();
+	}
+	iprint("  ur %#p up %#p\n", u, up);
 	DBG("acsysret m %p m->machno %d m->proc %p u->sp %p sp %p\n", m, m->machno, m->proc, u->sp, sp);
 	if (sp != u->sp)
 		DBG("THIS CAN NOT HAPPEN: SP %p != u->sp %p", sp, u->sp);
 	if(m->proc != nil)
 		m->proc->actime += fastticks2us(fastticks(nil) - m->proc->actime1);
-	DBG("cpu%d:acsysret: pc %p, sp %p\n", m->machno, u->pc, u->sp);
+	DBG("cpu%d:acsysret: pc %p, sp %p savesp %p\n", m->machno, u->pc, u->sp, sp);
 	DBG("Call _acsysret\n");
 	_acsysret();
 }
@@ -345,17 +407,25 @@ acinit(void)
 	lapicintron();
 }
 
-/* support -- put it here for now */
+/* The old classic setup in plan 9 differs from 9front. Still trying to work it out. */
 void
 acfpusysprocsetup(Proc *p)
 {
+	if (p == nil)
+		panic("p is nil");
+	if (p->dbgreg == nil)
+		panic("m %p p %p dbgreg is nil", m, p);
+	fpukexit(p->dbgreg, p->fpsave);
+	return;
+	extern void _clts(void);
 	if(p->fpstate == FPinit){
 		/* The FPU is initialized in the TC but we must initialize
 		 * it in the AC.
 		 */
-		iprint("NOTE: fpu not set up. FIXME\n");
+		/* follow, roughly, what we do in a fork and exec. That's what NIX did */
 		p->fpstate = FPinactive;
-		//panic("fpusysprocsetup(p);");
+		//p->fpstate = FPactive;
+		//fpuprocrestore(p);
 	}
 }
 /* debug -- put them here, not in main.c */
@@ -387,6 +457,7 @@ void
 fpusysrfork(Ureg*)
 {
 	void fpuprocfork(Proc *p);
-	fpuprocfork(up);
+	fpuprocsave(up);
+	up->fpstate = FPinit;
 }
 
