@@ -73,7 +73,6 @@ enum {
 
 void dumppkt(uchar*);
 uchar *findtag(uchar*, int, int*, int);
-void hexdump(uchar*, int);
 int malformed(uchar*, int, int);
 int pppoe(char*);
 void execppp(int);
@@ -806,27 +805,4 @@ malformed(uchar *pkt, int n, int wantet)
 	}
 
 	return 0;
-}
-
-void
-hexdump(uchar *a, int na)
-{
-	int i;
-	char buf[80];
-
-	buf[0] = '\0';
-	for(i=0; i<na; i++){
-		sprint(buf+strlen(buf), " %.2ux", a[i]);
-		if(i%16 == 7)
-			sprint(buf+strlen(buf), " --");
-		if(i%16==15){
-			sprint(buf+strlen(buf), "\n");
-			write(2, buf, strlen(buf));
-			buf[0] = 0;
-		}
-	}
-	if(i%16){
-		sprint(buf+strlen(buf), "\n");
-		write(2, buf, strlen(buf));
-	}
 }

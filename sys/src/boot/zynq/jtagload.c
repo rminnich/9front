@@ -344,7 +344,7 @@ tapreset(void)
 		taps[i].id = dshift(0, -32);
 		switch(taps[i].id){
 		default:
-			sysfatal("unknown tapid %.8ux\n", taps[i].id);
+			sysfatal("unknown tapid %.8ux", taps[i].id);
 		case 0x03727093:
 		case 0x0373b093:
 		case 0x23727093:
@@ -360,7 +360,7 @@ tapreset(void)
 	dstate(0x1F, 6);	/* 011111 -> Reset->Idle */
 
 	if(o != irlen)
-		sysfatal("wrong tapchain irlen %d %d\n", o, irlen);
+		sysfatal("wrong tapchain irlen %d %d", o, irlen);
 
 	ndaps = 0;
 	for(i=0; i<ntaps; i++){

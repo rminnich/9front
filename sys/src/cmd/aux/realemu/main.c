@@ -372,7 +372,7 @@ cpuinit(void)
 		off = (ulong)i << 16;
 		seek(realmemfd, off, 0);
 		if(readn(realmemfd, memory + off, 0x10000) != 0x10000)
-			sysfatal("read real mem %lux: %r\n", off);
+			sysfatal("read real mem %lux: %r", off);
 	}
 
 	cpu.ic = 0;

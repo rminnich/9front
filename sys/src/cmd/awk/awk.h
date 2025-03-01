@@ -18,8 +18,6 @@ typedef double	Awkfloat;
 
 #define	FOPEN_MAX	40	/* max number of open files */
 
-extern	char	errbuf[];
-
 extern int	compile_time;	/* 1 if compiling, 0 if running */
 extern int	safe;		/* 0 => unsafe, 1 => safe */
 
@@ -123,7 +121,6 @@ typedef struct Node {
 #define	NIL	((Node *) 0)
 
 extern Node	*winner;
-extern Node	*nullstat;
 extern Node	*nullnode;
 
 /* ctypes */

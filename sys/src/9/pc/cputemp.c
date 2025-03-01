@@ -160,13 +160,85 @@ amd10temprd(Chan*, void *a, long n, vlong offset)
 	return i;
 }
 
+static Pcidev*
+finddev(void)
+{
+	Pcidev *p;
+
+	for(p = nil; p = pcimatch(p, 0x1022, 0); )
+		switch(p->did){
+		case 0x1480:
+		case 0x1450:
+		case 0x15d0:
+		case 0x1630:
+		case 0x14a4:
+		case 0x14b5:
+		case 0x14d8:
+		case 0x14eb:
+			return p;
+		}
+	return nil;
+}
+
+static Pcidev *snmdev;
+
+static u32int
+snmread(ulong addr)
+{
+	static Lock lk;
+	u32int v;
+
+	lock(&lk);
+	pcicfgw32(snmdev, 0x60, addr);
+	v = pcicfgr32(snmdev, 0x64);
+	unlock(&lk);
+	return v;
+}
+
+static long
+amd17temprd(Chan*, void *a, long n, vlong offset)
+{
+	u32int i;
+	char buf[16];
+
+	i = snmread(0x59800);
+	i >>= 21;
+	i = (i+4)/8;
+	snprint(buf, sizeof buf, "%ud±1\n", i);
+	return readstr(offset, a, n, buf);
+}
+
+typedef long Rdwrfn(Chan*, void*, long, vlong);
+
+static Rdwrfn*
+probe(void)
+{
+	if(intelcputempok())
+		return intelcputemprd;
+
+	if(strcmp(m->cpuidid,  "AuthenticAMD") == 0)
+		switch(m->cpuidfamily){
+		case 0x0f:
+			return amd0ftemprd;
+		case 0x10:
+			return amd10temprd;
+		case 0x17:
+			snmdev = finddev();
+			if(snmdev == nil)
+				return nil;
+			return amd17temprd;
+		default:
+			return nil;
+		}
+
+	return nil;
+}
+
 void
 cputemplink(void)
 {
-	if(intelcputempok())
-		addarchfile("cputemp", 0444, intelcputemprd, nil);
-	if(m->cpuidfamily == 0x0f && !strcmp(m->cpuidid, "AuthenticAMD"))
-		addarchfile("cputemp", 0444, amd0ftemprd, nil);
-	if(m->cpuidfamily == 0x10 && !strcmp(m->cpuidid, "AuthenticAMD"))
-		addarchfile("cputemp", 0444, amd10temprd, nil);
+	Rdwrfn* fn;
+
+	if((fn = probe()) != nil)
+		addarchfile("cputemp", 0444, fn, nil);
 }

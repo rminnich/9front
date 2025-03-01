@@ -34,9 +34,6 @@ extern	void	startreg(void);
 extern	int	input(void);
 extern	void	unput(int);
 extern	void	unputstr(char *);
-extern	int	yylook(void);
-extern	int	yyback(int *, int);
-extern	int	yyinput(void);
 
 extern	void	*compre(char *);
 extern	int	hexstr(char **);
@@ -140,7 +137,6 @@ extern	Cell	*boolop(Node **, int);
 extern	Cell	*relop(Node **, int);
 extern	void	tfree(Cell *);
 extern	Cell	*gettemp(void);
-extern	Cell	*field(Node **, int);
 extern	Cell	*indirect(Node **, int);
 extern	Cell	*substr(Node **, int);
 extern	Cell	*sindex(Node **, int);

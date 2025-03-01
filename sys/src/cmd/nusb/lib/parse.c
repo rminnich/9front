@@ -8,15 +8,11 @@ parsedev(Dev *xd, uchar *b, int n)
 {
 	Usbdev *d;
 	DDev *dd;
-	char *hd;
 
 	d = xd->usb;
 	dd = (DDev*)b;
-	if(usbdebug>1){
-		hd = hexstr(b, Ddevlen);
-		fprint(2, "%s: parsedev %s: %s\n", argv0, xd->dir, hd);
-		free(hd);
-	}
+	if(usbdebug>1)
+		fprint(2, "%s: parsedev %s: %.*H\n", argv0, xd->dir, Ddevlen, b);
 	if(dd->bLength < Ddevlen){
 		werrstr("short dev descr. (%d < %d)", dd->bLength, Ddevlen);
 		return -1;
@@ -198,7 +194,6 @@ parsedesc(Usbdev *d, Conf *c, uchar *b, int n)
 	int	len, nd, tot;
 	Iface	*ip;
 	Ep 	*ep;
-	char	*hd;
 
 	tot = 0;
 	ip = nil;
@@ -209,10 +204,8 @@ parsedesc(Usbdev *d, Conf *c, uchar *b, int n)
 
 	while(n > 2 && (len = b[0]) != 0 && len <= n){
 		if(usbdebug>1){
-			hd = hexstr(b, len);
-			fprint(2, "%s:\t\tparsedesc %s %x[%d] %s\n",
-				argv0, dname(b[1]), b[1], b[0], hd);
-			free(hd);
+			fprint(2, "%s:\t\tparsedesc %s %x[%d] %.*H\n",
+				argv0, dname(b[1]), b[1], b[0], len, b);
 		}
 		switch(b[1]){
 		case Ddev:
@@ -264,14 +257,10 @@ parseconf(Usbdev *d, Conf *c, uchar *b, int n)
 	DConf* dc;
 	int	l;
 	int	nr;
-	char	*hd;
 
 	dc = (DConf*)b;
-	if(usbdebug>1){
-		hd = hexstr(b, Dconflen);
-		fprint(2, "%s:\tparseconf  %s\n", argv0, hd);
-		free(hd);
-	}
+	if(usbdebug>1)
+		fprint(2, "%s:\tparseconf %.*H\n", argv0, Dconflen, b);
 	if(dc->bLength < Dconflen){
 		werrstr("short configuration descriptor");
 		return -1;

@@ -4,7 +4,14 @@ io \- access PC I/O registers
 .SH SYNOPSIS
 .B io
 [
-.B -WLMErw
+.B -f
+.I file
+] [
+.B -WLME
+] [
+.B -r
+|
+.B -w
 ]
 .I address
 [
@@ -41,6 +48,19 @@ Access a 64 bit wide machine specific register (MSR).
 .TP
 .B  -E
 Access embedded controller space.
+.TP
+.B  -f
+Instead of using
+.B /dev/io*
+as the I/O file depending on the options above,
+use the argument
+.I file
+instead. This can be used,
+for example,
+to access some PCI card
+config space by specifying
+.B /dev/pci/*raw
+as the I/O file.
 .SH SOURCE
 .B /sys/src/cmd/io.c
 .SH SEE ALSO

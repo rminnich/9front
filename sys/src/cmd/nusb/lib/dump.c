@@ -60,24 +60,6 @@ classname(int c)
 	}
 }
 
-char *
-hexstr(void *a, int n)
-{
-	int i;
-	char *dbuff, *s, *e;
-	uchar *b;
-
-	b = a;
-	dbuff = s = emallocz(1024, 0);
-	*s = 0;
-	e = s + 1024;
-	for(i = 0; i < n; i++)
-		s = seprint(s, e, " %.2ux", b[i]);
-	if(s == e)
-		fprint(2, "%s: usb/lib: hexdump: bug: small buffer\n", argv0);
-	return dbuff;
-}
-
 static void
 fmtprintiface(Fmt *f, Iface *i)
 {
@@ -109,7 +91,6 @@ fmtprintconf(Fmt *f, Usbdev *d, int ci)
 	int i;
 	Conf *c;
 	Iface *fc;
-	char *hd;
 
 	c = d->conf[ci];
 	fmtprint(f, "\tconf: cval %d attrib %x %d mA\n",
@@ -122,12 +103,10 @@ fmtprintconf(Fmt *f, Usbdev *d, int ci)
 		if(d->ddesc[i] == nil)
 			break;
 		else if(d->ddesc[i]->conf == c){
-			hd = hexstr((uchar*)&d->ddesc[i]->data,
-				d->ddesc[i]->data.bLength);
-			fmtprint(f, "\t\tdev desc %x[%d]: %s\n",
+			fmtprint(f, "\t\tdev desc %x[%d]: %.*H\n",
 				d->ddesc[i]->data.bDescriptorType,
-				d->ddesc[i]->data.bLength, hd);
-			free(hd);
+				d->ddesc[i]->data.bLength,
+				d->ddesc[i]->data.bLength, &d->ddesc[i]->data);
 		}
 }
 

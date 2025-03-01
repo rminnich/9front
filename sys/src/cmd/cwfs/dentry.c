@@ -255,7 +255,7 @@ trunczero(Truncstate *ts)
 	Iobuf *pd;
 
 	pd = dnodebuf(ts->p, ts->d, ts->lastblk, Tfile, ts->uid);
-	if (pd == nil || checktag(pd, Tfile, QPNONE)) {
+	if (pd == nil || checktag(pd, Tfile, ts->d->qid.path)) {
 		if (pd != nil)
 			putbuf(pd);
 		ts->err = Ephase;

@@ -68,22 +68,22 @@ main(int, char **)
 
 	tmfmtinstall();
 	if((gmt = tzload("GMT")) == nil)
-		sysfatal("nil gmt: %r\n");
+		sysfatal("nil gmt: %r");
 	if((us_arizona = tzload("US_Arizona")) == nil)
-		sysfatal("nil us_arizona: %r\n");
+		sysfatal("nil us_arizona: %r");
 	if((us_eastern = tzload("US_Eastern")) == nil)
-		sysfatal("nil us_eastern: %r\n");
+		sysfatal("nil us_eastern: %r");
 	if((us_central = tzload("US_Central")) == nil)
-		sysfatal("get zone: %r\n");
+		sysfatal("get zone: %r");
 
 	if((zl = tzload("local")) == nil)
-	     sysfatal("load zone: %r\n");
+	     sysfatal("load zone: %r");
 	if((zp = tzload("US_Pacific")) == nil)
-	     sysfatal("load zone: %r\n");
+	     sysfatal("load zone: %r");
 	if(tmnow(&here, zl) == nil)
-	     sysfatal("get time: %r\n");
+	     sysfatal("get time: %r");
 	if(tmtime(&there, tmnorm(&here), zp) == nil)
-	     sysfatal("shift time: %r\n");
+	     sysfatal("shift time: %r");
 
 	for(i = 0; i < 1600826575; i += 3613){
 		tmtime(&tm, i, nil);
@@ -124,7 +124,7 @@ main(int, char **)
 	testtm("tmnorm-recent-est", 2020, 3, 10, 23, 14, 30, 0, &tm);
 
 	if(tmparse(&tm, "hhmm", "1600", gmt, nil) == nil)
-		sysfatal("failed parse: %r\n");
+		sysfatal("failed parse: %r");
 	testtm("hhmm", 1970, 0, 1, 16, 0, 0, 0, &tm);
 
 	if(tmparse(&tm, "YYYY-MM-DD hh:mm:ss Z", "1969-12-31 16:00:00 -0800", nil, nil) == nil)
@@ -133,16 +133,16 @@ main(int, char **)
 		fail("wrong result: %lld != 0\n", tmnorm(&tm));
 
 	if(tmparse(&tm, "YYYY MM DD", "1990,01,03", nil, nil) == nil)
-		fail("comma parse failed");
+		fail("comma parse failed\n");
 	if(tmnorm(&tm) != 631324800)
-		fail("wrong result");
+		fail("wrong result\n");
 	if(tmparse(&tm, "YYYY MM DD", "1990 ,\t01,03", nil, nil) == nil)
-		fail("comma parse failed");
+		fail("comma parse failed\n");
 	if(tmnorm(&tm) != 631324800)
-		fail("wrong result");
+		fail("wrong result\n");
 
 	if(tmparse(&tm, "YYYY MM DD hh:mm:ss", "1969 12 31 16:00:00", gmt, nil) == nil)
-		sysfatal("failed parse: %r\n");
+		sysfatal("failed parse: %r");
 	testtm("parse-notz1", 1969, 11, 31, 16, 0, 0, 0, &tm);
 
 	if(tmparse(&tm, "YYYY MM DD hh:mm:ss", "1970 01 01 04:00:00", gmt, nil) == nil)
@@ -154,15 +154,15 @@ main(int, char **)
 	testtm("parse-notz3", 1970, 0, 1, 0, 0, 0, 0, &tm);
 
 	if(tmparse(&tm, "YYYY MMMM DD WWW hh:mm:ss", "2020 April 10 Friday 16:04:00", gmt, nil) == nil)
-		sysfatal("failed parse: %r\n");
+		sysfatal("failed parse: %r");
 	testtm("parse-notz4", 2020, 3, 10, 16, 4, 0, 0, &tm);
 
 	if(tmparse(&tm, "MM DD hh:mm:ss", "12 31 16:00:00", gmt, nil) == nil)
-		sysfatal("failed parse: %r\n");
+		sysfatal("failed parse: %r");
 	testtm("parse-notz5", 1970, 11, 31, 16, 0, 0, 0, &tm);
 
 	if(tmparse(&tm, "MM DD h:mm:ss", "12 31 4:00:00", gmt, nil) == nil)
-		sysfatal("failed parse: %r\n");
+		sysfatal("failed parse: %r");
 	testtm("parse-mmdd-hms", 1970, 11, 31, 4, 0, 0, 0, &tm);
 	if(tm.tzoff != 0) print("%d wrong tzoff expected=%d actual=%d\n", 6, 0, tm.tzoff);
 
@@ -184,7 +184,7 @@ main(int, char **)
 	testtm("parse-tz2", 2020, 3, 10, 20, 14, 30, 0, &tm);
 	snprint(buf, sizeof(buf), "%τ", tmfmt(&tm, "YYYY MM DD hh:mm:ss Z"));
 	if(strcmp(buf, "2020 04 10 20:14:30 -0400") != 0)
-		fail("failed format: %s != 2020 04 10 20:14:30 -0400", buf);
+		fail("failed format: %s != 2020 04 10 20:14:30 -0400\n", buf);
 
 	if(tmparse(&tm, "YYYY MM DD hh:mm:ss.ttt", "2020 04 10 20:14:30.207", nil, nil) == nil)
 		fail("failed parse: %r\n");
@@ -199,7 +199,7 @@ main(int, char **)
 	testtm("parse-nnn2", 2020, 3, 10, 20, 14, 30, 999, &tm);
 	snprint(buf, sizeof(buf), "%τ", tmfmt(&tm, "YYYY MM DD hh:mm:ss.nnn"));
 	if(strcmp(buf, "2020 04 10 20:14:30.999") != 0)
-		fail("failed format: %s != 2020 04 10 20:14:30.999", buf);
+		fail("failed format: %s != 2020 04 10 20:14:30.999\n", buf);
 
 	if(tmparse(&tm, "YYYY MM DD hh:mm:ss.ttt", "2020 04 10 20:14:30.999", nil, nil) == nil)
 		fail("failed parse: %r\n");
@@ -251,15 +251,15 @@ main(int, char **)
 	}
 
 	if(tmtime(&tm, -624623143, nil) == nil)
-		fail("tmtime: %r");
+		fail("tmtime: %r\n");
 	if(snprint(buf, sizeof(buf), "%τ", tmfmt(&tm, "WW, DD MMM YYYY hh:mm:ss Z")) == -1)
-		fail("format: %r");
+		fail("format: %r\n");
 	if(strcmp(buf, "Fri, 17 Mar 1950 13:34:17 +0000") != 0)
 		fail("wrong output: %s\n", buf);
 	if(tmtime(&tm, -624623143, us_eastern) == nil)
-		fail("tmtime: %r");
+		fail("tmtime: %r\n");
 	if(snprint(buf, sizeof(buf), "%τ", tmfmt(&tm, "WW, DD MMM YYYY hh:mm:ss Z")) == -1)
-		fail("format: %r");
+		fail("format: %r\n");
 	if(strcmp(buf, "Fri, 17 Mar 1950 08:34:17 -0500") != 0)
 		fail("wrong output: %s\n", buf);
 
@@ -292,16 +292,16 @@ main(int, char **)
 		if(tmparse(&tm, "YYYY MM DDo", buf, nil, nil) != nil)
 			print("ordinal day suffix parsed when absent\n");
 		if(snprint(buf, sizeof(buf), "%τ", tmfmt(&tm, "YYYY MM DDo")) == -1)
-			fail("format: %r");
+			fail("format: %r\n");
 		if(strcmp(buf, buf1) != 0)
 			print("bad ordinal day suffix formatted: %s != %s\n", buf, buf1);
 	}
 
 	/* Time zone boundaries: entering DST */
 	if(tmtime(&tm, 1520733600, us_eastern) == nil)
-		fail("tmtime: tz boundary");
+		fail("tmtime: tz boundary\n");
 	if(snprint(buf, sizeof(buf), "%τ", tmfmt(&tm, nil)) == -1)
-		fail("format: %r");
+		fail("format: %r\n");
 	memset(&tm, 0, sizeof(tm));
 	if(tmparse(&tm, "WW MMM D hh:mm:ss ZZZ YYYY", buf, nil, nil) == nil)
 		fail("parse: %r\n");
@@ -310,12 +310,12 @@ main(int, char **)
 
 	/* Time zone boundaries: leaving DST */
 	if(tmtime(&tm, 1541296800, us_eastern) == nil)
-		fail("tmtime: tz boundary");
+		fail("tmtime: tz boundary\n");
 	if(snprint(buf, sizeof(buf), "%τ", tmfmt(&tm, nil)) == -1)
 		fail("format: %r\n");
 	memset(&tm, 0, sizeof(tm));
 	if(tmparse(&tm, "WW MMM D hh:mm:ss ZZZ YYYY", buf, nil, nil) == nil)
-		fail("parse: %r");
+		fail("parse: %r\n");
 	if(tmnorm(&tm) != 1541296800)
 		fail("round trip timezone: %lld != 1541296800\n", tmnorm(&tm));
 	
@@ -361,7 +361,7 @@ main(int, char **)
 
 	memset(&tm, 0, sizeof(Tm));
 	if(tmnow(&tm, us_central) == nil)
-		fail("tmnow(): %r");
+		fail("tmnow(): %r\n");
 	tm.year = 120;
 	tm.sec=0;
 	tm.min=0;

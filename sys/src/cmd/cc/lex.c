@@ -516,7 +516,14 @@ l1:
 
 	case '.':
 		c1 = GETC();
-		if(isdigit(c1)) {
+		if(c1 == '.'){
+			c = GETC();
+			if(c == '.')
+				return LDOTDOTDOT;
+			else
+				yyerror(".. instead of ...");
+				
+		} else if(isdigit(c1)) {
 			cp = symb;
 			*cp++ = c;
 			c = c1;

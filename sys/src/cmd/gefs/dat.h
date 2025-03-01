@@ -84,6 +84,7 @@ enum {
 	Leafspc 	= Blksz - Leafhdsz,
 	Msgmax  	= 1 + (Kvmax > Kpmax ? Kvmax : Kpmax),
 	Estacksz	= 64,
+	Maxprocs	= 128,
 };
 
 enum {
@@ -516,6 +517,7 @@ struct Gefs {
 	long	syncing;
 	long	nsyncers;
 	long	nreaders;
+	long	nprocs;
 
 	QLock	synclk;
 	Rendez	syncrz;

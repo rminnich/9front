@@ -11,35 +11,22 @@
 static void
 squidboy(Apic* apic)
 {
-	//	iprint("Hello Squidboy\n");
-	acmodeset(m->machno == 1 ? NIXAC : NIXTC);
+//	iprint("Hello Squidboy\n");
 	machinit();
 	mmuinit();
 	cpuidentify();
 	if(arch->clockinit)
-		arch->clockinit();fuck
+		arch->clockinit();
 	cpuidprint();
 	syncclock();
 	active.machs[m->machno] = 1;
-	switch(m->nixtype){
-	case NIXAC:
-		acmmuswitch();
-		acinit();
-		adec(&active.nbooting);
-		ainc(&active.nonline);	/* this was commented out */
-		acsched();
-		panic("%d: squidboy", m->machno);
-		break;
-	case NIXTC:
-		apic->online = 1;
-		lapicinit(apic);
-		lapiconline();
-		timersinit();
-		fpoff();
-		schedinit();
-	}
+	apic->online = 1;
+	lapicinit(apic);
+	lapiconline();
+	timersinit();
+	fpoff();
+	schedinit();
 }
-
 
 void
 mpstartap(Apic* apic)

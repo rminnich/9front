@@ -54,15 +54,15 @@ startprocs(void)
 
 	golock = calloc(extraproc, sizeof(*golock));
 	if(golock == nil)
-		sysfatal("Could not create go locks: %r\n");
+		sysfatal("Could not create go locks: %r");
 
 	gorend = calloc(extraproc, sizeof(*gorend));
 	if(gorend == nil)
-		sysfatal("Could not create go rendez: %r\n");
+		sysfatal("Could not create go rendez: %r");
 
 	go = calloc(extraproc, sizeof(*go));
 	if(go == nil)
-		sysfatal("Could not create go flags: %r\n");
+		sysfatal("Could not create go flags: %r");
 
 	for(pid = 0; pid < extraproc; pid++)
 		gorend[pid].l = golock+pid;

@@ -749,7 +749,7 @@ parsepax(int ar, Blk *bp, Hdr *hdr, int paxtype)
 				if (p == e && blksleft > 0)
 					goto nextblk;
 				if (*p++ != ' ')
-					sysfatal("invalid delimiter in pax header: %c (%s)\n", *p, p);
+					sysfatal("invalid delimiter in pax header: %c (%s)", *p, p);
 				*lp++ = '\0';
 				len = atoi(lenbuf) - strlen(lenbuf) - 1;
 			}

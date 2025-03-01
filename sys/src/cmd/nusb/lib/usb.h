@@ -336,7 +336,6 @@ int	configdev(Dev *d);
 int	devctl(Dev *dev, char *fmt, ...);
 void*	emallocz(ulong size, int zero);
 char*	estrdup(char *s);
-char*	hexstr(void *a, int n);
 int	loaddevconf(Dev *d, int n);
 int	loaddevdesc(Dev *d);
 char*	loaddevstr(Dev *d, int sid);

@@ -96,25 +96,37 @@ or
 [
 .B -flags
 ]
-.IR "old new" ,
+.IR "[[old] new]" ,
 which will list, delete, or create new snapshots respectively.
+By default, the
+.I snap
+command creates a snapshot of
+.IR old ,
+tagging it with the name
+.IR new .
 It accepts the following options:
 .TP
 .B -l
 Lists snapshots and their attributes.
+This flag accepts no arguments.
 .TP
 .BI "-d " snap
 Deletes a snapshot, reclaiming whatever space is not shared
 is not shared with other snapshots.
+This flag accepts a single argument,
+.IR old ,
+as the partition to delete.
 .TP
 .B -m
-Flags that the newly created snapshot should be mutable.
+Marks the newly created snapshot as mutable,
+rather than read-only.
+This flag only has an effect when tagging a new snapshot,
+and is ignored otherwise.
 .TP
 .B -S
-Disables automatic snapshots.
-.I old
-and gives it the name
-.IR new .
+Disables automatic timed snapshots.
+This flag only has an effect when tagging a new snapshot,
+and is ignored otherwise.
 .PP
 .I Sync
 writes dirty blocks in memory to the disk.

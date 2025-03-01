@@ -331,7 +331,7 @@ flip(Rawimage *ar)
 	w = Dx(ar->r);
 	h = Dy(ar->r);
 	if((t = malloc(w)) == nil){
-		werrstr("ReadTGA: no memory - %r\n");
+		werrstr("ReadTGA: no memory - %r");
 		return -1;
 	}
 
@@ -410,12 +410,12 @@ Breadtga(Biobuf *bp)
 
 	array = nil;
 	if((ar = calloc(1, sizeof(Rawimage))) == nil){
-		werrstr("ReadTGA: no memory - %r\n");
+		werrstr("ReadTGA: no memory - %r");
 		goto Error;
 	}
 
 	if((array = calloc(2, sizeof(Rawimage *))) == nil){
-		werrstr("ReadTGA: no memory - %r\n");
+		werrstr("ReadTGA: no memory - %r");
 		goto Error;
 	}
 	array[0] = ar;
@@ -444,7 +444,7 @@ Breadtga(Biobuf *bp)
 	ar->r = Rect(0, 0, h->width, h->height);
 	for(c = 0; c < ar->nchans; c++)
 		if((ar->chans[c] = malloc(h->width*h->height)) == nil){
-			werrstr("ReadTGA: no memory - %r\n");
+			werrstr("ReadTGA: no memory - %r");
 			goto Error;
 		}
 	r = ar->chans[0];
@@ -473,12 +473,12 @@ Breadtga(Biobuf *bp)
 		n = luma_rle(bp, h->bpp, r, num);
 		break;
 	default:
-		werrstr("ReadTGA: type=%d (%s) unsupported\n", h->datatype, datatype[h->datatype]);
+		werrstr("ReadTGA: type=%d (%s) unsupported", h->datatype, datatype[h->datatype]);
 		goto Error;	
  	}
 
 	if(n != num){
-		werrstr("ReadTGA: decode fail (%d!=%d) - %r\n", n, num);
+		werrstr("ReadTGA: decode fail (%d!=%d) - %r", n, num);
 		goto Error;
 	}
 	if((h->descriptor&(1<<4)) != 0)

@@ -604,11 +604,11 @@ vbecheck(Vbe *vbe)
 	if(vbecall(vbe, &u) < 0)
 		return -1;
 	if(memcmp(p, "VESA", 4)){
-		werrstr("invalid vesa signature %.4H\n", p);
+		werrstr("invalid vesa signature %.4H", p);
 		return -1;
 	}
 	if(p[5] < 2){
-		werrstr("invalid vesa version: %.4H\n", p+4);
+		werrstr("invalid vesa version: %.4H", p+4);
 		return -1;
 	}
 	return 0;

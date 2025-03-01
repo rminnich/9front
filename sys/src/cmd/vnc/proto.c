@@ -266,19 +266,6 @@ vncunlock(Vnc *v)
 }
 
 void
-hexdump(void *a, int n)
-{
-	uchar *p, *ep;
-
-	p = a;
-	ep = p+n;
-
-	for(; p<ep; p++) 
-		print("%.2ux ", *p);
-	print("\n");
-}
-
-void
 vncgobble(Vnc *v, long n)
 {
 	uchar buf[8192];
