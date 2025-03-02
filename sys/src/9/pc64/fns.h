@@ -191,4 +191,5 @@ void apicipi(int apicno);
 void dumpptepg(int lvl, uvlong pa);
 void fpusysrfork(Ureg*);
 void nixprepage(int);
+void stopac(void);
 void testicc(int i);

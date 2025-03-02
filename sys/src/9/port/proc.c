@@ -1390,6 +1390,11 @@ pexit(char *exitstr, int freemem)
 	}
 	qunlock(&up->seglock);
 
+	/* free the AC from this process. */
+	stopac();
+	/* the nix kproc uses syscall queues so we never
+	 * have to relinquish the AC for system calls. */
+	/* stopnixproc(); TODO: bring in the nixkproc */
 	edfstop(up);
 	if(up->edf != nil){
 		free(up->edf);
