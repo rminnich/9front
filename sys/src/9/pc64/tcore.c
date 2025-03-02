@@ -169,6 +169,13 @@ runac(Mach *mp, APfunc func, int flushtlb, void *a, long n)
 	}
 	qlock(&up->debug);
 	up->nicc++;
+	/* How does sched know to run this process again?
+	 * We set the state to Exotic here. As long as the state
+	 * is Exotic, sched will not run the process.
+	 * When the process is ready to run,
+	 * code in acore.c calls ready(p),
+	 * which sets the state to Ready, and we will return
+	 * from the call to sched(). */
 	up->state = Exotic;
 	up->psstate = 0;
 	qunlock(&up->debug);
