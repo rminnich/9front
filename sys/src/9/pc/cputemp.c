@@ -91,106 +91,110 @@ intelcputemprd(Chan *c, void *va, long n, vlong offset)
 	return t;
 }
 
+/*
+ * AMD exposes some sensors via PCI config space
+ * on various devices depending on the CPU family.
+ * This is largely undocumented, and has variance
+ * depending on the motherboard vendor used.
+ * Consumer grade often only has one sensor
+ * per chip, however server grade can have up
+ * to one sensor per core exposed this way.
+ */
+static Pcidev 	*amddevs[MAXMACH];
+static int	namddevs;
+
 static long
 amd0ftemprd(Chan*, void *a, long n, vlong offset)
 {
-	char *s, *e, buf[64];
-	long i, t, j, max;
-	Pcidev *p;
+	static Lock lk;
+	int i;
+	char *s, *e, buf[16*4];
+	long v, t, j, max;
 
-	p = pcimatch(0, 0x1022, 0x1103);
-	if(p == nil)
-		return readstr(offset, a, n, "-1±-1 unsupported\n");
+	/* one sensor per core */
 	max = 2;
-	if(max > conf.nmach)
-		max = conf.nmach;
+	if(conf.nmach == 1)
+		max = 1;
+	else if(amddevs[1] != nil && conf.nmach == 2)
+		max = 1;
 	s = buf;
 	e = buf + sizeof buf;
+	lock(&lk);
+	for(i = 0; i < namddevs; i++)
 	for(j = 0; j < max; j++){
-		pcicfgw32(p, 0xe4, pcicfgr32(p, 0xe4) & ~4 | j<<2);
-		i = pcicfgr32(p, 0xe4);
+		pcicfgw32(amddevs[i], 0xe4, pcicfgr32(amddevs[i], 0xe4) & ~4 | j<<2);
+		v = pcicfgr32(amddevs[i], 0xe4);
 		if(m->cpuidstepping == 2)
-			t = i>>16 & 0xff;
+			t = v>>16 & 0xff;
 		else{
-			t = i>>14 & 0x3ff;
+			t = v>>14 & 0x3ff;
 			t *= 3;
 			t /= 4;
 		}
 		t += -49;
-		s = seprint(s, e, "%ld±%uld%s\n", t, 1l, "");
+		s = seprint(s, e, "%ld±1\n", t);
 	}
+	unlock(&lk);
 	return readstr(offset, a, n, buf);
 }
 
 static long
 amd10temprd(Chan*, void *a, long n, vlong offset)
 {
-	char *s, *e, *r, *buf;
-	long i, t, c, nb, cores[MAXMACH];
-	Pcidev *p;
+	int i;
+	char *s, *e, buf[16*nelem(amddevs)];
+	u32int v;
 
-	nb = 0;
-	for(p = 0; p = pcimatch(p, 0x1022, 0x1203); ){
-		cores[nb++] = 1 + ((pcicfgr32(p, 0xe8) & 0x3000)>>12);
-		if(nb == nelem(cores))
-			break;
-	}
-	if(nb == 0)
-		return readstr(offset, a, n, "-1±-1 unsupported\n");
-	buf = smalloc(MAXMACH*4*32);
 	s = buf;
-	e = buf + MAXMACH*4*32;
-	nb = 0;
-	c = 0;
-	for(p = 0; p = pcimatch(p, 0x1022, 0x1203); nb++){
-		i = pcicfgr32(p, 0xa4) & 0x7fffffff;
-		i >>= 21;
-		t = i/8;
-		r = ".0";
-		if(i % 8 >= 4)
-			r = ".5";
-		/*
-		 * only one value per nb; repeat per core
-		 */
-		while(c++ < conf.nmach && cores[nb]--)
-			s = seprint(s, e, "%ld%s±0.5%s\n", t, r, "");
+	e = buf + sizeof buf;
+	for(i = 0; i < namddevs; i++){
+		v = pcicfgr32(amddevs[i], 0xa4);
+		v = ((v>>21)+4) / 8;
+		s = seprint(s, e, "%ud±1\n", v);
 	}
-	i = readstr(offset, a, n, buf);
-	free(buf);
-	return i;
+	return readstr(offset, a, n, buf);
 }
 
-static Pcidev*
-finddev(void)
+static int
+finddevs(void)
 {
 	Pcidev *p;
 
 	for(p = nil; p = pcimatch(p, 0x1022, 0); )
 		switch(p->did){
-		case 0x1480:
+		case 0x1103:	/* 0f */
+		case 0x1203:	/* 10 */
+		case 0x1303:	/* 11 */
+		case 0x1703:	/* 14 */
+		case 0x1603:	/* 15 */
+		case 0x1403:
+		case 0x141d:
+		case 0x1533:	/* 16 */
+		case 0x1583:
+		case 0x1480:	/* 17 */
 		case 0x1450:
 		case 0x15d0:
 		case 0x1630:
-		case 0x14a4:
+		case 0x14a4:	/* 19 */
 		case 0x14b5:
 		case 0x14d8:
 		case 0x14eb:
-			return p;
+			amddevs[namddevs++] = p;
+			if(namddevs == nelem(amddevs))
+				return namddevs;
 		}
-	return nil;
+	return namddevs;
 }
 
-static Pcidev *snmdev;
-
 static u32int
-snmread(ulong addr)
+snmread(Pcidev *p, ulong addr)
 {
 	static Lock lk;
 	u32int v;
 
 	lock(&lk);
-	pcicfgw32(snmdev, 0x60, addr);
-	v = pcicfgr32(snmdev, 0x64);
+	pcicfgw32(p, 0x60, addr);
+	v = pcicfgr32(p, 0x64);
 	unlock(&lk);
 	return v;
 }
@@ -198,13 +202,20 @@ snmread(ulong addr)
 static long
 amd17temprd(Chan*, void *a, long n, vlong offset)
 {
-	u32int i;
-	char buf[16];
+	int i;
+	char *s, *e, buf[16*nelem(amddevs)];
+	u32int v, r;
+	enum { Range = 1u<<19, Tjsel = 1u<<17 };
 
-	i = snmread(0x59800);
-	i >>= 21;
-	i = (i+4)/8;
-	snprint(buf, sizeof buf, "%ud±1\n", i);
+	s = buf;
+	e = buf + sizeof buf;
+	for(i = 0; i < namddevs; i++){
+		r = snmread(amddevs[i], 0x59800);
+		v = ((r >> 21)+4) / 8;
+		if(r & (Range|Tjsel))
+			v -= 49;
+		s = seprint(s, e, "%ud±1\n", v);
+	}
 	return readstr(offset, a, n, buf);
 }
 
@@ -216,20 +227,27 @@ probe(void)
 	if(intelcputempok())
 		return intelcputemprd;
 
-	if(strcmp(m->cpuidid,  "AuthenticAMD") == 0)
+	if(strcmp(m->cpuidid,  "AuthenticAMD") == 0){
+		if(finddevs() == 0)
+			return nil;
 		switch(m->cpuidfamily){
 		case 0x0f:
 			return amd0ftemprd;
 		case 0x10:
+		case 0x11:
+		case 0x12:
+		case 0x14:
+		case 0x15:
+		case 0x16:
 			return amd10temprd;
 		case 0x17:
-			snmdev = finddev();
-			if(snmdev == nil)
-				return nil;
+		case 0x19:
+		case 0x1a:
 			return amd17temprd;
 		default:
 			return nil;
 		}
+	}
 
 	return nil;
 }
@@ -237,7 +255,7 @@ probe(void)
 void
 cputemplink(void)
 {
-	Rdwrfn* fn;
+	Rdwrfn *fn;
 
 	if((fn = probe()) != nil)
 		addarchfile("cputemp", 0444, fn, nil);
