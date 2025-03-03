@@ -63,9 +63,6 @@ CFILES=\
 	rand.c\
 	readn.c\
 	rune.c\
-	runebreak.c\
-	runeistype.c\
-	runenorm.c\
 	runestrcat.c\
 	runestrchr.c\
 	runestrcmp.c\
@@ -78,7 +75,6 @@ CFILES=\
 	runestrrchr.c\
 	runestrlen.c\
 	runestrstr.c\
-	runetotype.c\
 	sin.c\
 	sinh.c\
 	sqrt.c\
@@ -136,16 +132,26 @@ runeistype.$O:	runeistypedata runeistype.c
 runebreak.$O:	runebreakdata runebreak.c
 
 UCD=\
-	/lib/ucd/WordBreakProperty.txt\
-	/lib/ucd/GraphemeBreakProperty.txt\
-	/lib/ucd/emoji-data.txt\
 	/lib/ucd/CompositionExclusions.txt\
+	/lib/ucd/DerivedNormalizationProps.txt\
+	/lib/ucd/GraphemeBreakProperty.txt\
 	/lib/ucd/UnicodeData.txt\
+	/lib/ucd/WordBreakProperty.txt\
+	/lib/ucd/emoji-data.txt\
 
-/lib/ucd/%:
-	cd /lib/ucd && mk $stem
+EXTRA=\
+	runebreak.$O\
+	runeistype.$O\
+	runenorm.$O\
+	runetotype.$O\
 
-runenormdata runetotypedata runeistypedata runebreakdata:
+GEN=\
+	runenormdata\
+	runetotypedata\
+	runeistypedata\
+	runebreakdata\
+
+$GEN:	$UCD
 	@{
 		eval `{grep '^[A-Z]' /$cputype/mkfile}
 		$CC $CFLAGS -o mkrunetype.$O mkrunetype.c
@@ -153,4 +159,9 @@ runenormdata runetotypedata runeistypedata runebreakdata:
 		$O.mkrunetype
 	}
 
-regen:V:	runenormdata runetotypedata runeistypedata runebreakdata mkrunetype.c $UCD
+$EXTRA:		$GEN
+
+extra:V:	$EXTRA
+	ar vu $LIB $prereq
+
+regen:V:	$GEN

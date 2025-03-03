@@ -77,12 +77,25 @@ extern	Rune*	runestrrchr(Rune*, Rune);
 extern	long	runestrlen(Rune*);
 extern	Rune*	runestrstr(Rune*, Rune*);
 
-extern	int	runecomp(Rune*, Rune*, int);
-extern	int	runedecomp(Rune*, Rune*, int);
-extern	int	utfcomp(char*, char*, int);
-extern	int	utfdecomp(char*, char*, int);
-extern	char*	fullutfnorm(char*,int);
-extern	Rune*	fullrunenorm(Rune*,int);
+enum { Maxnormctx = 1+30 };
+typedef struct Norm Norm;
+struct Norm {
+	long (*getrune)(void*);
+	void *ctx;
+
+	struct {
+		Rune *e;
+		Rune a[Maxnormctx];
+	} ibuf, obuf;
+
+	int compose;
+};
+extern	void	norminit(Norm*, int, void*, long (*getrune)(void*));
+extern	long	normpull(Norm*, Rune*, long, int);
+extern	long	runecomp(Rune*, long, Rune*, long);
+extern	long	runedecomp(Rune*, long, Rune*, long);
+extern	long	utfcomp(char*, long, char*, long);
+extern	long	utfdecomp(char*, long, char*, long);
 
 extern	Rune*	runewbreak(Rune*);
 extern	char*	utfwbreak(char*);

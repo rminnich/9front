@@ -7,102 +7,145 @@ runecomp, runedecomp, fullrunenorm, runegbreak, runewbreak, utfcomp, utfdecomp, 
 .br
 .B #include <libc.h>
 .PP
-.B
-int	runecomp(Rune *dst, Rune *src, int max)
-.PP
-.B
-int	runedecomp(Rune *dst, Rune *src, int max)
-.PP
-.B
-Rune*	fullrunenorm(Rune *s, int n)
-.PP
-.B
-Rune*	runegbreak(Rune *s)
-.PP
-.B
-Rune*	runewbreak(Rune *s)
-.PP
-.B
-int	utfcomp(char *dst, char *src, int max)
-.PP
-.B
-int	utfdecomp(char *dst, char *src, int max)
-.PP
-.B
-char*	fullutfnorm(char *s, int n)
-.PP
-.B
-char*	utfgbreak(char *s)
-.PP
-.B
-char*	utfwbreak(char *s)
+.ft L
+.nf
+.EX
+typedef struct Norm Norm;
+struct Norm {
+	...    /* internals */
+};
+
+void	norminit(Norm *n, int comp, void *ctx, long (*getrune)(void *ctx));
+long	normpull(Norm *n, Rune *dst, long max, int flush);
+
+long	runecomp(Rune *dst, long ndst, Rune *src, long nsrc);
+long	runedecomp(Rune *dst, long ndst, Rune *src, long nsrc);
+
+long	utfcomp(char *dst, long ndst, char *src, long nsrc);
+long	utfdecomp(char *dst, long ndst, char *src, long nsrc);
+
+Rune*	runegbreak(Rune *s);
+Rune*	runewbreak(Rune *s);
+
+char*	utfgbreak(char *s);
+char*	utfwbreak(char *s);
+.EE
 .SH DESCRIPTION
-These routines help in handling
-graphemes that may span multiple runes.
-These routines are for use in font rendering
-and advanced text search; most programs do not
-need to perform normalization.
+These routines handle Unicode®
+abstract characters that span more
+than one codepoint.
+Normalization can be used to turn all codepoints
+into a consistent representation. This
+may be useful if a specific protocol requires normalization, or if
+the program is interested in semantically comparing
+irregular input.
+.PP
+The
+.I Norm
+structure is the core structure for all normalization routines.
+.I Norminit
+initializes the structure.
+If the
+.B comp
+argument is non-zero, the output will be normalized to
+NFC (precomposed runes), otherwise it will be normalized
+to NFD (decomposed runes).
+The
+.B getrune
+argument provides the input for normalization, with each call
+returning the next rune of input, and -1 on EOF.
+The
+.B ctx
+argument is stored and passed on to the
+.B getrune
+function in every call.
+.I Normpull
+provides the normalized output, writing at most
+.B max
+elements into
+.BR dst .
+To implement normalization the
+.I Norm
+structure must buffer input until it knows that the context
+for a given base rune is complete.
+In order to accommodate callers which only have chunks
+of data to normalize at a time, the
+.I Norm
+structure maintains runes within its buffer even when
+.B getrune
+returns an EOF.
+The
+.B flush
+argument to
+.I normpull
+changes this behavior, and will instead flush out all
+runes within the structure's buffer when it receives an
+EOF from
+.BR getrune .
+The return value of
+.I normpull
+is the number of runes written to the output.
+.I Normpull
+does not null-terminate the output string,
+however, null bytes are passed through untouched.
+As such, if the input is null terminated, so is the
+output.
 .PP
 .IR Runecomp ,
 .IR runedecomp ,
 .IR utfcomp ,
 and
-.I utfdecomp
-perform Unicode® normalization on
-.IR src ,
-storing the result in
-.IR dst .
-No more than
-.I max
-elements will be written, and the resulting string
-will always be null terminated. The return value
-is always the total number of elements required to
-store the transformation. If this value is larger
-than the supplied
-.I max
-the caller can assume the result has been truncated.
-.I Runecomp
+.IR utfdecomp ,
+are abstractions on top of the
+.I Norm
+structure. They are designed to normalize
+fixed-sized input in one go.
+In all functions
+.B src
 and
-.I utfcomp
-perform NFC normalization while
-.I runedecomp
+.B dst
+specify the source and destination strings
+respectively.
+The
+.B nsrc
 and
-.I utfdecomp
-perform NFD normalization.
+.B ndst
+arguments specify the number of elements
+to process.
+Functions will never read more
+than the specified input, and will never write
+more than the specified output. If there is
+not enough room in the output buffer, the
+result is truncated.
+The return value is likewise the number of elements
+written to the output string.
+Like
+.IR normpull ,
+these functions do not explicitly null terminate
+the output, and pass null bytes through untouched.
 .PP
-.IR Fullrunenorm ,
-and
-.I fullutfnorm
-determine if enough elements are present in
-.I s
-to perform normalization. If enough are present,
-a pointer is returned to the first element that begins
-the next context. Otherwise
-.I s
-is returned. No more then
-.I n
-elements will be read. In order to find the boundary, the
-first element of the next context must be peeked.
+The standard for normalization does not specify
+a maximum number of decomposed attaching runes
+that may follow a base rune.
+In order to implement normalization, within a bounded
+amount of memory, these functions implement a subset
+of normalization called Stream-Safe Text.
+This subset specifies that one base rune may have no
+more than 30 attaching runes.
+In order to break up input that contains runs of more than 30 attaching runes,
+these functions will insert the Combining Grapheme Joiner (U+034F) to provide
+a new base for the remaining combining runes.
 .PP
 .I Runegbreak
-and
-.I utfgbreak
-search
+(\fIrunewbreak\fR)
+return the next grapheme (word) break
+opportunity in
+.BR s ,
+or
 .B s
-for the next grapheme break opportunity.
-If none is found before the end of the string,
-.I s
-is returned.
-.PP
-.I Runewbreak
-and
-.I utfwbreak
-search
-.B s
-for the next word break opportunity.
-If none is found before the end of the string,
-.I s
-is returned.
+if none is found.
+Utfgbreak and utfwbreak are UTF
+variants of these routines.
 .SH SOURCE
 .B /sys/src/libc/port/mkrunetype.c
 .br
@@ -118,4 +161,5 @@ Unicode® Standard Annex #29
 .IR utf (6),
 .IR tcs (1)
 .SH HISTORY
-This implementation was written for 9front (March, 2023).
+This implementation was first written for 9front (March, 2023).
+The implementation was rewritten (in part) for Unicode 16.0 (March, 2025).

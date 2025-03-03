@@ -68,44 +68,56 @@ utf_out(Rune *base, int n, long *)
 		write(1, obuf, p-obuf);
 }
 
-void
-utfnorm_out(Rune *base, int n, int (*fn)(Rune*,Rune*,int))
-{
-	static Rune rbuf[32];
-	static int nremain = 0;
-	Rune src[N + 1 + nelem(rbuf)];
-	Rune dst[N + 1 + nelem(rbuf)];
-	Rune *p, *p2, *e;
-	int i;
+static struct {
+	int off;
+	int n;
+	Rune *input;
+} nctx;
 
-	e = base+n;
-	for(i = 0; i < nremain; i++,n++)
-		src[i] = rbuf[i];
-	nremain = 0;
-	for(p2 = p = base; n > 0;){
-		p2 = fullrunenorm(p, n);
-		if(p == p2)
-			break;
-		n -= p2-p;
-		for(;p < p2; p++)
-			src[i++] = *p;
+static long
+normgetrune(void*)
+{
+
+	if(nctx.off >= nctx.n)
+		return -1;
+
+	return nctx.input[nctx.off++];
+}
+
+void
+utfnorm_out(Rune *base, int n, int comp)
+{
+	static Norm norm;
+	static int init;
+	Rune buf[N];
+	long w;
+	int flush;
+
+	if(init == 0){
+		init++;
+		norminit(&norm, comp, nil, normgetrune);
 	}
-	src[i] = 0;
-	utf_out(dst, fn(dst, src, sizeof dst), nil);
-	for(; p2 < e; p2++)
-		rbuf[nremain++] = *p2;
+	nctx.off = 0;
+	nctx.n = n;
+	nctx.input = base;
+
+	flush = n == 0;
+	do {
+		w = normpull(&norm, buf, nelem(buf), flush);
+		utf_out(buf, w, nil);
+	} while(w != 0);
 }
 
 void
 utfnfc_out(Rune *base, int n, long *)
 {
-	utfnorm_out(base, n, runecomp);
+	utfnorm_out(base, n, 1);
 }
 
 void
 utfnfd_out(Rune *base, int n, long *)
 {
-	utfnorm_out(base, n, runedecomp);
+	utfnorm_out(base, n, 0);
 }
 
 void

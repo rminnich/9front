@@ -10,6 +10,7 @@ all install:V:
 		cd $i
 		mk $MKFLAGS install
 	}
+	@{ cd port && mk extra }
 
 clean:V:
 	for(i in $DIRS $OLDCPUS test)@{

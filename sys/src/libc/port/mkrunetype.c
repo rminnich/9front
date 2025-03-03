@@ -172,8 +172,8 @@ mklkup(int fd, char *label, int *map, Param *p)
 	return size;
 }
 
-static void
-mklkupmatrix(char *label, int *map, Param *p)
+static int
+mklkupmatrix(int, char *label, int *map, Param *p)
 {
 	int bestsize, size, bestx, besty;
 	int x, y;
@@ -193,6 +193,7 @@ mklkupmatrix(char *label, int *map, Param *p)
 	assert(bestsize != -1);
 	fprint(2, "label: %s best: %d %d (%d)\n", label, bestx, besty, bestsize);
 	param(p, bestx, besty);
+	return bestsize;
 }
 
 static int myismerged[NRUNES];
@@ -205,7 +206,9 @@ enum{ DSTART = 0xEEEE };
 static int mydecomp[NRUNES];
 static int mydespecial[256*3];
 static int nspecial;
+static int maxdchain;
 static int myccc[NRUNES];
+static int myqc[NRUNES];
 
 typedef struct KV KV;
 struct KV{
@@ -281,6 +284,19 @@ mkrecomp(int fd)
 	fprint(fd, "static uint *_recompcoll = _recompdata+%d*2;\n", nelem(vals));
 }
 
+enum {
+	OTHER, 
+	Hebrew_Letter, Newline, Extend, Format,
+	Katakana, ALetter, MidLetter, MidNum,
+	MidNumLet, Numeric, ExtendNumLet, WSegSpace,
+	PREPEND = 0x10, CONTROL = 0x20, EXTEND = 0x30, REGION = 0x40,
+	L = 0x50, V = 0x60, T = 0x70, LV = 0x80, LVT = 0x90, SPACEMK = 0xA0,
+	EMOJIEX = 0xB0,
+
+	NFC_QC_No = 1, NFC_QC_Maybe = 2, NFD_QC_No = 4, NFD_QC_Maybe = 8,
+	
+};
+
 static void
 mktables(void)
 {
@@ -324,10 +340,21 @@ mktables(void)
 	param(&p, 10, 7);
 	size = mklkup(normfd, "decomp", mydecomp, &p);
 	fprint(2, "%s: %d\n", "decomp", size);
+	fprint(normfd, "static enum { Maxdecomp = %d };\n\n", maxdchain);
 
 	param(&p, 9, 7);
 	size = mklkup(normfd, "ccc", myccc, &p);
 	fprint(2, "%s: %d\n", "ccc", size);
+
+	param(&p, 10, 6);
+	size = mklkup(normfd, "qc", myqc, &p);
+	fprint(2, "%s: %d\n", "qc", size);
+	fprint(normfd, "static\nenum {\n");
+	fprint(normfd, "\t%s = %d,\n", "Qnfcno", NFC_QC_No);
+	fprint(normfd, "\t%s = %d,\n", "Qnfcmay", NFC_QC_Maybe);
+	fprint(normfd, "\t%s = %d,\n", "Qnfdno", NFD_QC_No);
+	fprint(normfd, "\t%s = %d,\n", "Qnfdmay", NFD_QC_Maybe);
+	fprint(normfd, "};\n");
 
 	mkexceptarr(normfd, "_decompexceptions", mydespecial, nspecial, 0);
 	mkexceptarr(normfd, "_recompexceptions", recompext, nrecompext, 1);
@@ -389,21 +416,35 @@ estrtoul(char *s, int base)
 	return code;
 }
 
-enum {
-	OTHER, 
-	Hebrew_Letter, Newline, Extend, Format,
-	Katakana, ALetter, MidLetter, MidNum,
-	MidNumLet, Numeric, ExtendNumLet, WSegSpace,
-	PREPEND = 0x10, CONTROL = 0x20, EXTEND = 0x30, REGION = 0x40,
-	L = 0x50, V = 0x60, T = 0x70, LV = 0x80, LVT = 0x90, SPACEMK = 0xA0,
-	EMOJIEX = 0xB0,
-};
+static char*
+getextraline(Biobuf *b, int *s, int *e)
+{
+	char *dot, *p;
+
+again:
+	p = Brdline(b, '\n');
+	if(p == nil)
+		return nil;
+	p[Blinelen(b)-1] = 0;
+	if(p[0] == 0 || p[0] == '#')
+		goto again;
+	if((dot = strstr(p, "..")) != nil){
+		*dot = 0;
+		dot += 2;
+		*s = estrtoul(p, 16);
+		*e = estrtoul(dot, 16);
+	} else {
+		*s = *e = estrtoul(p, 16);
+		dot = p;
+	}
+	return dot;
+}
 
 static void
 markbreak(void)
 {
 	Biobuf *b;
-	char *p, *dot;
+	char *dot;
 	int i, s, e;
 	uchar v;
 
@@ -411,19 +452,7 @@ markbreak(void)
 	if(b == nil)
 		sysfatal("could not load word breaks: %r");
 
-	while((p = Brdline(b, '\n')) != nil){
-		p[Blinelen(b)-1] = 0;
-		if(p[0] == 0 || p[0] == '#')
-			continue;
-		if((dot = strstr(p, "..")) != nil){
-			*dot = 0;
-			dot += 2;
-			s = estrtoul(p, 16);
-			e = estrtoul(dot, 16);
-		} else {
-			s = e = estrtoul(p, 16);
-			dot = p;
-		}
+	while((dot = getextraline(b, &s, &e)) != nil){
 		v = 0;
 		if(strstr(dot, "ExtendNumLet") != nil)
 			v = ExtendNumLet;
@@ -455,19 +484,7 @@ markbreak(void)
 	if(b == nil)
 		sysfatal("could not load Grapheme breaks: %r");
 
-	while((p = Brdline(b, '\n')) != nil){
-		p[Blinelen(b)-1] = 0;
-		if(p[0] == 0 || p[0] == '#')
-			continue;
-		if((dot = strstr(p, "..")) != nil){
-			*dot = 0;
-			dot += 2;
-			s = estrtoul(p, 16);
-			e = estrtoul(dot, 16);
-		} else {
-			s = e = estrtoul(p, 16);
-			dot = p;
-		}
+	while((dot = getextraline(b, &s, &e)) != nil){
 		v = 0;
 		if(strstr(dot, "; Prepend #") != nil)
 			v = PREPEND;
@@ -498,24 +515,32 @@ markbreak(void)
 	if(b == nil)
 		sysfatal("could not load emoji-data: %r");
 
-	while((p = Brdline(b, '\n')) != nil){
-		p[Blinelen(b)-1] = 0;
-		if(p[0] == 0 || p[0] == '#')
-			continue;
-		if((dot = strstr(p, "..")) != nil){
-			*dot = 0;
-			dot += 2;
-			s = estrtoul(p, 16);
-			e = estrtoul(dot, 16);
-		} else {
-			s = e = estrtoul(p, 16);
-			dot = p;
-		}
+	while((dot = getextraline(b, &s, &e)) != nil){
 		v = 0;
 		if(strstr(dot, "; Extended_Pictographic") != nil)
 			v = EMOJIEX;
 		for(i = s; i <= e; i++)
 			mybreak[i] |= v;
+	}
+	Bterm(b);
+
+	b = Bopen("/lib/ucd/DerivedNormalizationProps.txt", OREAD);
+	if(b == nil)
+		sysfatal("could not load emoji-data: %r");
+
+	while((dot = getextraline(b, &s, &e)) != nil){
+		v = 0;
+		if(strstr(dot, "; NFC_QC; N") != nil)
+			v = NFC_QC_No;
+		else if(strstr(dot, "; NFC_QC; M") != nil)
+			v = NFC_QC_Maybe;
+		else if(strstr(dot, "; NFD_QC; N") != nil)
+			v = NFD_QC_No;
+		else if(strstr(dot, "; NFD_QC; M") != nil)
+			v = NFD_QC_Maybe;
+
+		for(i = s; i <= e; i++)
+			myqc[i] |= v;
 	}
 	Bterm(b);
 }
@@ -553,6 +578,21 @@ markexclusions(void)
 		}
 	}
 	Bterm(b);
+}
+
+static void
+findlongchain(void)
+{
+	int i, n, x, r1;
+
+	for(i = 0; i < NRUNES; i++)
+	for(x = i, n = 0; r1 = mydecomp[x]>>16; x = r1){
+		if(++n > maxdchain)
+			maxdchain = n;
+		if(r1 >= DSTART && r1 <0xF8FF)
+			r1 -= DSTART;
+	}
+	maxdchain *= 2;
 }
 
 void
@@ -683,6 +723,7 @@ main(int, char)
 	}
 
 	Bterm(in);
+	findlongchain();
 	markexclusions();
 
 	/*
