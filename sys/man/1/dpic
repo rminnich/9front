@@ -86,7 +86,10 @@ then launch doom using it.
 % games/wadfs /sys/games/lib/doom/doom2.wad
 createfile SW18_7: file already exists
 % games/wadfs -m /mnt/new
-% games/todpic tuttlesky > /mnt/new/rsky1
+% mkdir /mnt/new/ff
+adding end marker FF_END
+% mv /mnt/new/ff/ff_end /mnt/new/ff/f_end
+% games/todpic tuttlesky > /mnt/new/ff/rsky1
 % cp /mnt/new/WAD tuttle.wad
 % games/doom -file tuttle.wad
 .EE
