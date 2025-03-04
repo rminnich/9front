@@ -12,6 +12,8 @@ cfg	d775
 cron	d775
 lib	d775
 	*
+	1oct1993	d775
+		*
 	audio	d775
 		icon	d775
 			*
@@ -25,7 +27,7 @@ lib	d775
 	font	d775
 		bit	d775
 			+
-	ktrans	d755
+	ktrans	d775
 		+
 	legal	d775
 		*
@@ -39,7 +41,7 @@ lib	d775
 		grabrfc
 	sky	d775
 		*
-	ucd	d755
+	ucd	d775
 		*
 rc	d775
 	skip=\.local$
