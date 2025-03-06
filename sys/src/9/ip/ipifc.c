@@ -640,18 +640,6 @@ ipifcadd(Ipifc *ifc, char **argv, int argc, int tentative, Iplifc *lifcp)
 			bcast[i] = (ip[i] & mask[i]) & mask[i];
 		addselfcache(f, ifc, lifc, bcast, Rbcast);
 
-		/* add network directed broadcast address to the self cache */
-		memmove(mask, defmask(ip), IPaddrlen);
-		for(i = 0; i < IPaddrlen; i++)
-			bcast[i] = (ip[i] & mask[i]) | ~mask[i];
-		addselfcache(f, ifc, lifc, bcast, Rbcast);
-
-		/* add network directed network address to the self cache */
-		memmove(mask, defmask(ip), IPaddrlen);
-		for(i = 0; i < IPaddrlen; i++)
-			bcast[i] = (ip[i] & mask[i]) & mask[i];
-		addselfcache(f, ifc, lifc, bcast, Rbcast);
-
 		addselfcache(f, ifc, lifc, IPv4bcast, Rbcast);
 
 		/* add all nodes multicast address */
