@@ -679,7 +679,6 @@ union Ar0 {
 typedef struct Nixpctl Nixpctl;
 #pragma incomplete Nixpctl
 
-
 struct Proc
 {
 	Label	sched;		/* known to l.s */

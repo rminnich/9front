@@ -39,7 +39,7 @@ extern void _actrapret(void);
 
 ACVctl *acvctl[256];
 
-/* 
+/*
  * Test inter core calls by calling a cores to print something, and then
  * waiting for it to complete.
  */
@@ -193,7 +193,7 @@ actrapret(void)
  * BUG: We should setup some trapenable() mechanism for the AC,
  * so that code like fpu.c could arrange for handlers specific for
  * the AC, instead of doint that by hand here.
- * 
+ *
  * All interrupts are masked while in the "kernel"
  */
 void
@@ -357,7 +357,7 @@ dumpreg(void *u)
 	ndnr();
 }
 
-char *rolename[] = 
+char *rolename[] =
 {
 	[NIXAC]	"AC",
 	[NIXTC]	"TC",
@@ -460,4 +460,3 @@ fpusysrfork(Ureg*)
 	fpuprocsave(up);
 	up->fpstate = FPinit;
 }
-

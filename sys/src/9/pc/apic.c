@@ -498,4 +498,3 @@ apicipi(int apicno)
 	while(lapicr(LapicICRLO) & Ds)
 		;
 }
-

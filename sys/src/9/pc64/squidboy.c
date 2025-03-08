@@ -45,7 +45,6 @@ squidboy(Apic* apic)
 	}
 }
 
-
 void
 mpstartap(Apic* apic)
 {
