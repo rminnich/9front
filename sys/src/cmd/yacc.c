@@ -3,8 +3,6 @@
 #include <bio.h>
 #include <ctype.h>
 
-#define	Bungetrune	Bungetc		/* ok for now. */
-
 /*
  * all these are 32 bit
  */
@@ -1756,9 +1754,9 @@ begin:
 			Bungetrune(finput);
 			return NUMBER;
 		}
-		if(islower(c) || isupper(c) || c=='_' || c=='.' || c=='$')  {
+		if(isalpharune(c) || c=='_' || c=='.' || c=='$')  {
 			i = 0;
-			while(islower(c) || isupper(c) || isdigit(c) ||
+			while(isalpharune(c) || isdigit(c) ||
 			    c == '-' || c=='_' || c=='.' || c=='$') {
 				if(reserve && isupper(c))
 					c += 'a'-'A';
@@ -2023,7 +2021,7 @@ swt:
 			}
 			goto loop;
 		}
-		if(isupper(c) || islower(c) || c == '_' || c == '.') {
+		if(isalpharune(c) || c == '_' || c == '.') {
 			int tok; /* tok used oustide for type info */
 
 			/* look for $name */
