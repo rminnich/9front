@@ -22,6 +22,7 @@ char Ebadarg[]		= "invalid argument";
 char Ebadkey[]		= "bad key";
 char Enegotiation[]	= "negotiation failed, no common protocols or keys";
 char Etoolarge[]	= "rpc too large";
+char Etoosmall[]	= "rpc too small";
 
 Proto*
 prototab[] =
@@ -430,26 +431,19 @@ fsdestroyfid(Fid *fid)
 	free(fss);
 }
 
-static int
-readlist(int off, int (*gen)(int, char*, uint, Fsstate*), Req *r, Fsstate *fss)
+static char*
+readlist(Fsstate *s, int (*gen)(int, char*, uint, Fsstate*), Req *r, Fsstate *fss)
 {
-	char *a, *ea;
 	int n;
 
-	a = r->ofcall.data;
-	ea = a+r->ifcall.count;
-	for(;;){
-		n = (*gen)(off, a, ea-a, fss);
-		if(n == 0){
-			r->ofcall.count = a - (char*)r->ofcall.data;
-			return off;
-		}
-		a += n;
-		off++;
-	}
+	n = gen(s->listoff, r->ofcall.data, r->ifcall.count, fss);
+	if(n == -1)
+		return Etoosmall;
+	if(n != 0)
+		s->listoff++;
+	r->ofcall.count = n;
+	return nil;
 }
-
-enum { Nearend = 2, };			/* at least room for \n and NUL */
 
 /* result in `a', of `n' bytes maximum */
 static int
@@ -468,14 +462,10 @@ keylist(int i, char *a, uint n, Fsstate *fss)
 	if(findkey(&k, &ki, nil) != RpcOk)
 		return 0;
 
-	memset(a + n - Nearend, 0, Nearend);
 	wb = snprint(a, n, "key %A %N\n", k->attr, k->privattr);
 	closekey(k);
-	if (wb >= n - 1 && a[n - 2] != '\n' && a[n - 2] != '\0') {
-		/* line won't fit in `a', so just truncate */
-		strcpy(a + n - 2, "\n");
-		return 0;
-	}
+	if(wb + UTFmax >= n && strchr(a, '\n') == nil)
+		return -1;
 	return wb;
 }
 
@@ -487,7 +477,7 @@ protolist(int i, char *a, uint n, Fsstate *fss)
 	if(i >= nelem(prototab)-1)
 		return 0;
 	if(strlen(prototab[i]->name)+1 > n)
-		return 0;
+		return -1;
 	n = strlen(prototab[i]->name)+1;
 	memmove(a, prototab[i]->name, n-1);
 	a[n-1] = '\n';
@@ -520,6 +510,7 @@ static void
 fsread(Req *r)
 {
 	Fsstate *s;
+	char *e;
 
 	s = r->fid->aux;
 	switch((ulong)r->fid->qid.path){
@@ -547,12 +538,12 @@ fsread(Req *r)
 		logread(r);
 		break;
 	case Qctl:
-		s->listoff = readlist(s->listoff, keylist, r, s);
-		respond(r, nil);
+		e = readlist(s, keylist, r, s);
+		respond(r, e);
 		break;
 	case Qprotolist:
-		s->listoff = readlist(s->listoff, protolist, r, s);
-		respond(r, nil);
+		e = readlist(s, protolist, r, s);
+		respond(r, e);
 		break;
 	}
 }
