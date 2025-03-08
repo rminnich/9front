@@ -22,9 +22,22 @@ gefs \- file server maintenance
 .B save trace
 .I filename
 .PP
+.B set
+[
+.I snap
+]
+.I key
+.I val
+.PP
+.B clr
+[
+.I snap
+]
+.I key
+.PP
 .B snap
 [
--Smdl
+-mdl
 ]
 [
 .I old 
@@ -83,6 +96,46 @@ Permissive disables permissions checks when accessing files, and allows
 to modify the owner of the file.
 This may be useful during file system initialization.
 .PP
+.I Set
+or
+.I clr
+sets or clears a configuration key, respectively.
+If the
+.I snap
+name is passed, then the key is set in that snapshot.
+If not, then it is set globally.
+This key is a free form string which controls
+some aspect of file system behavior on that snapshot.
+All changes take effect after the file system is restarted.
+Currently, one configuration option is supported:
+.TP
+.BI retain 'timespec'
+sets the schedule for which snapshots are retained.
+The timespec is a sequence of counts and intervals,
+in the form <
+.BR count >@<
+.BR interval >< 
+.BR scale >.
+Every
+.BR interval ,
+a new snapshot is taken.
+Up to
+.B count
+snapshots are retained in the history, with old ones aging out.
+If the 
+.B count
+is omitted, then old snapshots are not trimmed.
+If the
+.B interval
+is omitted, it defaults to 1.
+.IP
+Snapshot timing is taken from the config key attached to the snapshot.
+If there is no key attached to the snapshot,
+the global config key is used.
+If there is no global config key, the default value
+.B `60@1m 24@1h @1d'
+is used.
+.PP
 .B Snap
 manages snapshots.
 It can be invoked as
@@ -123,10 +176,6 @@ rather than read-only.
 This flag only has an effect when tagging a new snapshot,
 and is ignored otherwise.
 .TP
-.B -S
-Disables automatic timed snapshots.
-This flag only has an effect when tagging a new snapshot,
-and is ignored otherwise.
 .PP
 .I Sync
 writes dirty blocks in memory to the disk.
@@ -239,13 +288,30 @@ To create a new mutable snapshot that does not take automatic
 checkpoints:
 .IP
 .EX
-gefs# snap -Sm main mymutable
+gefs# snap -m main mymutable
+gefs# set mymutable retain ''
 .EE
 .PP
 To delete a snapshot:
 .IP
 .EX
 gefs# snap -d mysnap
+.EE
+.PP
+To set the snapshot retention on the main snapshot
+to 12 snapshots taken every five minutes,
+along with 48 snapshots taken every 2 hours,
+and a daily snapshot with no trimming:
+.IP
+.EX
+gefs# set main retain '12@5m 48@2h @d'
+.EE
+.PP
+To set the default snapshot retention to daily,
+with no minute or hour snapshots:
+.IP
+.EX
+gefs# set retain @d
 .EE
 .PP
 To create a new user:

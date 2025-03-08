@@ -91,11 +91,11 @@ initsnap(Blk *s, Blk *r, Blk *a)
 	Tree t;
 	Kvp kv;
 
-	lbl2kv("adm", 1, Lmut|Ltsnap, &kv, buf, sizeof(buf));
+	lbl2kv("adm", 1, Lmut, &kv, buf, sizeof(buf));
 	setval(s, &kv);
 	lbl2kv("empty", 0, 0, &kv, buf, sizeof(buf));
 	setval(s, &kv);
-	lbl2kv("main", 2, Lmut|Ltsnap, &kv, buf, sizeof(buf));
+	lbl2kv("main", 2, Lmut, &kv, buf, sizeof(buf));
 	setval(s, &kv);
 
 	p = buf;

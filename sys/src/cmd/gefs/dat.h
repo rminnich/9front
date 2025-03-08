@@ -1,32 +1,33 @@
-typedef struct Blk	Blk;
 typedef struct Amsg	Amsg;
-typedef struct Gefs	Gefs;
-typedef struct Errctx	Errctx;
-typedef struct Fmsg	Fmsg;
-typedef struct Fid	Fid;
-typedef struct Msg	Msg;
-typedef struct Key	Key;
-typedef struct Val	Val;
-typedef struct Kvp	Kvp;
-typedef struct Xdir	Xdir;
-typedef struct Bptr	Bptr;
-typedef struct Limbo	Limbo;
-typedef struct Bfree	Bfree;
-typedef struct Scan	Scan;
-typedef struct Dent	Dent;
-typedef struct Scanp	Scanp;
-typedef struct Arena	Arena;
 typedef struct Arange	Arange;
+typedef struct Arena	Arena;
+typedef struct Bfree	Bfree;
+typedef struct Blk	Blk;
+typedef struct Bptr	Bptr;
 typedef struct Bucket	Bucket;
 typedef struct Chan	Chan;
-typedef struct Syncq	Syncq;
+typedef struct Conn	Conn;
+typedef struct Cron	Cron;
+typedef struct Dent	Dent;
+typedef struct Dlist	Dlist;
+typedef struct Errctx	Errctx;
+typedef struct Fid	Fid;
+typedef struct Fmsg	Fmsg;
+typedef struct Gefs	Gefs;
+typedef struct Key	Key;
+typedef struct Kvp	Kvp;
+typedef struct Limbo	Limbo;
+typedef struct Mount	Mount;
+typedef struct Msg	Msg;
 typedef struct Qent	Qent;
+typedef struct Scan	Scan;
+typedef struct Scanp	Scanp;
+typedef struct Syncq	Syncq;
 typedef struct Trace	Trace;
 typedef struct Tree	Tree;
-typedef struct Dlist	Dlist;
-typedef struct Mount	Mount;
 typedef struct User	User;
-typedef struct Conn	Conn;
+typedef struct Val	Val;
+typedef struct Xdir	Xdir;
 
 enum {
 	KiB	= 1024ULL,
@@ -107,6 +108,9 @@ enum {
 	Klabel,	/* name[] => snapid[]:			snapshot label */
 	Ksnap,	/* sid[8] => ref[8], tree[52]:		snapshot root */
 	Kdlist,	/* snap[8] gen[8] => hd[ptr],tl[ptr]	deadlist  */
+
+	/* configuration */
+	Kconf,	/* name[] => value[] */
 };
 
 enum {
@@ -121,12 +125,13 @@ enum {
 
 enum {
 	Lmut	= 1 << 0,	/* can we modify snaps via this label */
-	Lauto	= 1 << 1,	/* was this label generated automatically */
-	Ltsnap	= 1 << 2,	/* should we skip the timed snapshots */
+	_Lauto	= 1 << 1,	/* deprecated: was auto snap */
+	_Ltsnap	= 1 << 2,	/* deprecated: was skipping timed snaps */
 };
 
 enum {
-	Qdump = 1ULL << 63,
+	Qdump	= 1ULL << 63,
+	Qctl	= ~0ULL,
 };
 
 #define Zb (Bptr){-1, -1, -1}
@@ -326,6 +331,8 @@ enum {
 	AOhalt,
 	AOclear,
 	AOrclose,
+	AOsetcfg,
+	AOclrcfg,
 };
 
 enum {
@@ -405,7 +412,11 @@ struct Amsg {
 			char	new[128];
 			int	flag;
 			char	delete;
-
+		};
+		struct { /* AOsetcfg AOclrcfg */
+			char	snap[128];
+			char	key[32];
+			char	val[128];
 		};
 		struct {	/* AOclear, AOrclose */
 			Mount	*mnt;
@@ -635,6 +646,15 @@ struct Dent {
 	};
 };
 
+struct Cron {
+	int	i;
+	int	cnt;
+	vlong	div;
+	vlong	last;
+	char	*tag;
+	char	(*lbl)[128];
+};
+
 struct Mount {
 	Limbo;
 	Lock;
@@ -643,16 +663,14 @@ struct Mount {
 	vlong	gen;
 	char	name[64];
 	Tree	*root;	/* EBR protected */
-
 	int	flag;
 
 	/* open directory entries */
 	Lock	dtablk;
 	Dent	*dtab[Ndtab];
 
-	/* snapshot history */
-	char	minutely[60][128];
-	char	hourly[24][128];
+	/* snapshot scheduling */
+	Cron	cron[3];
 };
 
 struct Conn {

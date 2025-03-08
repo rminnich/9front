@@ -67,16 +67,8 @@ listsnap(int fd)
 			break;
 		flg = UNPACK32(s.kv.v+1+8);
 		fprint(fd, "snap %.*s", s.kv.nk-1, s.kv.k+1);
-		if(flg != 0)
-			fprint(fd, " [");
 		if(flg & Lmut)
-			fprint(fd, " mutable");
-		if(flg & Lauto)
-			fprint(fd, " auto");
-		if(flg & Ltsnap)
-			fprint(fd, " tsnap");
-		if(flg != 0)
-			fprint(fd, " ]");
+			fprint(fd, " [mutable]");
 		fprint(fd, "\n");
 	}
 	btexit(&s);
@@ -88,17 +80,12 @@ snapfs(int fd, char **ap, int na)
 	Amsg *a;
 	int i;
 
-	if((a = mallocz(sizeof(Amsg), 1)) == nil){
-		fprint(fd, "alloc sync msg: %r\n");
-		return;
-	}
+	a = emalloc(sizeof(Amsg), 1);
 	a->op = AOsnap;
 	a->fd = fd;
-	a->flag = Ltsnap;
 	while(ap[0][0] == '-'){
 		for(i = 1; ap[0][i]; i++){
 			switch(ap[0][i]){
-			case 'S':	a->flag &= ~Ltsnap;	break;
 			case 'm':	a->flag |= Lmut;	break;
 			case 'd':	a->delete++;		break;
 			case 'l':
@@ -364,11 +351,42 @@ unreserve(int fd, char **ap, int)
 }
 
 static void
+setcfg(int fd, char **ap, int n)
+{
+	Amsg *a;
+
+	a = emalloc(sizeof(Amsg), 1);
+	a->op = AOsetcfg;
+	a->fd = fd;
+	if(n == 3)
+		strecpy(a->snap, a->snap+sizeof(a->snap), *ap++);
+	strecpy(a->key, a->key+sizeof(a->key), *ap++);
+	strecpy(a->val, a->val+sizeof(a->val), *ap);
+	chsend(fs->admchan, a);
+}
+
+static void
+clrcfg(int fd, char **ap, int n)
+{
+	Amsg *a;
+
+	a = emalloc(sizeof(Amsg), 1);
+	a->op = AOclrcfg;
+	a->fd = fd;
+	if(n == 2)
+		strecpy(a->snap, a->snap+sizeof(a->snap), *ap++);
+	strecpy(a->key, a->key+sizeof(a->key), *ap);
+	chsend(fs->admchan, a);
+}
+
+static void
 help(int fd, char**, int)
 {
 	char *msg =
 		"help -- show this help\n"
 		"check -- check for consistency\n"
+		"set [snap] key val -- set configuration key\n"
+		"clear [snap] key -- clear configuration key\n"
 		"df -- show disk usage\n"
 		"halt -- stop all writers, sync, and go read-only\n"
 		"permit [on|off] -- switch to/from permissive mode\n"
@@ -387,6 +405,8 @@ help(int fd, char**, int)
 Cmd cmdtab[] = {
 	/* admin */
 	{.name="check",		.sub=nil,	.minarg=0, .maxarg=0, .fn=fsckfs, .epoch=1},
+	{.name="set",		.sub=nil,	.minarg=2, .maxarg=3, .fn=setcfg},
+	{.name="clear",		.sub=nil,	.minarg=1, .maxarg=2, .fn=clrcfg},
 	{.name="df",		.sub=nil, 	.minarg=0, .maxarg=0, .fn=showdf},
 	{.name="halt",		.sub=nil,	.minarg=0, .maxarg=0, .fn=haltfs},
 	{.name="help",		.sub=nil,	.minarg=0, .maxarg=0, .fn=help},
