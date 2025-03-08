@@ -43,6 +43,9 @@ showkey(Fmt *fmt, Key *k)
 		n = fmtprint(fmt, "dlist gen:%lld, bgen:%lld",
 			UNPACK64(k->k+1), UNPACK64(k->k+9));
 		break;
+	case Kconf:
+		n = fmtprint(fmt, "Conf %.*s", k->nk-1, k->k+1);
+		break;
 	default:
 		n = fmtprint(fmt, "??? %.*H", k->nk, k->k);
 		break;
@@ -165,6 +168,9 @@ showval(Fmt *fmt, Kvp *v, int op, int flg)
 		n = fmtprint(fmt, "hd:%B, tl:%B",
 			unpackbp(v->v, v->nv),
 			unpackbp(v->v+Ptrsz, v->nv-Ptrsz));
+		break;
+	case Kconf:
+		n = fmtprint(fmt, "%.*s", v->nv, v->v);
 		break;
 	default:
 		n = fmtprint(fmt, "??? %.*H", v->nk, v->k);

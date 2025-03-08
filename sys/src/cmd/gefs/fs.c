@@ -11,7 +11,7 @@
 static void	respond(Fmsg*, Fcall*);
 static void	rerror(Fmsg*, char*, ...);
 static void	clunkfid(Conn*, Fid*, Amsg**);
-
+static void	snapmsg(char*, char*);
 static void	authfree(AuthRpc*);
 
 int
@@ -573,49 +573,98 @@ Out:
 	return de;
 }
 
+/*
+ * Load snapshots into history, trimming old ones if we have more
+ * snapshots than expected (eg, reducing the count in the config).
+ */
+void
+loadhist(Mount *mnt, Cron *c)
+{
+	char pfx[128];
+	int i, ns;
+	Scan s;
+
+	if(c->cnt == 0)
+		return;
+	i = 0;
+	pfx[0] = Klabel;
+	ns = snprint(pfx+1, sizeof(pfx)-1, "%s@%s.", mnt->name, c->tag);
+	btnewscan(&s, pfx, ns+1);
+	btenter(&fs->snap, &s);
+	while(1){
+		if(!btnext(&s, &s.kv))
+			break;
+		if(c->lbl[i][0] != 0)
+			snapmsg(c->lbl[i], nil);
+		assert(s.kv.nk-1 < sizeof(c->lbl[i]));
+		memcpy(c->lbl[i], s.kv.k+1, s.kv.nk-1);
+		c->lbl[i][s.kv.nk-1] = 0;
+		i = (i+1) % c->cnt;
+	}
+	btexit(&s);
+	c->last = time(nil);
+	c->i = i;
+}
+
+/*
+ * Load up automatic snapshots. Don't error on bad config,
+ * so that the user can mount the snap and fix it.
+ */
 static void
 loadautos(Mount *mnt)
 {
-	char pfx[128];
-	int m, h, ns;
-	uint flg;
-	Scan s;
+	static char *tagname[] = {"minute", "hour", "day"};
+	static int scale[] = {60, 3600, 24*3600};
+	char *p, pfx[128], rbuf[128];
+	int i, n, div, cnt, op;
+	Kvp kv;
 
-	m = 0;
-	h = 0;
-	pfx[0] = Klabel;
-	ns = snprint(pfx+1, sizeof(pfx)-1, "%s@minute.", mnt->name);
-	btnewscan(&s, pfx, ns+1);
-	btenter(&fs->snap, &s);
-	while(1){
-		if(!btnext(&s, &s.kv))
-			break;
-		flg = UNPACK32(s.kv.v+1+8);
-		if(flg & Lauto){
-			memcpy(mnt->minutely[m], s.kv.k+1, s.kv.nk-1);
-			mnt->minutely[m][s.kv.nk-1] = 0;
-			m = (m+1)%60;
-			continue;
-		}
-	}
-	btexit(&s);
+	pfx[0] = Kconf;
+	n = snprint(pfx+1, sizeof(pfx)-1, "retain");
+	kv.k = pfx;
+	kv.nk = n+1;
+	if(btlookup(mnt->root, &kv, &kv, rbuf, sizeof(rbuf)-1)
+	|| btlookup(&fs->snap, &kv, &kv, rbuf, sizeof(rbuf)-1)){
+		p[kv.nv] = 0;
+		p = kv.v;
+	}else
+		p = "60@m 24@h @d";
+	while(*p){
+		cnt = 0;
+		div = 1;
+		op = -1;
 
-	pfx[0] = Klabel;
-	ns = snprint(pfx+1, sizeof(pfx)-1, "%s@hour.", mnt->name);
-	btnewscan(&s, pfx, ns+1);
-	btenter(&fs->snap, &s);
-	while(1){
-		if(!btnext(&s, &s.kv))
-			break;
-		flg = UNPACK32(s.kv.v+1+8);
-		if(flg & Lauto){
-			memcpy(mnt->hourly[h], s.kv.k+1, s.kv.nk-1);
-			mnt->hourly[h][s.kv.nk-1] = 0;
-			h = (h+1)%24;
-			continue;
+		/* parse the conf. */
+		if(*p >= '0' && *p <= '9')
+			cnt = strtol(p, &p, 10);
+		if(*p++ != '@')
+			goto Bad;
+		if(*p >= '0' && *p <= '9')
+			div = strtol(p, &p, 10);
+		if(*p == 'm' || *p == 'h' || *p == 'd')
+			op = *p++;
+		while(*p == ' ' || *p == '\t')
+			p++;
+		if(cnt < 0 || div <= 0){
+Bad:			memset(mnt->cron, 0, sizeof(mnt->cron));
+			fprint(2, "invalid time spec\n");
+			return;
 		}
+
+		switch(op){
+		case 'm':	i = 0;	break;
+		case 'h':	i = 1;	break;
+		case 'd':	i = 2;	break;
+		default:	abort();
+		}
+
+		mnt->cron[i].tag = tagname[i];
+		mnt->cron[i].div = scale[i]*div;
+		mnt->cron[i].cnt = cnt;
+		mnt->cron[i].lbl = emalloc(cnt*sizeof(char[128]), 1);
 	}
-	btexit(&s);
+	for(i = 0; i < nelem(mnt->cron); i++)
+		loadhist(mnt, &mnt->cron[i]);
 }
 
 Mount *
@@ -650,10 +699,10 @@ getmount(char *name)
 	snprint(mnt->name, sizeof(mnt->name), "%s", name);
 	if((t = opensnap(name, &flg)) == nil)
 		error(Enosnap);
-	loadautos(mnt);
 	mnt->flag = flg;
 	mnt->root = t;
 	mnt->next = fs->mounts;
+	loadautos(mnt);
 	asetp(&fs->mounts, mnt);
 	poperror();
 
@@ -2655,6 +2704,43 @@ sweeptree(Tree *t)
 }
 
 void
+setconf(int fd, int op, char *snap, char *key, char *val)
+{
+	char kbuf[128];
+	Mount *mnt;
+	Tree *t;
+	Msg m;
+
+	mnt = nil;
+	t = &fs->snap;
+	if(waserror()){
+		fprint(fd, "error setting config: %s\n", errmsg());
+		return;
+	}
+	if(snap[0] != 0){
+		mnt = getmount(snap);
+		t = mnt->root;
+	}
+	kbuf[0] = Kconf;
+	strecpy(kbuf+1, kbuf+sizeof(kbuf), key);
+	m.op = op;
+	m.k = kbuf;
+	m.nk = strlen(key)+1;
+	m.v = val;
+	m.nv = strlen(val);
+	qlock(&fs->mutlk);
+	if(!waserror()){
+		btupsert(t, &m, 1);
+		poperror();
+	}else
+		fprint(fd, "error setting config: %s\n", errmsg());
+	qunlock(&fs->mutlk);
+	if(mnt != nil)
+		clunkmount(mnt);
+	poperror();
+}
+
+void
 runsweep(int id, void*)
 {
 	char buf[Kvmax];
@@ -2672,6 +2758,12 @@ runsweep(int id, void*)
 	while(1){
 		am = chrecv(fs->admchan);
 		switch(am->op){
+		case AOsetcfg:
+			setconf(am->fd, Oinsert, am->snap, am->key, am->val);
+			break;
+		case AOclrcfg:
+			setconf(am->fd, Odelete, am->snap, am->key, "");
+			break;
 		case AOhalt:
 			if(!agetl(&fs->rdonly)){
 				ainc(&fs->rdonly);
@@ -2871,15 +2963,14 @@ Next:
 	}
 }
 
-void
-snapmsg(char *old, char *new, int flg)
+static void
+snapmsg(char *old, char *new)
 {
 	Amsg *a;
 
 	a = emalloc(sizeof(Amsg), 1);
 	a->op = AOsnap;
 	a->fd = -1;
-	a->flag = flg;
 	strecpy(a->old, a->old+sizeof(a->old), old);
 	if(new == nil)
 		a->delete = 1;
@@ -2888,19 +2979,43 @@ snapmsg(char *old, char *new, int flg)
 	chsend(fs->admchan, a);
 }
 
+static void
+cronsync(char *name, Cron *c, Tm *tm, vlong now)
+{
+	char *p, *e, buf[128];
+
+	if(c->div == 0)
+		return;
+	if(now/c->div == c->last/c->div)
+		return;
+
+	if(c->cnt == 0){
+		p = buf;
+		e = p + sizeof(buf);
+	}else{
+		if(c->lbl[c->i][0] != 0)
+			snapmsg(c->lbl[c->i], nil);
+		p = c->lbl[c->i];
+		e = p + sizeof(c->lbl[c->i]);
+		c->i = (c->i+1)%c->cnt;
+	}
+	seprint(p, e, "%s@%s.%τ",
+		name, c->tag,
+		tmfmt(tm, "YYYY.MM.DD[_]hh:mm:ss"));
+	snapmsg(name, p);
+	c->last = now;
+}
+
 void
 runtasks(int, void *)
 {
-	char buf[128];
-	Tm now, then;
+	vlong now;
 	Mount *mnt;
-	int m, h;
 	Amsg *a;
+	Tm tm;
+	int i;
 
-	m = 0;
-	h = 0;
-	tmnow(&then, nil);
-	tmnow(&now, nil);
+	tmnow(&tm, nil);
 	while(1){
 		sleep(5000);
 		if(fs->rdonly)
@@ -2914,35 +3029,14 @@ runtasks(int, void *)
 		a->fd = -1;
 		chsend(fs->admchan, a);
 
-		tmnow(&now, nil);
+		tmnow(&tm, nil);
+		now = tmnorm(&tm);
 		for(mnt = agetp(&fs->mounts); mnt != nil; mnt = mnt->next){
-			if(!(mnt->flag & Ltsnap))
+			if(!(mnt->flag & Lmut))
 				continue;
-			if(now.yday != then.yday){
-				snprint(buf, sizeof(buf),
-					"%s@day.%τ", mnt->name, tmfmt(&now, "YYYY.MM.DD[_]hh:mm:ss"));
-				snapmsg(mnt->name, buf, Lauto);
-			}
-			if(now.hour != then.hour){
-				if(mnt->hourly[h][0] != 0)
-					snapmsg(mnt->hourly[h], nil, 0);
-				snprint(mnt->hourly[h], sizeof(mnt->hourly[h]),
-					"%s@hour.%τ", mnt->name, tmfmt(&now, "YYYY.MM.DD[_]hh:mm:ss"));
-				snapmsg(mnt->name, mnt->hourly[h], Lauto);
-			}
-			if(now.min != then.min){
-				if(mnt->minutely[m][0] != 0)
-					snapmsg(mnt->minutely[m], nil, 0);
-				snprint(mnt->minutely[m], sizeof(mnt->minutely[m]),
-					"%s@minute.%τ", mnt->name, tmfmt(&now, "YYYY.MM.DD[_]hh:mm:ss"));
-				snapmsg(mnt->name, mnt->minutely[m], Lauto);
-			}
+			for(i = 0; i < nelem(mnt->cron); i++)
+				cronsync(mnt->name, &mnt->cron[i], &tm, now);
 		}
-		if(now.hour != then.hour)
-			h = (h+1)%24;
-		if(now.min != then.min)
-			m = (m+1)%60;
-		then = now;
 		poperror();
 	}
 }
