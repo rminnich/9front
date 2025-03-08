@@ -3,7 +3,7 @@
 #define M_PROC 16
 #define PROC_DBGREG 2056
 /* On AC, we have to have a stack.
- * We can not use the Proc stack; that's 
+ * We can not use the Proc stack; that's
  * already in use on the TC.
  * For acsyscallentry, we need to use the Mach stack, not the Proc stack. */
 #define M_STACK 368
@@ -84,7 +84,7 @@ TEXT xactouser(SB), 1, $-4
 	CLI
 	BYTE $0x65; MOVQ 0, RMACH		/* m-> (MOVQ GS:0x0, R15) */
 	MOVQ	16(RMACH), RUSER		/* m->proc */
- 	MOVQ	PROC_DBGREG(RUSER), R12			/* m->proc->dbgregs */
+	MOVQ	PROC_DBGREG(RUSER), R12			/* m->proc->dbgregs */
 	MOVQ	UREG_PC(R12), CX			/* old ip */
 	MOVQ	UREG_AX(R12), BX				/* save AX */
 	SWAPGS
@@ -184,4 +184,3 @@ TEXT _acintrr<>(SB), 1, $-4			/* so ktrace can pop frame */
 _aciretnested:
 	ADDQ	$40, SP
 	IRETQ
-

@@ -21,7 +21,7 @@ main(int argc, char *argv[])
 		break;
 	default:
 		print(" badflag('%c')", ARGC());
-	} 
+	}
 	ARGEND
 
 	if (argc < 1)
@@ -31,7 +31,3 @@ main(int argc, char *argv[])
 	sysr1/*execac*/(core, argv[0], &argv[0]);
 	print("Returned? %r\n");
 }
-
-
-
-

@@ -61,7 +61,7 @@ getac(Proc *p, int core)
  * This is important for note handling, because postnote()
  * assumes that it's ok to send an IPI to an AC, no matter its
  * state. The /proc interface also assumes that.
- * 
+ *
  */
 void
 intrac(Proc *p)
@@ -215,7 +215,7 @@ fakeretfromsyscall(Ureg *ureg)
 	kexit(ureg);
 }
 
-static void 
+static void
 tabs(int i)
 {
 	while(i--)
@@ -369,7 +369,7 @@ runacore(void)
 	}
 ToTC:
 	/*
-	 *  to procctl, then syscall,  to 
+	 *  to procctl, then syscall,  to
 	 *  be back in the TC
 	 */
 	DBG("runacore: up %#p: return\n", up);
@@ -395,5 +395,3 @@ actrapenable(int vno, char* (*f)(Ureg*, void*), void* a, char *name)
 		panic("vector %d: AC traps can't be shared", vno);
 	acvctl[vno] = v;
 }
-
-
