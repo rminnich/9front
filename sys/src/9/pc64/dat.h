@@ -55,7 +55,7 @@ struct NIX
 {
 	ICC*	icc;			/* inter-core call */
 	uvlong	cr2;
-	int	nixtype;	
+	int	nixtype;
 };
 
 /*

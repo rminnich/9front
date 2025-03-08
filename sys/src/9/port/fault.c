@@ -278,7 +278,7 @@ fault(uintptr addr, uintptr pc, int read)
 		panic("fault: nil up");
 	if(up->nlocks){
 		Lock *l = up->lastlock;
-		print("cpu%d:fault: nlocks %d, proc %lud %s, addr %#p, lock %#p, lpc %#p\n", 
+		print("cpu%d:fault: nlocks %d, proc %lud %s, addr %#p, lock %#p, lpc %#p\n",
 			m->machno, up->nlocks, up->pid, up->text, addr, l, l ? l->pc : 0);
 	}
 
