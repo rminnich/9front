@@ -73,6 +73,8 @@ for(c in $commits){
 				b=/dev/null
 			diff -ur $a $b
 		}
+		echo '-- '
+		echo '⑨'
 	} >$patchfile
 	if(~ $#patchdir 0){
 		cat $patchfile
