@@ -430,14 +430,18 @@ implies
 exports a list of commits in a format that
 .I git/import
 can apply.
+If multiple patches are generated,
+they are separated with a ⑨ character.
 .PP
 .I Git/import
 imports a commit with message, author, and
 date information.
 When passed the
 .B -n
-option, applies the contents of the commit without
-committing to the branch.
+option,
+it applies the contents of the commit without committing to the branch.
+Git/import can accept multiple patches on stdin.
+When multiple patches are supplied, each patch must be separated with a ⑨ character.
 .PP
 .I Git/merge
 takes two branches and merges them filewise using
