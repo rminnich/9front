@@ -1,3 +1,32 @@
+#include	"u.h"
+#include	"tos.h"
+#include	"../port/lib.h"
+#include	"mem.h"
+#include	"dat.h"
+#include	"fns.h"
+#include	"../port/error.h"
+#include	"edf.h"
+
+#include	<a.out.h>
+
+static int
+shargs(char *s, int n, char **ap, int nap)
+{
+	char *p;
+	int i;
+
+	if(n <= 2 || s[0] != '#' || s[1] != '!')
+		return -1;
+	s += 2;
+	n -= 2;		/* skip #! */
+	if((p = memchr(s, '\n', n)) == nil)
+		return 0;
+	*p = 0;
+	i = tokenize(s, ap, nap-1);
+	ap[i] = nil;
+	return i;
+}
+
 /* TODO: in nix, we had common code for both of these. We're not ready yet. */
 uintptr
 sysexecac(va_list list)

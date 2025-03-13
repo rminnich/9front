@@ -38,6 +38,7 @@ PORT=\
 	segment.$O\
 	syscallfmt.$O\
 	sysfile.$O\
+	sysnix.$O\
 	sysproc.$O\
 	taslock.$O\
 	tod.$O\
