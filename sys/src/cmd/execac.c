@@ -8,16 +8,15 @@ usage(void)
 	exits("usage");
 }
 
-int	sysr1(int, char*, char*[]);
-int execac(int, char *name, char* argv[]);
 void
 main(int argc, char *argv[])
 {
-	int core = 0xecac;
+	void * core = (void *)0xecac;
+	int i;
 
 	ARGBEGIN {
 	case 'c':
-		core = strtoul(EARGF(usage()), nil, 0);
+		core = (void *)strtoul(EARGF(usage()), nil, 0);
 		break;
 	default:
 		print(" badflag('%c')", ARGC());
@@ -27,7 +26,9 @@ main(int argc, char *argv[])
 	if (argc < 1)
 		usage();
 
-
-	sysr1/*execac*/(core, argv[0], &argv[0]);
+	for(i = 0; i < argc; i++)
+		print("execac:%s[%d],", argv[i], i);
+	print("\n");
+	exec(core, argv);
 	print("Returned? %r\n");
 }
