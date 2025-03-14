@@ -13,11 +13,11 @@ int execac(int, char *name, char* argv[]);
 void
 main(int argc, char *argv[])
 {
-	int core = 0;
+	int core = 0xecac;
 
 	ARGBEGIN {
 	case 'c':
-		core = atoi(EARGF(usage()));
+		core = strtoul(EARGF(usage()), nil, 0);
 		break;
 	default:
 		print(" badflag('%c')", ARGC());

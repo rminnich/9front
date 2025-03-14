@@ -155,9 +155,9 @@ enum
 /* execac */
 enum
 {
-	EXTC = 0,	/* exec on time-sharing */
-	EXAC,		/* want an AC for the exec'd image */
-	EXXC,		/* want an XC for the exec'd image */
+	EXTC = 0xEC7C,	/* exec on time-sharing */
+	EXAC = 0xECAC,		/* want an AC for the exec'd image */
+	EXXC = 0xEC0C,		/* want an XC for the exec'd image --- NOT SUPPORTED */
 };
 
 /*
