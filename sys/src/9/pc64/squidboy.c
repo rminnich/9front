@@ -7,10 +7,13 @@
 #include "ureg.h"
 
 #include "mp.h"
-
+#include "/sys/src/libc/9syscall/sys.h"
 static void
 squidboy(Apic* apic)
 {
+	typedef uintptr Syscall(va_list);
+	Syscall sysexecac;
+	extern Syscall *systab[];
 	machinit();
 	acmodeset(m->machno == 1 ? NIXAC : NIXTC);
 	mmuinit();
@@ -25,6 +28,10 @@ squidboy(Apic* apic)
 	m->icc->fn = nil;
 	switch(m->nixtype){
 	case NIXAC:
+		/* If there is a NIXAC in the set, then
+		 * we pre-empt systab[EXEC]
+		 */
+		systab[EXEC] = sysexecac;
 		print("Startup up AC %d\n", m->machno);
 		m->online = 1;
 		acmmuswitch();
