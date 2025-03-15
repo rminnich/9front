@@ -20,7 +20,10 @@ fmtrwdata(Fmt* f, char* a, int n, char* suffix)
 		fmtprint(f, "0x0%s", suffix);
 		return;
 	}
-	validaddr((uintptr)a, n, 0);
+	if (!okaddr((uintptr)a, n, 0)) {
+		fmtprint(f, "%p(BAD!) ", a);
+		return;
+	}
 	t = smalloc(n+1);
 	t[n] = 0;
 	for(i = 0; i < n; i++)
@@ -65,7 +68,7 @@ syscallfmt(ulong syscallno, uintptr pc, va_list list)
 	uintptr p;
 	int i[2], len;
 	char *a, **argv;
-
+return; // Until we fix all calls to validaddr. It should not be called, ever, in this function
 	fmtstrinit(&fmt);
 	fmtprint(&fmt, "%uld %s ", up->pid, up->text);
 
@@ -133,12 +136,15 @@ syscallfmt(ulong syscallno, uintptr pc, va_list list)
 		argv = va_arg(list, char**);
 		evenaddr((uintptr)argv);
 		for(;;){
-			validaddr((uintptr)argv, sizeof(char**), 0);
-			a = *(char **)argv;
-			if(a == nil)
-				break;
-			fmtprint(&fmt, " ");
-			fmtuserstring(&fmt, a, "");
+			if (!okaddr((uintptr)argv, sizeof(char**), 0)) {
+				fmtprint(&fmt, "%p(BAD!) ", argv);
+			} else {
+				a = *(char **)argv;
+				if(a == nil)
+					break;
+				fmtprint(&fmt, " ");
+				fmtuserstring(&fmt, a, "");
+			}
 			argv++;
 		}
 		break;
