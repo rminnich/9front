@@ -9,6 +9,10 @@
 
 #include	<a.out.h>
 
+/* a note on ABI. For standard exec, the va_list is a standard sysexec: 
+ * a char * and a char **, two pointers. 
+ * For sysexecac, va_list contains a flags, and a va_list compatible
+ * with the sysexec abi. */
 uintptr
 sysexecac(va_list list)
 {
@@ -17,13 +21,12 @@ sysexecac(va_list list)
  	uintptr flags;
 	va_list eac = list;
 	char ** args;
-	void *v[2];
 
  	flags = va_arg(eac, uintptr);
 	print("sysexecac: flags %p\n", flags);
  	switch(flags){
  	case EXTC:
-		list = eac;
+		break;
  	default:
 		print("sysexecac: normal\n");
  		return sysexec(list);
@@ -40,14 +43,14 @@ sysexecac(va_list list)
 	 * So we need to get the argv, and reconstitute a new
 	 * va_list with the path, and the argv, as the two elements. */
 	
-	args = va_arg(eac, char **);
-	v[0] = args[0];
-	v[1] = args;
 	if (waserror()) {
-		stopac();
+		if (up->ac)
+			stopac();
 		nexterror();
 	}
-	ar0 = sysexec((va_list)v);
+	args = va_arg(eac, char **);
+	print("args is %p; args[0] is %p; args[1] is %p\n", args, ((uintptr*)args)[0], ((uintptr*)args)[1]);
+	ar0 = sysexec((va_list)args);
 
 	nixprepage(-1);
 	up->procctl = Proc_toac;
