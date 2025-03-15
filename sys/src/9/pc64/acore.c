@@ -8,7 +8,7 @@
 #include	"../port/pci.h"
 #include	"ureg.h"
 
-#define DBG iprint
+#define DBG if(0)iprint
 /*
  * NIX code run at the AC.
  * This is the "AC kernel".
@@ -342,7 +342,7 @@ acsysret(void)
 	iprint("  ur %#p up %#p\n", u, up);
 	DBG("acsysret m %p m->machno %d m->proc %p u->sp %p sp %p\n", m, m->machno, m->proc, u->sp, sp);
 	if (sp != u->sp)
-		DBG("THIS CAN NOT HAPPEN: SP %p != u->sp %p", sp, u->sp);
+		print("THIS CAN NOT HAPPEN: SP %p != u->sp %p", sp, u->sp);
 	if(m->proc != nil)
 		m->proc->actime += fastticks2us(fastticks(nil) - m->proc->actime1);
 	DBG("cpu%d:acsysret: pc %p, sp %p savesp %p\n", m->machno, u->pc, u->sp, sp);

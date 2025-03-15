@@ -8,7 +8,7 @@
 #include	"../port/pci.h"
 #include	"ureg.h"
 
-#define DBG print
+#define DBG if(0)print
 
 Lock nixaclock;	/* NIX AC lock; held while assigning procs to cores */
 
