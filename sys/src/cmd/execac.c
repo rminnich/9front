@@ -13,6 +13,7 @@ main(int argc, char *argv[])
 {
 	void * core = (void *)0xecac;
 	int i;
+	void *eargs[2];
 
 	ARGBEGIN {
 	case 'c':
@@ -29,6 +30,8 @@ main(int argc, char *argv[])
 	for(i = 0; i < argc; i++)
 		print("execac:%s[%d],", argv[i], i);
 	print("\n");
-	exec(core, argv);
+	eargs[0] = argv[0];
+	eargs[1] = argv;
+	exec(core, (char **)eargs);
 	print("Returned? %r\n");
 }
