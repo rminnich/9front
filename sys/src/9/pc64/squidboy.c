@@ -30,7 +30,6 @@ squidboy(Apic* apic)
 		if(*accores++ == 0)
 			break;
 	}
-	//acmodeset(m->machno == 1 ? NIXAC : NIXTC);
 
 	mmuinit();
 	cpuidentify();
