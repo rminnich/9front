@@ -13,9 +13,24 @@ squidboy(Apic* apic)
 {
 	typedef uintptr Syscall(va_list);
 	Syscall sysexecac;
+	char *accores;
+	int ac;
 	extern Syscall *systab[];
 	machinit();
-	acmodeset(m->machno == 1 ? NIXAC : NIXTC);
+
+	accores = getconf("nixac");
+	while(accores){
+		ac = strtol(accores, &accores,10);
+		if(ac == 0){
+			print("nixac: 0 is not a valid AC or non-numeric entry: %s\n", getconf("nixac"));
+			break;
+		}
+		if(m->machno == ac)
+			acmodeset(NIXAC);
+		if(*accores++ == 0)
+			break;
+	}
+
 	mmuinit();
 	cpuidentify();
 	if(arch->clockinit)
