@@ -24,15 +24,16 @@ sysexecac(va_list list)
 
  	flags = va_arg(eac, uintptr);
 	print("sysexecac: flags %p\n", flags);
- 	switch(flags){
+ 	switch(flags & 0xFFFF){
  	case EXTC:
 		break;
  	default:
 		print("sysexecac: normal\n");
  		return sysexec(list);
  	case EXAC:
- 		up->ac = getac(up, -1);
- 		break;
+ 		up->ac = getac(up, flags >> 16);
+ 		print("Requested ac %d, got AC %p\n", flags >> 16, up->ac);
+		break;
  	case EXXC:
  		error("EXXC not supported yet");
  	}

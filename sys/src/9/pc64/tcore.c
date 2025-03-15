@@ -36,10 +36,10 @@ getac(Proc *p, int core)
 		if(core >= MAXMACH)
 			error("no such core");
 		mp = machp[core];
-		if(mp == nil || mp->online == 0 || mp->proc != nil)
-			error("core not online or busy");
 		if(mp->nixtype != NIXAC)
 			error("core is not an AC");
+		if(mp == nil || mp->online == 0 || mp->proc != nil)
+			error("core not online or busy");
 	Found:
 		mp->proc = p;
 	}else{

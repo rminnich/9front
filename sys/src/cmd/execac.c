@@ -4,20 +4,20 @@
 void
 usage(void)
 {
-	fprint(2, "Usage: testexecap [-c core (default 0)] path [args]\n");
+	fprint(2, "Usage: execac [-c core (default 0)] path [args]\n");
 	exits("usage");
 }
 
 void
 main(int argc, char *argv[])
 {
-	void * core = (void *)0xecac;
+	uintptr core = 0;
 	int i;
 	void *eargs[2];
 
 	ARGBEGIN {
 	case 'c':
-		core = (void *)strtoul(EARGF(usage()), nil, 0);
+		core = strtoul(EARGF(usage()), nil, 0);
 		break;
 	default:
 		print(" badflag('%c')", ARGC());
@@ -32,6 +32,8 @@ main(int argc, char *argv[])
 	print("\n");
 	eargs[0] = argv[0];
 	eargs[1] = argv;
-	exec(core, (char **)eargs);
-	print("Returned? %r\n");
-}
+	print("Requsting core %lld\n", core);
+	core = 0xecac | (core << 16);
+	print("exec flags = %llx\n", core);
+	exec((void*)(core), (char **)eargs);
+	print("Returned? %r\n");}
