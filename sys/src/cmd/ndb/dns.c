@@ -608,7 +608,9 @@ rread(Job *job, Mfile *mf)
 	cnt = job->request.count;
 	*buf = '\0';
 	job->reply.data = (char*)buf;
-	if(mf->qid.type & QTDIR){
+	if(off < 0 || off != job->request.offset)
+		err = "bad read offset";
+	else if(mf->qid.type & QTDIR){
 		clock = time(nil);
 		if(off == 0){
 			memset(&dir, 0, sizeof dir);
@@ -622,9 +624,7 @@ rread(Job *job, Mfile *mf)
 			dir.atime = dir.mtime = clock;		/* wrong */
 			n = convD2M(&dir, buf, sizeof buf);
 		}
-	} else if (off < 0)
-		err = "negative read offset";
-	else {
+	} else {
 		/* first offset will always be zero */
 		for(i = 1; i <= mf->nrr; i++)
 			if(mf->rr[i] > off)
