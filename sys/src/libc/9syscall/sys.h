@@ -50,4 +50,3 @@
 #define	PWRITE		51
 #define	TSEMACQUIRE	52
 #define _NSEC		53
-#define	EXECAC		55
