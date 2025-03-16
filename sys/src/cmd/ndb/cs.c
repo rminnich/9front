@@ -678,6 +678,11 @@ rread(Job *job, Mfile *mf)
 	cnt = job->request.count;
 	mf->ref++;
 
+	if(off < 0 || off != job->request.offset){
+		err = "bad read offset";
+		goto send;
+	}
+
 	if(mf->qid.type & QTDIR){
 		clock = time(0);
 		if(off == 0){
