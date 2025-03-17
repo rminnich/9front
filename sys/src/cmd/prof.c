@@ -298,7 +298,8 @@ plot(void)
 		}
 		acc[nsym].name = s.name;
 		acc[nsym].pc = s.value;
-		acc[nsym].calls = acc[nsym].ticks = 0;
+		acc[nsym].calls = 0;
+		acc[nsym].ticks = 0;
 	}
 	sum(data[0].down);
 	qsort(acc, nsym, sizeof(Acc), acmp);
