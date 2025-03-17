@@ -259,7 +259,8 @@ threadmain(int argc, char **argv)
 	syms(argv[0]);
 	datas(argv[1]);
 	for(int i = 1; i < ndata; i++){
-		if((t = data[i].time) < 0)
+		t = data[i].time;
+		if(t < 0)
 			data[i].time =  t + data[0].time;
 	}
 
