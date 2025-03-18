@@ -4,7 +4,7 @@ netstat \- summarize network connections
 .SH SYNOPSIS
 .B netstat
 [
-.B -in
+.B -int
 ] [
 .B -p
 .I proto
@@ -42,6 +42,10 @@ This option disables such translation.
 .TP
 .B -p
 Show only connections with the given protocol.
+.TP
+-B -t
+Prefix connections with how many seconds they've been alive.
+The output is sorted with the youngest connections first.
 .PD
 .SH FILES
 .B /net/*/*

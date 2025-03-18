@@ -1,0 +1,97 @@
+#!/bin/rc
+rfork e
+flagfmt='i, n, t:time, p:proto proto'
+args='[netmtpt]'
+netmtpt=/net
+if(! ifs=() eval `{aux/getflags $*}){
+	aux/usage
+	exit usage
+}
+if(! ~ $1 '')
+	netmtpt=$1
+cd $netmtpt || exit 'invalid netmtpt'
+
+if(~ $#flagi 1){
+	cat ipifc/*/status | awk '
+	/^device/{
+		device=$2
+		mtu=$4
+		pktin=$28
+		pktout=$30
+		errin=$32
+		errout=$34
+	}
+	/^\t/{
+		if(length(device) > dlen)
+			dlen = length(device)
+		if(length($1) > iplen)
+			iplen = length($1)
+		if(length($3) > iplen)
+			iplen = length($3)
+		output[i++] = device" "mtu" "$1" "$2" "$3" "pktin" "pktout" "errin" "errout
+	}
+	END{
+		for(i=0; i < length(output); i++){
+			split(output[i], a)
+			printf("%-*s %5s %-*s %5s %-*s", dlen, a[1], a[2], iplen, a[3], a[4], iplen, a[5])
+			printf("%8s %8s %8s %8s\n", pktin, pktout, errin, errout)
+		}
+	}
+	'
+	exit
+}
+
+if(~ $#proto 0){
+	# use ls to avoid sorting, compatability with old netstat
+	for(i in `{ls -n})
+		if(! ~ $i 'ipifc' && ls $i/0/local >/dev/null >[2=1])
+			proto=($proto $i)
+}
+now=''
+if(~ $#time 1)
+	now=`{date -n}
+{ for(i in $proto)@{
+	cd $i && walk -n0,1 -e nUm | awk -v 'now='^$now -v 'flagn='$#flagn -v 'proto='$i '
+	function cat(f,	v){
+		getline v < f
+		close(f)
+		return v
+	}
+	function q(s){
+		gsub("''", "''''", s)
+		return "''"s"''"
+	}
+	function csquery(p, inkey, outkey, cache, v, n, a){
+		if(flagn == 1)
+			return p
+		if(cache[p] != "")
+			return cache[p]
+		system("ndb/query -c "inkey" "q(p)" "outkey" >/env/output >[2]/dev/null")
+		v = cat("/env/output")
+		if(v == "")
+			v = p
+		cache[p] = v
+		return v
+	}
+	function getport(p){
+		return csquery(p, "port", proto, portcache)
+	}
+	function getdns(p){
+		return csquery(p, "ip", "dom", dnscache)
+	}
+	/^[0-9]/{
+		split(cat($1"/status"), state, " ")
+		split(cat($1"/local"), local, "!")
+		split(cat($1"/remote"), remote, "!")
+		if(now != "")
+			printf("%-7s ", now-$3)
+		printf("%-6s %-4s %-10s %-12s ", proto, $1, $2, state[1])
+		printf("%-10s %-10s %-10s\n", getport(local[2]), getport(remote[2]), getdns(remote[1]))
+	}
+	'
+}} | {
+	if(~ $#time 1)
+		sort -n
+	if not
+		cat
+}
