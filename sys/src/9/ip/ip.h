@@ -270,6 +270,7 @@ struct Conv
 	int	inuse;			/* opens of listen/data/ctl */
 	int	length;
 	int	state;
+	ulong	ctime;
 
 	/* udp specific */
 	int	headers;		/* data src/dst headers in udp */
