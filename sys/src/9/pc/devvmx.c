@@ -384,7 +384,8 @@ parseval(char *s)
 	char *p;
 
 	v = strtoull(s, &p, 0);
-	if(p == s || *p != 0) error("invalid value");
+	if(p == s || *p != 0)
+		error("invalid value");
 	return v;
 }
 
@@ -415,11 +416,13 @@ updatelma(void)
 {
 	uvlong cr0, efer, nefer, ectrl;
 
-	if(sizeof(uintptr) != 8) return;
+	if(sizeof(uintptr) != 8)
+		return;
 	cr0 = vmcsread(GUEST_CR0);
 	efer = vmcsread(GUEST_IA32_EFER);
 	nefer = efer & ~0x400 | efer << 2 & cr0 >> 21 & 0x400;
-	if(efer == nefer) return;
+	if(efer == nefer)
+		return;
 	vmcswrite(GUEST_IA32_EFER, nefer);
 	ectrl = vmcsread(VMENTRY_CTLS);
 	ectrl = ectrl & ~0x200 | nefer >> 1 & 0x200;
@@ -622,13 +625,15 @@ eptwalk(Vmx *vmx, uvlong addr)
 	int i;
 	
 	tab = vmx->pml4;
-	if(tab == nil) error(Egreg);
+	if(tab == nil)
+		error(Egreg);
 	for(i = 3; i >= 1; i--){
 		tab += addr >> 12 + 9 * i & 0x1ff;
 		v = *tab;
 		if((v & 3) == 0){
 			nt = mallocalign(BY2PG, BY2PG, 0, 0);
-			if(nt == nil) error(Enomem);
+			if(nt == nil)
+				error(Enomem);
 			memset(nt, 0, BY2PG);
 			v = PADDR(nt) | 0x407;
 			*tab = v;
@@ -644,11 +649,13 @@ eptfree(uvlong *tab, int level)
 	int i;
 	uvlong v, *t;
 	
-	if(tab == nil) error(Egreg);
+	if(tab == nil)
+		error(Egreg);
 	if(level < 3){
 		for(i = 0; i < 512; i++){
 			v = tab[i];
-			if((v & 3) == 0) continue;
+			if((v & 3) == 0)
+				continue;
 			t = KADDR(v & ~0xfff);
 			eptfree(t, level + 1);
 			tab[i] = 0;
@@ -697,7 +704,8 @@ cmdgetmeminfo(VmCmd *cmd, va_list va)
 	p0 = va_arg(va, char *);
 	e = va_arg(va, char *);
 	p = p0;
-	if(p < e) *p = 0;
+	if(p < e)
+		*p = 0;
 	for(mp = cmd->vmx->mem.next; mp != &cmd->vmx->mem; mp = mp->next){
 		if(mp->seg == nil)
 			continue;
@@ -708,7 +716,8 @@ cmdgetmeminfo(VmCmd *cmd, va_list va)
 		*(ushort*)mt = *(u16int*)mtype[mp->attr >> 3 & 7];
 		mt[2] = (mp->attr & 0x40) != 0 ? '!' : 0;
 		mt[3] = 0;
-		p = seprint(p, e, "%s %s %#llux %#llux %s %#llux\n", attr, mt, mp->addr, mp->next->addr, mp->name, (uvlong)mp->off);
+		p = seprint(p, e, "%s %s %#llux %#llux %s %#llux\n",
+			attr, mt, mp->addr, mp->next->addr, mp->name, (uvlong)mp->off);
 	}
 	return p - p0;
 }
@@ -804,7 +813,8 @@ cmdsetmeminfo(VmCmd *cmd, va_list va)
 	mp = nil;
 	for(;;){
 		q = strchr(p, '\n');
-		if(q == 0) break;
+		if(q == 0)
+			break;
 		*q = 0;
 		if(mp == nil){
 			mp = malloc(sizeof(VmMem));
@@ -824,35 +834,60 @@ cmdsetmeminfo(VmCmd *cmd, va_list va)
 			poperror();
 			continue;
 		}
-		if(rc != 4 && rc != 6) error("number of fields wrong");
+		if(rc != 4 && rc != 6)
+			error("number of fields wrong");
 		for(q = f[0]; *q != 0; q++)
 			switch(*q){
-			case 'r': if((mp->attr & 1) != 0) goto tinval; mp->attr |= 1; break;
-			case 'w': if((mp->attr & 2) != 0) goto tinval; mp->attr |= 2; break;
-			case 'x': if((mp->attr & 4) != 0) goto tinval; mp->attr |= 0x404; break;
-			case '-': break;
-			default: tinval: error("invalid access field");
+			case 'r':
+				if((mp->attr & 1) != 0)
+					goto tinval;
+				mp->attr |= 1;
+				break;
+			case 'w':
+				if((mp->attr & 2) != 0)
+					goto tinval;
+				mp->attr |= 2;
+				break;
+			case 'x':
+				if((mp->attr & 4) != 0)
+					goto tinval;
+				mp->attr |= 0x404;
+				break;
+			case '-':
+				break;
+			default:
+			tinval:
+				error("invalid access field");
 			}
 		for(j = 0; j < 8; j++)
 			if(strncmp(mtype[j], f[1], 2) == 0){
 				mp->attr |= j << 3;
 				break;
 			}
-		if(j == 8 || strlen(f[1]) > 3) error("invalid memory type");
-		if(f[1][2] == '!') mp->attr |= 0x40;
-		else if(f[1][2] != 0) error("invalid memory type");
+		if(j == 8 || strlen(f[1]) > 3)
+			error("invalid memory type");
+		if(f[1][2] == '!')
+			mp->attr |= 0x40;
+		else if(f[1][2] != 0)
+			error("invalid memory type");
 		mp->addr = strtoull(f[2], &r, 0);
-		if(*r != 0 || !vmokpage(mp->addr)) error("invalid low guest physical address");
+		if(*r != 0 || !vmokpage(mp->addr))
+			error("invalid low guest physical address");
 		end = strtoull(f[3], &r, 0);
-		if(*r != 0 || !vmokpage(end) || end <= mp->addr) error("invalid high guest physical address");
+		if(*r != 0 || !vmokpage(end) || end <= mp->addr)
+			error("invalid high guest physical address");
 		if((mp->attr & 7) != 0){
-			if(rc != 6) error("number of fields wrong");
+			if(rc != 6)
+				error("number of fields wrong");
 			mp->seg = _globalsegattach(f[4]);
-			if(mp->seg == nil) error("no such segment");
-			if(mp->seg->base + mp->off + (end - mp->addr) > mp->seg->top) error("out of bounds");
+			if(mp->seg == nil)
+				error("no such segment");
+			if(mp->seg->base + mp->off + (end - mp->addr) > mp->seg->top)
+				error("out of bounds");
 			kstrdup(&mp->name, f[4]);
 			mp->off = strtoull(f[5], &r, 0);
-			if(*r != 0 || !vmokpage(mp->off)) error("invalid offset");
+			if(*r != 0 || !vmokpage(mp->off))
+				error("invalid offset");
 		}
 		poperror();
 		epttranslate(cmd->vmx, mp, end);
@@ -871,9 +906,11 @@ vmxreset(void)
 	int i;
 
 	cpuid(1, 0, regs);
-	if((regs[2] & 1<<5) == 0) return;
+	if((regs[2] & 1<<5) == 0)
+		return;
 	/* check if disabled by BIOS */
-	if(rdmsr(0x3a, &msr) < 0) return;
+	if(rdmsr(0x3a, &msr) < 0)
+		return;
 	if((msr & 5) != 5){
 		if((msr & 1) == 0){ /* msr still unlocked */
 			wrmsr(0x3a, msr | 5);
@@ -883,10 +920,14 @@ vmxreset(void)
 		if((msr & 5) != 5)
 			return;
 	}
-	if(rdmsr(VMX_PROCB_CTLS_MSR, &msr) < 0) return;
-	if((vlong)msr >= 0) return;
-	if(rdmsr(VMX_PROCB_CTLS2_MSR, &msr) < 0) return;
-	if((msr >> 32 & PROCB_EPT) == 0 || (msr >> 32 & PROCB_VPID) == 0) return;
+	if(rdmsr(VMX_PROCB_CTLS_MSR, &msr) < 0)
+		return;
+	if((vlong)msr >= 0)
+		return;
+	if(rdmsr(VMX_PROCB_CTLS2_MSR, &msr) < 0)
+		return;
+	if((msr >> 32 & PROCB_EPT) == 0 || (msr >> 32 & PROCB_VPID) == 0)
+		return;
 	for(i = 0; i < conf.nmach; i++){
 		MACHP(i)->vmx = mallocalign(sizeof(VmxMach), 4096, 0, 0);
 		if(vmxmachp(i) == nil)
@@ -942,22 +983,29 @@ vmcsinit(Vmx *vmx)
 	vmx->launched = 0;
 	vmx->onentry = 0;	
 	
-	if(rdmsr(VMX_BASIC_MSR, &msr) < 0) error("rdmsr(VMX_BASIC_MSR) failed");
+	if(rdmsr(VMX_BASIC_MSR, &msr) < 0)
+		error("rdmsr(VMX_BASIC_MSR) failed");
 	if((msr & 1ULL<<55) != 0){
-		if(rdmsr(VMX_TRUE_PROCB_CTLS_MSR, &procb_ctls) < 0) error("rdmsr(VMX_TRUE_PROCB_CTLS_MSR) failed");
-		if(rdmsr(VMX_TRUE_PINB_CTLS_MSR, &pinb_ctls) < 0) error("rdmsr(VMX_TRUE_PINB_CTLS_MSR) failed");
+		if(rdmsr(VMX_TRUE_PROCB_CTLS_MSR, &procb_ctls) < 0)
+			error("rdmsr(VMX_TRUE_PROCB_CTLS_MSR) failed");
+		if(rdmsr(VMX_TRUE_PINB_CTLS_MSR, &pinb_ctls) < 0)
+			error("rdmsr(VMX_TRUE_PINB_CTLS_MSR) failed");
 	}else{
-		if(rdmsr(VMX_PROCB_CTLS_MSR, &procb_ctls) < 0) error("rdmsr(VMX_PROCB_CTLS_MSR) failed");
-		if(rdmsr(VMX_PINB_CTLS_MSR, &pinb_ctls) < 0) error("rdmsr(VMX_PINB_CTLS_MSR) failed");
+		if(rdmsr(VMX_PROCB_CTLS_MSR, &procb_ctls) < 0)
+			error("rdmsr(VMX_PROCB_CTLS_MSR) failed");
+		if(rdmsr(VMX_PINB_CTLS_MSR, &pinb_ctls) < 0)
+			error("rdmsr(VMX_PINB_CTLS_MSR) failed");
 	}
 
-	if(rdmsr(VMX_PINB_CTLS_MSR, &msr) < 0) error("rdmsr(VMX_PINB_CTLS_MSR failed");
+	if(rdmsr(VMX_PINB_CTLS_MSR, &msr) < 0)
+		error("rdmsr(VMX_PINB_CTLS_MSR failed");
 	x = (u32int)pinb_ctls | 1<<1 | 1<<2 | 1<<4; /* currently reserved default1 bits */
 	x |= PINB_EXITIRQ | PINB_EXITNMI;
 	x &= pinb_ctls >> 32;
 	vmcswrite(PINB_CTLS, x);
 	
-	if(rdmsr(VMX_PROCB_CTLS_MSR, &msr) < 0) error("rdmsr(VMX_PROCB_CTLS_MSR failed");
+	if(rdmsr(VMX_PROCB_CTLS_MSR, &msr) < 0)
+		error("rdmsr(VMX_PROCB_CTLS_MSR failed");
 	x = (u32int)procb_ctls | 1<<1 | 7<<4 | 1<<8 | 1<<13 | 1<<14 | 1<<26; /* currently reserved default1 bits */
 	x |= PROCB_TSCOFFSET | PROCB_EXITMWAIT | PROCB_EXITMONITOR | PROCB_EXITHLT;
 	x |= PROCB_EXITMOVDR | PROCB_EXITIO | PROCB_MSRBITMAP;
@@ -966,19 +1014,23 @@ vmcsinit(Vmx *vmx)
 	vmcswrite(PROCB_CTLS, x);
 	vmx->procbctls = x;
 	
-	if(rdmsr(VMX_PROCB_CTLS2_MSR, &msr) < 0) error("rdmsr(VMX_PROCB_CTLS2_MSR failed");
+	if(rdmsr(VMX_PROCB_CTLS2_MSR, &msr) < 0)
+		error("rdmsr(VMX_PROCB_CTLS2_MSR failed");
 	x = PROCB_EPT | PROCB_VPID | PROCB_UNRESTR;
 	x &= msr >> 32;
 	vmcswrite(PROCB_CTLS2, x);
 	
-	if(rdmsr(VMX_VMEXIT_CTLS_MSR, &msr) < 0) error("rdmsr(VMX_VMEXIT_CTLS_MSR failed");
+	if(rdmsr(VMX_VMEXIT_CTLS_MSR, &msr) < 0)
+		error("rdmsr(VMX_VMEXIT_CTLS_MSR failed");
 	x = (u32int)msr;
-	if(sizeof(uintptr) == 8) x |= VMEXIT_HOST64;
+	if(sizeof(uintptr) == 8)
+		x |= VMEXIT_HOST64;
 	x |= VMEXIT_LD_IA32_PAT | VMEXIT_LD_IA32_EFER | VMEXIT_ST_DEBUG | VMEXIT_ST_IA32_EFER;
 	x &= msr >> 32;
 	vmcswrite(VMEXIT_CTLS, x);
 	
-	if(rdmsr(VMX_VMENTRY_CTLS_MSR, &msr) < 0) error("rdmsr(VMX_VMENTRY_CTLS_MSR failed");
+	if(rdmsr(VMX_VMENTRY_CTLS_MSR, &msr) < 0)
+		error("rdmsr(VMX_VMENTRY_CTLS_MSR failed");
 	x = (u32int)msr;
 	x |= VMENTRY_LD_IA32_PAT | VMENTRY_LD_IA32_EFER | VMENTRY_LD_DEBUG;
 	x &= msr >> 32;
@@ -1005,9 +1057,11 @@ vmcsinit(Vmx *vmx)
 	vmcswrite(HOST_TRBASE, (uintptr) m->tss);
 	vmcswrite(HOST_GDTR, (uintptr) m->gdt);
 	vmcswrite(HOST_IDTR, IDTADDR);
-	if(rdmsr(0x277, &msr) < 0) error("rdmsr(IA32_PAT) failed");
+	if(rdmsr(0x277, &msr) < 0)
+		error("rdmsr(IA32_PAT) failed");
 	vmcswrite(HOST_IA32_PAT, msr);
-	if(rdmsr(Efer, &msr) < 0) error("rdmsr(IA32_EFER) failed");
+	if(rdmsr(Efer, &msr) < 0)
+		error("rdmsr(IA32_EFER) failed");
 	vmcswrite(HOST_IA32_EFER, msr);
 	
 	vmcswrite(EXC_BITMAP, 1<<18|1<<1);
@@ -1104,13 +1158,19 @@ vmxstart(Vmx *vmx)
 	putcr4(getcr4() | CR4VMXE);
 	putcr0(getcr0() | 0x20); /* set NE */
 	cr = getcr0();
-	if(rdmsr(VMX_CR0_FIXED0, &msr) < 0) error("rdmsr(VMX_CR0_FIXED0) failed");
-	if(rdmsr(VMX_CR0_FIXED1, &msr2) < 0) error("rdmsr(VMX_CR0_FIXED1) failed");
-	if((cr & ~msr & ~msr2 | ~cr & msr & msr2) != 0) error("invalid CR0 value");
+	if(rdmsr(VMX_CR0_FIXED0, &msr) < 0)
+		error("rdmsr(VMX_CR0_FIXED0) failed");
+	if(rdmsr(VMX_CR0_FIXED1, &msr2) < 0)
+		error("rdmsr(VMX_CR0_FIXED1) failed");
+	if((cr & ~msr & ~msr2 | ~cr & msr & msr2) != 0)
+		error("invalid CR0 value");
 	cr = getcr4();
-	if(rdmsr(VMX_CR4_FIXED0, &msr) < 0) error("rdmsr(VMX_CR4_FIXED0) failed");
-	if(rdmsr(VMX_CR4_FIXED1, &msr2) < 0) error("rdmsr(VMX_CR4_FIXED1) failed");
-	if((cr & ~msr & ~msr2 | ~cr & msr & msr2) != 0) error("invalid CR4 value");
+	if(rdmsr(VMX_CR4_FIXED0, &msr) < 0)
+		error("rdmsr(VMX_CR4_FIXED0) failed");
+	if(rdmsr(VMX_CR4_FIXED1, &msr2) < 0)
+		error("rdmsr(VMX_CR4_FIXED1) failed");
+	if((cr & ~msr & ~msr2 | ~cr & msr & msr2) != 0)
+		error("invalid CR4 value");
 	
 	rdmsr(VMX_BASIC_MSR, &x);
 	qlock(vmxmach);
@@ -1154,7 +1214,8 @@ killcmds(Vmx *vmx, VmCmd *notme)
 	for(p = vmx->postponed; p != nil; p = pn){
 		pn = p->next;
 		p->next = nil;
-		if(p == notme) continue;
+		if(p == notme)
+			continue;
 		kstrcpy(p->errstr, Equit, ERRMAX);
 		cmdrelease(p, CMDFFAIL);
 	}
@@ -1163,7 +1224,8 @@ killcmds(Vmx *vmx, VmCmd *notme)
 	for(p = vmx->firstcmd; p != nil; p = pn){
 		pn = p->next;
 		p->next = nil;
-		if(p == notme) continue;
+		if(p == notme)
+			continue;
 		kstrcpy(p->errstr, Equit, ERRMAX);
 		cmdrelease(p, CMDFFAIL);
 	}
@@ -1248,7 +1310,8 @@ cmdgetregs(VmCmd *cmd, va_list va)
 			else
 				val = *(uintptr*)((uchar*)cmd->vmx + ~r->offset);
 			s = r->size;
-			if(s == 0) s = sizeof(uintptr);
+			if(s == 0)
+				s = sizeof(uintptr);
 			p = seprint(p, e, "%s %#.*llux\n", r->name, s * 2, val);
 		}
 	return p - p0;
@@ -1267,12 +1330,15 @@ setregs(Vmx *vmx, char *p0, char rs, char *fs)
 	p = p0;
 	for(;;){
 		q = strchr(p, rs);
-		if(q == 0) break;
+		if(q == 0)
+			break;
 		*q = 0;
 		rc = getfields(p, f, nelem(f), 1, fs);
 		p = q + 1;
-		if(rc == 0) continue;
-		if(rc != 2) error("number of fields wrong");
+		if(rc == 0)
+			continue;
+		if(rc != 2)
+			error("wrong number of fields");
 		
 		for(r = guestregs; r < guestregs + nelem(guestregs); r++)
 			if(strcmp(r->name, f[0]) == 0)
@@ -1285,8 +1351,10 @@ setregs(Vmx *vmx, char *p0, char rs, char *fs)
 		}
 		val = strtoull(f[1], &rp, 0);
 		sz = r->size;
-		if(sz == 0) sz = sizeof(uintptr);
-		if(rp == f[1] || *rp != 0) error("invalid value");
+		if(sz == 0)
+			sz = sizeof(uintptr);
+		if(rp == f[1] || *rp != 0)
+			error("invalid value");
 		if(r->offset >= 0)
 			vmcswrite(r->offset, val);
 		else{
@@ -1329,8 +1397,10 @@ cmdsetfpregs(VmCmd *cmd, va_list va)
 	p = va_arg(va, uchar *);
 	n = va_arg(va, ulong);
 	off = va_arg(va, vlong);
-	if(off < 0 || off >= sizeof(FPsave)) n = 0;
-	else if(off + n > sizeof(FPsave)) n = sizeof(FPsave) - n;
+	if(off < 0 || off >= sizeof(FPsave))
+		n = 0;
+	else if(off + n > sizeof(FPsave))
+		n = sizeof(FPsave) - n;
 	memmove((uchar*)&cmd->vmx->fp + off, p, n);
 	return n;
 }
@@ -1347,8 +1417,10 @@ cmdgo(VmCmd *cmd, va_list va)
 		error("VM not ready");
 	step = va_arg(va, int);
 	r = va_arg(va, char *);
-	if(r != nil) setregs(vmx, r, ';', "=");
-	if(step) vmx->onentry |= STEP;
+	if(r != nil)
+		setregs(vmx, r, ';', "=");
+	if(step)
+		vmx->onentry |= STEP;
 	vmx->state = VMXRUNNING;
 	return 0;
 }
@@ -1373,21 +1445,90 @@ cmdstatus(VmCmd *cmd, va_list va)
 }
 
 static char *exitreasons[] = {
-	[0] "exc", [1] "extirq", [2] "triplef", [3] "initsig", [4] "sipi", [5] "smiio", [6] "smiother", [7] "irqwin",
-	[8] "nmiwin", [9] "taskswitch", [10] ".cpuid", [11] ".getsec", [12] ".hlt", [13] ".invd", [14] ".invlpg", [15] ".rdpmc",
-	[16] ".rdtsc", [17] ".rsm", [18] ".vmcall", [19] ".vmclear", [20] ".vmlaunch", [21] ".vmptrld", [22] ".vmptrst", [23] ".vmread",
-	[24] ".vmresume", [25] ".vmwrite", [26] ".vmxoff", [27] ".vmxon", [28] "movcr", [29] ".movdr", [30] "io", [31] ".rdmsr",
-	[32] ".wrmsr", [33] "entrystate", [34] "entrymsr", [36] ".mwait", [37] "monitortrap", [39] ".monitor",
-	[40] ".pause", [41] "mcheck", [43] "tpr", [44] "apicacc", [45] "eoi", [46] "gdtr_idtr", [47] "ldtr_tr",
-	[48] "eptfault", [49] "eptinval", [50] ".invept", [51] ".rdtscp", [52] "preempt", [53] ".invvpid", [54] ".wbinvd", [55] ".xsetbv",
-	[56] "apicwrite", [57] ".rdrand", [58] ".invpcid", [59] ".vmfunc", [60] ".encls", [61] ".rdseed", [62] "pmlfull", [63] ".xsaves",
-	[64] ".xrstors", 
+	[0] "exc",
+	[1] "extirq",
+	[2] "triplef",
+	[3] "initsig",
+	[4] "sipi",
+	[5] "smiio",
+	[6] "smiother",
+	[7] "irqwin",
+	[8] "nmiwin",
+	[9] "taskswitch",
+	[10] ".cpuid",
+	[11] ".getsec",
+	[12] ".hlt",
+	[13] ".invd",
+	[14] ".invlpg",
+	[15] ".rdpmc",
+	[16] ".rdtsc",
+	[17] ".rsm",
+	[18] ".vmcall",
+	[19] ".vmclear",
+	[20] ".vmlaunch",
+	[21] ".vmptrld",
+	[22] ".vmptrst",
+	[23] ".vmread",
+	[24] ".vmresume",
+	[25] ".vmwrite",
+	[26] ".vmxoff",
+	[27] ".vmxon",
+	[28] "movcr",
+	[29] ".movdr",
+	[30] "io",
+	[31] ".rdmsr",
+	[32] ".wrmsr",
+	[33] "entrystate",
+	[34] "entrymsr",
+	[36] ".mwait",
+	[37] "monitortrap",
+	[39] ".monitor",
+	[40] ".pause",
+	[41] "mcheck",
+	[43] "tpr",
+	[44] "apicacc",
+	[45] "eoi",
+	[46] "gdtr_idtr",
+	[47] "ldtr_tr",
+	[48] "eptfault",
+	[49] "eptinval",
+	[50] ".invept",
+	[51] ".rdtscp",
+	[52] "preempt",
+	[53] ".invvpid",
+	[54] ".wbinvd",
+	[55] ".xsetbv",
+	[56] "apicwrite",
+	[57] ".rdrand",
+	[58] ".invpcid",
+	[59] ".vmfunc",
+	[60] ".encls",
+	[61] ".rdseed",
+	[62] "pmlfull",
+	[63] ".xsaves",
+	[64] ".xrstors",
+	
 };
 
 static char *except[] = {
-	[0] "#de", [1] "#db", [3] "#bp", [4] "#of", [5] "#br", [6] "#ud", [7] "#nm",
-	[8] "#df", [10] "#ts", [11] "#np", [12] "#ss", [13] "#gp", [14] "#pf",
-	[16] "#mf", [17] "#ac", [18] "#mc", [19] "#xm", [20] "#ve",
+	[0] "#de",
+	[1] "#db",
+	[3] "#bp",
+	[4] "#of",
+	[5] "#br",
+	[6] "#ud",
+	[7] "#nm",
+	[8] "#df",
+	[10] "#ts",
+	[11] "#np",
+	[12] "#ss",
+	[13] "#gp",
+	[14] "#pf",
+	[16] "#mf",
+	[17] "#ac",
+	[18] "#mc",
+	[19] "#xm",
+	[20] "#ve",
 };
 
 static int
@@ -1429,11 +1570,17 @@ cmdwait(VmCmd *cp, va_list va)
 		p = seprint(p, e, "?%d ", rno);
 	else
 		p = seprint(p, e, "%s ", exitreasons[rno]);
-	p = seprint(p, e, "%#ullx pc %#ullx sp %#ullx ilen %#ullx iinfo %#ullx", qual, vmcsread(GUEST_RIP), vmcsread(GUEST_RSP), vmcsread(VM_EXINSTRLEN), vmcsread(VM_EXINSTRINFO));
-	if((intr & 1<<11) != 0) p = seprint(p, e, " excode %#ullx", vmcsread(VM_EXINTRCODE));
-	if(rno == 48 && (qual & 0x80) != 0) p = seprint(p, e, " va %#ullx", vmcsread(VM_GUESTVA));
-	if(rno == 48 || rno == 49) p = seprint(p, e, " pa %#ullx", vmcsread(VM_GUESTPA));
-	if(rno == 30) p = seprint(p, e, " ax %#ullx", (uvlong)vmx->ureg.ax);
+	p = seprint(p, e, "%#ullx pc %#ullx sp %#ullx ilen %#ullx iinfo %#ullx",
+		qual, vmcsread(GUEST_RIP), vmcsread(GUEST_RSP),
+		vmcsread(VM_EXINSTRLEN), vmcsread(VM_EXINSTRINFO));
+	if((intr & 1<<11) != 0)
+		p = seprint(p, e, " excode %#ullx", vmcsread(VM_EXINTRCODE));
+	if(rno == 48 && (qual & 0x80) != 0)
+		p = seprint(p, e, " va %#ullx", vmcsread(VM_GUESTVA));
+	if(rno == 48 || rno == 49)
+		p = seprint(p, e, " pa %#ullx", vmcsread(VM_GUESTPA));
+	if(rno == 30)
+		p = seprint(p, e, " ax %#ullx", (uvlong)vmx->ureg.ax);
 	p = seprint(p, e, "\n");
 	return p - p0;
 }
@@ -1454,7 +1601,8 @@ eventparse(char *p, VmIntr *vi)
 	}
 	vi->info = 1<<31;
 	r = strchr(q, ',');
-	if(r != nil) *r++ = 0;
+	if(r != nil)
+		*r++ = 0;
 	for(i = 0; i < nelem(except); i++)
 		if(except[i] != nil && strcmp(except[i], q) == 0)
 			break;
@@ -1464,19 +1612,23 @@ eventparse(char *p, VmIntr *vi)
 	}
 	if(i == nelem(except)){
 		i = strtoul(q, &q, 10);
-		if(*q != 0 || i > 255) error(Ebadctl);
+		if(*q != 0 || i > 255)
+			error(Ebadctl);
 	}
 	vi->info |= i;
 	if((vi->info & 0x7ff) == 3 || (vi->info & 0x7ff) == 4)
 		vi->info += 3 << 8;
-	if(r == nil) goto out;
+	if(r == nil)
+		goto out;
 	if(*r != ','){
 		vi->code = strtoul(r, &r, 0);
 		vi->info |= 1<<11;
-	}else r++;
+	}else
+		r++;
 	if(*r == ',')
 		vi->ilen = strtoul(r + 1, &r, 0);
-	if(*r != 0) error(Ebadctl);
+	if(*r != 0)
+		error(Ebadctl);
 out:
 	poperror();
 	free(q);
@@ -1488,7 +1640,8 @@ cmdexcept(VmCmd *cp, va_list va)
 	Vmx *vmx;
 	
 	vmx = cp->vmx;
-	if(cp->scratched) error(Eintr);
+	if(cp->scratched)
+		error(Eintr);
 	if((vmx->onentry & POSTEX) != 0){
 		cp->flags |= CMDFPOSTP;
 		return 0;
@@ -1525,7 +1678,8 @@ cmdextrap(VmCmd *, va_list va)
 	
 	p = va_arg(va, char *);
 	v = strtoul(p, &q, 0);
-	if(q == p || *q != 0) error(Ebadarg);
+	if(q == p || *q != 0)
+		error(Ebadarg);
 	vmcswrite(EXC_BITMAP, v);
 	return 0;
 }
@@ -1600,7 +1754,8 @@ runcmd(Vmx *vmx)
 			markcmddone(p, &pp);
 			continue;
 		}
-		if(p->scratched) error(Eintr);
+		if(p->scratched)
+			error(Eintr);
 		p->retval = p->cmd(p, p->va);
 		poperror();
 		markcmddone(p, &pp);
@@ -1762,8 +1917,10 @@ enum { AUXSIZE = 4096 };
 static Vmx *
 vmxlook(vlong n)
 {
-	if(n < 0) return nil;
-	if(n >= nvmxtab) return nil;
+	if(n < 0)
+		return nil;
+	if(n >= nvmxtab)
+		return nil;
 	return vmxtab[n];
 }
 #define QIDPATH(q,e) ((q) + 1 << 8 | (e)) 
@@ -1899,7 +2056,8 @@ vmxshutdown(void)
 static Chan *
 vmxattach(char *spec)
 {
-	if(!gotvmx) error(Enodev);
+	if(!gotvmx)
+		error(Enodev);
 	return devattach('X', spec);
 }
 
@@ -1914,7 +2072,8 @@ vmxgen(Chan *c, char *, Dirtab *, int, int s, Dir *dp)
 		return 1;
 	}
 	if(c->qid.path == Qdir){
-		if(s-- == 0) goto clone;
+		if(s-- == 0)
+			goto clone;
 		if(s >= nvmxtab)
 			return -1;
 		if(vmxlook(s) == nil)
@@ -1976,7 +2135,8 @@ vmxopen(Chan* c, int omode)
 	Vmx *vmx;
 
 	if(c->qid.path == Qclone){
-		if(!iseve()) error(Eperm);
+		if(!iseve())
+			error(Eperm);
 		vmx = vmxnew();
 		c->qid.path = QIDPATH(vmx->index, Qctl);
 	}
@@ -1986,8 +2146,10 @@ vmxopen(Chan* c, int omode)
 		nexterror();
 	}
 	vmx = vmxlook(SLOT(c->qid));
-	if(SLOT(c->qid) >= 0 && vmx == nil) error(Enonexist);
-	if(FILE(c->qid) != Qdir && !iseve()) error(Eperm);
+	if(SLOT(c->qid) >= 0 && vmx == nil)
+		error(Enonexist);
+	if(FILE(c->qid) != Qdir && !iseve())
+		error(Eperm);
 	ch = devopen(c, omode, nil, 0, vmxgen);
 	qunlock(&vmxtablock);
 	poperror();
@@ -2059,7 +2221,8 @@ vmxread(Chan* c, void* a, long n, vlong off)
 		}
 	}
 	vmx = vmxent(c->qid);
-	if(vmx == nil) error(Enonexist);
+	if(vmx == nil)
+		error(Enonexist);
 	switch(FILE(c->qid)){
 	case Qdir:
 		goto dirread;
@@ -2099,8 +2262,10 @@ vmxread(Chan* c, void* a, long n, vlong off)
 			char buf[512];
 			
 			rc = vmxcmd(vmx, cmdwait, buf, buf + sizeof(buf));
-			if(rc > n) rc = n;
-			if(rc > 0) memmove(a, buf, rc);
+			if(rc > n)
+				rc = n;
+			if(rc > 0)
+				memmove(a, buf, rc);
 			return rc;
 		}
 	case Qfpregs:
@@ -2108,9 +2273,12 @@ vmxread(Chan* c, void* a, long n, vlong off)
 			char buf[sizeof(FPsave)];
 			
 			vmxcmd(vmx, cmdgetfpregs, buf);
-			if(n < 0 || off < 0 || off >= sizeof(buf)) n = 0;
-			else if(off + n > sizeof(buf)) n = sizeof(buf) - off;
-			if(n != 0) memmove(a, buf + off, n);
+			if(n < 0 || off < 0 || off >= sizeof(buf))
+				n = 0;
+			else if(off + n > sizeof(buf))
+				n = sizeof(buf) - off;
+			if(n != 0)
+				memmove(a, buf + off, n);
 			return n;
 		}
 	default:
@@ -2137,7 +2305,8 @@ vmxwrite(Chan* c, void* a, long n, vlong off)
 		}
 	}
 	vmx = vmxent(c->qid);
-	if(vmx == nil) error(Enonexist);
+	if(vmx == nil)
+		error(Enonexist);
 	switch(FILE(c->qid)){
 	case Qdir:
 		error(Eperm);
@@ -2155,8 +2324,10 @@ vmxwrite(Chan* c, void* a, long n, vlong off)
 		case CMgo:
 		case CMstep:
 			s = nil;
-			if(cb->nf == 2) kstrdup(&s, cb->f[1]);
-			else if(cb->nf != 1) error(Ebadarg);
+			if(cb->nf == 2)
+				kstrdup(&s, cb->f[1]);
+			else if(cb->nf != 1)
+				error(Ebadarg);
 			if(waserror()){
 				free(s);
 				nexterror();
@@ -2212,7 +2383,8 @@ vmxwrite(Chan* c, void* a, long n, vlong off)
 	case Qmap:
 	case Qregs:
 		s = malloc(n+1);
-		if(s == nil) error(Enomem);
+		if(s == nil)
+			error(Enomem);
 		if(waserror()){
 			free(s);
 			nexterror();
@@ -2227,7 +2399,8 @@ vmxwrite(Chan* c, void* a, long n, vlong off)
 		{
 			char buf[sizeof(FPsave)];
 			
-			if(n > sizeof(FPsave)) n = sizeof(FPsave);
+			if(n > sizeof(FPsave))
+				n = sizeof(FPsave);
 			memmove(buf, a, n);
 			return vmxcmd(vmx, cmdsetfpregs, buf, n, off);
 		}
