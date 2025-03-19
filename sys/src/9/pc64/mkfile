@@ -87,7 +87,7 @@ $p$CONF:	$OBJ $CONF.$O $LIB
 	size $target
 
 $p$CONF.elf:	$OBJ $CONF.$O $LIB
-    	$LD -o $target -H5 -T$KTZERO -l $prereq
+    	$LD -o $target -H5 -8 -T$KTZERO -l $prereq
 	size $target
 
 $p$CONF.lst:	$OBJ $CONF.$O $LIB
