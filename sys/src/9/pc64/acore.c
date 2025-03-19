@@ -216,9 +216,9 @@ actrap(Ureg *u)
 		v = acvctl[u->type];
 		if(v != nil){
 			DBG("actrap: cpu%d: %ulld\n", m->machno, u->type);
-			n = v->f(u, v->a);
-			if(n != nil)
-				goto Post;
+			/*n =*/ v->f(u, v->a);
+		/*	if(n != nil)
+				goto Post; */
 			return;
 		}
 	}
@@ -380,6 +380,8 @@ acmodeset(int mode)
 	m->nixtype = mode;
 }
 
+void setlidt(Segdesc *idtaddr);
+
 void
 acinit(void)
 {
@@ -399,6 +401,8 @@ acinit(void)
 	assert((uintptr)&mp->stack == 24);
 #endif
 	void lapicintron(void);
+	DBG("Setting interrupt vectors to ACIDTADDR\n");
+	setlidt((Segdesc*)ACIDTADDR);
 	/*
 	 * Lower the priority of the apic to 0,
 	 * to accept interrupts.

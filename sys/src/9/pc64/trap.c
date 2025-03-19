@@ -23,14 +23,21 @@ static void unexpected(Ureg*, void*);
 static void _dumpstack(Ureg*);
 
 void
-trapinit0(void)
+setlidt(Segdesc *idtaddr){
+	uintptr ptr[2];
+	((ushort*)&ptr[1])[-1] = sizeof(Segdesc)*512-1;
+	ptr[1] = (uintptr)idtaddr;
+	lidt(&((ushort*)&ptr[1])[-1]);
+}
+
+void
+trapinitimp(Segdesc *idtaddr, uintptr vectortable, int setp)
 {
 	u32int d1, v;
 	uintptr vaddr;
 	Segdesc *idt;
-	uintptr ptr[2];
 
-	idt = (Segdesc*)IDTADDR;
+	idt = (Segdesc*)idtaddr;
 	vaddr = (uintptr)vectortable;
 	for(v = 0; v < 256; v++){
 		d1 = (vaddr & 0xFFFF0000)|SEGP;
@@ -58,9 +65,20 @@ trapinit0(void)
 
 		vaddr += 6;
 	}
-	((ushort*)&ptr[1])[-1] = sizeof(Segdesc)*512-1;
-	ptr[1] = IDTADDR;
-	lidt(&((ushort*)&ptr[1])[-1]);
+	if(setp)
+		setlidt(idtaddr);
+}
+
+void
+trapinit0()
+{
+	trapinitimp((Segdesc*)IDTADDR, (uintptr)vectortable, 1);
+}
+
+void
+actrapinit0()
+{
+	trapinitimp((Segdesc*)ACIDTADDR, (uintptr)acidthandlers, 0);
 }
 
 void
@@ -779,4 +797,25 @@ dbgpc(Proc *p)
 	if(ureg == nil)
 		return 0;
 	return ureg->pc;
+}
+
+
+void actrapenable(int vno, void (*f)(Ureg*, void*), void* a, char *name);
+void
+actrapinit(void)
+{
+/*	irqinit();
+
+	nmienable();
+*/
+	/*
+	 * Special traps.
+	 * Syscall() is called directly without going through trap().
+	 */
+	actrapenable(VectorDE, debugexc, 0, "debugexc");
+	actrapenable(VectorBPT, debugbpt, 0, "debugpt");
+	actrapenable(VectorPF, faultamd64, 0, "faultamd64");
+	actrapenable(10, faulttss, 0, "faulttss");
+	actrapenable(Vector2F, doublefault, 0, "doublefault");
+	actrapenable(Vector15, unexpected, 0, "unexpected");
 }
