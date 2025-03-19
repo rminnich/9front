@@ -8,7 +8,7 @@
 #include	"../port/pci.h"
 #include	"ureg.h"
 
-#define DBG if(0)print
+#define DBG if(1)print
 
 Lock nixaclock;	/* NIX AC lock; held while assigning procs to cores */
 
@@ -357,7 +357,7 @@ runacore(void)
 				goto ToTC;
 			}
 			if(0)
-			nixprepage(-1);
+				nixprepage(-1);
 			break;
 		default:
 			panic("runacore: unexpected rc = %d", rc);
@@ -378,10 +378,11 @@ ToTC:
 extern ACVctl *acvctl[];
 
 void
-actrapenable(int vno, char* (*f)(Ureg*, void*), void* a, char *name)
+actrapenable(int vno, void (*f)(Ureg*, void*), void* a, char *name)
 {
 	ACVctl *v;
 
+	DBG("Enabled trap %s on AC\n", name);
 	if(vno < 0 || vno >= 256)
 		panic("actrapenable: vno %d\n", vno);
 	v = malloc(sizeof(Vctl));
@@ -395,3 +396,4 @@ actrapenable(int vno, char* (*f)(Ureg*, void*), void* a, char *name)
 		panic("vector %d: AC traps can't be shared", vno);
 	acvctl[vno] = v;
 }
+
