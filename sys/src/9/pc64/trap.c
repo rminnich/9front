@@ -452,12 +452,6 @@ faultamd64(Ureg* ureg, void*)
 		poperror();
 }
 
-static void
-acfaultamd64(Ureg* ureg, void*a){
-	DBG("acfaultamd64: cpu%d: mach is %p\n", m->machno, m);
-	faultamd64(ureg, a);
-}
-
 /*
  *  system calls
  */
@@ -820,10 +814,12 @@ actrapinit(void)
 	 * Special traps.
 	 * Syscall() is called directly without going through trap().
 	 */
+	/* never enable these, they belong on the TC.
 	actrapenable(VectorDE, debugexc, 0, "debugexc");
 	actrapenable(VectorBPT, debugbpt, 0, "debugpt");
 	actrapenable(VectorPF, acfaultamd64, 0, "acfaultamd64");
 	actrapenable(10, faulttss, 0, "faulttss");
 	actrapenable(Vector2F, doublefault, 0, "doublefault");
 	actrapenable(Vector15, unexpected, 0, "unexpected");
+	*/
 }
