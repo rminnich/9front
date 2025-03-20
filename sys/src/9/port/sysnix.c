@@ -52,9 +52,7 @@ sysexecac(va_list list)
 	print("args is %p; args[0] is %p; args[1] is %p\n", args, ((uintptr*)args)[0], ((uintptr*)args)[1]);
 	ar0 = sysexec((va_list)args);
 
-	nixprepage(-1);
 	up->procctl = Proc_toac;
-	up->prepagemem = 1; /* for any later sbrk calls ... */
 	poperror();
 
 	return ar0;

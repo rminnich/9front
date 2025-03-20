@@ -65,16 +65,17 @@
 #define	CONFADDR	(KZERO+0x1200ull)		/* info passed from boot loader */
 #define	APBOOTSTRAP	(KZERO+0x7000ull)		/* AP bootstrap code */
 #define	IDTADDR		(KZERO+0x10000ull)		/* idt */
-#define	REBOOTADDR	(0x11000)			/* reboot code - physical address */
+#define	ACIDTADDR		(KZERO+0x11000ull)		/* NIX acidt */
+#define	REBOOTADDR	(0x12000)			/* reboot code - physical address */
 
-#define CPU0PML4	(KZERO+0x13000ull)
-#define CPU0PDP		(KZERO+0x14000ull)
-#define CPU0PD0		(KZERO+0x15000ull)		/* KZERO */
-#define CPU0PD1		(KZERO+0x16000ull)		/* KZERO+1GB */
+#define CPU0PML4	(KZERO+0x14000ull)
+#define CPU0PDP		(KZERO+0x15000ull)
+#define CPU0PD0		(KZERO+0x16000ull)		/* KZERO */
+#define CPU0PD1		(KZERO+0x17000ull)		/* KZERO+1GB */
 
-#define	CPU0GDT		(KZERO+0x17000ull)		/* bootstrap processor GDT */
+#define	CPU0GDT		(KZERO+0x18000ull)		/* bootstrap processor GDT */
 
-#define	CPU0MACH	(KZERO+0x18000ull)		/* Mach for bootstrap processor */
+#define	CPU0MACH	(KZERO+0x19000ull)		/* Mach for bootstrap processor */
 #define CPU0END		(CPU0MACH+MACHSIZE)
 
 #define	MACHSIZE	(2*KSTACK)

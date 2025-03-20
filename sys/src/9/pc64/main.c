@@ -180,6 +180,7 @@ main(void)
 	mach0init();
 	bootargsinit();
 	trapinit0();
+	actrapinit0();
 	ioinit();
 	i8250console();
 	quotefmtinstall();
@@ -195,6 +196,7 @@ main(void)
 	confinit();
 	xinit();
 	trapinit();
+	actrapinit();
 	mathinit();
 	if(i8237alloc != nil)
 		i8237alloc();

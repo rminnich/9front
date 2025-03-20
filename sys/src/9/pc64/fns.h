@@ -1,5 +1,8 @@
 #include "../port/portfns.h"
 
+void	acidthandlers(void);
+void	actrapinit0(void);
+void	actrapinit(void);
 Dirtab*	addarchfile(char*, int, long(*)(Chan*,void*,long,vlong), long(*)(Chan*,void*,long,vlong));
 void	archinit(void);
 void	archreset(void);

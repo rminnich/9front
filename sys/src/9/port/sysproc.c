@@ -9,6 +9,8 @@
 
 #include	<a.out.h>
 
+#define DBG if(1)print
+
 uintptr
 sysr1(va_list)
 {
@@ -43,6 +45,13 @@ sysrfork(va_list list)
 		error(Ebadarg);
 	if((flag & (RFENVG|RFCENVG)) == (RFENVG|RFCENVG))
 		error(Ebadarg);
+	if((flag & (RFCORE|RFCCORE)) == (RFCORE|RFCCORE))
+		error(Ebadarg);
+	if((flag & RFCORE) && (up->wired != 0))
+		error("wired proc cannot move to ac");
+
+	if(flag & RFCCORE)
+		error("RFCCORE not implemented");
 
 	/*
 	 * Code using RFNOMNT expects to block all but
@@ -89,11 +98,30 @@ sysrfork(va_list list)
 			setnoteid(up, 0);	/* can't error() with 0 argument */
 			qunlock(&up->debug);
 		}
+		if(flag & RFCORE){
+			up->ac = getac(up, -1);
+			up->procctl = Proc_toac;
+		} /*else if(flag & RFCCORE){
+			if(up->ac != nil)
+				up->procctl = Proc_totc;
+		} */
+DBG("return after non-proc rfork\n");
 		return 0;
 	}
 
 	if((p = newproc()) == nil)
 		error("no procs");
+
+	if(flag & RFCORE){
+		if(!waserror()){
+			p->ac = getac(p, -1);
+			p->procctl = Proc_toac;
+			poperror();
+		}else{
+			print("warning: rfork: no available ac for the child, it runs in the tc\n");
+			p->procctl = 0;
+		}
+	}
 
 	qlock(&up->debug);
 	qlock(&p->debug);
@@ -300,7 +328,7 @@ sysexec(va_list list)
 	Tos *tos;
 	Chan *tc;
 	Fgrp *f;
-
+DBG("Exec on CPU%d\n", m->machno);
 	args = elem = nil;
 	file0 = va_arg(list, char*);
 	validaddr((uintptr)file0, 1, 0);
