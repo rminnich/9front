@@ -50,6 +50,6 @@ The output is sorted with the youngest connections first.
 .SH FILES
 .B /net/*/*
 .SH SOURCE
-.B /sys/src/cmd/netstat.c
+.B /rc/bin/netstat
 .SH "SEE ALSO"
 .IR ipconfig (8)
