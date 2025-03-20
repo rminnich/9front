@@ -86,6 +86,14 @@ $p$CONF:	$OBJ $CONF.$O $LIB
 	$LD -o $target -T$KTZERO -R4096 -l $prereq
 	size $target
 
+$p$CONF.elf:	$OBJ $CONF.$O $LIB
+    	$LD -o $target -H5 -T$KTZERO -l $prereq
+	size $target
+
+$p$CONF.lst:	$OBJ $CONF.$O $LIB
+	$LD -a  -T$KTZERO -R4096 -l $prereq > $target
+
+
 install:V:	$p$CONF
 	cp $p$CONF /$objtype/
 	for(i in $EXTRACOPIES)

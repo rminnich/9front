@@ -9,6 +9,8 @@
 #include	"../port/error.h"
 #include	<trace.h>
 
+#define DBG if(1)iprint
+
 extern int irqhandled(Ureg*, int);
 extern void irqinit(void);
 
@@ -414,6 +416,7 @@ faultamd64(Ureg* ureg, void*)
 {
 	uintptr addr;
 	int read, user;
+//	DBG("faultamd64: cpu%d: mach is %p\n", m->machno, m);
 
 	addr = getcr2();
 	read = !(ureg->error & 2);
@@ -447,6 +450,12 @@ faultamd64(Ureg* ureg, void*)
 		up->insyscall = 0;
 	else
 		poperror();
+}
+
+static void
+acfaultamd64(Ureg* ureg, void*a){
+	DBG("acfaultamd64: cpu%d: mach is %p\n", m->machno, m);
+	faultamd64(ureg, a);
 }
 
 /*
@@ -799,7 +808,6 @@ dbgpc(Proc *p)
 	return ureg->pc;
 }
 
-
 void actrapenable(int vno, void (*f)(Ureg*, void*), void* a, char *name);
 void
 actrapinit(void)
@@ -814,7 +822,7 @@ actrapinit(void)
 	 */
 	actrapenable(VectorDE, debugexc, 0, "debugexc");
 	actrapenable(VectorBPT, debugbpt, 0, "debugpt");
-	actrapenable(VectorPF, faultamd64, 0, "faultamd64");
+	actrapenable(VectorPF, acfaultamd64, 0, "acfaultamd64");
 	actrapenable(10, faulttss, 0, "faulttss");
 	actrapenable(Vector2F, doublefault, 0, "doublefault");
 	actrapenable(Vector15, unexpected, 0, "unexpected");
