@@ -69,7 +69,7 @@ typedef struct Vctl {
 } Vctl;
 
 typedef struct ACVctl {
-	char*	(*f)(Ureg*,void*);
+	void	(*f)(Ureg*,void*);
 	void*	a;
 	int	vno;
 	char	name[KNAMELEN];		/* of driver */
