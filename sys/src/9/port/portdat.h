@@ -603,6 +603,8 @@ enum
 	RFCFDG		= (1<<12),
 	RFREND		= (1<<13),
 	RFNOMNT		= (1<<14),
+	RFCORE		= (1 << 15),	/* NIX - move to AC */
+	RFCCORE		= (1 << 16),	/* NIX - move to TC */
 };
 
 /*
