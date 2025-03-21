@@ -8,7 +8,7 @@
 #include	"../port/pci.h"
 #include	"ureg.h"
 
-#define DBG if(1)print
+#define DBG if(0)print
 
 Lock nixaclock;	/* NIX AC lock; held while assigning procs to cores */
 
@@ -153,7 +153,7 @@ runac(Mach *mp, APfunc func, int flushtlb, void *a, long n)
 		 *	memmove(dgp, spg, m->pml4->daddr * sizeof(PTE));
 		 */
 		memmove(dpg, spg, PTSZ);
-		if(1){
+		if(0){
 			print("runac: upac pml4 %#p\n", up->ac->pml4);
 			dumpptepg(4, PADDR(up->ac->pml4));
 		}
@@ -181,10 +181,10 @@ runac(Mach *mp, APfunc func, int flushtlb, void *a, long n)
 	qunlock(&up->debug);
 	poperror();
 	mfence();
-	print("cpu%d waits in sched mach is %p\n", m->machno, m);
+	DBG("cpu%d waits in sched mach is %p\n", m->machno, m);
 	mp->icc->fn = func;
 	sched();
-	print("cpu%d returns from waiting for AC, m is %p\n", m->machno, m);
+	DBG("cpu%d returns from waiting for AC, m is %p\n", m->machno, m);
 	return mp->icc->rc;
 }
 
@@ -250,6 +250,62 @@ dumpptepg(int lvl, u64int pa)
 				dumpptepg(lvl-1, PPN(pte[i]));
 		}
 }
+
+static void
+tcfaultnote(Mach *m, Ureg *ureg, char *access, uintptr addr)
+{
+	extern void checkpages(void);
+	char buf[ERRMAX];
+
+	if(!userureg(ureg)){
+		dumpregs(ureg);
+		panic("cpu%d:fault: %s addr=%#p", m->machno, access, addr);
+	}
+	checkpages();
+	snprint(buf, sizeof(buf), "sys: trap: fault %s addr=%#p", access, addr);
+	postnote(up, 1, buf, NDebug);
+}
+
+static void
+tcfaultamd64(Mach *m, Ureg* ureg, void*)
+{
+	uintptr addr;
+	int read, user;
+
+	addr = getcr2(); //m->cr2;
+	read = !(ureg->error & 2);
+	user = userureg(ureg);
+	if(user)
+		up->insyscall = 1;
+	else {
+		extern void _peekinst(void);
+
+		if((void(*)(void))ureg->pc == _peekinst){
+			ureg->pc += 2;
+			return;
+		}
+		if(addr >= USTKTOP)
+			panic("kernel fault: bad address pc=%#p addr=%#p", ureg->pc, addr);
+		if(up == nil)
+			panic("kernel fault: no user process pc=%#p addr=%#p", ureg->pc, addr);
+		if(waserror()){
+			if(up->nerrlab == 0){
+				pprint("suicide: sys: %s\n", up->errstr);
+				pexit(up->errstr, 1);
+			}
+			nexterror();
+		}
+	}
+
+	if(fault(addr, ureg->pc, read))
+		tcfaultnote(m, ureg, read? "read": "write", addr);
+
+	if(user)
+		up->insyscall = 0;
+	else
+		poperror();
+}
+
 
 /*
  * Move the current process to an application core.
@@ -323,15 +379,21 @@ runacore(void)
 				ureg->type = VectorIPI;		/* NOP */
 				break;
 			default:
+				if(!userureg(ureg))
+					DBG("runacore: Not a user space process?\n\n\n\n");
 				putcr3(PADDR(m->pml4));
-				if(0 && ureg->type == VectorPF){
-					print("before PF:\n");
-					print("AC:\n");
-					dumpptepg(4, PADDR(up->ac->pml4));
-					print("\n%s:\n", rolename[NIXTC]);
-					dumpptepg(4, PADDR(m->pml4));
+				putcr2(up->ac->cr2);
+				if(ureg->type == VectorPF){
+					if (0){
+						dumpptepg(4, PADDR(up->ac->pml4));
+						print("\n%s:\n", rolename[NIXTC]);
+						dumpptepg(4, PADDR(m->pml4));
+						dumpregs(ureg);
+					}
+					tcfaultamd64(m, ureg, nil);
+				} else {
+					trap(ureg);
 				}
-				trap(ureg);
 			}
 			splx(s);
 			flush = 1;
@@ -340,12 +402,12 @@ runacore(void)
 		case ICCSYSCALL:
 			DBG("cpu%d:runacore: syscall bp %#ullx ureg %#p\n", m->machno, ureg->bp, ureg);
 			putcr3(PADDR(m->pml4));
-			if(1){
+			if(0){
 				up->s = *((Sargs*)((uintptr)ureg->sp+BY2WD));
 				syscallfmt(ureg->bp, ureg->pc, (va_list)up->s.args);
 				print("syscall: %s\n", up->syscalltrace);
 			}
-			up->printsyscall = 1;
+			// up->printsyscall = 1;
 			syscall(ureg);
 			flush = 1;
 			fn = acsysret;
@@ -356,8 +418,6 @@ runacore(void)
 				print("up->ac is now nil; going ToTC\n");
 				goto ToTC;
 			}
-			if(0)
-				nixprepage(-1);
 			break;
 		default:
 			panic("runacore: unexpected rc = %d", rc);

@@ -115,16 +115,16 @@ acsched(void)
 	acmmuswitch();
 	for(;;){
 		if (0)acstackok();
-		iprint("acstackok is ok\n");
-		iprint("&m->icc->fn %p fn %p\n", &m->icc->fn, m->icc->fn);
+		DBG("acstackok is ok\n");
+		DBG("&m->icc->fn %p fn %p\n", &m->icc->fn, m->icc->fn);
 		while(m->icc->fn == nil)
 			mwait(&m->icc->fn);
-		iprint("m %p m->icc->flushtlb %d m->icc->fn %p\n", m, m->icc->flushtlb, m->icc->fn);
+		DBG("m %p m->icc->flushtlb %d m->icc->fn %p\n", m, m->icc->flushtlb, m->icc->fn);
 		if(m->icc->flushtlb)
 			acmmuswitch();
-		iprint("acsched: cpu%d: fn %#p\n", m->machno, m->icc->fn);
+		DBG("acsched: cpu%d: fn %#p\n", m->machno, m->icc->fn);
 		m->icc->fn();
-		iprint("acsched: cpu%d: idle\n", m->machno);
+		DBG("acsched: cpu%d: idle\n", m->machno);
 		mfence();
 		m->icc->fn = nil;
 	}
@@ -143,38 +143,40 @@ actouser(void)
 
 	fpinit();
 	u = m->proc->dbgreg;
-	iprint("  AX %.16lluX  BX %.16lluX  CX %.16lluX\n",
-		u->ax, u->bx, u->cx);
-	iprint("  DX %.16lluX  SI %.16lluX  DI %.16lluX\n",
-		u->dx, u->si, u->di);
-	iprint("  BP %.16lluX  R8 %.16lluX  R9 %.16lluX\n",
-		u->bp, u->r8, u->r9);
-	iprint(" R10 %.16lluX R11 %.16lluX R12 %.16lluX\n",
-		u->r10, u->r11, u->r12);
-	iprint(" R13 %.16lluX R14 %.16lluX R15 %.16lluX\n",
-		u->r13, u->r14, u->r15);
-	iprint("  CS %.4lluX   SS %.4lluX    PC %.16lluX  SP %.16lluX\n",
-		u->cs & 0xffff, u->ss & 0xffff, u->pc, u->sp);
-	iprint("TYPE %.2lluX  ERROR %.4lluX FLAGS %.8lluX\n",
-		u->type & 0xff, u->error & 0xffff, u->flags & 0xffffffff);
-
-	/*
-	 * Processor control registers.
-	 * If machine check exception, time stamp counter, page size extensions
-	 * or enhanced virtual 8086 mode extensions are supported, there is a
-	 * CR4. If there is a CR4 and machine check extensions, read the machine
-	 * check address and machine check type registers if RDMSR supported.
-	 */
-	iprint(" CR0 %8.8llux CR2 %16.16llux CR3 %16.16llux",
-		getcr0(), getcr2(), getcr3());
-	if(m->cpuiddx & (Mce|Tsc|Pse|Vmex)){
-		iprint(" CR4 %16.16llux\n", getcr4());
-		if(u->type == 18)
-			dumpmcregs();
+	if (0) { /* TODO(PAL): cleanup */
+		iprint("  AX %.16lluX  BX %.16lluX  CX %.16lluX\n",
+			u->ax, u->bx, u->cx);
+		iprint("  DX %.16lluX  SI %.16lluX  DI %.16lluX\n",
+			u->dx, u->si, u->di);
+		iprint("  BP %.16lluX  R8 %.16lluX  R9 %.16lluX\n",
+			u->bp, u->r8, u->r9);
+		iprint(" R10 %.16lluX R11 %.16lluX R12 %.16lluX\n",
+			u->r10, u->r11, u->r12);
+		iprint(" R13 %.16lluX R14 %.16lluX R15 %.16lluX\n",
+			u->r13, u->r14, u->r15);
+		iprint("  CS %.4lluX   SS %.4lluX    PC %.16lluX  SP %.16lluX\n",
+			u->cs & 0xffff, u->ss & 0xffff, u->pc, u->sp);
+		iprint("TYPE %.2lluX  ERROR %.4lluX FLAGS %.8lluX\n",
+			u->type & 0xff, u->error & 0xffff, u->flags & 0xffffffff);
+	
+		/*
+		 * Processor control registers.
+		 * If machine check exception, time stamp counter, page size extensions
+		 * or enhanced virtual 8086 mode extensions are supported, there is a
+		 * CR4. If there is a CR4 and machine check extensions, read the machine
+		 * check address and machine check type registers if RDMSR supported.
+		 */
+		iprint(" CR0 %8.8llux CR2 %16.16llux CR3 %16.16llux",
+			getcr0(), getcr2(), getcr3());
+		if(m->cpuiddx & (Mce|Tsc|Pse|Vmex)){
+			iprint(" CR4 %16.16llux\n", getcr4());
+			if(u->type == 18)
+				dumpmcregs();
+		}
+		iprint("  ur %#p up %#p\n", u, up);
+		iprint("cpu%d: touser m %p m->proc %p m->stack %p\n", m->machno, m, m->proc, m->stack);
+		iprint("cpu%d: touser usp = %#p entry %#p\n", m->machno, u->sp, u->pc);
 	}
-	iprint("  ur %#p up %#p\n", u, up);
-	iprint("cpu%d: touser m %p m->proc %p m->stack %p\n", m->machno, m, m->proc, m->stack);
-	iprint("cpu%d: touser usp = %#p entry %#p\n", m->machno, u->sp, u->pc);
 	//while(1);
 	xactouser(u->sp);
 	panic("actouser RETURNED, can't happen");
@@ -211,14 +213,11 @@ actrap(Ureg *u)
 	}
 	/* there are a few traps we handle quickly, in particular
 	 * API timer interrupts and such. */
-	print("ACTRAP: %lld of %d\n", u->type, nelem(acvctl));
 	if(u->type < nelem(acvctl)){
 		v = acvctl[u->type];
 		if(v != nil){
 			DBG("actrap: cpu%d: %ulld, vector = %p\n", m->machno, u->type, v);
-			/*n =*/ v->f(u, v->a);
-		/*	if(n != nil)
-				goto Post; */
+			v->f(u, v->a);
 			return;
 		}
 	}
@@ -310,36 +309,38 @@ acsysret(void)
 {
 	Ureg *u = m->proc->dbgreg;
 	fpukexit(u, m->proc->fpsave);
-	iprint("  AX %.16lluX  BX %.16lluX  CX %.16lluX\n",
-		u->ax, u->bx, u->cx);
-	iprint("  DX %.16lluX  SI %.16lluX  DI %.16lluX\n",
-		u->dx, u->si, u->di);
-	iprint("  BP %.16lluX  R8 %.16lluX  R9 %.16lluX\n",
-		u->bp, u->r8, u->r9);
-	iprint(" R10 %.16lluX R11 %.16lluX R12 %.16lluX\n",
-		u->r10, u->r11, u->r12);
-	iprint(" R13 %.16lluX R14 %.16lluX R15 %.16lluX\n",
-		u->r13, u->r14, u->r15);
-	iprint("  CS %.4lluX   SS %.4lluX    PC %.16lluX  SP %.16lluX\n",
-		u->cs & 0xffff, u->ss & 0xffff, u->pc, u->sp);
-	iprint("TYPE %.2lluX  ERROR %.4lluX FLAGS %.8lluX\n",
-		u->type & 0xff, u->error & 0xffff, u->flags & 0xffffffff);
+	if (0){ /* TODO(PAL): Remove */
+		iprint("  AX %.16lluX  BX %.16lluX  CX %.16lluX\n",
+			u->ax, u->bx, u->cx);
+		iprint("  DX %.16lluX  SI %.16lluX  DI %.16lluX\n",
+			u->dx, u->si, u->di);
+		iprint("  BP %.16lluX  R8 %.16lluX  R9 %.16lluX\n",
+			u->bp, u->r8, u->r9);
+		iprint(" R10 %.16lluX R11 %.16lluX R12 %.16lluX\n",
+			u->r10, u->r11, u->r12);
+		iprint(" R13 %.16lluX R14 %.16lluX R15 %.16lluX\n",
+			u->r13, u->r14, u->r15);
+		iprint("  CS %.4lluX   SS %.4lluX    PC %.16lluX  SP %.16lluX\n",
+			u->cs & 0xffff, u->ss & 0xffff, u->pc, u->sp);
+		iprint("TYPE %.2lluX  ERROR %.4lluX FLAGS %.8lluX\n",
+			u->type & 0xff, u->error & 0xffff, u->flags & 0xffffffff);
 
-	/*
-	 * Processor control registers.
-	 * If machine check exception, time stamp counter, page size extensions
-	 * or enhanced virtual 8086 mode extensions are supported, there is a
-	 * CR4. If there is a CR4 and machine check extensions, read the machine
-	 * check address and machine check type registers if RDMSR supported.
-	 */
-	iprint(" CR0 %8.8llux CR2 %16.16llux CR3 %16.16llux",
-		getcr0(), getcr2(), getcr3());
-	if(m->cpuiddx & (Mce|Tsc|Pse|Vmex)){
-		iprint(" CR4 %16.16llux\n", getcr4());
-		if(u->type == 18)
-			dumpmcregs();
+		/*
+		 * Processor control registers.
+		 * If machine check exception, time stamp counter, page size extensions
+		 * or enhanced virtual 8086 mode extensions are supported, there is a
+		 * CR4. If there is a CR4 and machine check extensions, read the machine
+		 * check address and machine check type registers if RDMSR supported.
+		 */
+		iprint(" CR0 %8.8llux CR2 %16.16llux CR3 %16.16llux",
+			getcr0(), getcr2(), getcr3());
+		if(m->cpuiddx & (Mce|Tsc|Pse|Vmex)){
+			iprint(" CR4 %16.16llux\n", getcr4());
+			if(u->type == 18)
+				dumpmcregs();
+		}
+		iprint("  ur %#p up %#p\n", u, up);
 	}
-	iprint("  ur %#p up %#p\n", u, up);
 	DBG("acsysret m %p m->machno %d m->proc %p u->sp %p sp %p\n", m, m->machno, m->proc, u->sp, sp);
 	if (sp != u->sp)
 		print("THIS CAN NOT HAPPEN: SP %p != u->sp %p", sp, u->sp);

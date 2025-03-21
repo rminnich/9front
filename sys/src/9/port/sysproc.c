@@ -105,7 +105,6 @@ sysrfork(va_list list)
 			if(up->ac != nil)
 				up->procctl = Proc_totc;
 		} */
-DBG("return after non-proc rfork\n");
 		return 0;
 	}
 
@@ -120,6 +119,7 @@ DBG("return after non-proc rfork\n");
 		}else{
 			print("warning: rfork: no available ac for the child, it runs in the tc\n");
 			p->procctl = 0;
+			// TODO(PAL): I think we need this: nexterror(); 
 		}
 	}
 
@@ -328,7 +328,7 @@ sysexec(va_list list)
 	Tos *tos;
 	Chan *tc;
 	Fgrp *f;
-DBG("Exec on CPU%d\n", m->machno);
+
 	args = elem = nil;
 	file0 = va_arg(list, char*);
 	validaddr((uintptr)file0, 1, 0);
