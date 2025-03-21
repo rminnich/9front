@@ -9,6 +9,8 @@
 
 #include	<a.out.h>
 
+#define DBG if(0)print
+
 /* a note on ABI. For standard exec, the va_list is a standard sysexec: 
  * a char * and a char **, two pointers. 
  * For sysexecac, va_list contains a flags, and a va_list compatible
@@ -23,12 +25,10 @@ sysexecac(va_list list)
 	char ** args;
 
  	flags = va_arg(eac, uintptr);
-	print("sysexecac: flags %p\n", flags);
  	switch(flags){
  	case EXTC:
 		break;
  	default:
-		print("sysexecac: normal\n");
  		return sysexec(list);
  	case EXAC:
  		up->ac = getac(up, -1);
@@ -49,7 +49,7 @@ sysexecac(va_list list)
 		nexterror();
 	}
 	args = va_arg(eac, char **);
-	print("args is %p; args[0] is %p; args[1] is %p\n", args, ((uintptr*)args)[0], ((uintptr*)args)[1]);
+	DBG("args is %p; args[0] is %p; args[1] is %p\n", args, ((uintptr*)args)[0], ((uintptr*)args)[1]);
 	ar0 = sysexec((va_list)args);
 
 	up->procctl = Proc_toac;

@@ -956,7 +956,6 @@ segio(Segio *sio, Segment *s, void *a, long n, vlong off, int read)
 }
 
 // NIX
-#define DBG print
 static void
 prepageseg(int i)
 {
@@ -967,7 +966,6 @@ prepageseg(int i)
 	s = up->seg[i];
 	if(s == nil)
 		return;
-	DBG("prepage: base %#p top %#p\n", s->base, s->top);
 	pgsz = 4096; // XXX pull in nix pgsz stuff. m->pgsz[s->pgszi];
 	for(addr = s->base; addr < s->top; addr += pgsz){
 		qlock(s);

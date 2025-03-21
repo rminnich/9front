@@ -416,7 +416,6 @@ faultamd64(Ureg* ureg, void*)
 {
 	uintptr addr;
 	int read, user;
-//	DBG("faultamd64: cpu%d: mach is %p\n", m->machno, m);
 
 	addr = getcr2();
 	read = !(ureg->error & 2);
