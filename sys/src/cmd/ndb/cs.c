@@ -1184,7 +1184,7 @@ netadd(char *p)
 	char *field[12];
 	int i, n;
 
-	n = getfields(p, field, 12, 1, " ");
+	n = getfields(p, field, nelem(field), 1, " ");
 	for(i = 0; i < n; i++){
 		for(np = network; np->net != nil; np++){
 			if(strcmp(field[i], np->net) != 0)
@@ -1845,7 +1845,12 @@ genquery(Mfile *mf, char *query)
 	Ndbtuple *t;
 	Ndbs s;
 
-	n = getfields(query, attr, nelem(attr), 1, " ");
+	/*
+	 * this was using getfields(), but some attribute values
+	 * such as vendor can contain spaces, so need to
+	 * be quoted like: vendor='value with spaces'
+	 */
+	n = tokenize(query, attr, nelem(attr));
 	if(n == 0)
 		return "bad query";
 
