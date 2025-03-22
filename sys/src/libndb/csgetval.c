@@ -29,7 +29,9 @@ csgetvalue(char *netroot, char *attr, char *val, char *rattr, Ndbtuple **pp)
 	if(fd < 0)
 		return nil;
 
-	snprint(line, sizeof(line), "!%s=%s %s=*", attr, val, rattr);
+	quotefmtinstall();	/* just in case */
+
+	snprint(line, sizeof(line), "!%s=%q %s=*", attr, val, rattr);
 	if(write(fd, line, strlen(line)) < 0){
 		close(fd);
 		return nil;

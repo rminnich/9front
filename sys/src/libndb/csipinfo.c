@@ -27,8 +27,10 @@ csipinfo(char *netroot, char *attr, char *val, char **list, int n)
 	if(fd < 0)
 		return nil;
 
+	quotefmtinstall();	/* just in case */
+
 	e = line + sizeof(line);
-	p = seprint(line, e, "!ipinfo %s=%s", attr, val);
+	p = seprint(line, e, "!ipinfo %s=%q", attr, val);
 	for(i = 0; i < n; i++){
 		if(*list == nil)
 			break;
