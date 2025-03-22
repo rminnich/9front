@@ -43,7 +43,7 @@ This option disables such translation.
 .B -p
 Show only connections with the given protocol.
 .TP
--B -t
+.B -t
 Prefix connections with how many seconds they've been alive.
 The output is sorted with the youngest connections first.
 .PD
