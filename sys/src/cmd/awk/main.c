@@ -157,6 +157,7 @@ void main(int argc, char *argv[])
 	argv[0] = cmdname;	/* put prog name at front of arglist */
 	   dprint( ("argc=%d, argv[0]=%s\n", argc, argv[0]) );
 	arginit(argc, argv);
+	quotefmtinstall();
 	yyparse();
 	if (fs)
 		*FS = qstring(fs, '\0');
