@@ -18,8 +18,8 @@ main(int argc, char *argv[])
 	}
 	ARGEND
 
-//	if (argc < 1)
-//		usage();
+	if (argc < 1)
+		usage();
 
 print("Before rfork\n\n\n");
 	int pid;
