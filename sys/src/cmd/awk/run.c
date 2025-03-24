@@ -911,7 +911,7 @@ int format(char **pbuf, int *pbufsize, char *s, Node *a)	/* printf-like conversi
 			*t++ = *s;
 			*t = '\0';
 			break;
-		case 's':
+		case 's': case 'q':
 			flag = 4;
 			break;
 		case 'c':
