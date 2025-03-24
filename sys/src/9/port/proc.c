@@ -9,6 +9,8 @@
 #include	"tos.h"
 #include	"ureg.h"
 
+#define DBG if(1)iprint
+
 enum {
 	Scaling = 2,
 };
