@@ -18,7 +18,6 @@
 |sys/src/9/pc64/brekky.c|	| | removed! |
 |sys/src/9/pc64/dat.h|	| | |
 |sys/src/9/pc64/fns.h|	| | |
-|sys/src/9/pc64/fpu.c|	| | |
 |sys/src/9/pc64/main.c|	| | |
 |sys/src/9/pc64/mkfile|	| | |
 |sys/src/9/pc64/mmu.c|	| | |
