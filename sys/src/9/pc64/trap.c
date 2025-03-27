@@ -456,6 +456,24 @@ faultamd64(Ureg* ureg, void*)
  */
 #include "../port/systab.h"
 
+void
+noerrorsleft(void)
+{
+	int i;
+
+	if(up->nerrlab){
+		/* NIX processes will have a waserror in their handler */
+		if(up->ac != nil && up->nerrlab == 1)
+			return;
+
+		print("bad errstack: %d extra\n", up->nerrlab);
+		for(i = 0; i < NERR; i++)
+			print("sp=%#p pc=%#p\n",
+				up->errlab[i].sp, up->errlab[i].pc);
+		panic("error stack");
+	}
+}
+
 /*
  *  Syscall is called directly from assembler without going through trap().
  */
@@ -502,8 +520,6 @@ syscall(Ureg* ureg)
 			splx(s);
 			startns = todget(nil);
 		} else if(up->procctl == Proc_totc || up->procctl == Proc_toac) {
-			/* we have to poperror() here, since we never return here. */
-			poperror();
 			_procctl(up);
 		}
 
@@ -522,13 +538,9 @@ syscall(Ureg* ureg)
 		if(0 && up->pid == 1)
 			print("syscall %lud error %s\n", scallnr, up->syserrstr);
 	}
-	if(up->nerrlab){
-		print("bad errstack [%lud]: %d extra\n", scallnr, up->nerrlab);
-		for(i = 0; i < NERR; i++)
-			print("sp=%#p pc=%#p\n",
-				up->errlab[i].sp, up->errlab[i].pc);
-		panic("error stack");
-	}
+
+	noerrorsleft();
+
 	ureg->ax = ret;
 
 	if(up->printsyscall){
