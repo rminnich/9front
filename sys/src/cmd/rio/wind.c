@@ -1089,9 +1089,24 @@ inmode(Rune r, int mode)
 static void
 wstretchsel(Window *w, uint pt, uint *q0, uint *q1, int mode)
 {
-	int c, i;
+	int c, i, rc, lc;
 	Rune *r, *l, *p;
 	uint q;
+
+	if(mode){
+		lc = *q0 > 0     ? w->r[*q0-1] : '\n';
+		rc = *q1 < w->nr ? w->r[*q1]   : '\n';
+		for(i=0; left[i]; i++){
+			l = left[i];
+			r = right[i];
+			p = strrune(l, lc);
+			if(p && r[p-l] == rc){
+				*q0 -= lc != '\n';
+				(*q1)++;
+				return;
+			}
+		}
+	}
 
 	*q0 = pt;
 	*q1 = pt;
