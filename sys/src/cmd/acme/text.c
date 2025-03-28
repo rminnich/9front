@@ -944,7 +944,7 @@ textselect(Text *t)
 	if(mouse->msec-clickmsec >= 500 || selecttext != t || clickcount > 3 || dx > 3 || dy > 3)
 		clickcount = 0;
 	if(clickcount >= 1 && selecttext==t && mouse->msec-clickmsec < 500){
-		textstretchsel(t, selectq, &q0, &q1, clickcount);
+		textstretchsel(t, &q0, &q1, clickcount);
 		textsetselect(t, q0, q1);
 		flushimage(display, 1);
 		x = mouse->xy.x;
@@ -983,7 +983,7 @@ textselect(Text *t)
 	}
 	if(q0 == q1){
 		if(q0==t->q0 && mouse->msec-clickmsec<500)
-			textstretchsel(t, selectq, &q0, &q1, clickcount);
+			textstretchsel(t, &q0, &q1, clickcount);
 		else
 			clicktext = t;
 		clickmsec = mouse->msec;
@@ -1316,14 +1316,30 @@ inmode(Rune r, int mode)
 }
 
 void
-textstretchsel(Text *t, uint mp, uint *q0, uint *q1, int mode)
+textstretchsel(Text *t, uint *q0, uint *q1, int mode)
 {
-	int c, i;
-	Rune *r, *l, *p;
+	int c, i, lc, rc;
+	Rune *r, *l, *p, *x;
 	uint q;
 
-	*q0 = mp;
-	*q1 = mp;
+	*q0 = t->q0;
+	*q1 = t->q1;
+
+	if(mode){
+		lc = *q0 > 0    	? textreadc(t, *q0-1) : '\n';
+		rc = *q1 < t->file->nc	? textreadc(t, *q1) : '\n';
+		for(i=0; left[i]; i++){
+			l = left[i];
+			r = right[i];
+			x = runestrchr(l, lc);
+			if(x && r[x-l] == rc){
+				(*q0) -= lc != '\n';
+				(*q1)++;
+				return;
+			}
+		}
+	}
+
 	for(i=0; left[i]!=nil; i++){
 		q = *q0;
 		l = left[i];
