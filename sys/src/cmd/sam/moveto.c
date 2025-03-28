@@ -142,12 +142,27 @@ strrune(Rune *s, Rune c)
 void
 stretchsel(File *f, Posn p1, int mode)
 {
-	int c, i;
-	Rune *r, *l;
+	int c, i, lc, rc;
+	Rune *r, *l, *x;
 	Posn p;
 
 	if(p1 > f->nc)
 		return;
+	if(mode){
+		lc = f->dot.r.p1 > 0     ? filereadc(f, f->dot.r.p1-1) : '\n';
+		rc = f->dot.r.p2 < f->nc ? filereadc(f, f->dot.r.p2)   : '\n';
+		for(i=0; left[i]; i++){
+			l = left[i];
+			r = right[i];
+			x = strrune(l, lc);
+			if(x && r[x-l] == rc){
+				f->dot.r.p1 -= lc != '\n';
+				f->dot.r.p2++;
+				return;
+			}
+		}
+	}
+
 	f->dot.r.p1 = f->dot.r.p2 = p1;
 	for(i=0; left[i]; i++){
 		l = left[i];
