@@ -199,6 +199,9 @@ and
 .B *nocga=
 parameters.
 Serial console is not supported by EFI.
+.PP
+.B 9bootfat
+only supports short (8+3) file-names.
 .SH HISTORY
 9boot first appeared in 9front (April, 2011).
 EFI support first appeared in 9front (Oct, 2014).
