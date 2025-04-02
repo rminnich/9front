@@ -1,11 +1,11 @@
 interior:V:
-	troff -ms 1OCT1993.ms | lp -dstdout | ps2pdf -dDEVICEWIDTHPOINTS'='432  -dDEVICEHEIGHTPOINTS'='648 >/tmp/ointerior.pdf
-	cd /tmp
+	troff -ms 1OCT1993.ms | lp -dstdout | ps2pdf -dDEVICEWIDTHPOINTS'='432  -dDEVICEHEIGHTPOINTS'='648 >../pdf_print/ointerior.pdf
+	cd ../pdf_print
 	gs -q -dDEVICEWIDTHPOINTS'='432 -dDEVICEHEIGHTPOINTS'='648 -dNOPAUSE -dBATCH -dPDFSETTINGS'='/prepress -dEmbedAllFonts'='true -sDEVICE'='pdfwrite -sOutputFile'='interior.pdf ointerior.pdf
 pdf:V:
-	cd /tmp
-	gs -q -dDEVICEWIDTHPOINTS'='432 -dDEVICEHEIGHTPOINTS'='648 -dNOPAUSE -dBATCH -dPDFSETTINGS'='/prepress -dEmbedAllFonts'='true -sDEVICE'='pdfwrite -sOutputFile'='1OCT1993.pdf front.pdf blank.pdf interior.pdf blank.pdf back.pdf
+	cd ../pdf_print
+	gs -q -dDEVICEWIDTHPOINTS'='432 -dDEVICEHEIGHTPOINTS'='648 -dNOPAUSE -dBATCH -dPDFSETTINGS'='/prepress -dEmbedAllFonts'='true -sDEVICE'='pdfwrite -sOutputFile'='../pdf/1OCT1993.pdf front.pdf blank.pdf interior.pdf blank.pdf back.pdf
 v:V:
 	troff -ms 1OCT1993.ms | lp -dstdout | ps2pdf -dDEVICEWIDTHPOINTS'='432  -dDEVICEHEIGHTPOINTS'='648 | page
 txt:V:
-	htmlroff -u -ms -mhtml 1OCT1993.ms | htmlfmt >/tmp/1OCT1993.txt
+	htmlroff -u -ms -mhtml 1OCT1993.ms | htmlfmt >../txt/1OCT1993.txt

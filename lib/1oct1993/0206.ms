@@ -58,7 +58,7 @@ incontrovertible fact."
 .PP
 .ps 10
 "According to your essentialist bias," Violet said.  "But what are
-'facts,' anyway?"
+ 'facts,' anyway?"
 .PP
 .ps 10
 There was no answer.  It was a meaningless question.

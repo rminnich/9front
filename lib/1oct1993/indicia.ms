@@ -18,7 +18,7 @@ MASSIVE FICTIONS
 .br
 massivefictions.com
 
-ISBN-13:\ 978\-1\-304\-14891\-9
+ISBN:\ 9781304148919
 
 This is a work of fiction.  Names, characters, places and incidents
 either are the product of the author's imagination or are used

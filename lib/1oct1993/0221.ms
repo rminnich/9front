@@ -102,7 +102,7 @@ telescreen.  What he does by gathering all of these strains under the
 same umbrella is akin to what journalists do when they headline
 articles about Albert Lunsford's comics with blurbs like
 .I
-'Biff!  Bam!  Slap!'"
+ 'Biff!  Bam!  Slap!'"
 .R
 .PP
 .ps 10
@@ -211,7 +211,7 @@ stood up and joined the discussion.
 mutually exclusive claims, Albert would just say that the explanation
 was self\-evident to those who had already joined
 .I
-'his team.'"
+ 'his team.'"
 .R
 .PP
 .ps 10
