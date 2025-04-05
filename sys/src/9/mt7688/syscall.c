@@ -118,11 +118,27 @@ syscall(Ureg* ureg)
 
 }
 
+void
+fpunotify(void)
+{
+	up->fpstate |= FPnotify;
+}
+
+void
+fpunoted(void)
+{
+	up->fpstate &= ~FPnotify;
+}
+
+FPsave*
+notefpsave(Proc *p)
+{
+	return nil;
+}
 
 int
 notify(Ureg *ur)
 {
-	int s;
 	ulong sp;
 	char *msg;
 
@@ -131,16 +147,14 @@ notify(Ureg *ur)
 	if(up->nnote == 0)
 		return 0;
 
-	s = spllo();
+	spllo();
 	qlock(&up->debug);
-	up->fpstate |= FPillegal;
 	msg = popnote(ur);
 	if(msg == nil){
 		qunlock(&up->debug);
-		splx(s);
+		splhi();
 		return 0;
 	}
-
 
 	sp = ur->usp - sizeof(Ureg) - BY2WD; /* spim libc */
 
@@ -170,8 +184,9 @@ notify(Ureg *ur)
 	 */
 	ur->pc = (ulong)up->notify;
 
+	fpunotify();
 	qunlock(&up->debug);
-	splx(s);
+	splhi();
 	return 1;
 }
 
@@ -193,7 +208,7 @@ noted(Ureg *kur, ulong arg0)
 	}
 	up->notified = 0;
 
-	up->fpstate &= ~FPillegal;
+	fpunoted();
 
 	nur = up->ureg;
 

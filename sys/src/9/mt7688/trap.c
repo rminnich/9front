@@ -195,7 +195,7 @@ trap(Ureg *ur)
 	case CCPU:
 		cop = (ur->cause>>28)&3;
 		if(user && up && cop == 1) {
-			if(up->fpstate & FPillegal) {
+			if(up->fpstate & FPnotify) {
 				/* someone used floating point in a note handler */
 				postnote(up, 1,
 					"sys: floating point in note handler",

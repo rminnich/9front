@@ -2,6 +2,7 @@ typedef struct BIOS32si	BIOS32si;
 typedef struct BIOS32ci	BIOS32ci;
 typedef struct Conf	Conf;
 typedef struct Confmem	Confmem;
+typedef struct FPalloc	FPalloc;
 typedef union FPsave	FPsave;
 typedef struct FPx87state FPx87state;
 typedef struct FPssestate FPssestate;
@@ -90,10 +91,17 @@ union FPsave {
 	FPssestate;
 };
 
+struct FPalloc
+{
+	FPsave;
+
+	FPalloc	*link;
+};
+
 struct PFPU
 {
 	int	fpstate;
-	FPsave	*fpsave;
+	FPalloc	*fpsave;
 };
 
 enum
@@ -101,10 +109,10 @@ enum
 	/* this is a state */
 	FPinit=		0,
 	FPactive=	1,
-	FPinactive=	2,
+	FPinactive=	2,	/* fpsave valid when fpstate >= FPincative */
 
 	/* the following is a bit that can be or'd into the state */
-	FPillegal=	0x100,
+	FPnotify=	0x100,
 };
 
 struct Confmem

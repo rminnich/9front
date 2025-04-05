@@ -109,14 +109,16 @@ extern void sev(void);
  */
 extern int fpiarm(Ureg*);
 extern int fpudevprocio(Proc*, void*, long, uintptr, int);
+extern FPalloc *fpalloc(void);
 extern void fpuinit(void);
 extern void fpunoted(void);
-extern void fpunotify(Ureg*);
+extern void fpunotify(void);
 extern void fpuprocrestore(Proc*);
 extern void fpuprocsave(Proc*);
 extern void fpuprocfork(Proc*);
 extern void fpusysprocsetup(Proc*);
 extern int fpuemu(Ureg*);
+
 /*
  * Things called from port.
  */

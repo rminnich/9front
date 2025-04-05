@@ -243,29 +243,36 @@ fpuinit(void)
 	_stts();
 }
 
-static FPsave*
-fpalloc(void)
+static FPalloc*
+fpalloc(FPalloc *link)
 {
-	FPsave *save;
+	FPalloc *a;
 
-	while((save = mallocalign(sizeof(FPsave), FPalign, 0, 0)) == nil){
-		spllo();
-		resrcwait("no memory for FPsave");
-		splhi();
+	while((a = mallocalign(sizeof(FPalloc), FPalign, 0, 0)) == nil){
+		int x = spllo();
+		resrcwait("no memory for FPalloc");
+		splx(x);
 	}
-	return save;
+	a->link = link;
+	return a;
 }
 
 static void
-fpfree(FPsave *save)
+fpfree(FPalloc *a)
 {
-	free(save);
+	free(a);
 }
 
 void
 fpuprocsetup(Proc *p)
 {
+	FPalloc *a;
+
 	p->fpstate = FPinit;
+	while((a = p->fpsave) != nil){
+		p->fpsave = a->link;
+		fpfree(a);
+	}
 }
 
 void
@@ -274,7 +281,7 @@ fpuprocfork(Proc *p)
 	int s;
 
 	s = splhi();
-	switch(up->fpstate & ~FPillegal){
+	switch(up->fpstate & ~FPnotify){
 	case FPprotected:
 		_clts();
 		/* wet floor */
@@ -284,7 +291,7 @@ fpuprocfork(Proc *p)
 		/* wet floor */
 	case FPinactive:
 		if(p->fpsave == nil)
-			p->fpsave = fpalloc();
+			p->fpsave = fpalloc(nil);
 		memmove(p->fpsave, up->fpsave, sizeof(FPsave));
 		p->fpstate = FPinactive;
 	}
@@ -295,14 +302,21 @@ void
 fpuprocsave(Proc *p)
 {
 	if(p->state == Moribund){
+		FPalloc *a;
+
 		if(p->fpstate == FPactive || p->kfpstate == FPactive){
 			_fnclex();
 			_stts();
 		}
-		fpfree(p->fpsave);
-		fpfree(p->kfpsave);
-		p->fpsave = p->kfpsave = nil;
 		p->fpstate = p->kfpstate = FPinit;
+		while((a = p->fpsave) != nil){
+			p->fpsave = a->link;
+			fpfree(a);
+		}
+		while((a = p->kfpsave) != nil){
+			p->kfpsave = a->link;
+			fpfree(a);
+		}
 		return;
 	}
 	if(p->kfpstate == FPactive){
@@ -344,7 +358,7 @@ fpuprocrestore(Proc*)
  *  are handled between fpukenter() and fpukexit(),
  *  so they can use floating point and vector instructions.
  */
-FPsave*
+FPalloc*
 fpukenter(Ureg *)
 {
 	if(up == nil){
@@ -380,7 +394,7 @@ fpukenter(Ureg *)
 }
 
 void
-fpukexit(Ureg *ureg, FPsave *save)
+fpukexit(Ureg *ureg, FPalloc *o)
 {
 	if(up == nil){
 		switch(m->fpstate){
@@ -392,8 +406,8 @@ fpukexit(Ureg *ureg, FPsave *save)
 			fpfree(m->fpsave);
 			m->fpstate = FPinit;
 		}
-		m->fpsave = save;
-		if(save != nil)
+		m->fpsave = o;
+		if(o != nil)
 			m->fpstate = FPinactive;
 		return;
 	}
@@ -415,9 +429,45 @@ fpukexit(Ureg *ureg, FPsave *save)
 		fpfree(up->kfpsave);
 		up->kfpstate = FPinit;
 	}
-	up->kfpsave = save;
-	if(save != nil)
+	up->kfpsave = o;
+	if(o != nil)
 		up->kfpstate = FPinactive;
+}
+
+void
+fpunotify(Proc *p)
+{
+	fpuprocsave(p);
+	p->fpstate |= FPnotify;
+}
+
+void
+fpunoted(Proc *p)
+{
+	FPalloc *o;
+
+	if(p->fpstate & FPnotify) {
+		p->fpstate &= ~FPnotify;
+	} else if((o = p->fpsave->link) != nil) {
+		fpfree(p->fpsave);
+		p->fpsave = o;
+		p->fpstate = FPinactive;
+	} else {
+		p->fpstate = FPinit;
+	}
+}
+
+FPsave*
+notefpsave(Proc *p)
+{
+	if(p->fpsave == nil)
+		return nil;
+	if(p->fpstate == (FPinactive|FPnotify)){
+		p->fpsave = fpalloc(p->fpsave);
+		memmove(p->fpsave, p->fpsave->link, sizeof(FPsave));
+		p->fpstate = FPinactive;
+	}
+	return p->fpsave->link;
 }
 
 /*
@@ -451,7 +501,7 @@ mathemu(Ureg *ureg, void*)
 		if(up == nil){
 			switch(m->fpstate){
 			case FPinit:
-				m->fpsave = fpalloc();
+				m->fpsave = fpalloc(m->fpsave);
 				m->fpstate = FPactive;
 				fpinit();
 				break;
@@ -474,7 +524,7 @@ mathemu(Ureg *ureg, void*)
 
 		switch(up->kfpstate){
 		case FPinit:
-			up->kfpsave = fpalloc();
+			up->kfpsave = fpalloc(up->kfpsave);
 			up->kfpstate = FPactive;
 			fpinit();
 			break;
@@ -489,17 +539,22 @@ mathemu(Ureg *ureg, void*)
 		return;
 	}
 
-	if(up->fpstate & FPillegal){
-		postnote(up, 1, "sys: floating point in note handler", NDebug);
-		return;
-	}
 	switch(up->fpstate){
+	case FPinit|FPnotify:
+		/* wet floor */
 	case FPinit:
 		if(up->fpsave == nil)
-			up->fpsave = fpalloc();
+			up->fpsave = fpalloc(nil);
 		up->fpstate = FPactive;
 		fpinit();
 		break;
+	case FPinactive|FPnotify:
+		spllo();
+		qlock(&up->debug);
+		notefpsave(up);
+		qunlock(&up->debug);
+		splhi();
+		/* wet floor */
 	case FPinactive:
 		if(fpcheck(up->fpsave, 0))
 			break;

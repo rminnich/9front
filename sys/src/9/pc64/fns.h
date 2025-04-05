@@ -35,13 +35,14 @@ int	ecwrite(uchar addr, uchar val);
 void	(*fprestore)(FPsave*);
 void	(*fpsave)(FPsave*);
 void	fpinit(void);
-FPsave*	fpukenter(Ureg*);
-void	fpukexit(Ureg*, FPsave*);
+FPalloc*fpukenter(Ureg*);
+void	fpukexit(Ureg*, FPalloc*);
 void	fpuprocfork(Proc*);
 void	fpuprocrestore(Proc*);
 void	fpuprocsave(Proc*);
 void	fpuprocsetup(Proc*);
-
+void	fpunotify(Proc*);
+void	fpunoted(Proc*);
 u64int	getcr0(void);
 u64int	getcr2(void);
 u64int	getcr3(void);

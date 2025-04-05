@@ -2,6 +2,7 @@ typedef struct Conf	Conf;
 typedef struct Confmem	Confmem;
 typedef struct FPssestate	FPssestate;
 typedef struct FPavxstate	FPavxstate;
+typedef struct FPalloc	FPalloc;
 typedef struct FPsave	FPsave;
 typedef struct PFPU	PFPU;
 typedef struct ISAConf	ISAConf;
@@ -76,14 +77,21 @@ struct FPsave
 	FPavxstate;
 };
 
+struct FPalloc
+{
+	FPsave;
+
+	FPalloc	*link;		/* when context nests */
+};
+
 enum
 {
 	FPinit,
 	FPactive,
-	FPinactive,
 	FPprotected,
+	FPinactive,		/* fpsave valid when fpstate >= FPincative */
 
-	FPillegal=	0x100,	/* fp forbidden in note handler */
+	FPnotify = 0x100,	/* fp in note handler */
 };
 
 #define KFPSTATE
@@ -92,8 +100,8 @@ struct PFPU
 {
 	int	fpstate;
 	int	kfpstate;
-	FPsave	*fpsave;
-	FPsave	*kfpsave;
+	FPalloc	*fpsave;
+	FPalloc	*kfpsave;
 };
 
 struct Confmem
@@ -204,7 +212,7 @@ struct Mach
 	char	havenx;
 
 	int	fpstate;		/* FPU state for interrupts */
-	FPsave	*fpsave;
+	FPalloc	*fpsave;
 
 	u64int*	pml4;			/* pml4 base for this processor (va) */
 	Tss*	tss;			/* tss for this processor */

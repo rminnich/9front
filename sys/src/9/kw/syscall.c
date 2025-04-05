@@ -36,7 +36,10 @@ noted(Ureg* cur, uintptr arg0)
 		pexit("Suicide", 0);
 	}
 	up->notified = 0;
+
+	splhi();
 	fpunoted();
+	spllo();
 
 	nf = up->ureg;
 
@@ -98,7 +101,6 @@ noted(Ureg* cur, uintptr arg0)
 int
 notify(Ureg* ureg)
 {
-	u32int s;
 	uintptr sp;
 	NFrame *nf;
 	char *msg;
@@ -108,9 +110,7 @@ notify(Ureg* ureg)
 	if(up->nnote == 0)
 		return 0;
 
-	fpunotify(ureg);
-
-	s = spllo();
+	spllo();
 	qlock(&up->debug);
 	msg = popnote(ureg);
 	if(msg == nil){
@@ -145,8 +145,9 @@ notify(Ureg* ureg)
 	ureg->pc = (uintptr)up->notify;
 	ureg->r0 = (uintptr)nf->arg0;
 
+	splhi();
+	fpunotify();
 	qunlock(&up->debug);
-	splx(s);
 
 	return 1;
 }

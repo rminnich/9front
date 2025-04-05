@@ -46,7 +46,8 @@ struct FPsave
 struct PFPU
 {
 	int	fpstate;
-	FPsave	fpsave[1];
+	FPsave	*fpsave;
+	FPsave	*ofpsave;
 };
 
 enum
@@ -54,7 +55,7 @@ enum
 	FPinit,
 	FPactive,
 	FPinactive,
-	FPillegal = 0x100
+	FPnotify = 0x100
 };
 
 struct Confmem

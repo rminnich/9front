@@ -213,6 +213,17 @@ fpclear(void)
 	fpwr(Fpexc, fprd(Fpexc) & ~Fpmbc);
 }
 
+FPalloc*
+fpalloc(void)
+{
+	FPalloc *f;
+	while((f = mallocalign(sizeof(FPalloc), 16, 0, 0)) == nil){
+		int x = spllo();
+		resrcwait("no memory for FPalloc");
+		splx(x);
+	}
+	return f;
+}
 
 /*
  * Called when a note is about to be delivered to a
@@ -222,13 +233,13 @@ fpclear(void)
  * checked in the Device Not Available handler.
  */
 void
-fpunotify(Ureg*)
+fpunotify(void)
 {
 	if(up->fpstate == FPactive){
 		fpsave(up->fpsave);
-		up->fpstate = FPinactive;
+		up->fpstate = up->fpsave->fpstate = FPinactive;
 	}
-	up->fpstate |= FPillegal;
+	up->fpstate |= FPnotify;
 }
 
 /*
@@ -239,7 +250,35 @@ fpunotify(Ureg*)
 void
 fpunoted(void)
 {
-	up->fpstate &= ~FPillegal;
+	if(up->fpstate & FPnotify){
+		up->fpstate &= ~FPnotify;
+	} else {
+		FPalloc *o;
+
+		if(up->fpstate == FPactive)
+			fpoff();
+		if((o = up->ofpsave) != nil) {
+			up->ofpsave = nil;
+			free(up->fpsave);
+			up->fpsave = o;
+			up->fpstate = o->fpstate;
+		} else {
+			up->fpstate = FPinit;
+		}
+	}
+}
+
+FPsave*
+notefpsave(Proc *p)
+{
+	switch(p->fpstate){
+	case FPinactive|FPnotify:
+	case FPemu|FPnotify:
+		p->ofpsave = fpalloc();
+		memmove(p->ofpsave, p->fpsave, sizeof(FPalloc));
+		p->fpstate &= ~FPnotify;
+	}
+	return p->ofpsave;
 }
 
 /* should only be called if p->fpstate == FPactive */
@@ -279,20 +318,23 @@ fprestore(Proc *p)
 void
 fpuprocsave(Proc *p)
 {
-	if(p->fpstate == FPactive){
-		if(p->state == Moribund)
+	if(p->state == Moribund){
+		if(p->fpstate == FPactive)
 			fpoff();
-		else{
-			/*
-			 * Fpsave() stores without handling pending
-			 * unmasked exeptions. Postnote() can't be called
-			 * so the handling of pending exceptions is delayed
-			 * until the process runs again and generates an
-			 * emulation fault to activate the FPU.
-			 */
-			fpsave(p->fpsave);
+		p->fpstate = FPinit;
+		if(p->fpsave != nil){
+			free(p->fpsave);
+			p->fpsave = nil;
 		}
-		p->fpstate = FPinactive;
+		if(p->ofpsave != nil){
+			free(p->ofpsave);
+			p->ofpsave = nil;
+		}
+		return;
+	}
+	if(p->fpstate == FPactive){
+		fpsave(p->fpsave);
+		p->fpstate = p->fpsave->fpstate = FPinactive;
 	}
 }
 
@@ -317,14 +359,17 @@ fpuprocfork(Proc *p)
 	int s;
 
 	s = splhi();
-	switch(up->fpstate & ~FPillegal){
+	switch(up->fpstate & ~FPnotify){
 	case FPactive:
 		fpsave(up->fpsave);
-		up->fpstate = FPinactive;
+		up->fpstate = up->fpsave->fpstate = FPinactive;
 		/* no break */
 	case FPinactive:
-		memmove(p->fpsave, up->fpsave, sizeof(FPsave));
-		p->fpstate = FPinactive;
+	case FPemu:
+		if(p->fpsave == nil)
+			p->fpsave = fpalloc();
+		memmove(p->fpsave, up->fpsave, sizeof(FPalloc));
+		p->fpstate = up->fpsave->fpstate;
 	}
 	splx(s);
 }
@@ -343,6 +388,15 @@ fpusysprocsetup(Proc *p)
 	p->fpstate = FPinit;
 	fpoff();
 	splx(s);
+
+	if(p->fpsave != nil){
+		free(p->fpsave);
+		p->fpsave = nil;
+	}
+	if(p->ofpsave != nil){
+		free(p->ofpsave);
+		p->ofpsave = nil;
+	}
 }
 
 static void
@@ -379,11 +433,22 @@ mathemu(Ureg *)
 {
 	switch(up->fpstate){
 	case FPemu:
+	case FPemu|FPnotify:
 		error("illegal instruction: VFP opcode in emulated mode");
 	case FPinit:
+	case FPinit|FPnotify:
+		if(up->fpsave == nil)
+			up->fpsave = fpalloc();
 		fpinit();
 		up->fpstate = FPactive;
 		break;
+	case FPinactive|FPnotify:
+		spllo();
+		qlock(&up->debug);
+		notefpsave(up);
+		qunlock(&up->debug);
+		splhi();
+		/* wet floor */
 	case FPinactive:
 		/*
 		 * Before restoring the state, check for any pending
@@ -476,15 +541,11 @@ fpuemu(Ureg* ureg)
 {
 	int s, nfp, cop, op;
 	uintptr pc;
-	static int already;
 
 	if(waserror()){
 		postnote(up, 1, up->errstr, NDebug);
 		return 1;
 	}
-
-	if(up->fpstate & FPillegal)
-		error("floating point in note handler");
 
 	nfp = 0;
 	pc = ureg->pc;
@@ -495,8 +556,6 @@ fpuemu(Ureg* ureg)
 		fpstuck(pc);		/* debugging; could move down 1 line */
 	if (ISFPAOP(cop, op)) {		/* old arm 7500 fpa opcode? */
 		s = spllo();
-		if(!already++)
-			pprint("warning: emulated arm7500 fpa instr %#8.8lux at %#p\n", *(ulong *)pc, pc);
 		if(waserror()){
 			splx(s);
 			nexterror();

@@ -133,7 +133,7 @@ void
 trap(Ureg *ureg)
 {
 	int vno, user;
-	FPsave *f = nil;
+	FPalloc *f = nil;
 
 	vno = ureg->type;
 	user = kenter(ureg);
@@ -522,14 +522,10 @@ syscall(Ureg* ureg)
 		 * to it when returning form syscall()
 		 */
 		((void**)&ureg)[-1] = (void*)noteret;
-
 		noted(ureg, *((ulong*)up->s.args));
-		splhi();
-		up->fpstate &= ~FPillegal;
 	}
-	else
-		splhi();
 
+	splhi();
 	if(scallnr != RFORK && (up->procctl || up->nnote) && notify(ureg))
 		((void**)&ureg)[-1] = (void*)noteret;	/* loads RARG */
 
@@ -595,10 +591,11 @@ if(0) print("%s %lud: notify %#p %#p %#p %s\n",
 	ureg->bp = (uintptr)up->ureg;		/* arg1 passed in RARG */
 	ureg->cs = UESEL;
 	ureg->ss = UDSEL;
-	qunlock(&up->debug);
+
 	splhi();
-	fpuprocsave(up);
-	up->fpstate |= FPillegal;
+	fpunotify(up);
+	qunlock(&up->debug);
+
 	return 1;
 }
 
@@ -618,6 +615,10 @@ noted(Ureg* ureg, ulong arg0)
 		pexit("Suicide", 0);
 	}
 	up->notified = 0;
+
+	splhi();
+	fpunoted(up);
+	spllo();
 
 	nureg = up->ureg;	/* pointer to user returned Ureg struct */
 

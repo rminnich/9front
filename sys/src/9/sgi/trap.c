@@ -210,7 +210,7 @@ trap(Ureg *ur)
 	case CCPU:
 		cop = (ur->cause>>28)&3;
 		if(user && up && cop == 1) {
-			if(up->fpstate & FPillegal) {
+			if(up->fpstate & FPnotify) {
 				/* someone used floating point in a note handler */
 				postnote(up, 1,
 					"sys: floating point in note handler",
@@ -442,10 +442,31 @@ dumpregs(Ureg *ur)
 			regname[i+1].name, R(ur, i+1));
 }
 
+void
+fpunotify(void)
+{
+	if(up->fpstate == FPactive){
+		savefpregs(up->fpsave);
+		up->fpstate = FPinactive;
+	}
+	up->fpstate |= FPnotify;
+}
+
+void
+fpunoted(void)
+{
+	up->fpstate &= ~FPnotify;
+}
+
+FPsave*
+notefpsave(Proc*)
+{
+	return nil;
+}
+
 int
 notify(Ureg *ur)
 {
-	int s;
 	ulong sp;
 	char *msg;
 
@@ -454,18 +475,12 @@ notify(Ureg *ur)
 	if(up->nnote == 0)
 		return 0;
 
-	if(up->fpstate == FPactive){
-		savefpregs(up->fpsave);
-		up->fpstate = FPinactive;
-	}
-	up->fpstate |= FPillegal;
-
-	s = spllo();
+	spllo();
 	qlock(&up->debug);
 	msg = popnote(ur);
 	if(msg == nil){
 		qunlock(&up->debug);
-		splx(s);
+		splhi();
 		return 0;
 	}
 
@@ -498,8 +513,9 @@ notify(Ureg *ur)
 	 */
 	ur->pc = (ulong)up->notify;
 
+	splhi();
+	fpunotify();
 	qunlock(&up->debug);
-	splx(s);
 	return 1;
 }
 
@@ -520,10 +536,11 @@ noted(Ureg *kur, ulong arg0)
 	}
 	up->notified = 0;
 
-	up->fpstate &= ~FPillegal;
+	splhi();
+	fpunoted();
+	spllo();
 
 	nur = up->ureg;
-
 	oureg = (ulong)nur;
 	if((oureg & (BY2WD-1)) || !okaddr((ulong)oureg-BY2WD, BY2WD+sizeof(Ureg), 0)){
 		pprint("bad up->ureg in noted or call to noted() when not notified\n");

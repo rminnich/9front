@@ -122,10 +122,10 @@ enum
 	FPinit,
 	FPactive,
 	FPinactive,
-	FPemu,
+	FPemu,		/* fpsave valid when fpstate >= FPincative */
 
-	/* bit meaning floating point illegal */
-	FPillegal= 0x100,
+	/* bit meaning floating point in note handler */
+	FPnotify = 0x100,
 };
 
 /*

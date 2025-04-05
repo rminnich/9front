@@ -46,6 +46,7 @@ ulong	rdcount(void);
 ulong*	reg(Ureg*, int);
 void	restfpregs(FPsave*, ulong);
 void	intrenable(int, void(*)(Ureg *, void *), void *);
+void	savefpregs(FPsave*);
 void	screeninit(void);
 void	setpagemask(ulong);
 void	setwired(ulong);

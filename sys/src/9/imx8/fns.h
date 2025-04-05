@@ -95,8 +95,10 @@ extern void fpuprocsetup(Proc*);
 extern void fpuprocfork(Proc*);
 extern void fpuprocsave(Proc*);
 extern void fpuprocrestore(Proc*);
-extern FPsave* fpukenter(Ureg*);
-extern void fpukexit(Ureg*, FPsave*);
+extern FPalloc* fpukenter(Ureg*);
+extern void fpukexit(Ureg*, FPalloc*);
+extern void fpunotify(Proc*);
+extern void fpunoted(Proc*);
 extern void mathtrap(Ureg*);
 
 /* trap */

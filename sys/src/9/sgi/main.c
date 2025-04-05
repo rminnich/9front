@@ -301,7 +301,7 @@ procfork(Proc *p)
 	int s;
 
 	s = splhi();
-	switch(up->fpstate & ~FPillegal){
+	switch(up->fpstate & ~FPnotify){
 	case FPactive:
 		savefpregs(up->fpsave);
 		up->fpstate = FPinactive;

@@ -121,7 +121,7 @@ mathtrap(Ureg *, ulong)
 {
 	int s;
 
-	if((up->fpstate & FPillegal) != 0){
+	if(up->fpstate & FPnotify){
 		postnote(up, 1, "sys: floating point in note handler", NDebug);
 		return;
 	}
@@ -278,10 +278,32 @@ syscall(Ureg *ureg)
 	kexit(ureg);
 }
 
+void
+fpunotify(void)
+{
+	if(up->fpstate == FPactive){
+		fpsave(up->fpsave);
+		up->fpstate = FPinactive;
+	}
+	up->fpstate |= FPnotify;
+}
+
+void
+fpunoted(void)
+{
+	up->fpstate &= ~FPnotify;
+}
+
+FPsave*
+notefpsave(Proc*)
+{
+	return nil;
+}
+
 int
 notify(Ureg *ureg)
 {
-	ulong s, sp;
+	ulong sp;
 	char *msg;
 
 	if(up->procctl)
@@ -289,13 +311,7 @@ notify(Ureg *ureg)
 	if(up->nnote == 0)
 		return 0;
 
-	if(up->fpstate == FPactive){
-		fpsave(up->fpsave);
-		up->fpstate = FPinactive;
-	}
-	up->fpstate |= FPillegal;
-
-	s = spllo();
+	spllo();
 	qlock(&up->debug);
 	msg = popnote(ureg);
 	if(msg == nil){
@@ -329,8 +345,10 @@ notify(Ureg *ureg)
 	ureg->sp = sp;
 	ureg->pc = (uintptr) up->notify;
 	ureg->r14 = 0;
+
+	splhi();
+	fpunotify();
 	qunlock(&up->debug);
-	splx(s);
 	return 1;
 }
 
@@ -347,10 +365,12 @@ noted(Ureg *ureg, ulong arg0)
 		pexit("Suicide", 0);
 	}
 	up->notified = 0;
+
+	splhi();
+	fpunoted();
+	spllo();
 	
 	nureg = up->ureg;
-	up->fpstate &= ~FPillegal;
-	
 	oureg = (ulong) nureg;
 	if(!okaddr(oureg - BY2WD, BY2WD + sizeof(Ureg), 0) || (oureg & 3) != 0){
 		qunlock(&up->debug);
@@ -485,7 +505,7 @@ procsave(Proc *p)
 }
 
 void
-procrestore(Proc *p)
+procrestore(Proc*)
 {
 }
 

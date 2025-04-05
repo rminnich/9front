@@ -20,6 +20,8 @@ void	fpuprocsetup(Proc*);
 void	fpuprocfork(Proc*);
 void	fpuprocsave(Proc*);
 void	fpuprocrestore(Proc*);
+void	fpunotify(Proc*);
+void	fpunoted(Proc*);
 int	cpuidentify(void);
 void	cpuidprint(void);
 void	(*cycles)(uvlong*);

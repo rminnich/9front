@@ -97,7 +97,7 @@ static char *traps[64] = {
 void
 trap(Ureg *ureg)
 {
-	FPsave *f = nil;
+	FPalloc *f = nil;
 	u32int type, intr;
 	int user;
 
@@ -265,13 +265,9 @@ syscall(Ureg *ureg)
 		 * to it when returning form syscall()
 		 */
 		returnto(noteret);
-
-		splhi();
-		up->fpstate &= ~FPillegal;
 	}
-	else
-		splhi();
 
+	splhi();
 	if(scallnr != RFORK && (up->procctl || up->nnote))
 		notify(ureg);
 
@@ -329,11 +325,11 @@ notify(Ureg *ureg)
 	ureg->sp = sp;
 	ureg->pc = (uintptr) up->notify;
 	ureg->link = 0;
-	qunlock(&up->debug);
 
 	splhi();
-	fpuprocsave(up);
-	up->fpstate |= FPillegal;
+	fpunotify(up);
+	qunlock(&up->debug);
+
 	return 1;
 }
 
@@ -350,7 +346,11 @@ noted(Ureg *ureg, ulong arg0)
 		pexit("Suicide", 0);
 	}
 	up->notified = 0;
-	
+
+	splhi();
+	fpunoted(up);
+	spllo();
+
 	nureg = up->ureg;
 	
 	oureg = (uintptr) nureg;

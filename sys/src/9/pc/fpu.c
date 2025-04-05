@@ -224,6 +224,26 @@ simderror(Ureg *ureg, void*)
 	mathnote(up->fpsave->mxcsr & 0x3f, ureg->pc);
 }
 
+static FPalloc*
+fpalloc(FPalloc *link)
+{
+	FPalloc *a;
+
+	while((a = mallocalign(sizeof(FPalloc), FPalign, 0, 0)) == nil){
+		int x = spllo();
+		resrcwait("no memory for FPalloc");
+		splx(x);
+	}
+	a->link = link;
+	return a;
+}
+
+static void
+fpfree(FPalloc *a)
+{
+	free(a);
+}
+
 /*
  *  math coprocessor emulation fault
  */
@@ -232,20 +252,24 @@ mathemu(Ureg *ureg, void*)
 {
 	ulong status, control;
 
-	if(up->fpstate & FPillegal){
-		/* someone did floating point in a note handler */
-		postnote(up, 1, "sys: floating point in note handler", NDebug);
-		return;
-	}
 	switch(up->fpstate){
+	case FPinit|FPnotify:
+		/* wet floor */
 	case FPinit:
+		if(up->fpsave == nil)
+			up->fpsave = fpalloc(nil);
 		fpinit();
 		if(fpsave == fpssesave)
 			ldmxcsr(0x1f80);	/* no simd exceptions on 386 */
-		while(up->fpsave == nil)
-			up->fpsave = mallocalign(sizeof(FPsave), FPalign, 0, 0);
 		up->fpstate = FPactive;
 		break;
+	case FPinactive|FPnotify:
+		spllo();
+		qlock(&up->debug);
+		notefpsave(up);
+		qunlock(&up->debug);
+		splhi();
+		/* wet floor */
 	case FPinactive:
 		/*
 		 * Before restoring the state, check for any pending
@@ -320,8 +344,18 @@ fpuinit(void)
 void
 fpuprocsetup(Proc *p)
 {
+	FPalloc *a;
+	int s;
+
+	s = splhi();
 	p->fpstate = FPinit;
 	fpoff();
+	splx(s);
+
+	while((a = p->fpsave) != nil) {
+		p->fpsave = a->link;
+		fpfree(a);
+	}
 }
 
 void
@@ -330,13 +364,14 @@ fpuprocfork(Proc *p)
 	int s;
 
 	s = splhi();
-	switch(up->fpstate & ~FPillegal){
+	switch(up->fpstate & ~FPnotify){
 	case FPactive:
 		fpsave(up->fpsave);
 		up->fpstate = FPinactive;
+		/* wet floor */
 	case FPinactive:
-		while(p->fpsave == nil)
-			p->fpsave = mallocalign(sizeof(FPsave), FPalign, 0, 0);
+		if(p->fpsave == nil)
+			p->fpsave = fpalloc(nil);
 		memmove(p->fpsave, up->fpsave, sizeof(FPsave));
 		p->fpstate = FPinactive;
 	}
@@ -346,19 +381,27 @@ fpuprocfork(Proc *p)
 void
 fpuprocsave(Proc *p)
 {
-	if(p->fpstate == FPactive){
-		if(p->state == Moribund)
+	if(p->state == Moribund){
+		FPalloc *a;
+
+		if(p->fpstate == FPactive)
 			fpclear();
-		else{
-			/*
-			 * Fpsave() stores without handling pending
-			 * unmasked exeptions. Postnote() can't be called
-			 * so the handling of pending exceptions is delayed
-			 * until the process runs again and generates an
-			 * emulation fault to activate the FPU.
-			 */
-			fpsave(p->fpsave);
+		p->fpstate = FPinit;
+		while((a = p->fpsave) != nil) {
+			p->fpsave = a->link;
+			fpfree(a);
 		}
+		return;
+	}
+	if(p->fpstate == FPactive){
+		/*
+		 * Fpsave() stores without handling pending
+		 * unmasked exeptions. Postnote() can't be called
+		 * so the handling of pending exceptions is delayed
+		 * until the process runs again and generates an
+		 * emulation fault to activate the FPU.
+		 */
+		fpsave(p->fpsave);
 		p->fpstate = FPinactive;
 	}
 }
@@ -366,4 +409,44 @@ fpuprocsave(Proc *p)
 void
 fpuprocrestore(Proc*)
 {
+}
+
+void
+fpunotify(Proc *p)
+{
+	fpuprocsave(p);
+	p->fpstate |= FPnotify;
+}
+
+void
+fpunoted(Proc *p)
+{
+	if(p->fpstate & FPnotify){
+		p->fpstate &= ~FPnotify;
+	} else {
+		FPalloc *o;
+
+		if(p->fpstate == FPactive)
+			fpclear();
+		if((o = p->fpsave->link) != nil) {
+			fpfree(p->fpsave);
+			p->fpsave = o;
+			p->fpstate = FPinactive;
+		} else {
+			p->fpstate = FPinit;
+		}
+	}
+}
+
+FPsave*
+notefpsave(Proc *p)
+{
+	if(p->fpsave == nil)
+		return nil;
+	if(p->fpstate == (FPinactive|FPnotify)){
+		p->fpsave = fpalloc(p->fpsave);
+		memmove(p->fpsave, p->fpsave->link, sizeof(FPsave));
+		p->fpstate = FPinactive;
+	}
+	return p->fpsave->link;
 }

@@ -24,6 +24,7 @@ enum
 	Qkregs,
 	Qmem,
 	Qnote,
+	Qnotefpregs,
 	Qnoteid,
 	Qnotepg,
 	Qns,
@@ -95,6 +96,7 @@ Dirtab procdir[] =
 	"kregs",	{Qkregs},	sizeof(Ureg),		0400,
 	"mem",		{Qmem},		0,			0000,
 	"note",		{Qnote},	0,			0000,
+	"notefpregs",	{Qnotefpregs},	sizeof(FPsave),		0000,
 	"noteid",	{Qnoteid},	0,			0664,
 	"notepg",	{Qnotepg},	0,			0000,
 	"ns",		{Qns},		0,			0444,
@@ -455,6 +457,7 @@ procopen(Chan *c, int omode0)
 	case Qmem:
 	case Qregs:
 	case Qfpregs:
+	case Qnotefpregs:
 	case Qprofile:
 	case Qsyscall:	
 	case Qwatchpt:
@@ -978,16 +981,23 @@ procread(Chan *c, void *va, long n, vlong off)
 		goto regread;
 #ifdef KFPSTATE
 	case Qkfpregs:
-		if(p->kfpstate != FPinactive)
+		if(p->kfpstate < FPinactive)
 			error(Enoreg);
 		rptr = (uchar*)p->kfpsave;
-		rsize = sizeof(FPsave);
-		goto regread;
+		goto fpregread;
 #endif
+	case Qnotefpregs:
+		if(!p->notified)
+			error(Enoreg);
+		rptr = (uchar*)notefpsave(p);
+		if(rptr != nil)
+			goto fpregread;
+		/* wet floor */
 	case Qfpregs:
-		if(p->fpstate != FPinactive)
+		if((p->fpstate & ~FPnotify) < FPinactive)
 			error(Enoreg);
 		rptr = (uchar*)p->fpsave;
+	fpregread:
 		rsize = sizeof(FPsave);
 	regread:
 		if(rptr == nil)
@@ -1167,6 +1177,7 @@ procwrite(Chan *c, void *va, long n, vlong off)
 {
 	char buf[ERRMAX];
 	ulong offset;
+	uchar *rptr;
 	Proc *p;
 
 	offset = off;
@@ -1219,14 +1230,28 @@ procwrite(Chan *c, void *va, long n, vlong off)
 		setregisters(p->dbgreg, (char*)(p->dbgreg)+offset, va, n);
 		break;
 
+	case Qnotefpregs:
+		if(!p->notified)
+			error(Enoreg);
+		rptr = (uchar*)notefpsave(p);
+		if(rptr != nil)
+			goto fpregwrite;
+		else {
 	case Qfpregs:
+			if(p->notified)
+				notefpsave(p);
+		}
+		if((p->fpstate & ~FPnotify) < FPinactive)
+			error(Enoreg);
+		rptr = (uchar*)p->fpsave;
+	fpregwrite:
+		if(rptr == nil)
+			error(Enoreg);
 		if(offset >= sizeof(FPsave))
 			n = 0;
 		else if(offset+n > sizeof(FPsave))
 			n = sizeof(FPsave) - offset;
-		if(p->fpstate != FPinactive || p->fpsave == nil)
-			error(Enoreg);
-		memmove((uchar*)p->fpsave+offset, va, n);
+		memmove(rptr+offset, va, n);
 		break;
 
 	case Qctl:

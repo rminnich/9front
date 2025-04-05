@@ -49,7 +49,7 @@ procfork(Proc *p)
 	ulong s;
 
 	s = splhi();
-	switch(up->fpstate & ~FPillegal){
+	switch(up->fpstate & ~FPnotify){
 	case FPactive:
 		fpsave(up->fpsave);
 		up->fpstate = FPinactive;

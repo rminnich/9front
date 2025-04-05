@@ -10,9 +10,11 @@ proc \- running processes
 .BI /proc/ n /ctl
 .BI /proc/ n /fd
 .BI /proc/ n /fpregs
+.BI /proc/ n /kfpregs
 .BI /proc/ n /kregs
 .BI /proc/ n /mem
 .BI /proc/ n /note
+.BI /proc/ n /notefpregs
 .BI /proc/ n /noteid
 .BI /proc/ n /notepg
 .BI /proc/ n /ns
@@ -64,13 +66,21 @@ for kernel debugging.
 The files
 .BR regs ,
 .BR fpregs ,
+.BR kfpregs ,
+.B kregs
 and
-.BR kregs
+.B notefpregs
 hold representations of the user-level registers, floating-point registers,
 and kernel registers in machine-dependent form.
 The
 .B kregs
-file is read-only.
+and
+.B kfpregs
+files are read-only.
+The
+.B notefpregs
+file holds the saved and to be restored floating-point registers
+while the program is executing its note handler.
 .PP
 The read-only
 .B fd

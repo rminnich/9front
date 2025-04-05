@@ -116,27 +116,47 @@ faultarm(Ureg *ureg, ulong fsr, uintptr addr)
 	up->insyscall = insyscall;
 }
 
+static FPsave*
+fpalloc(void)
+{
+	FPsave *f;
+
+	while((f = mallocalign(sizeof(FPsave), FPalign, 0, 0)) == nil){
+		int x = spllo();
+		resrcwait("no memory for FPsave");
+		splx(x);
+	}
+	return f;
+}
+
+static void
+fpfree(FPsave *f)
+{
+	free(f);
+}
+
 static void
 mathtrap(Ureg *, ulong)
 {
-	int s;
-
-	if((up->fpstate & FPillegal) != 0){
-		postnote(up, 1, "sys: floating point in note handler", NDebug);
-		return;
-	}
 	switch(up->fpstate){
+	case FPinit|FPnotify:
+		/* wet floor */
 	case FPinit:
-		s = splhi();
+		if(up->fpsave == nil)
+			up->fpsave = fpalloc();
 		fpinit();
 		up->fpstate = FPactive;
-		splx(s);
 		break;
+	case FPinactive|FPnotify:
+		spllo();
+		qlock(&up->debug);
+		notefpsave(up);
+		qunlock(&up->debug);
+		splhi();
+		/* wet floor */
 	case FPinactive:
-		s = splhi();
 		fprestore(up->fpsave);
 		up->fpstate = FPactive;
-		splx(s);
 		break;
 	case FPactive:
 		postnote(up, 1, "sys: floating point error", NDebug);
@@ -155,7 +175,6 @@ trap(Ureg *ureg)
 	case PsrMund:
 		ureg->pc -= 4;
 		if(user){
-			spllo();
 			if(okaddr(ureg->pc, 4, 0)){
 				opc = *(ulong*)ureg->pc;
 				if((opc & 0x0f000000) == 0x0e000000 || (opc & 0x0e000000) == 0x0c000000){
@@ -277,10 +296,52 @@ syscall(Ureg *ureg)
 	kexit(ureg);
 }
 
+static void
+fpunotify(void)
+{
+	if(up->fpstate == FPactive){
+		fpsave(up->fpsave);
+		up->fpstate = FPinactive;
+	}
+	up->fpstate |= FPnotify;
+}
+
+static void
+fpunoted(void)
+{
+	if(up->fpstate & FPnotify){
+		up->fpstate &= ~FPnotify;
+	} else {
+		FPsave *o;
+
+		if(up->fpstate == FPactive)
+			fpclear();
+		if((o = up->ofpsave) != nil) {
+			up->ofpsave = nil;
+			fpfree(up->fpsave);
+			up->fpsave = o;
+			up->fpstate = FPinactive;
+		} else {
+			up->fpstate = FPinit;
+		}
+	}
+}
+
+FPsave*
+notefpsave(Proc *p)
+{
+	if(p->fpstate == (FPinactive|FPnotify)){
+		p->ofpsave = fpalloc();
+		memmove(p->ofpsave, p->fpsave, sizeof(FPsave));
+		p->fpstate = FPinactive;
+	}
+	return p->ofpsave;
+}
+
 int
 notify(Ureg *ureg)
 {
-	ulong s, sp;
+	ulong sp;
 	char *msg;
 
 	if(up->procctl)
@@ -288,13 +349,7 @@ notify(Ureg *ureg)
 	if(up->nnote == 0)
 		return 0;
 
-	if(up->fpstate == FPactive){
-		fpsave(up->fpsave);
-		up->fpstate = FPinactive;
-	}
-	up->fpstate |= FPillegal;
-
-	s = spllo();
+	spllo();
 	qlock(&up->debug);
 	msg = popnote(ureg);
 	if(msg == nil){
@@ -328,8 +383,10 @@ notify(Ureg *ureg)
 	ureg->sp = sp;
 	ureg->pc = (uintptr) up->notify;
 	ureg->r14 = 0;
+
+	splhi();
+	fpunotify();
 	qunlock(&up->debug);
-	splx(s);
 	return 1;
 }
 
@@ -346,10 +403,12 @@ noted(Ureg *ureg, ulong arg0)
 		pexit("Suicide", 0);
 	}
 	up->notified = 0;
-	
-	nureg = up->ureg;
-	up->fpstate &= ~FPillegal;
-	
+
+	splhi();
+	fpunoted();
+	spllo();
+
+	nureg = up->ureg;	
 	oureg = (ulong) nureg;
 	if(!okaddr(oureg - BY2WD, BY2WD + sizeof(Ureg), 0) || (oureg & 3) != 0){
 		qunlock(&up->debug);
@@ -472,11 +531,20 @@ dbgpc(Proc *)
 void
 procsave(Proc *p)
 {
-	if(p->fpstate == FPactive){
-		if(p->state == Moribund)
+	if(p->state == Moribund){
+		if(p->fpstate == FPactive)
 			fpclear();
-		else
-			fpsave(p->fpsave);
+		p->fpstate = FPinit;
+		if(p->fpsave != nil){
+			fpfree(p->fpsave);
+			p->fpsave = nil;
+		}
+		if(p->ofpsave != nil){
+			fpfree(p->ofpsave);
+			p->ofpsave = nil;
+		}
+	} else if(p->fpstate == FPactive){
+		fpsave(p->fpsave);
 		p->fpstate = FPinactive;
 	}
 	l1switch(&m->l1, 0);
@@ -485,6 +553,46 @@ procsave(Proc *p)
 void
 procrestore(Proc*)
 {
+}
+
+void
+procfork(Proc *p)
+{
+	int s;
+
+	s = splhi();
+	switch(up->fpstate & ~FPnotify){
+	case FPactive:
+		fpsave(up->fpsave);
+		up->fpstate = FPinactive;
+		/* wet floor */
+	case FPinactive:
+		if(p->fpsave == nil)
+			p->fpsave = fpalloc();
+		memmove(p->fpsave, up->fpsave, sizeof(FPsave));
+		p->fpstate = FPinactive;
+	}
+	splx(s);
+}
+
+void
+procsetup(Proc *p)
+{
+	int s;
+
+	s = splhi();
+	p->fpstate = FPinit;
+	fpoff();
+	splx(s);
+
+	if(p->fpsave != nil){
+		fpfree(p->fpsave);
+		p->fpsave = nil;
+	}
+	if(p->ofpsave != nil){
+		fpfree(p->ofpsave);
+		p->ofpsave = nil;
+	}
 }
 
 void

@@ -1289,7 +1289,7 @@ fpuemu(Ureg *ureg)
 		return -1;
 	}
 
-	if(up->fpstate & FPillegal)
+	if(up->fpstate & FPnotify)
 		error("floating point in note handler");
 	if(up->fpsave->fpdelayexec)
 		panic("fpuemu: entered with outstanding watch trap");

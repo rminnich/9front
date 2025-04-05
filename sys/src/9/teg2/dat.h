@@ -21,6 +21,7 @@ enum {
 
 typedef struct Conf	Conf;
 typedef struct Confmem	Confmem;
+typedef struct FPalloc	FPalloc;
 typedef struct FPsave	FPsave;
 typedef struct PFPU	PFPU;
 typedef struct ISAConf	ISAConf;
@@ -87,26 +88,33 @@ struct FPsave
 	 * each must be able to hold an Internal from fpi.h for sw emulation.
 	 */
 	ulong	regs[Maxfpregs][3];
+};
 
-	int	fpstate;
+struct FPalloc
+{
+	FPsave;
+
+	/* the following fields are not visible to devproc */
+	int	fpstate;	/* FPinactive or FPemu */
 	uintptr	pc;		/* of failed fp instr. */
 };
 
 struct PFPU
 {
 	int	fpstate;
-	FPsave	fpsave[1];
+	FPalloc	*fpsave;
+	FPalloc	*ofpsave;
 };
 
 enum
 {
 	FPinit,
 	FPactive,
-	FPinactive,
+	FPinactive,	/* fpsave valid when fpstate >= FPincative */
 	FPemu,
 
 	/* bit or'd with the state */
-	FPillegal= 0x100,
+	FPnotify = 0x100,
 };
 
 struct Confmem

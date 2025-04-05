@@ -20,7 +20,7 @@ fpudevprocio(Proc* proc, void* a, long n, uintptr offset, int write)
 }
 
 void
-fpunotify(Ureg*)
+fpunotify(void)
 {
 	/*
 	 * Called when a note is about to be delivered to a
@@ -39,6 +39,12 @@ fpunoted(void)
 	 * noted() routine.
 	 * Clear the flag set above in fpunotify().
 	 */
+}
+
+FPsave*
+notefpsave(Proc*)
+{
+	return nil;
 }
 
 void

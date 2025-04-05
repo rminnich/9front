@@ -31,7 +31,7 @@ checkclock0(void)
 static void
 checkconf0(void)
 {
-	iprint("frc0 check = %uX \n", getfcr0);
+	iprint("frc0 check = %p\n", getfcr0);
 // for debug stuff
 }
 
@@ -110,8 +110,6 @@ ckpagemask(ulong mask, ulong size)
 void
 main(void)
 {
-	savefpregs(&initfp);
-
 	uartconsinit();
 	quotefmtinstall();
 

@@ -558,7 +558,7 @@ syscall(Ureg* ureg)
 int
 notify(Ureg* ureg)
 {
-	ulong s, sp;
+	ulong sp;
 	char *msg;
 
 	if(up->procctl)
@@ -566,13 +566,7 @@ notify(Ureg* ureg)
 	if(up->nnote == 0)
 		return 0;
 
-	if(up->fpstate == FPactive){
-		fpsave(up->fpsave);
-		up->fpstate = FPinactive;
-	}
-	up->fpstate |= FPillegal;
-
-	s = spllo();
+	spllo();
 	qlock(&up->debug);
 	msg = popnote(ureg);
 	if(msg == nil){
@@ -607,8 +601,10 @@ if(0) print("%s %lud: notify %.8lux %.8lux %.8lux %s\n",
 	ureg->pc = (ulong)up->notify;
 	ureg->cs = UESEL;
 	ureg->ss = ureg->ds = ureg->es = UDSEL;
+
+	splhi();
+	fpunotify(up);
 	qunlock(&up->debug);
-	splx(s);
 	return 1;
 }
 
@@ -629,9 +625,11 @@ noted(Ureg* ureg, ulong arg0)
 	}
 	up->notified = 0;
 
-	nureg = up->ureg;	/* pointer to user returned Ureg struct */
+	splhi();
+	fpunoted(up);
+	spllo();
 
-	up->fpstate &= ~FPillegal;
+	nureg = up->ureg;	/* pointer to user returned Ureg struct */
 
 	/* sanity clause */
 	oureg = (ulong)nureg;

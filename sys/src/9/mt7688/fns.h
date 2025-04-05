@@ -42,7 +42,6 @@ void	puttlbx(int, ulong, ulong, ulong, int);
 ulong	rdcompare(void);
 ulong	rdcount(void);
 ulong*	reg(Ureg*, int);
-void	restfpregs(FPsave*, ulong);
 void	intrenable(int, void(*)(Ureg *, void *), void *, int, char*);
 void	intrdisable(int, void (*)(Ureg*, void *), void*, int, char*);
 void	screeninit(void);

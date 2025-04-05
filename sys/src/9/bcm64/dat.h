@@ -14,6 +14,7 @@ enum {
 
 typedef struct Conf	Conf;
 typedef struct Confmem	Confmem;
+typedef struct FPalloc	FPalloc;
 typedef struct FPsave	FPsave;
 typedef struct PFPU	PFPU;
 typedef struct ISAConf	ISAConf;
@@ -68,14 +69,21 @@ struct FPsave
 	ulong	status;
 };
 
+struct FPalloc
+{
+	FPsave;
+
+	FPalloc	*link;	/* when context nests */
+};
+
 #define KFPSTATE
 
 struct PFPU
 {
 	int	fpstate;
 	int	kfpstate;
-	FPsave	*fpsave;
-	FPsave	*kfpsave;
+	FPalloc	*fpsave;
+	FPalloc	*kfpsave;
 };
 
 enum
@@ -86,7 +94,7 @@ enum
 	FPprotected,
 
 	/* bits or'd with the state */
-	FPillegal= 0x100,
+	FPnotify = 0x100,
 };
 
 struct Confmem
@@ -154,7 +162,7 @@ struct Mach
 	PMach;
 
 	int	fpstate;
-	FPsave	*fpsave;
+	FPalloc	*fpsave;
 
 	int	cputype;
 	ulong	delayloop;

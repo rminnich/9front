@@ -43,30 +43,6 @@ evenaddr(uintptr va)
 	}
 }
 
-void
-procfork(Proc *p)
-{
-	ulong s;
-
-	s = splhi();
-	switch(up->fpstate & ~FPillegal){
-	case FPactive:
-		fpsave(up->fpsave);
-		up->fpstate = FPinactive;
-	case FPinactive:
-		memmove(p->fpsave, up->fpsave, sizeof(FPsave));
-		p->fpstate = FPinactive;
-	}
-	splx(s);
-}
-
-void
-procsetup(Proc *p)
-{
-	p->fpstate = FPinit;
-	fpoff();
-}
-
 ulong *l2;
 
 void
