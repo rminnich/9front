@@ -150,3 +150,9 @@ WNCYI10		ams/wncyi10.pfa
 WNCYR10		ams/wncyr10.pfa
 WNCYSC10		ams/wncysc10.pfa
 WNCYSS10		ams/wncyss10.pfa
+
+% fonts added by user
+GaramondNo8-Reg	useradded/ugmr8a.pfb
+GaramondNo8-RegItal useradded/ugmmi8a.pfb
+GaramondNo8-Med useradded/ugmm8a.pfb
+GaramondNo8-MedItal useradded//ugmmi8a.pfb
