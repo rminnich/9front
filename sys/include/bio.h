@@ -1,6 +1,7 @@
 #pragma	src	"/sys/src/libbio"
 #pragma	lib	"libbio.a"
 
+typedef struct	Bstr	Bstr;
 typedef	struct	Biobuf	Biobuf;
 typedef	struct	Biobufhdr	Biobufhdr;
 
@@ -43,6 +44,12 @@ struct	Biobuf
 	uchar	b[Bungetsize+Bsize];
 };
 
+struct Bstr
+{
+	Biobufhdr;
+	uchar	b[];
+};
+
 /* Dregs, redefined as functions for backwards compatibility */
 #define	BGETC(bp)	Bgetc(bp)
 #define	BPUTC(bp,c)	Bputc(bp,c)
@@ -62,6 +69,7 @@ int	Blinelen(Biobufhdr*);
 vlong	Boffset(Biobufhdr*);
 Biobuf*	Bopen(char*, int);
 Biobuf*	Bfdopen(int, int);
+Bstr*	Bstropen(void*, int);
 int	Bprint(Biobufhdr*, char*, ...);
 int	Bvprint(Biobufhdr*, char*, va_list);
 int	Bputc(Biobufhdr*, int);

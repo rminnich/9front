@@ -51,6 +51,12 @@ install(Biobufhdr *bp)
 }
 
 static int
+biodummy(Biobufhdr*, void*, long)
+{
+	return 0;
+}
+
+static int
 bioread(Biobufhdr *bp, void *v, long n)
 {
 	return read(bp->fid, v, n);
@@ -150,6 +156,23 @@ Bopen(char *name, int mode)
 	}
 	setmalloctag(bp, getcallerpc(&name));
 	return bp;
+}
+
+Bstr*
+Bstropen(void *p, int size)
+{
+	Bstr *b;
+
+	b = malloc(sizeof(Bstr) + Bungetsize + size);
+	if(b == nil)
+		return nil;
+	memmove(b->b + Bungetsize, p, size);
+	Binits(b, -1, OREAD, b->b, size + Bungetsize);
+	b->iof = biodummy;
+	b->icount = -size;
+	b->flag = Bmagic;
+	setmalloctag(b, getcallerpc(&p));
+	return b;
 }
 
 int
