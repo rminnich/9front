@@ -27,7 +27,6 @@ static void
 noted(Ureg* cur, uintptr arg0)
 {
 	NFrame *nf;
-	Ureg *nur;
 
 	qlock(&up->debug);
 	if(arg0 != NRSTR && !up->notified){
@@ -50,17 +49,12 @@ noted(Ureg* cur, uintptr arg0)
 		pexit("Suicide", 0);
 	}
 
-	/* don't let user change system flags */
-	nur = &nf->ureg;
-	nur->psr &= PsrMask|PsrDfiq|PsrDirq;
-	nur->psr |= (cur->psr & ~(PsrMask|PsrDfiq|PsrDirq));
-
-	memmove(cur, nur, sizeof(Ureg));
+	setregisters(cur, (char*)cur, (char*)&nf->ureg, sizeof(Ureg));
 
 	switch((int)arg0){
 	case NCONT:
 	case NRSTR:
-		if(!okaddr(nur->pc, BY2WD, 0) || !okaddr(nur->sp, BY2WD, 0)){
+		if(!okaddr(cur->pc, BY2WD, 0) || !okaddr(cur->sp, BY2WD, 0)){
 			qunlock(&up->debug);
 			pprint("suicide: trap in noted\n");
 			pexit("Suicide", 0);
@@ -69,19 +63,17 @@ noted(Ureg* cur, uintptr arg0)
 		qunlock(&up->debug);
 		break;
 	case NSAVE:
-		if(!okaddr(nur->pc, BY2WD, 0) || !okaddr(nur->sp, BY2WD, 0)){
+		cur->sp = (uintptr)nf;
+		cur->r0 = (uintptr)&nf->ureg;
+		if(!okaddr(cur->pc, BY2WD, 0) || !okaddr(cur->sp, sizeof(NFrame), 1)){
 			qunlock(&up->debug);
 			pprint("suicide: trap in noted\n");
 			pexit("Suicide", 0);
 		}
 		qunlock(&up->debug);
-
-		splhi();
 		nf->arg1 = nf->msg;
 		nf->arg0 = &nf->ureg;
 		nf->ip = 0;
-		cur->sp = (uintptr)nf;
-		cur->r0 = (uintptr)nf->arg0;
 		break;
 	default:
 		up->lastnote->flag = NDebug;
@@ -160,6 +152,7 @@ syscall(Ureg* ureg)
 	ulong sp;
 	long ret;
 	int i, scallnr;
+	vlong startns, stopns;
 
 	if(!kenter(ureg))
 		panic("syscall: from kernel: pc %#lux r14 %#lux psr %#lux",
@@ -169,23 +162,25 @@ syscall(Ureg* ureg)
 	up->insyscall = 1;
 	up->pc = ureg->pc;
 
-	if(up->procctl == Proc_tracesyscall){
-		up->procctl = Proc_stopme;
-		procctl();
-	}
-
 	scallnr = ureg->r0;
 	up->scallnr = scallnr;
 	spllo();
-
 	sp = ureg->sp;
+
 	up->nerrlab = 0;
 	ret = -1;
 	if(!waserror()){
 		if(sp < (USTKTOP-BY2PG) || sp > (USTKTOP-sizeof(Sargs)-BY2WD))
 			validaddr(sp, sizeof(Sargs)+BY2WD, 0);
-
 		up->s = *((Sargs*)(sp+BY2WD));
+		if(up->procctl == Proc_tracesyscall){
+			syscallfmt(scallnr, ureg->pc, (va_list)up->s.args);
+			s = splhi();
+			up->procctl = Proc_stopme;
+			procctl();
+			splx(s);
+			todget(nil, &startns);
+		}
 		if(scallnr >= nsyscall || systab[scallnr] == nil){
 			postnote(up, 1, "sys: bad sys call", NDebug);
 			error(Ebadarg);
@@ -216,6 +211,8 @@ syscall(Ureg* ureg)
 	ureg->r0 = ret;
 
 	if(up->procctl == Proc_tracesyscall){
+		todget(nil, &stopns);
+		sysretfmt(scallnr, (va_list)up->s.args, ret, startns, stopns);
 		s = splhi();
 		up->procctl = Proc_stopme;
 		procctl();
@@ -226,7 +223,7 @@ syscall(Ureg* ureg)
 	up->psstate = 0;
 
 	if(scallnr == NOTED)
-		noted(ureg, *(ulong*)(sp+BY2WD));
+		noted(ureg, *((ulong*)up->s.args));
 
 	splhi();
 	if(scallnr != RFORK && (up->procctl || up->nnote))
@@ -237,7 +234,6 @@ syscall(Ureg* ureg)
 		sched();
 	kexit(ureg);
 }
-
 
 uintptr
 execregs(uintptr entry, ulong ssize, ulong nargs)

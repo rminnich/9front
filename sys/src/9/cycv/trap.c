@@ -378,14 +378,12 @@ noted(Ureg *ureg, ulong arg0)
 		pexit("Suicide", 0);
 	}
 	
-	nureg->psr = nureg->psr & 0xf80f0000 | ureg->psr & 0x07f0ffff;
-	
-	memmove(ureg, nureg, sizeof(Ureg));
+	setregisters(ureg, (char*)ureg, (char*)nureg, sizeof(Ureg));
 	
 	switch(arg0){
 	case NCONT: case NRSTR:
-		if(!okaddr(nureg->pc, BY2WD, 0) || !okaddr(nureg->sp, BY2WD, 0) ||
-				(nureg->pc & 3) != 0 || (nureg->sp & 3) != 0){
+		if(!okaddr(ureg->pc, BY2WD, 0) || !okaddr(ureg->sp, BY2WD, 0) ||
+				(ureg->pc & 3) != 0 || (ureg->sp & 3) != 0){
 			qunlock(&up->debug);
 			pprint("suicide: trap in noted\n");
 			pexit("Suicide", 0);
@@ -395,17 +393,16 @@ noted(Ureg *ureg, ulong arg0)
 		break;
 	
 	case NSAVE:
-		if(!okaddr(nureg->pc, BY2WD, 0) || !okaddr(nureg->sp, BY2WD, 0) ||
-				(nureg->pc & 3) != 0 || (nureg->sp & 3) != 0){
+		sp = oureg - 4 * BY2WD - ERRMAX;
+		ureg->sp = sp;
+		ureg->r0 = (uintptr) oureg;
+		if(!okaddr(ureg->pc, BY2WD, 0) || !okaddr(ureg->sp, 4*BY2WD, 1) ||
+				(ureg->pc & 3) != 0 || (ureg->sp & 3) != 0){
 			qunlock(&up->debug);
 			pprint("suicide: trap in noted\n");
 			pexit("Suicide", 0);
 		}
 		qunlock(&up->debug);
-		sp = oureg - 4 * BY2WD - ERRMAX;
-		splhi();
-		ureg->sp = sp;
-		ureg->r0 = (uintptr) oureg;
 		((ulong *) sp)[1] = oureg;
 		((ulong *) sp)[0] = 0;
 		break;

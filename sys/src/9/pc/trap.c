@@ -639,19 +639,14 @@ noted(Ureg* ureg, ulong arg0)
 		pexit("Suicide", 0);
 	}
 
-	/* don't let user change system flags */
-	nureg->flags = (ureg->flags & ~0xCD5) | (nureg->flags & 0xCD5);
-	nureg->cs |= 3;
-	nureg->ss |= 3;
-
-	memmove(ureg, nureg, sizeof(Ureg));
+	setregisters(ureg, (char*)ureg, (char*)nureg, sizeof(Ureg));
 
 	switch(arg0){
 	case NCONT:
 	case NRSTR:
 if(0) print("%s %lud: noted %.8lux %.8lux\n",
 	up->text, up->pid, nureg->pc, nureg->usp);
-		if(!okaddr(nureg->pc, 1, 0) || !okaddr(nureg->usp, BY2WD, 0)){
+		if(!okaddr(ureg->pc, 1, 0) || !okaddr(ureg->usp, BY2WD, 0)){
 			qunlock(&up->debug);
 			pprint("suicide: trap in noted\n");
 			pexit("Suicide", 0);
@@ -661,16 +656,14 @@ if(0) print("%s %lud: noted %.8lux %.8lux\n",
 		break;
 
 	case NSAVE:
-		if(!okaddr(nureg->pc, BY2WD, 0)
-		|| !okaddr(nureg->usp, BY2WD, 0)){
+		sp = oureg-4*BY2WD-ERRMAX;
+		ureg->usp = sp;
+		if(!okaddr(ureg->pc, 1, 0) || !okaddr(ureg->usp, 4*BY2WD, 1)){
 			qunlock(&up->debug);
 			pprint("suicide: trap in noted\n");
 			pexit("Suicide", 0);
 		}
 		qunlock(&up->debug);
-		sp = oureg-4*BY2WD-ERRMAX;
-		splhi();
-		ureg->sp = sp;
 		((ulong*)sp)[1] = oureg;	/* arg 1 0(FP) is ureg* */
 		((ulong*)sp)[0] = 0;		/* arg 0 is pc */
 		break;

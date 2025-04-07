@@ -219,31 +219,30 @@ noted(Ureg *kur, ulong arg0)
 		pexit("Suicide", 0);
 	}
 
-	setregisters(kur, (char*)kur, (char*)up->ureg, sizeof(Ureg));
+	setregisters(kur, (char*)kur, (char*)nur, sizeof(Ureg));
+
 	switch(arg0) {
 	case NCONT:
 	case NRSTR:				/* only used by APE */
-		if(!okaddr(nur->pc, BY2WD, 0) || !okaddr(nur->usp, BY2WD, 0)){
+		if(!okaddr(kur->pc, BY2WD, 0) || !okaddr(kur->usp, BY2WD, 0)){
 			pprint("suicide: trap in noted\n");
 			qunlock(&up->debug);
 			pexit("Suicide", 0);
 		}
 		up->ureg = (Ureg*)(*(ulong*)(oureg-BY2WD));
 		qunlock(&up->debug);
-		splhi();
 		break;
 
 	case NSAVE:				/* only used by APE */
-		if(!okaddr(nur->pc, BY2WD, 0) || !okaddr(nur->usp, BY2WD, 0)){
+		sp = oureg-4*BY2WD-ERRMAX;
+		kur->r1 = oureg;		/* arg 1 is ureg* */
+		kur->usp = sp;
+		if(!okaddr(kur->pc, BY2WD, 0) || !okaddr(kur->usp, 4*BY2WD, 1)){
 			pprint("suicide: trap in noted\n");
 			qunlock(&up->debug);
 			pexit("Suicide", 0);
 		}
 		qunlock(&up->debug);
-		sp = oureg-4*BY2WD-ERRMAX;
-		splhi();
-		kur->sp = sp;
-		kur->r1 = oureg;		/* arg 1 is ureg* */
 		((ulong*)sp)[1] = oureg;	/* arg 1 0(FP) is ureg* */
 		((ulong*)sp)[0] = 0;		/* arg 0 is pc */
 		break;
