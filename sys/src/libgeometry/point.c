@@ -19,36 +19,36 @@ Vec2(double x, double y)
 Point2
 addpt2(Point2 a, Point2 b)
 {
-	return Pt2(a.x+b.x, a.y+b.y, a.w+b.w);
+	return (Point2){a.x+b.x, a.y+b.y, a.w+b.w};
 }
 
 Point2
 subpt2(Point2 a, Point2 b)
 {
-	return Pt2(a.x-b.x, a.y-b.y, a.w-b.w);
+	return (Point2){a.x-b.x, a.y-b.y, a.w-b.w};
 }
 
 Point2
 mulpt2(Point2 p, double s)
 {
-	return Pt2(p.x*s, p.y*s, p.w*s);
+	return (Point2){p.x*s, p.y*s, p.w*s};
 }
 
 Point2
 divpt2(Point2 p, double s)
 {
-	return Pt2(p.x/s, p.y/s, p.w/s);
+	return (Point2){p.x/s, p.y/s, p.w/s};
 }
 
 Point2
 lerp2(Point2 a, Point2 b, double t)
 {
 	t = fclamp(t, 0, 1);
-	return Pt2(
+	return (Point2){
 		flerp(a.x, b.x, t),
 		flerp(a.y, b.y, t),
 		flerp(a.w, b.w, t)
-	);
+	};
 }
 
 Point2
@@ -79,8 +79,8 @@ normvec2(Point2 v)
 
 	len = vec2len(v);
 	if(len == 0)
-		return Pt2(0,0,0);
-	return Pt2(v.x/len, v.y/len, 0);
+		return (Point2){0,0,0};
+	return (Point2){v.x/len, v.y/len, 0};
 }
 
 /*
@@ -141,37 +141,37 @@ Vec3(double x, double y, double z)
 Point3
 addpt3(Point3 a, Point3 b)
 {
-	return Pt3(a.x+b.x, a.y+b.y, a.z+b.z, a.w+b.w);
+	return (Point3){a.x+b.x, a.y+b.y, a.z+b.z, a.w+b.w};
 }
 
 Point3
 subpt3(Point3 a, Point3 b)
 {
-	return Pt3(a.x-b.x, a.y-b.y, a.z-b.z, a.w-b.w);
+	return (Point3){a.x-b.x, a.y-b.y, a.z-b.z, a.w-b.w};
 }
 
 Point3
 mulpt3(Point3 p, double s)
 {
-	return Pt3(p.x*s, p.y*s, p.z*s, p.w*s);
+	return (Point3){p.x*s, p.y*s, p.z*s, p.w*s};
 }
 
 Point3
 divpt3(Point3 p, double s)
 {
-	return Pt3(p.x/s, p.y/s, p.z/s, p.w/s);
+	return (Point3){p.x/s, p.y/s, p.z/s, p.w/s};
 }
 
 Point3
 lerp3(Point3 a, Point3 b, double t)
 {
 	t = fclamp(t, 0, 1);
-	return Pt3(
+	return (Point3){
 		flerp(a.x, b.x, t),
 		flerp(a.y, b.y, t),
 		flerp(a.z, b.z, t),
 		flerp(a.w, b.w, t)
-	);
+	};
 }
 
 Point3
@@ -192,12 +192,12 @@ dotvec3(Point3 a, Point3 b)
 Point3
 crossvec3(Point3 a, Point3 b)
 {
-	return Pt3(
+	return (Point3){
 		a.y*b.z - a.z*b.y,
 		a.z*b.x - a.x*b.z,
 		a.x*b.y - a.y*b.x,
 		0
-	);
+	};
 }
 
 double
@@ -213,8 +213,8 @@ normvec3(Point3 v)
 
 	len = vec3len(v);
 	if(len == 0)
-		return Pt3(0,0,0,0);
-	return Pt3(v.x/len, v.y/len, v.z/len, 0);
+		return (Point3){0,0,0,0};
+	return (Point3){v.x/len, v.y/len, v.z/len, 0};
 }
 
 int
