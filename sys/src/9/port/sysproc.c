@@ -1257,12 +1257,12 @@ sys_nsec(va_list list)
 	/* return in register on 64bit machine */
 	if(sizeof(uintptr) == sizeof(vlong)){
 		USED(list);
-		return (uintptr)todget(nil);
+		return (uintptr)todget(nil, nil);
 	}
 
 	v = va_arg(list, vlong*);
 	evenaddr((uintptr)v);
 	validaddr((uintptr)v, sizeof(vlong), 1);
-	*v = todget(nil);
+	*v = todget(nil, nil);
 	return 0;
 }

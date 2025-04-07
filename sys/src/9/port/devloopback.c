@@ -553,7 +553,7 @@ loopoput(Loop *lb, Link *link, Block *bp)
 	bp = padblock(bp, Tmsize);
 	if(BLEN(bp) < lb->minmtu)
 		bp = adjustblock(bp, lb->minmtu);
-	ptime(bp->rp, todget(nil));
+	ptime(bp->rp, todget(nil, nil));
 
 	link->packets++;
 	link->bytes += n;

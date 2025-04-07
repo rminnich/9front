@@ -195,7 +195,7 @@ release(Proc *p)
 		DPRINT("%lud release %lud[%s], r=%lud, d=%lud, t=%lud, S=%lud\n",
 			now, p->pid, statename[p->state], e->r, e->d, e->t, e->S);
 		if(pt = proctrace){
-			nowns = todget(nil);
+			todget(nil, &nowns);
 			pt(p, SRelease, nowns);
 			pt(p, SDeadline, nowns + 1000LL*e->D);
 		}
@@ -291,6 +291,7 @@ edfrun(Proc *p, int edfpri)
 	Edf *e;
 	void (*pt)(Proc*, int, vlong);
 	long tns;
+	vlong tnow;
 
 	e = p->edf;
 	/* Called with edflock held */
@@ -315,8 +316,10 @@ edfrun(Proc *p, int edfpri)
 		}else{
 			DPRINT("v");
 		}
-		if(p->trace && (pt = proctrace))
-			pt(p, SInte, todget(nil) + e->tns);
+		if(p->trace && (pt = proctrace)){
+			todget(nil, &tnow);
+			pt(p, SInte, tnow + e->tns);
+		}
 		e->tmode = Trelative;
 		e->tf = deadlineintr;
 		e->ta = p;

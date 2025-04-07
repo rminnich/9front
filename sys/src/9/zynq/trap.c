@@ -252,7 +252,7 @@ syscall(Ureg *ureg)
 			up->procctl = Proc_stopme;
 			procctl();
 			splx(s);
-			startns = todget(nil);
+			todget(nil, &startns);
 		}
 		if(scallnr >= nsyscall || systab[scallnr] == nil){
 			postnote(up, 1, "sys: bad sys call", NDebug);
@@ -275,7 +275,7 @@ syscall(Ureg *ureg)
 	
 	ureg->r0 = ret;
 	if(up->procctl == Proc_tracesyscall){
-		stopns = todget(nil);
+		todget(nil, &stopns);
 		sysretfmt(scallnr, (va_list) up->s.args, ret, startns, stopns);
 		s = splhi();
 		up->procctl = Proc_stopme;
