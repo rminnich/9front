@@ -36,7 +36,6 @@ void
 lock(Lock *l)
 {
 	int i;
-	vlong mono;
 	uintptr pc;
 
 	pc = getcallerpc(&l);
