@@ -2,7 +2,7 @@
  * Floating Point Interpreter.
  * shamelessly stolen from an original by ark.
  */
-#include "fpi.h"
+#include "../omap/fpi.h"
 
 void
 fpiround(Internal *i)

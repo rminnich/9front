@@ -142,6 +142,7 @@ extern void trapinit(void);
 
 extern int fpiarm(Ureg*);
 extern int fpudevprocio(Proc*, void*, long, uintptr, int);
+extern FPalloc *fpalloc(void);
 extern void fpuinit(void);
 extern void fpunoted(void);
 extern void fpunotify(void);

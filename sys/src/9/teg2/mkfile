@@ -113,13 +113,28 @@ install:V: /$objtype/$p$CONF
 
 CFLAGS= -I. -I../port $CFLAGS	# hack to compile private sysproc.c (e.g.)
 
+fpi.$O fpiarm.$O fpimem.$O: ../omap/fpi.h
+fpi.$O:	../omap/fpi.c
+	$CC $CFLAGS -. ../omap/fpi.c
+fpimem.$O:	../omap/fpimem.c
+	$CC $CFLAGS -. ../omap/fpimem.c
+
+fpiarm.$O:	../bcm/fpiarm.c
+	$CC $CFLAGS -. ../bcm/fpiarm.c
+vfp3.$O:	../bcm/vfp3.c
+	$CC $CFLAGS -. ../bcm/vfp3.c
+
+softfpu.$O:	../omap/softfpu.c
+	$CC $CFLAGS -. ../omap/softfpu.c
+syscall.$O:	../omap/syscall.c
+	$CC $CFLAGS -. ../omap/syscall.c
+
 arch.$O clock.$O fpiarm.$O main.$O mmu.$O screen.$O sdscsi.$O syscall.$O \
 	trap.$O: /$objtype/include/ureg.h
 
 archtegra.$O devether.$0 ether9221.$O: ../port/etherif.h ../port/netif.h
 archtegra.$O devflash.$O flashtegra.$O flashigep.$O: ../port/flashif.h
 ecc.$O flashtegra.$O flashigep.$O: ../port/nandecc.h io.h
-fpi.$O fpiarm.$O fpimem.$O: fpi.h
 l.$O lexception.$O lproc.$O mmu.$O rebootcode.$O: arm.s mem.h
 l.$O rebootcode.$O: cache.v7.s
 main.$O: errstr.h rebootcode.i /sys/include/tos.h

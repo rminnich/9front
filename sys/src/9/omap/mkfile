@@ -33,6 +33,7 @@ PORT=\
 	qio.$O\
 	qlock.$O\
 	segment.$O\
+	syscallfmt.$O\
 	sysfile.$O\
 	sysproc.$O\
 	taslock.$O\
@@ -107,7 +108,7 @@ fpi.$O fpiarm.$O fpimem.$O: fpi.h
 l.$O lexception.$O lproc.$O mmu.$O rebootcode.$O: arm.s arm.h mem.h
 l.$O rebootcode.$O: cache.v7.s
 main.$O: errstr.h rebootcode.i
-devdss.$O devmouse.$O mouse.$O screen.$O: screen.h
+devdss.$O devmouse.$O screen.$O: screen.h
 devusb.$O: ../port/usb.h
 usbehci.$O usbohci.$O usbuhci.$O: ../port/usb.h usbehci.h
 

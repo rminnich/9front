@@ -1,4 +1,4 @@
-#include "fpi.h"
+#include "../omap/fpi.h"
 
 /*
  * the following routines depend on memory format, not the machine

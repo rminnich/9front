@@ -17,7 +17,7 @@ dev
 	bridge	log
 	ip	arp chandial ip ipv6 ipaux iproute netlog nullmedium pktmedium inferno
 	draw	screen swcursor
-	mouse	mouse
+	mouse
 	uart	gpio
 	gpio	gpio
 	i2c

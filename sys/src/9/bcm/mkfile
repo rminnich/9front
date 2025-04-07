@@ -102,15 +102,23 @@ install:V: /$objtype/$p$CONF
 <../port/portmkfile
 <|../port/mkbootrules $CONF
 
+fpi.$O fpiarm.$O fpimem.$O: ../omap/fpi.h
+fpi.$O:	../omap/fpi.c
+	$CC $CFLAGS -. ../omap/fpi.c
+fpimem.$O:	../omap/fpimem.c
+	$CC $CFLAGS -. ../omap/fpimem.c
+
+syscall.$O:	../omap/syscall.c
+	$CC $CFLAGS -. ../omap/syscall.c
+
 arch.$O clock.$O fpiarm.$O main.$O mmu.$O screen.$O syscall.$O trap.$O: \
 	/$objtype/include/ureg.h
 arch.$O trap.$O main.$O: /sys/include/tos.h
-fpi.$O fpiarm.$O fpimem.$O: fpi.h
 l.$O lexception.$O lproc.$O mmu.$O: mem.h
 l.$O lexception.$O lproc.$O armv6.$O armv7.$O: arm.s
 armv7.$O: cache.v7.s
 main.$O: errstr.h rebootcode.i
-devmouse.$O mouse.$O screen.$O: screen.h
+devmouse.$O screen.$O: screen.h
 usbdwc.$O: dwcotg.h ../port/usb.h
 i2cbcm.$O i2cgpio.$O: ../port/i2c.h
 emmc.$O ether4330.$O: ../port/sd.h

@@ -114,7 +114,7 @@ l.$O cache.v8.$O archbcm3.$O clock.$O fpu.$O trap.$O rebootcode.$O: ../arm64/sys
 main.$O: rebootcode.i
 pcibcm.$O: ../port/pci.h
 
-devmouse.$O mouse.$O screen.$O: screen.h
+devmouse.$O screen.$O: screen.h
 usbdwc.$O: dwcotg.h ../port/usb.h
 i2cbcm.$O i2cgpio.$O: ../port/i2c.h
 emmc.$O sdhc.$O sdhost.$O ether4330.$O: ../port/sd.h

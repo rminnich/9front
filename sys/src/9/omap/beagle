@@ -59,7 +59,6 @@ misc
 	rdb
 	coproc
 	dma
-	mouse
 #	sdaoe		sdscsi
 	softfpu
 	uarti8250

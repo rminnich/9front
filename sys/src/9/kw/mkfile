@@ -124,7 +124,20 @@ arch.$O syscall.$O main.$O: /sys/include/tos.h
 archkw.$O devether.$O ether1116.$O ethermii.$O: \
 	../port/ethermii.h ../port/etherif.h ../port/netif.h
 archkw.$O devflash.$O flashkw.$O: ../port/flashif.h
-fpi.$O fpiarm.$O fpimem.$O: fpi.h
+
+fpi.$O fpiarm.$O fpimem.$O: ../omap/fpi.h
+fpi.$O:	../omap/fpi.c
+	$CC $CFLAGS -. ../omap/fpi.c
+fpiarm.$O:	../omap/fpiarm.c
+	$CC $CFLAGS -. ../omap/fpiarm.c
+fpimem.$O:	../omap/fpimem.c
+	$CC $CFLAGS -. ../omap/fpimem.c
+
+softfpu.$O:	../omap/softfpu.c
+	$CC $CFLAGS -. ../omap/softfpu.c
+syscall.$O:	../omap/syscall.c
+	$CC $CFLAGS -. ../omap/syscall.c
+
 l.$O lexception.$O lproc.$O mmu.$O rebootcode.$O: arm.s arm.h mem.h
 main.$O:	errstr.h rebootcode.i
 mouse.$O:	screen.h

@@ -56,6 +56,33 @@ static void screenputc(char *buf);
 static void screenwin(void);
 
 /* called from devmouse */
+enum
+{
+	CMaccelerated,
+	CMlinear,
+};
+
+static Cmdtab mousectlmsg[] =
+{
+	CMaccelerated,		"accelerated",		0,
+	CMlinear,		"linear",		1,
+};
+
+void
+mousectl(Cmdbuf *cb)
+{
+	Cmdtab *ct;
+
+	ct = lookupcmd(cb, mousectlmsg, nelem(mousectlmsg));
+	switch(ct->index){
+	case CMaccelerated:
+		mouseaccelerate(cb->nf == 1? 1: atoi(cb->f[1]));
+		break;
+	case CMlinear:
+		mouseaccelerate(0);
+		break;
+	}
+}
 
 void
 cursoron(void)
