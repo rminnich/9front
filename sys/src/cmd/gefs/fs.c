@@ -615,18 +615,18 @@ loadautos(Mount *mnt)
 {
 	static char *tagname[] = {"minute", "hour", "day"};
 	static int scale[] = {60, 3600, 24*3600};
-	char *p, pfx[128], rbuf[128];
+	char *p, pfx[32], rbuf[Kvmax+1];
 	int i, n, div, cnt, op;
-	Kvp kv;
+	Kvp kv, r;
 
 	pfx[0] = Kconf;
 	n = snprint(pfx+1, sizeof(pfx)-1, "retain");
 	kv.k = pfx;
 	kv.nk = n+1;
-	if(btlookup(mnt->root, &kv, &kv, rbuf, sizeof(rbuf)-1)
-	|| btlookup(&fs->snap, &kv, &kv, rbuf, sizeof(rbuf)-1)){
-		p[kv.nv] = 0;
-		p = kv.v;
+	if(btlookup(mnt->root, &kv, &r, rbuf, sizeof(rbuf)-1)
+	|| btlookup(&fs->snap, &kv, &r, rbuf, sizeof(rbuf)-1)){
+		p = r.v;
+		p[r.nv] = 0;
 	}else
 		p = "60@m 24@h @d";
 	while(*p){
