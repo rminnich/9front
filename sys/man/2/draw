@@ -643,7 +643,7 @@ as
 is to
 .IR poly .
 .TP
-\f5fillbezspline(\f2dst\fP, \f2p\fP, \f2wind\fP, \f2src\fP, \f2sp\fP)
+\f5fillbezspline(\f2dst\fP, \f2p\fP, \f2np\fP, \f2wind\fP, \f2src\fP, \f2sp\fP)
 .I Fillbezspline
 is like
 .I fillpoly
