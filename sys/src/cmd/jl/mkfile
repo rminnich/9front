@@ -22,5 +22,8 @@ BIN=/$objtype/bin
 CFLAGS=$CFLAGS -. -I.
 </sys/src/cmd/mkone
 
+../jc/enam.c: ../jc/j.out.h
+	@ { cd ../jc; mk enam.c }
+
 enam.$O:	../jc/enam.c
 	$CC $CFLAGS ../jc/enam.c
