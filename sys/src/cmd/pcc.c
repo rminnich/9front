@@ -22,6 +22,7 @@ Objtype objtype[] = {
 	{"sparc",	"kc", "kl", "k", "k.out"},
 	{"power",	"qc", "ql", "q", "q.out"},
 	{"mips",	"vc", "vl", "v", "v.out"},
+	{"riscv64",	"jc", "jl", "j", "j.out"},
 };
 
 enum {

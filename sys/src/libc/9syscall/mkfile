@@ -145,6 +145,36 @@ install:V:
 			echo MOVQ '$'$n, R0
 			echo CALL_PAL '$'0x83
 			echo RET
+		case riscv64
+			if(~ $i seek)
+				# sed s/SYSCALL/$n/ ../$objtype/$i.s
+				echo TEXT _seek'(SB)', 1, '$0'
+			if not
+				echo TEXT $i'(SB)', 1, '$0'
+			#
+			# For architectures which pass the first
+			# argument in a register, if the system call
+			# takes no arguments there will be no
+			# 'a0+0(FP)' reserved on the stack.
+			#
+			# jc doesn't widen longs to vlongs when pushing them.
+			# so we have to be careful here to only push longs for
+			# long first arguments.
+			#
+			switch ($i) {
+			case nsec
+				;
+			case bind chdir exec _exits segbrk open  pipe create \
+			    brk_ remove notify segdetach segfree segflush \
+			    rendezvous unmount semacquire semrelease seek \
+			    errstr stat wstat await tsemacquire
+				echo MOV R8, '0(FP)'	# vlong or ptr
+			case *
+				echo MOVW R8, '0(FP)'	# long
+			}
+			echo MOV '$'$n, R8
+			echo ECALL
+			echo RET
 		}} > $i.s
 		$AS $i.s
 	}

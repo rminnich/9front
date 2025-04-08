@@ -70,6 +70,7 @@ extern	Mach	mthumb;
 extern	Mach	marm64;
 extern	Mach	mpower;
 extern	Mach	mpower64;
+extern	Mach	mriscv64;
 
 ExecTable exectab[] =
 {
@@ -243,6 +244,15 @@ ExecTable exectab[] =
 		&marm64,
 		sizeof(Exec)+8,
 		nil,
+		commonllp64 },
+	{ B_MAGIC,
+		"riscv64 plan 9 executable",
+		"riscv64 plan 9 dlm",
+		FRISCV64,
+		1,
+		&mriscv64,
+		sizeof(Exec)+8,
+		leswal,
 		commonllp64 },
 	{ 0 },
 };

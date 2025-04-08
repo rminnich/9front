@@ -16,6 +16,8 @@
 #include "arm64.h"
 #elif Tamd64
 #include "amd64.h"
+#elif Triscv64
+#include "riscv64.h"
 #else
 	I do not know about your architecture.
 	Update switch in arch.h with new architecture.
