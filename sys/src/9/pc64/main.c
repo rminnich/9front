@@ -184,7 +184,7 @@ main(void)
 	i8250console();
 	quotefmtinstall();
 	screeninit();
-	print("\nPlan X\n");
+	print("\nPlan 9\n");
 	cpuidentify();
 	meminit0();
 	archinit();
