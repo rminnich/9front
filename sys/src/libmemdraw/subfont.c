@@ -11,6 +11,7 @@ allocmemsubfont(char *name, int n, int height, int ascent, Fontchar *info, Memim
 	f = malloc(sizeof(Memsubfont));
 	if(f == 0)
 		return 0;
+	f->min = 0;
 	f->n = n;
 	f->height = height;
 	f->ascent = ascent;
