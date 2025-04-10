@@ -37,6 +37,7 @@ Biobuf stdout;
 Biobuf stderr;
 
 int	dbg	= 0;
+Awkfloat	srand_seed = 1;
 char	*cmdname;	/* gets argv[0] for error messages */
 extern	Biobuf	*yyin;	/* lex input file */
 char	*lexprog;	/* points to program argument if it exists */
@@ -67,6 +68,7 @@ void main(int argc, char *argv[])
 	}
 
 	atnotify(handler, 1);
+	srand((unsigned long) srand_seed);
 	yyin = nil;
 	symtab = makesymtab(NSYMTAB);
 	while (argc > 1 && argv[1][0] == '-' && argv[1][1] != '\0') {

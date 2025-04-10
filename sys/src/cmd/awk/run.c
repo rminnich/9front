@@ -31,6 +31,7 @@ THIS SOFTWARE.
 
 jmp_buf env;
 extern	int	pairstack[];
+extern	Awkfloat	srand_seed;
 
 Node	*winner = nil;	/* root of parse tree */
 Cell	*tmps;		/* free temporary cells for execution */
@@ -1536,7 +1537,7 @@ Cell *instat(Node **a, int)	/* for (a[0] in a[1]) a[2] */
 Cell *bltin(Node **a, int)	/* builtin functions. a[0] is type, a[1] is arg list */
 {
 	Cell *x, *y;
-	Awkfloat u;
+	Awkfloat u, tmp;
 	int t;
 	Rune wc;
 	char *p, *buf;
@@ -1590,10 +1591,12 @@ Cell *bltin(Node **a, int)	/* builtin functions. a[0] is type, a[1] is arg list 
 		break;
 	case FSRAND:
 		if (isrec(x))	/* no argument provided */
-			u = (Awkfloat) (truerand() >> 1);
+			tmp = (Awkfloat) (truerand() >> 1);
 		else
-			u = getfval(x);
-		srand((unsigned int) u);
+			tmp = getfval(x);
+		srand((unsigned long) tmp);
+		u = srand_seed;
+		srand_seed = tmp;
 		break;
 	case FTOUPPER:
 	case FTOLOWER:
