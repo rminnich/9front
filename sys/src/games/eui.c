@@ -151,10 +151,11 @@ keyproc(void *)
 				warp10 = !warp10;
 				break;
 			}
-			for(kp=kkn.n; kp!=nil; kp=kp->n){
-				if(utfrune(buf, kp->r))
+			for(kp=kkn.n; kp!=nil; kp=kp->n)
+				if(kp->r == r){
 					k |= kp->k;
-			}
+					break;
+				}
 		}
 		if((k & ax0) == ax0)
 			k &= ~ax0;
