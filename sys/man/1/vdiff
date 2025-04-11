@@ -29,7 +29,11 @@ Pressing
 or
 .B del
 will exit
-.I vdiff.
+.IR vdiff .
+.PP
+A menu may be summoned with button 2 of the mouse.
+It provides menu items for collapsing and expanding all files,
+as well as items for each patch present in the input.
 .PP
 The
 .B -b

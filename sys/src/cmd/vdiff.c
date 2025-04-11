@@ -12,6 +12,7 @@ enum { Meminc = 32 };
 typedef struct Block Block;
 typedef struct Line Line;
 typedef struct Col Col;
+typedef struct Patch Patch;
 
 struct Block {
 	Image *b;
@@ -34,6 +35,12 @@ struct Col {
 	Image *fg;
 };
 
+struct Patch {
+	char *name;
+	Block **blocks;
+	int nblocks;
+};
+
 enum
 {
 	Lfile = 0,
@@ -42,7 +49,17 @@ enum
 	Ldel,
 	Lnone,
 	Ncols,
-};	
+
+	Lterm = -1,
+	Lhash = -2,
+};
+
+enum
+{
+	Mcollapse,
+	Mexpand,
+	Nmenu,
+};
 
 enum
 {
@@ -70,8 +87,9 @@ int offset;
 int lineh;
 int scrolling;
 int oldbuttons;
-Block **blocks;
-int nblocks;
+Patch *patches;
+int npatches;
+Patch *cur;
 int maxlength;
 int Δpan;
 int nstrip;
@@ -201,8 +219,8 @@ redraw(void)
 	vmax = viewr.max.y + offset;
 	clipr = screen->clipr;
 	replclipr(screen, 0, viewr);
-	for(i = 0; i < nblocks; i++){
-		b = blocks[i];
+	for(i = 0; i < cur->nblocks; i++){
+		b = cur->blocks[i];
 		if(b->sr.min.y <= vmax && b->sr.max.y >= vmin){
 			renderblock(b);
 			draw(screen, rectaddpt(b->sr, Pt(0, -offset)), b->b, nil, ZP);
@@ -217,7 +235,7 @@ pan(int off)
 {
 	int max;
 
-	max = Dx(scrollr) + Margin + Hpadding + maxlength*spacew + 2*ellipsisw + Hpadding + Margin - Dx(blocks[0]->r)/2;
+	max = Dx(scrollr) + Margin + Hpadding + maxlength*spacew + 2*ellipsisw + Hpadding + Margin - Dx(cur->blocks[0]->r)/2;
 	Δpan += off * spacew;
 	if(Δpan < 0 || max <= 0)
 		Δpan = 0;
@@ -261,6 +279,8 @@ blockresize(Block *b)
 	b->r = Rect(0, 0, w, h);
 	freeimage(b->b);
 	b->b = allocimage(display, b->r, screen->chan, 0, DNofill);
+	if(b-> b == nil)
+		sysfatal("allocimage: %r");
 }
 
 void
@@ -283,8 +303,8 @@ eresize(int new)
 	lineh = Vpadding+font->height+Vpadding;
 	totalh = - Margin + Vpadding + 1;
 	p = addpt(viewr.min, Pt(0, totalh));
-	for(i = 0; i < nblocks; i++){
-		b = blocks[i];
+	for(i = 0; i < cur->nblocks; i++){
+		b = cur->blocks[i];
 		blockresize(b);
 		b->sr = rectaddpt(b->r, p);
 		p.y += Margin + Dy(b->r);
@@ -329,6 +349,24 @@ ekeyboard(Rune k)
 	case Kright:
 		pan(4);
 		break;
+	}
+}
+
+char*
+genmenu(int i)
+{
+	switch(i){
+	case Mcollapse:
+		return "collapse";
+	case Mexpand:
+		return "expand";
+	default:
+		i -= Nmenu;
+		if(i >= npatches)
+			return nil;
+		if(patches[i].name == nil)
+			patches[i].name = smprint("%d", i);
+		return patches[i].name;
 	}
 }
 
@@ -379,8 +417,8 @@ emouse(Mouse m)
 	}else if(m.buttons&16){
 		scroll(n);
 	}else if((oldbuttons^m.buttons) != 0 && ptinrect(m.xy, viewr)){
-		for(i = 0; i < nblocks; i++){
-			b = blocks[i];
+		for(i = 0; i < cur->nblocks; i++){
+			b = cur->blocks[i];
 			if(ptinrect(addpt(m.xy, Pt(0, offset)), b->sr)){
 				blockmouse(b, m);
 				break;
@@ -466,9 +504,9 @@ addblock(void)
 	b->f = nil;
 	b->lines = nil;
 	b->nlines = 0;
-	if(nblocks%Meminc == 0)
-		blocks = erealloc(blocks, (nblocks+Meminc)*sizeof *blocks);
-	blocks[nblocks++] = b;
+	if(cur->nblocks%Meminc == 0)
+		cur->blocks = erealloc(cur->blocks, (cur->nblocks+Meminc)*sizeof *cur->blocks);
+	cur->blocks[cur->nblocks++] = b;
 	return b;
 }
 
@@ -492,7 +530,11 @@ linetype(char *text)
 	int type;
 
 	type = Lnone;
-	if(strncmp(text, "+++", 3)==0)
+	if(strncmp(text, "⑨", 1)==0)
+		type = Lterm;
+	else if(strncmp(text, "diff", 4)==0)
+		type = Lhash;
+	else if(strncmp(text, "+++", 3)==0)
 		type = Lfile;
 	else if(strncmp(text, "---", 3)==0){
 		if(strlen(text) > 4)
@@ -522,27 +564,52 @@ lineno(char *s)
 }
 
 void
+collapse(int v)
+{
+	int i;
+
+	for(i = 0; i < cur->nblocks; i++)
+		if(cur->blocks[i]->f != nil)
+			cur->blocks[i]->v = v;
+	eresize(0);
+}
+
+void
 parse(int fd)
 {
 	Biobuf *bp;
 	Block *b;
 	char *s, *f, *tab;
 	int t, n, ab, len;
+	int gotterm;
 
-	blocks = nil;
-	nblocks = 0;
-	ab = 0;
-	n = 0;
 	bp = Bfdopen(fd, OREAD);
 	if(bp==nil)
 		sysfatal("Bfdopen: %r");
-	b = addblock();
+	gotterm = 0;
+	goto New;
 	for(;;){
 		s = Brdstr(bp, '\n', 1);
 		if(s==nil)
 			break;
 		t = linetype(s);
 		switch(t){
+		case Lterm:
+			gotterm = 1;
+			/* remove '--' and extra newline */
+			b->nlines--;
+			free(Brdstr(bp, '\n', 1));
+		New:
+			npatches++;
+			patches = realloc(patches, sizeof *patches * npatches);
+			cur = patches+npatches-1;
+			cur->blocks = nil;
+			cur->nblocks = 0;
+			cur->name = nil;
+			b = addblock();
+			n = 0;
+			ab = 0;		
+			break;
 		case Lfile:
 			if(s[0] == '-'){
 				b = addblock();
@@ -568,6 +635,16 @@ parse(int fd)
 		case Lsep:
 			n = lineno(s) - 1; /* -1 as the separator is not an actual line */
 			if(0){
+		case Lhash:
+			f = strchr(s, ' ');
+			if(f != nil && (f = strchr(f+1, ' '))){
+				f++;
+				if(strcmp(f, "uncommitted") != 0){
+					cur->name = strdup(f);
+					cur->name[9] = '\0';
+				}
+			}
+			t = Lnone;
 		case Ladd:
 		case Lnone:
 			++n;
@@ -580,6 +657,9 @@ parse(int fd)
 			break;
 		}
 	}
+	if(gotterm)
+		npatches--;
+	cur = patches;
 }
 
 void
@@ -601,7 +681,11 @@ threadmain(int argc, char *argv[])
 		{ nil, &k,  CHANRCV },
 		{ nil, nil, CHANEND },
 	};
-	int b;
+	Menu menu = {
+		nil,
+		genmenu,
+	};
+	int b, n;
 
 	b = 0;
 	ARGBEGIN{
@@ -625,9 +709,8 @@ threadmain(int argc, char *argv[])
 	case 0:
 		break;
 	}
-
 	parse(0);
-	if(nblocks==1 && blocks[0]->nlines==0){
+	if(cur->nblocks==1 && cur->blocks[0]->nlines==0){
 		fprint(2, "no diff\n");
 		exits(nil);
 	}
@@ -648,7 +731,23 @@ threadmain(int argc, char *argv[])
 	for(;;){
 		switch(alt(a)){
 		case Emouse:
-			emouse(m);
+			if((m.buttons&2) != 0){
+				n = menuhit(2, mctl, &menu, nil);
+				switch(n){
+				case -1:
+					break;
+				case Mexpand: case Mcollapse:
+					collapse(n);
+					break;
+				default:
+					n -= Nmenu;
+					if(cur == patches+n)
+						break;
+					cur = patches+n;
+					eresize(0);
+				}
+			} else
+				emouse(m);
 			break;
 		case Eresize:
 			eresize(1);
