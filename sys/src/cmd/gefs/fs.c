@@ -1936,8 +1936,8 @@ fsremove(Fmsg *m, int id, Amsg **ao)
 	mb[nm].op = Odelete;
 	mb[nm].k = f->dent->k;
 	mb[nm].nk = f->dent->nk;
-	mb[nm].v = "\0";
-	mb[nm].nv = 1;
+	mb[nm].v = nil;
+	mb[nm].nv = 0;
 	nm++;
 	if(f->dent->qid.type & QTDIR){
 		packsuper(buf, sizeof(buf), f->qpath);
