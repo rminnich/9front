@@ -505,8 +505,8 @@ void
 procsetup(Proc *p)
 {
 	fpuprocsetup(p);
+	syswr(TPIDR_EL0, 0);
 	p->tpidr = 0;
-	syswr(TPIDR_EL0, p->tpidr);
 }
 
 void
