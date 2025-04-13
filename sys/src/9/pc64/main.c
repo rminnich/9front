@@ -170,7 +170,7 @@ init0(void)
 	sp[0] = nil;
 
 	splhi();
-	fpukexit(nil, nil);
+	fpukexit(nil);
 	touser(sp);
 }
 

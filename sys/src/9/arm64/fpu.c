@@ -75,7 +75,7 @@ fpfree(FPalloc *a)
  *  are handled between fpukenter() and fpukexit(),
  *  so they can use floating point and vector instructions.
  */
-FPalloc*
+void
 fpukenter(Ureg*)
 {
 	if(up == nil){
@@ -85,9 +85,8 @@ fpukenter(Ureg*)
 			/* wet floor */
 		case FPinactive:
 			m->fpstate = FPinit;
-			return m->fpsave;
 		}
-		return nil;
+		return;
 	}
 
 	switch(up->fpstate){
@@ -96,7 +95,7 @@ fpukenter(Ureg*)
 		fpoff();
 		/* wet floor */
 	case FPprotected:
-		return nil;
+		return;
 	}
 
 	switch(up->kfpstate){
@@ -105,26 +104,25 @@ fpukenter(Ureg*)
 		/* wet floor */
 	case FPinactive:
 		up->kfpstate = FPinit;
-		return up->kfpsave;
 	}
-	return nil;
 }
 
 void
-fpukexit(Ureg *ureg, FPalloc *o)
+fpukexit(Ureg *ureg)
 {
+	FPalloc *a;
+
 	if(up == nil){
 		switch(m->fpstate){
 		case FPactive:
 			fpoff();
 			/* wet floor */
 		case FPinactive:
-			fpfree(m->fpsave);
-			m->fpstate = FPinit;
+			a = m->fpsave;
+			m->fpsave = a->link;
+			fpfree(a);
 		}
-		m->fpsave = o;
-		if(o != nil)
-			m->fpstate = FPinactive;
+		m->fpstate = m->fpsave != nil? FPinactive: FPinit;
 		return;
 	}
 
@@ -141,12 +139,11 @@ fpukexit(Ureg *ureg, FPalloc *o)
 		fpoff();
 		/* wet floor */
 	case FPinactive:
-		fpfree(up->kfpsave);
-		up->kfpstate = FPinit;
+		a = up->kfpsave;
+		up->kfpsave = a->link;
+		fpfree(a);
 	}
-	up->kfpsave = o;
-	if(o != nil)
-		up->kfpstate = FPinactive;
+	up->kfpstate = up->kfpsave != nil? FPinactive: FPinit;
 }
 
 void

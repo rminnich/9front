@@ -133,12 +133,11 @@ void
 trap(Ureg *ureg)
 {
 	int vno, user;
-	FPalloc *f = nil;
 
 	vno = ureg->type;
 	user = kenter(ureg);
 	if(vno != VectorCNA)
-		f = fpukenter(ureg);
+		fpukenter(ureg);
 
 	if(!irqhandled(ureg, vno) && (!user || !usertrap(vno))){
 		if(!user){
@@ -184,7 +183,7 @@ out:
 		kexit(ureg);
 	}
 	if(vno != VectorCNA)
-		fpukexit(ureg, f);
+		fpukexit(ureg);
 }
 
 void
@@ -410,6 +409,10 @@ faultamd64(Ureg* ureg, void*)
 				pprint("suicide: sys: %s\n", up->errstr);
 				pexit(up->errstr, 1);
 			}
+			/* skipping bottom of trap(), so do it outselfs */
+			splhi();
+			fpukexit(ureg);
+			spllo();
 			nexterror();
 		}
 	}
@@ -537,7 +540,7 @@ syscall(Ureg* ureg)
 		sched();
 
 	kexit(ureg);
-	fpukexit(ureg, nil);
+	fpukexit(ureg);
 }
 
 /*

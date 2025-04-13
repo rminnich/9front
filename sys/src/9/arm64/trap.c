@@ -97,7 +97,6 @@ static char *traps[64] = {
 void
 trap(Ureg *ureg)
 {
-	FPalloc *f = nil;
 	u32int type, intr;
 	int user;
 
@@ -114,7 +113,7 @@ trap(Ureg *ureg)
 	case 0x21:	// instruction abort from same level
 	case 0x24:	// data abort from lower level
 	case 0x25:	// data abort from same level
-		f = fpukenter(ureg);
+		fpukenter(ureg);
 		faultarm64(ureg);
 		break;
 	case 0x07:	// SIMD/FP
@@ -123,13 +122,13 @@ trap(Ureg *ureg)
 		break;
 	case 0x00:	// unknown
 		if(intr == 1){
-			f = fpukenter(ureg);
+			fpukenter(ureg);
 			preempted(irq(ureg));
 			break;
 		}
 		if(intr == 3){
 	case 0x2F:	// SError interrupt
-			f = fpukenter(ureg);
+			fpukenter(ureg);
 			if(buserror != nil && (*buserror)(ureg))
 				break;
 			dumpregs(ureg);
@@ -165,7 +164,7 @@ trap(Ureg *ureg)
 	case 0x3A:	// vector catch exception (A32 only)
 	case 0x3C:	// BRK instruction (A64 only)
 	default:
-		f = fpukenter(ureg);
+		fpukenter(ureg);
 		if(!userureg(ureg)){
 			dumpregs(ureg);
 			panic("unhandled trap");
@@ -182,7 +181,7 @@ trap(Ureg *ureg)
 		kexit(ureg);
 	}
 	if(type != 0x07 && type != 0x2C)
-		fpukexit(ureg, f);
+		fpukexit(ureg);
 }
 
 void
@@ -275,7 +274,7 @@ syscall(Ureg *ureg)
 		sched();
 
 	kexit(ureg);
-	fpukexit(ureg, nil);
+	fpukexit(ureg);
 }
 
 int
@@ -436,6 +435,10 @@ faultarm64(Ureg *ureg)
 				pprint("suicide: sys: %s\n", up->errstr);
 				pexit(up->errstr, 1);
 			}
+			/* skipping bottom of trap(), so do it outselfs */
+			splhi();
+			fpukexit(ureg);
+			spllo();
 			nexterror();
 		}
 	}

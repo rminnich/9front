@@ -1113,7 +1113,7 @@ vmcsinit(Vmx *vmx)
 
 	s = splhi();
 #ifdef KFPSTATE
-	fpukexit(nil, nil);
+	fpukexit(nil);
 #endif
 	fpinit();
 	fpsave(&vmx->fp);
@@ -1832,7 +1832,7 @@ vmxproc(void *vmxp)
 			if((vmx->dr[7] & ~0xd400) != 0)
 				putdr01236(vmx->dr);
 #ifdef KFPSTATE
-			fpukexit(nil, nil);
+			fpukexit(nil);
 #endif
 			fprestore(&vmx->fp);
 			if(vmx->xcr0 != m->xcr0)
