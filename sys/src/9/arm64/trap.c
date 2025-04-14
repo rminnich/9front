@@ -375,15 +375,15 @@ noted(Ureg *ureg, ulong arg0)
 	
 	case NSAVE:
 		sp = oureg - 4 * BY2WD - ERRMAX;
-		ureg->sp = sp;
-		ureg->r0 = (uintptr) oureg;
-		if(!okaddr(ureg->pc, BY2WD, 0) || !okaddr(ureg->sp, 4 * BY2WD, 1) ||
-				(nureg->pc & 3) != 0 || (ureg->sp & 7) != 0){
+		if(!okaddr(ureg->pc, BY2WD, 0) || !okaddr(sp, 4 * BY2WD, 1) ||
+				(nureg->pc & 3) != 0 || (sp & 7) != 0){
 			qunlock(&up->debug);
 			pprint("suicide: trap in noted\n");
 			pexit("Suicide", 0);
 		}
 		qunlock(&up->debug);
+		ureg->sp = sp;
+		ureg->r0 = (uintptr) oureg;
 		((uintptr *) sp)[1] = oureg;
 		((uintptr *) sp)[0] = 0;
 		break;
