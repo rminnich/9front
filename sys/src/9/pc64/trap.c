@@ -639,9 +639,8 @@ noted(Ureg* ureg, ulong arg0)
 	switch(arg0){
 	case NCONT:
 	case NRSTR:
-if(0) print("%s %lud: noted %#p %#p\n",
-	up->text, up->pid, nureg->pc, nureg->sp);
-		if(!okaddr(nureg->pc, 1, 0) || !okaddr(nureg->sp, BY2WD, 0)){
+if(0) print("%s %lud: noted %#p %#p\n", up->text, up->pid, ureg->pc, ureg->sp);
+		if(!okaddr(ureg->pc, 1, 0) || !okaddr(ureg->sp, BY2WD, 0)){
 			qunlock(&up->debug);
 			pprint("suicide: trap in noted\n");
 			pexit("Suicide", 0);
@@ -651,14 +650,13 @@ if(0) print("%s %lud: noted %#p %#p\n",
 		break;
 
 	case NSAVE:
-		if(!okaddr(nureg->pc, 1, 0)
-		|| !okaddr(nureg->sp, BY2WD, 0)){
+		sp = oureg-4*BY2WD-ERRMAX;
+		if(!okaddr(ureg->pc, 1, 0) || !okaddr(sp, 4 * BY2WD, 1)){
 			qunlock(&up->debug);
 			pprint("suicide: trap in noted\n");
 			pexit("Suicide", 0);
 		}
 		qunlock(&up->debug);
-		sp = oureg-4*BY2WD-ERRMAX;
 		ureg->sp = sp;
 		ureg->bp = oureg;		/* arg 1 passed in RARG */
 		((uintptr*)sp)[1] = oureg;	/* arg 1 0(FP) is ureg* */
