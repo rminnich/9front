@@ -14,7 +14,6 @@
 
 int	intr(Ureg*);
 void	kernfault(Ureg*, int);
-void	noted(Ureg*, ulong);
 void	rfnote(Ureg**);
 
 char *excname[] =

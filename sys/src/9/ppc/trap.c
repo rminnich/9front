@@ -73,7 +73,6 @@ intrdisable(int irq, void (*f)(Ureg *, void *), void *a, char *name)
 }
 
 void	syscall(Ureg*);
-void	noted(Ureg*, ulong);
 static void _dumpstack(Ureg*);
 
 char *excname[] =
@@ -148,9 +147,9 @@ trap(Ureg *ureg)
 	extern FPsave initfp;
 
 	user = kenter(ureg);
+	ecode = (ureg->cause >> 8) & 0xff;
 	if((ureg->status & MSR_RI) == 0)
 		print("double fault?: ecode = %d\n", ecode);
-	ecode = (ureg->cause >> 8) & 0xff;
 	switch(ecode) {
 	case CEI:
 		m->intr++;
@@ -565,79 +564,29 @@ dbgpc(Proc *p)
 /*
  *  system calls
  */
-#include "../port/systab.h"
 
 /* TODO: make this trap a separate asm entry point, like on other RISC architectures */
 void
 syscall(Ureg* ureg)
 {
-	int i;
-	char *e;
-	long	ret;
-	ulong sp, scallnr;
+	ulong scallnr;
 
-	m->syscall++;
-	up->insyscall = 1;
-	up->pc = ureg->pc;
-
+	if(!kenter(ureg))
+		panic("syscall from kernel");
 	if (up->fpstate == FPactive && (ureg->srr1 & MSR_FP) == 0){
 		print("fpstate check, entry syscall\n");
 		delay(200);
 		dumpregs(ureg);
 		print("fpstate check, entry syscall\n");
 	}
-
 	scallnr = ureg->r3;
-	up->scallnr = ureg->r3;
-	spllo();
-
-	sp = ureg->usp;
-	ret = -1;
-	if(!waserror()){
-		if(sp<(USTKTOP-BY2PG) || sp>(USTKTOP-sizeof(Sargs)-BY2WD))
-			validaddr(sp, sizeof(Sargs)+BY2WD, 0);
-
-		up->s = *((Sargs*)(sp+BY2WD));
-		if(scallnr >= nsyscall || systab[scallnr] == nil){
-			postnote(up, 1, "sys: bad sys call", NDebug);
-			error(Ebadarg);
-		}
-		up->psstate = sysctab[scallnr];
-		ret = systab[scallnr]((va_list)up->s.args);
-		poperror();
-	}else{
-		/* failure: save the error buffer for errstr */
-		e = up->syserrstr;
-		up->syserrstr = up->errstr;
-		up->errstr = e;
-	}
-	if(up->nerrlab){
-		print("bad errstack [%uld]: %d extra\n", scallnr, up->nerrlab);
-		print("scall %s lr =%lux\n", sysctab[scallnr], ureg->lr);
-		for(i = 0; i < NERR; i++)
-			print("sp=%lux pc=%lux\n", up->errlab[i].sp, up->errlab[i].pc);
-		panic("error stack");
-	}
-
-	up->insyscall = 0;
-	up->psstate = 0;
-
-	/*
-	 *  Put return value in frame.  On the x86 the syscall is
-	 *  just another trap and the return value from syscall is
-	 *  ignored.  On other machines the return value is put into
-	 *  the results register by caller of syscall.
-	 */
-	ureg->r3 = ret;
-
-	if(scallnr == NOTED)
-		noted(ureg, *(ulong*)(sp+BY2WD));
-
-	/* restoreureg must execute at high IPL */
-	splhi();
-	if(scallnr!=RFORK)
+	dosyscall(scallnr, (Sargs*)(ureg->usp+BY2WD), &ureg->r3);
+	if(up->procctl || up->nnote)
 		notify(ureg);
-
+	/* if we delayed sched because we held a lock, sched now */
+	if(up->delaysched)
+		sched();
+	kexit(ureg);
 	if (up->fpstate == FPactive && (ureg->srr1 & MSR_FP) == 0){
 		print("fpstate check, exit syscall nr %lud, pid %lud\n", scallnr, up->pid);
 		dumpregs(ureg);
@@ -665,7 +614,7 @@ notify(Ureg* ur)
 		fpsave(up->fpsave);
 		up->fpstate = FPinactive;
 	}
-	up->fpstate |= FPillegal;
+	up->fpstate |= FPnotify;
 
 	s = spllo();
 	qlock(&up->debug);
@@ -708,7 +657,7 @@ notify(Ureg* ur)
  *   Return user to state before notify()
  */
 void
-noted(Ureg* ureg, ulong arg0)
+noted(Ureg* ureg, int arg0)
 {
 	Ureg *nureg;
 	ulong oureg, sp;
@@ -770,7 +719,7 @@ noted(Ureg* ureg, ulong arg0)
 			pprint("suicide: %s\n", up->lastnote->msg);
 		pexit(up->lastnote->msg, up->lastnote->flag!=NDebug);
 	}
-	up->fpstate &= ~FPillegal;
+	up->fpstate &= ~FPnotify;
 	if (up->fpstate == FPactive)
 		ureg->srr1 |= MSR_FP;
 	else

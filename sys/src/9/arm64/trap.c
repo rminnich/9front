@@ -4,7 +4,6 @@
 #include "dat.h"
 #include "fns.h"
 #include "../port/error.h"
-#include "../port/systab.h"
 
 #include <tos.h>
 #include "ureg.h"
@@ -187,87 +186,17 @@ trap(Ureg *ureg)
 void
 syscall(Ureg *ureg)
 {
-	vlong startns, stopns;
-	uintptr sp, ret;
 	ulong scallnr;
-	int i, s;
-	char *e;
 
 	if(!kenter(ureg))
 		panic("syscall from  kernel");
 	fpukenter(ureg);
 	
-	m->syscall++;
-	up->insyscall = 1;
-	up->pc = ureg->pc;
-	
-	sp = ureg->sp;
-	up->scallnr = scallnr = ureg->r0;
-	spllo();
-	
-	startns = 0;
-	ret = -1;
-	if(!waserror()){
-		if(sp < USTKTOP - BY2PG || sp > USTKTOP - sizeof(Sargs) - BY2WD){
-			validaddr(sp, sizeof(Sargs)+BY2WD, 0);
-			evenaddr(sp);
-		}
-		up->s = *((Sargs*) (sp + BY2WD));
-
-		if(up->procctl == Proc_tracesyscall){
-			syscallfmt(scallnr, ureg->pc, (va_list) up->s.args);
-			s = splhi();
-			up->procctl = Proc_stopme;
-			procctl();
-			splx(s);
-			todget(nil, &startns);
-		}
-		
-		if(scallnr >= nsyscall || systab[scallnr] == nil){
-			postnote(up, 1, "sys: bad sys call", NDebug);
-			error(Ebadarg);
-		}
-		up->psstate = sysctab[scallnr];
-		ret = systab[scallnr]((va_list)up->s.args);
-		poperror();
-	}else{
-		e = up->syserrstr;
-		up->syserrstr = up->errstr;
-		up->errstr = e;
-	}
-	if(up->nerrlab){
-		print("bad errstack [%lud]: %d extra\n", scallnr, up->nerrlab);
-		for(i = 0; i < NERR; i++)
-			print("sp=%#p pc=%#p\n", up->errlab[i].sp, up->errlab[i].pc);
-		panic("error stack");
-	}
-	ureg->r0 = ret;
-	if(up->procctl == Proc_tracesyscall){
-		todget(nil, &stopns);
-		sysretfmt(scallnr, (va_list) up->s.args, ret, startns, stopns);
-		s = splhi();
-		up->procctl = Proc_stopme;
-		procctl();
-		splx(s);
-	}
-	up->insyscall = 0;
-	up->psstate = 0;
-
-	if(scallnr == NOTED){
-		noted(ureg, *((ulong*) up->s.args));
-		/*
-		 * normally, syscall() returns to forkret()
-		 * not restoring general registers when going
-		 * to userspace. to completely restore the
-		 * interrupted context, we have to return thru
-		 * noteret(). we override return pc to jump to
-		 * to it when returning form syscall()
-		 */
+	scallnr = ureg->r0;
+	if(dosyscall(scallnr, (Sargs*)(ureg->sp+BY2WD), &ureg->r0))
 		returnto(noteret);
-	}
 
-	splhi();
-	if(scallnr != RFORK && (up->procctl || up->nnote))
+	if(up->procctl || up->nnote)
 		notify(ureg);
 
 	if(up->delaysched)
@@ -333,7 +262,7 @@ notify(Ureg *ureg)
 }
 
 void
-noted(Ureg *ureg, ulong arg0)
+noted(Ureg *ureg, int arg0)
 {
 	Ureg *nureg;
 	uintptr oureg, sp;

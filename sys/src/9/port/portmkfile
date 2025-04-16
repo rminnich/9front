@@ -112,8 +112,8 @@ devswap.$O:	/sys/include/libsec.h
 random.$O:	/sys/include/libsec.h
 wifi.$O:	/sys/include/libsec.h 
 devaoe.$O sdaoe.$O:	/sys/include/fis.h
-sysproc.$O:	/sys/include/a.out.h
-syscallfmt.$O:	/sys/src/libc/9syscall/sys.h
+sysproc.$O:	/sys/include/a.out.h ../port/systab.h
+sysproc.$O syscallfmt.$O:	/sys/src/libc/9syscall/sys.h
 devusb.$O usbxhci.$O usbxhcipci.$O:	../port/usb.h
 usbxhci.$O usbxhcipci.$O:	../port/usbxhci.h
 devether.$O: ../ip/ip.h ../ip/ipv6.h

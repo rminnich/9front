@@ -195,83 +195,16 @@ trap(Ureg *ureg)
 	}
 }
 
-#include "../port/systab.h"
-
 void
 syscall(Ureg *ureg)
 {
-	char *e;
-	uintptr sp;
-	long ret;
-	int i, s;
 	ulong scallnr;
-	vlong startns, stopns;
 	
 	if(!kenter(ureg))
 		panic("syscall: pc=%#.8lux", ureg->pc);
-	
-	m->syscall++;
-	up->insyscall = 1;
-	up->pc = ureg->pc;
-	
-	sp = ureg->sp;
-	up->scallnr = scallnr = ureg->r0;
-
-	spllo();
-	
-	ret = -1;
-	if(!waserror()){
-		if(sp < USTKTOP - BY2PG || sp > USTKTOP - sizeof(Sargs) - BY2WD){
-			validaddr(sp, sizeof(Sargs)+BY2WD, 0);
-			evenaddr(sp);
-		}
-		up->s = *((Sargs*) (sp + BY2WD));
-		
-		if(up->procctl == Proc_tracesyscall){
-			syscallfmt(scallnr, ureg->pc, (va_list) up->s.args);
-			s = splhi();
-			up->procctl = Proc_stopme;
-			procctl();
-			splx(s);
-			todget(nil, &startns);
-		}
-		
-		if(scallnr >= nsyscall || systab[scallnr] == nil){
-			postnote(up, 1, "sys: bad sys call", NDebug);
-			error(Ebadarg);
-		}
-		up->psstate = sysctab[scallnr];
-		ret = systab[scallnr]((va_list)up->s.args);
-		poperror();
-	}else{
-		e = up->syserrstr;
-		up->syserrstr = up->errstr;
-		up->errstr = e;
-	}
-	if(up->nerrlab){
-		print("bad errstack [%lud]: %d extra\n", scallnr, up->nerrlab);
-		for(i = 0; i < NERR; i++)
-			print("sp=%lux pc=%lux\n", up->errlab[i].sp, up->errlab[i].pc);
-		panic("error stack");
-	}
-	
-	ureg->r0 = ret;
-	if(up->procctl == Proc_tracesyscall){
-		todget(nil, &stopns);
-		sysretfmt(scallnr, (va_list) up->s.args, ret, startns, stopns);
-		s = splhi();
-		up->procctl = Proc_stopme;
-		procctl();
-		splx(s);
-	}
-	
-	up->insyscall = 0;
-	up->psstate = 0;
-	if(scallnr == NOTED)
-		noted(ureg, *((ulong *) up->s.args));
-
-	splhi();
-	if(scallnr != RFORK && (up->procctl || up->nnote))
+	scallnr = ureg->r0;
+	dosyscall(scallnr, (Sargs*)(ureg->sp + BY2WD), &ureg->r0);
+	if(up->procctl || up->nnote)
 		notify(ureg);
 	if(up->delaysched)
 		sched();
@@ -353,7 +286,7 @@ notify(Ureg *ureg)
 }
 
 void
-noted(Ureg *ureg, ulong arg0)
+noted(Ureg *ureg, int arg0)
 {
 	Ureg *nureg;
 	ulong oureg, sp;

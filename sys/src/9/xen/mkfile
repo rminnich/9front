@@ -33,6 +33,7 @@ PORT=\
 	qlock.$O\
 	rebootcmd.$O\
 	segment.$O\
+	syscallfmt.$O\
 	sysfile.$O\
 	sysproc.$O\
 	taslock.$O\

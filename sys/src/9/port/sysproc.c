@@ -782,8 +782,12 @@ sysnotify(va_list list)
 uintptr
 sysnoted(va_list list)
 {
-	if(va_arg(list, int) != NRSTR && !up->notified)
+	int arg;
+
+	arg = va_arg(list, int);
+	if(arg != NRSTR && !up->notified)
 		error(Egreg);
+	noted(up->dbgreg, arg);
 	return 0;
 }
 
@@ -1264,5 +1268,77 @@ sys_nsec(va_list list)
 	evenaddr((uintptr)v);
 	validaddr((uintptr)v, sizeof(vlong), 1);
 	*v = todget(nil, nil);
+	return 0;
+}
+
+#include "../port/systab.h"
+
+int
+dosyscall(ulong scallnr, Sargs *args, uintptr *retp)
+{
+	vlong startns, stopns;
+	uintptr ret;
+	int s;
+
+	m->syscall++;
+
+	up->insyscall = 1;
+	s = spllo();
+
+	if(!waserror()){
+		evenaddr((uintptr)args);
+		validaddr((uintptr)args, sizeof(Sargs), 0);
+
+		up->s = *args;
+		up->scallnr = scallnr;
+
+		if(up->procctl == Proc_tracesyscall){
+			syscallfmt(scallnr, userpc(), (va_list)up->s.args);
+			splhi();
+			up->procctl = Proc_stopme;
+			procctl();
+			spllo();
+			todget(nil, &startns);
+		}
+		if(scallnr >= nsyscall || systab[scallnr] == nil){
+			postnote(up, 1, "sys: bad sys call", NDebug);
+			error(Ebadarg);
+		}
+		up->psstate = sysctab[scallnr];
+		ret = systab[scallnr]((va_list)up->s.args);			
+		poperror();
+		if(scallnr == NOTED){
+			/* special case: noted() changes the ureg, return without setting *retp */
+			splx(s);
+			up->insyscall = 0;
+			up->psstate = nil;
+			return 1;
+		}
+	}else{
+		/* failure: save the error buffer for errstr */
+		char *e = up->syserrstr;
+		up->syserrstr = up->errstr;
+		up->errstr = e;
+		ret = -1;
+	}
+	if(up->nerrlab){
+		int i;
+
+		print("bad errstack [%lud]: %d extra\n", scallnr, up->nerrlab);
+		for(i = 0; i < NERR; i++)
+			print("sp=%#p pc=%#p\n", up->errlab[i].sp, up->errlab[i].pc);
+		panic("error stack");
+	}
+	*retp = ret;
+	if(up->procctl == Proc_tracesyscall){
+		todget(nil, &stopns);
+		sysretfmt(scallnr, (va_list)up->s.args, ret, startns, stopns);
+		splhi();
+		up->procctl = Proc_stopme;
+		procctl();
+	}
+	splx(s);
+	up->insyscall = 0;
+	up->psstate = nil;
 	return 0;
 }

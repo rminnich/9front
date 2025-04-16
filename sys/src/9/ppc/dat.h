@@ -75,7 +75,7 @@ enum
 	FPactive = 1,
 	FPinactive = 2,
 	/* Bit that's or-ed in during note handling (FP is illegal in note handlers) */
-	FPillegal = 0x100,
+	FPnotify = 0x100,
 };
 
 struct Confmem

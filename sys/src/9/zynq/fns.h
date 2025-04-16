@@ -45,7 +45,6 @@ void flushpg(void *);
 void setasid(ulong);
 void flushtlb(void);
 void touser(void *);
-void noted(Ureg *, ulong);
 void l1switch(L1 *, int);
 void intrenable(int, void (*)(Ureg *, void *), void *, int, char *);
 void intrinit(void);

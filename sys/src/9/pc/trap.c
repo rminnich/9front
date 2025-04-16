@@ -12,8 +12,6 @@
 extern int irqhandled(Ureg*, int);
 extern void irqinit(void);
 
-void	noted(Ureg*, ulong);
-
 static void debugexc(Ureg*, void*);
 static void debugbpt(Ureg*, void*);
 static void fault386(Ureg*, void*);
@@ -450,100 +448,18 @@ fault386(Ureg* ureg, void*)
 }
 
 /*
- *  system calls
- */
-#include "../port/systab.h"
-
-/*
  *  Syscall is called directly from assembler without going through trap().
  */
 void
 syscall(Ureg* ureg)
 {
-	char *e;
-	ulong	sp;
-	long	ret;
-	int	i, s;
 	ulong scallnr;
-	vlong startns, stopns;
 
 	if(!kenter(ureg))
 		panic("syscall: cs 0x%4.4luX", ureg->cs);
-
-	m->syscall++;
-	up->insyscall = 1;
-	up->pc = ureg->pc;
-
-	sp = ureg->usp;
 	scallnr = ureg->ax;
-	up->scallnr = scallnr;
-
-	spllo();
-
-	ret = -1;
-	if(!waserror()){
-		if(sp<(USTKTOP-BY2PG) || sp>(USTKTOP-sizeof(Sargs)-BY2WD))
-			validaddr(sp, sizeof(Sargs)+BY2WD, 0);
-
-		up->s = *((Sargs*)(sp+BY2WD));
-
-		if(up->procctl == Proc_tracesyscall){
-			syscallfmt(scallnr, ureg->pc, (va_list)up->s.args);
-			s = splhi();
-			up->procctl = Proc_stopme;
-			procctl();
-			splx(s);
-			todget(nil, &startns);
-		}
-
-		if(scallnr >= nsyscall || systab[scallnr] == nil){
-			postnote(up, 1, "sys: bad sys call", NDebug);
-			error(Ebadarg);
-		}
-		up->psstate = sysctab[scallnr];
-		ret = systab[scallnr]((va_list)up->s.args);
-		poperror();
-	}else{
-		/* failure: save the error buffer for errstr */
-		e = up->syserrstr;
-		up->syserrstr = up->errstr;
-		up->errstr = e;
-		if(0 && up->pid == 1)
-			print("syscall %lud error %s\n", scallnr, up->syserrstr);
-	}
-	if(up->nerrlab){
-		print("bad errstack [%lud]: %d extra\n", scallnr, up->nerrlab);
-		for(i = 0; i < NERR; i++)
-			print("sp=%lux pc=%lux\n",
-				up->errlab[i].sp, up->errlab[i].pc);
-		panic("error stack");
-	}
-
-	/*
-	 *  Put return value in frame.  On the x86 the syscall is
-	 *  just another trap and the return value from syscall is
-	 *  ignored.  On other machines the return value is put into
-	 *  the results register by caller of syscall.
-	 */
-	ureg->ax = ret;
-
-	if(up->procctl == Proc_tracesyscall){
-		todget(nil, &stopns);
-		sysretfmt(scallnr, (va_list)up->s.args, ret, startns, stopns);
-		s = splhi();
-		up->procctl = Proc_stopme;
-		procctl();
-		splx(s);
-	}
-
-	up->insyscall = 0;
-	up->psstate = 0;
-
-	if(scallnr == NOTED)
-		noted(ureg, *((ulong*)up->s.args));
-
-	splhi();
-	if(scallnr!=RFORK && (up->procctl || up->nnote))
+	dosyscall(scallnr, (Sargs*)(ureg->sp + BY2WD), &ureg->ax);
+	if(up->procctl || up->nnote)
 		notify(ureg);
 	/* if we delayed sched because we held a lock, sched now */
 	if(up->delaysched)
@@ -612,7 +528,7 @@ if(0) print("%s %lud: notify %.8lux %.8lux %.8lux %s\n",
  *   Return user to state before notify()
  */
 void
-noted(Ureg* ureg, ulong arg0)
+noted(Ureg* ureg, int arg0)
 {
 	Ureg *nureg;
 	ulong oureg, sp;

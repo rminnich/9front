@@ -85,8 +85,6 @@ ulong	getconfig3(void);
 ulong	getconfig7(void);
 ulong	gethwreg3(void);
 void	plan9iniinit(void);
-void	noted(Ureg*, ulong);
-int		notify(Ureg*);
 void	intrinit(void);
 int		i8250console(void);
 void	setconfenv(void);

@@ -189,12 +189,12 @@ procsetup(Proc *p)
 }
 
 void
-procfork(Proc *p)
+procfork(Proc*)
 {
 }
 
 void
-procrestore(Proc *p)
+procrestore(Proc*)
 {
 }
 

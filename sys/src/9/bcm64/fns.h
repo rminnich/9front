@@ -109,7 +109,6 @@ extern void procsave(Proc*);
 extern void procrestore(Proc *);
 extern void trap(Ureg*);
 extern void syscall(Ureg*);
-extern void noted(Ureg*, ulong);
 extern void faultarm64(Ureg*);
 extern void dumpstack(void);
 extern void dumpregs(Ureg*);

@@ -25,8 +25,6 @@ enum {
 	SPL3 = 3,
 	EvDisable = 4,
 };
-  
-void	noted(Ureg*, ulong);
 
 extern void irqinit(void);
 extern int irqhandled(Ureg*, int);
@@ -361,105 +359,22 @@ fault386(Ureg* ureg, void*)
 }
 
 /*
- *  system calls
- */
-#include "../port/systab.h"
-
-/*
  *  Syscall is called directly from assembler without going through trap().
  */
 void
 syscall(Ureg* ureg)
 {
-	char *e;
-	ulong	sp;
-	long	ret;
-	int	i, s;
 	ulong scallnr;
 
-	SYSCALLLOG(dprint("%d: syscall ...#%ld(%s)\n", 
-			up->pid, ureg->ax, sysctab[ureg->ax]);)
-	
 	if(!kenter(ureg))
-		panic("syscall: cs 0x%4.4luX\n", ureg->cs);
-
-	m->syscall++;
-	up->insyscall = 1;
-	up->pc = ureg->pc;
-
-	if(up->procctl == Proc_tracesyscall){
-		up->procctl = Proc_stopme;
-		procctl();
-	}
-
+		panic("syscall: cs 0x%4.4luX", ureg->cs);
 	scallnr = ureg->ax;
-	up->scallnr = scallnr;
-	if(scallnr == RFORK && up->fpstate == FPactive){
-		fpsave(up->fpsave);
-		up->fpstate = FPinactive;
-	}
-	spllo();
-
-	sp = ureg->usp;
-	ret = -1;
-	if(!waserror()){
-		if(sp<(USTKTOP-BY2PG) || sp>(USTKTOP-sizeof(Sargs)-BY2WD))
-			validaddr(sp, sizeof(Sargs)+BY2WD, 0);
-
-		up->s = *((Sargs*)(sp+BY2WD));
-
-		if(scallnr >= nsyscall || systab[scallnr] == nil){
-			postnote(up, 1, "sys: bad sys call", NDebug);
-			error(Ebadarg);
-		}
-		up->psstate = sysctab[scallnr];
-		ret = systab[scallnr]((va_list)up->s.args);
-		poperror();
-	}else{
-		/* failure: save the error buffer for errstr */
-		e = up->syserrstr;
-		up->syserrstr = up->errstr;
-		up->errstr = e;
-		if(0 && up->pid == 1)
-			print("syscall %lud error %s\n", scallnr, up->syserrstr);
-	}
-	if(up->nerrlab){
-		print("bad errstack [%lud]: %d extra\n", scallnr, up->nerrlab);
-		for(i = 0; i < NERR; i++)
-			print("sp=%lux pc=%lux\n",
-				up->errlab[i].sp, up->errlab[i].pc);
-		panic("error stack");
-	}
-
-	SYSCALLLOG(dprint("%d: Syscall %d returns %d, ureg %p\n", up->pid, scallnr, ret, ureg);)
-	/*
-	 *  Put return value in frame.  On the x86 the syscall is
-	 *  just another trap and the return value from syscall is
-	 *  ignored.  On other machines the return value is put into
-	 *  the results register by caller of syscall.
-	 */
-	ureg->ax = ret;
-
-	if(up->procctl == Proc_tracesyscall){
-		s = splhi();
-		up->procctl = Proc_stopme;
-		procctl();
-		splx(s);
-	}
-
-	up->insyscall = 0;
-	up->psstate = 0;
-	INTRLOG(dprint("cleared insyscall\n");)
-	if(scallnr == NOTED)
-		noted(ureg, *(ulong*)(sp+BY2WD));
-
-	splhi();
-	if(scallnr!=RFORK && (up->procctl || up->nnote))
+	dosyscall(scallnr, (Sargs*)(ureg->sp + BY2WD), &ureg->ax);
+	if(up->procctl || up->nnote)
 		notify(ureg);
 	/* if we delayed sched because we held a lock, sched now */
 	if(up->delaysched)
 		sched();
-	INTRLOG(dprint("before kexit\n");)
 	kexit(ureg);
 }
 
@@ -519,7 +434,7 @@ notify(Ureg* ureg)
  *   Return user to state before notify()
  */
 void
-noted(Ureg* ureg, ulong arg0)
+noted(Ureg* ureg, int arg0)
 {
 	Ureg *nureg;
 	ulong oureg, sp;
@@ -541,8 +456,8 @@ noted(Ureg* ureg, ulong arg0)
 	/* sanity clause */
 	oureg = (ulong)nureg;
 	if(!okaddr((ulong)oureg-BY2WD, BY2WD+sizeof(Ureg), 0)){
-		pprint("bad ureg in noted or call to noted when not notified\n");
 		qunlock(&up->debug);
+		pprint("bad ureg in noted or call to noted when not notified\n");
 		pexit("Suicide", 0);
 	}
 
@@ -561,8 +476,8 @@ noted(Ureg* ureg, ulong arg0)
 		pprint("ds is %#lux, wanted %#ux\n", nureg->ds, UDSEL);
 		pprint("es is %#lux, fs is %#lux, gs %#lux, wanted %#ux\n", 
 			ureg->es, ureg->fs, ureg->gs, UDSEL);
-		pprint("ss is %#lux, wanted %#ux\n", nureg->ss, UDSEL);
 		qunlock(&up->debug);
+		pprint("ss is %#lux, wanted %#ux\n", nureg->ss, UDSEL);
 		pexit("Suicide", 0);
 	}
 
@@ -582,19 +497,18 @@ noted(Ureg* ureg, ulong arg0)
 
 	case NSAVE:
 		sp = oureg-4*BY2WD-ERRMAX;
-		ureg->usp = sp;
-		if(!okaddr(ureg->pc, 1, 0) || !okaddr(ureg->usp, 4*BY2WD, 1)){
+		if(!okaddr(ureg->pc, 1, 0) || !okaddr(sp, 4*BY2WD, 1)){
 			qunlock(&up->debug);
 			pprint("suicide: trap in noted\n");
 			pexit("Suicide", 0);
 		}
 		qunlock(&up->debug);
+		ureg->usp = sp;
 		((ulong*)sp)[1] = oureg;	/* arg 1 0(FP) is ureg* */
 		((ulong*)sp)[0] = 0;		/* arg 0 is pc */
 		break;
 
 	default:
-		pprint("unknown noted arg 0x%lux\n", arg0);
 		up->lastnote->flag = NDebug;
 		/* fall through */
 		

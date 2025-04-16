@@ -21,7 +21,6 @@ struct Handler {
 
 int	intr(Ureg*);
 void	kernfault(Ureg*, int);
-void	noted(Ureg*, ulong);
 void	rfnote(Ureg**);
 
 char *excname[] =
@@ -523,7 +522,7 @@ notify(Ureg *ur)
  * Return user to state before notify(); called from user's handler.
  */
 void
-noted(Ureg *kur, ulong arg0)
+noted(Ureg *kur, int arg0)
 {
 	Ureg *nur;
 	ulong oureg, sp;
@@ -543,8 +542,8 @@ noted(Ureg *kur, ulong arg0)
 	nur = up->ureg;
 	oureg = (ulong)nur;
 	if((oureg & (BY2WD-1)) || !okaddr((ulong)oureg-BY2WD, BY2WD+sizeof(Ureg), 0)){
-		pprint("bad up->ureg in noted or call to noted() when not notified\n");
 		qunlock(&up->debug);
+		pprint("bad up->ureg in noted or call to noted() when not notified\n");
 		pexit("Suicide", 0);
 	}
 
@@ -554,8 +553,8 @@ noted(Ureg *kur, ulong arg0)
 	case NCONT:
 	case NRSTR:				/* only used by APE */
 		if(!okaddr(kur->pc, BY2WD, 0) || !okaddr(kur->usp, BY2WD, 0)){
-			pprint("suicide: trap in noted\n");
 			qunlock(&up->debug);
+			pprint("suicide: trap in noted\n");
 			pexit("Suicide", 0);
 		}
 		up->ureg = (Ureg*)(*(ulong*)(oureg-BY2WD));
@@ -564,20 +563,19 @@ noted(Ureg *kur, ulong arg0)
 
 	case NSAVE:				/* only used by APE */
 		sp = oureg-4*BY2WD-ERRMAX;
-		kur->r1 = oureg;		/* arg 1 is ureg* */
-		kur->usp = sp;
-		if(!okaddr(kur->pc, BY2WD, 0) || !okaddr(kur->usp, 4*BY2WD, 1)){
-			pprint("suicide: trap in noted\n");
+		if(!okaddr(kur->pc, BY2WD, 0) || !okaddr(sp, 4*BY2WD, 1)){
 			qunlock(&up->debug);
+			pprint("suicide: trap in noted\n");
 			pexit("Suicide", 0);
 		}
 		qunlock(&up->debug);
+		kur->r1 = oureg;		/* arg 1 is ureg* */
+		kur->usp = sp;
 		((ulong*)sp)[1] = oureg;	/* arg 1 0(FP) is ureg* */
 		((ulong*)sp)[0] = 0;		/* arg 0 is pc */
 		break;
 
 	default:
-		pprint("unknown noted arg %#lux\n", arg0);
 		up->lastnote->flag = NDebug;
 		/* fall through */
 
@@ -589,127 +587,21 @@ noted(Ureg *kur, ulong arg0)
 	}
 }
 
-#include "../port/systab.h"
-
-static void
-sctracesetup(ulong scallnr, ulong sp, uintptr pc, vlong *startnsp)
-{
-	if(up->procctl == Proc_tracesyscall){
-		/*
-		 * Redundant validaddr.  Do we care?
-		 * Tracing syscalls is not exactly a fast path...
-		 * Beware, validaddr currently does a pexit rather
-		 * than an error if there's a problem; that might
-		 * change in the future.
-		 */
-		if(sp < (USTKTOP-BY2PG) || sp > (USTKTOP-sizeof(Sargs)-BY2WD))
-			validaddr(sp, sizeof(Sargs)+BY2WD, 0);
-
-		syscallfmt(scallnr, pc, (va_list)(sp+BY2WD));
-		up->procctl = Proc_stopme;
-		procctl();
-		if(up->syscalltrace)
-			free(up->syscalltrace);
-		up->syscalltrace = nil;
-		todget(nil, startnsp);
-	}
-}
-
-static void
-sctracefinish(ulong scallnr, ulong sp, int ret, vlong startns)
-{
-	vlong stopns;
-	int s;
-
-	if(up->procctl == Proc_tracesyscall){
-		todget(nil, &stopns);
-		up->procctl = Proc_stopme;
-		sysretfmt(scallnr, (va_list)(sp+BY2WD), ret,
-			startns, stopns);
-		s = splhi();
-		procctl();
-		splx(s);
-		if(up->syscalltrace)
-			free(up->syscalltrace);
-		up->syscalltrace = nil;
-	}
-}
-
 /*
  * called directly from assembler, not via trap()
  */
 void
 syscall(Ureg *ur)
 {
-	int i;
-	volatile long ret;
-	ulong sp, scallnr;
-	vlong startns;
-	char *e;
+	ulong scallnr;
 
 	if(!kenter(ur))
 		panic("syscall from kernel");
-
-	m->syscall++;
-	up->insyscall = 1;
-	up->pc = ur->pc;
 	ur->cause = 16<<2;	/* for debugging: system call is undef 16 */
-
 	scallnr = ur->r1;
-	up->scallnr = ur->r1;
-	sp = ur->sp;
-	sctracesetup(scallnr, sp, ur->pc, &startns);
-
-	/* no fpu, so no fp state to save */
-	spllo();
-
-	ret = -1;
-	if(!waserror()) {
-		if(sp & (BY2WD-1)){
-			postnote(up, 1, "sys: odd stack", NDebug);
-			error(Ebadarg);
-		}
-
-		if(sp<(USTKTOP-BY2PG) || sp>(USTKTOP-sizeof(Sargs)-BY2WD))
-			validaddr(sp, sizeof(Sargs)+BY2WD, 0);
-
-		up->s = *((Sargs*)(sp+BY2WD));
-		if(scallnr >= nsyscall || systab[scallnr] == nil){
-			postnote(up, 1, "sys: bad sys call", NDebug);
-			error(Ebadarg);
-		}
-		up->psstate = sysctab[scallnr];
-
-		ret = systab[scallnr]((va_list)up->s.args);
-		poperror();
-	}else{
-		/* failure: save the error buffer for errstr */
-		e = up->syserrstr;
-		up->syserrstr = up->errstr;
-		up->errstr = e;
-		if(0 && up->pid == 1)
-			print("[%lud %s] syscall %lud: %s\n",
-				up->pid, up->text, scallnr, up->errstr);
-	}
-	if(up->nerrlab){
-		print("bad errstack [%lud]: %d extra\n", scallnr, up->nerrlab);
-		for(i = 0; i < NERR; i++)
-			print("sp=%#lux pc=%#lux\n",
-				up->errlab[i].sp, up->errlab[i].pc);
-		panic("error stack");
-	}
-	sctracefinish(scallnr, sp, ret, startns);
-
-	ur->pc += 4;
-	ur->r1 = ret;
-
-	up->psstate = 0;
-	up->insyscall = 0;
-
-	if(scallnr == NOTED)				/* ugly hack */
-		noted(ur, *(ulong*)(sp+BY2WD));	/* may return */
-	splhi();
-	if(scallnr!=RFORK && (up->procctl || up->nnote))
+	if(dosyscall(scallnr, (Sargs*)(ur->sp+BY2WD), &ur->r1) == 0)
+		ur->pc += 4;
+	if(up->procctl || up->nnote)
 		notify(ur);
 	/* if we delayed sched because we held a lock, sched now */
 	if(up->delaysched)

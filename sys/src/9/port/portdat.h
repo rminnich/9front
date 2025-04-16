@@ -726,7 +726,6 @@ struct Proc
 	int	noswap;		/* process is not swappable */
 	int	hang;		/* hang at next exec for debug */
 	int	procctl;	/* Control for /proc debugging */
-	uintptr	pc;		/* DEBUG only */
 
 	Lock	rlock;		/* sync sleep/wakeup with procinterrupt */
 	Rendez	*r;		/* rendezvous point slept on */
