@@ -482,7 +482,7 @@ vt6105Mifstat(void *arg, char *p, char *e)
 		for(i = 0; i < NMiiPhyr; i++){
 			if(i && ((i & 0x07) == 0))
 				p = seprint(p, e, "\n       ");
-			r = miimir(ctlr->mii, i);
+			r = miimir(ctlr->mii->curphy, i);
 			p = seprint(p, e, " %4.4uX", r);
 		}
 		p = seprint(p, e, "\n");
@@ -546,12 +546,10 @@ vt6105Mlproc(void* arg)
 	while(waserror())
 		;
 	for(;;){
-		if(ctlr->mii == nil || ctlr->mii->curphy == nil)
+		if(ctlr->mii == nil || (phy = ctlr->mii->curphy) == nil)
 			break;
-		if(miistatus(ctlr->mii) < 0)
+		if(miistatus(phy) < 0)
 			goto enable;
-
-		phy = ctlr->mii->curphy;
 		ilock(&ctlr->clock);
 		csr16w(ctlr, Cr, ctlr->cr & ~(Txon|Rxon));
 		if(phy->fd)
@@ -679,7 +677,7 @@ vt6105Mattach(Ether* edev)
 	 * Wait for link to be ready.
 	 */
 	for(timeo = 0; timeo < 350; timeo++){
-		if(miistatus(ctlr->mii) == 0)
+		if(miistatus(ctlr->mii->curphy) == 0)
 			break;
 		tsleep(&up->sleep, return0, 0, 10);
 	}
@@ -1065,11 +1063,10 @@ vt6105Mreset(Ctlr* ctlr)
 		return -1;
 	}
 //	print("oui %X phyno %d\n", phy->oui, phy->phyno);
-	USED(phy);
 
-	if(miistatus(ctlr->mii) < 0){
-//		miireset(ctlr->mii);
-		miiane(ctlr->mii, ~0, ~0, ~0);
+	if(miistatus(phy) < 0){
+//		miireset(phy);
+		miiane(phy, ~0, ~0, ~0);
 	}
 
 	return 0;

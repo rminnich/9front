@@ -723,16 +723,16 @@ mdior(Mii* mii, int phy, int addr)
 }
 
 static int
-bcmshdr(Mii *mii, int reg)
+bcmshdr(MiiPhy *phy, int reg)
 {
-	miimiw(mii, 0x1C, (reg & 0x1F) << 10);
-	return miimir(mii, 0x1C) & 0x3FF;
+	miimiw(phy, 0x1C, (reg & 0x1F) << 10);
+	return miimir(phy, 0x1C) & 0x3FF;
 }
 
 static int
-bcmshdw(Mii *mii, int reg, int dat)
+bcmshdw(MiiPhy *phy, int reg, int dat)
 {
-	return miimiw(mii, 0x1C, 0x8000 | (reg & 0x1F) << 10 | (dat & 0x3FF));
+	return miimiw(phy, 0x1C, 0x8000 | (reg & 0x1F) << 10 | (dat & 0x3FF));
 }
 
 static int
@@ -756,9 +756,11 @@ linkproc(void *arg)
 
 	for(;;){
 		tsleep(ctlr->link, linkevent, ctlr, 1000);
-		miistatus(ctlr->mii);
 		phy = ctlr->mii->curphy;
-		if(phy == nil || phy->link == link)
+		if(phy == nil)
+			continue;
+		miistatus(phy);
+		if(phy->link == link)
 			continue;
 		link = phy->link;
 		if(link){
@@ -824,6 +826,7 @@ static void
 attach(Ether *edev)
 {
 	Ctlr *ctlr = edev->ctlr;
+	MiiPhy *phy;
 
 	eqlock(ctlr);
 	if(ctlr->attached){
@@ -874,36 +877,35 @@ attach(Ether *edev)
 	ctlr->mii->mir = mdior;
 	ctlr->mii->miw = mdiow;
 	mii(ctlr->mii, ~0);
-
-	if(ctlr->mii->curphy == nil)
+	phy = ctlr->mii->curphy;
+	if(phy == nil)
 		error("no phy");
 
 	print("#l%d: phy%d id %.8ux oui %x\n", 
-		edev->ctlrno, ctlr->mii->curphy->phyno, 
-		ctlr->mii->curphy->id, ctlr->mii->curphy->oui);
+		edev->ctlrno, phy->phyno, phy->id, phy->oui);
 
-	miireset(ctlr->mii);
+	miireset(phy);
 
-	switch(ctlr->mii->curphy->id){
+	switch(phy->id){
 	case 0x600d84a2:	/* BCM54312PE */
 		/* mask interrupts */
-		miimiw(ctlr->mii, 0x10, miimir(ctlr->mii, 0x10) | 0x1000);
+		miimiw(phy, 0x10, miimir(phy, 0x10) | 0x1000);
 
 		/* SCR3: clear DLLAPD_DIS */
-		bcmshdw(ctlr->mii, 0x05, bcmshdr(ctlr->mii, 0x05) &~0x0002);
+		bcmshdw(phy, 0x05, bcmshdr(phy, 0x05) &~0x0002);
 		/* APD: set APD_EN */
-		bcmshdw(ctlr->mii, 0x0a, bcmshdr(ctlr->mii, 0x0a) | 0x0020);
+		bcmshdw(phy, 0x0a, bcmshdr(phy, 0x0a) | 0x0020);
 
 		/* blinkenlights */
-		bcmshdw(ctlr->mii, 0x09, bcmshdr(ctlr->mii, 0x09) | 0x0010);
-		bcmshdw(ctlr->mii, 0x0d, 3<<0 | 0<<4);
+		bcmshdw(phy, 0x09, bcmshdr(phy, 0x09) | 0x0010);
+		bcmshdw(phy, 0x0d, 3<<0 | 0<<4);
 		break;
 	}
 
 	/* don't advertise EEE */
-	miimmdw(ctlr->mii, 7, 60, 0);
+	miimmdw(phy, 7, 60, 0);
 
-	miiane(ctlr->mii, ~0, AnaAP|AnaP, ~0);
+	miiane(phy, ~0, AnaAP|AnaP, ~0);
 
 	ctlr->attached = 1;
 

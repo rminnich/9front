@@ -562,9 +562,9 @@ initmii(Ctlr *ctlr)
 		edev->ctlrno, ctlr->mii->curphy->phyno, 
 		ctlr->mii->curphy->id, ctlr->mii->curphy->oui);
 
-	miireset(ctlr->mii);
+	miireset(ctlr->mii->curphy);
 
-	miiane(ctlr->mii, ~0, ~0, ~0);
+	miiane(ctlr->mii->curphy, ~0, ~0, ~0);
 
 	return 0;
 }

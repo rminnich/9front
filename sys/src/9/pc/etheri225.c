@@ -548,6 +548,7 @@ i225mii(Ctlr *c)
 {
 	u32int r;
 	u32int rt;
+	MiiPhy *phy;
 
 	/* acquire control of the phy */
 	if (i225synclock(c, c->pdevfunc ? SMSphy1 : SMSphy0) < 0)
@@ -580,15 +581,15 @@ i225mii(Ctlr *c)
 	c->mii->ctlr = c;
 	c->mii->mir = i225miir;
 	c->mii->miw = i225miiw;
-	if (mii(c->mii, ~0) == 0) {
+	if (mii(c->mii, ~0) == 0 || (phy = c->mii->curphy) == nil) {
 		free(c->mii); c->mii = nil;
 		error("phy");
 	}
 
 	/* configure for auto-negotiated link */
 	csr32w(c, Rdevctrl, csr32r(c, Rdevctrl) | DClink | DClinkauto);
-	miimiw(c->mii, Bmcr, miimir(c->mii, Bmcr) & ~BmcrPd); microdelay(300);
-	miiane(c->mii, ~0, ~0, ~0);
+	miimiw(phy, Bmcr, miimir(phy, Bmcr) & ~BmcrPd); microdelay(300);
+	miiane(phy, ~0, ~0, ~0);
 }
 
 static void
@@ -994,28 +995,27 @@ static void
 i225proclink(void *a)
 {
 	Ctlr *c;
+	MiiPhy *phy;
 
 	c = a;
 	while (waserror())
 		;
-
 	/* process link status */
 	for (;; sleep(c, return0, nil)) {
-		miistatus(c->mii);
-		if (c->mii->curphy == nil) {
+		phy = c->mii->curphy;
+		if (phy == nil) {
 			/* phy missing? */
 			continue;
 		}
-
-		if (c->mii->curphy->speed == 0) {
+		miistatus(phy);
+		if (phy->speed == 0) {
 			/* phy errata: rinse and repeat, should only happen once */
-			miireset(c->mii);
+			miireset(phy);
 			continue;
 		}
-
 		/* report status */
-		ethersetspeed(c->edev, c->mii->curphy->speed);
-		ethersetlink(c->edev, c->mii->curphy->link);
+		ethersetspeed(c->edev, phy->speed);
+		ethersetlink(c->edev, phy->link);
 	}
 }
 

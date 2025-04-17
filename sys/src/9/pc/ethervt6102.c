@@ -377,7 +377,7 @@ vt6102ifstat(void *arg, char *p, char *e)
 		for(i = 0; i < NMiiPhyr; i++){
 			if(i && ((i & 0x07) == 0))
 				p = seprint(p, e, "\n       ");
-			r = miimir(ctlr->mii, i);
+			r = miimir(ctlr->mii->curphy, i);
 			p = seprint(p, e, " %4.4uX", r);
 		}
 		p = seprint(p, e, "\n");
@@ -442,12 +442,10 @@ vt6102lproc(void* arg)
 	while(waserror())
 		;
 	for(;;){
-		if(ctlr->mii == nil || ctlr->mii->curphy == nil)
+		if(ctlr->mii == nil || (phy = ctlr->mii->curphy) == nil)
 			break;
-		if(miistatus(ctlr->mii) < 0)
+		if(miistatus(phy) < 0)
 			goto enable;
-
-		phy = ctlr->mii->curphy;
 		ilock(&ctlr->clock);
 		if(phy->fd)
 			ctlr->cr |= Fdx;

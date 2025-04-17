@@ -10,12 +10,12 @@
 
 #include "ethermii.h"
 
-int
-mii(Mii* mii, int mask)
+uint
+mii(Mii* mii, uint mask)
 {
-	MiiPhy *miiphy;
-	int bit, oui, phyno, rmask;
-	u32int id;
+	MiiPhy *phy;
+	int oui, phyno;
+	uint bit, rmask, id;
 
 	/*
 	 * Probe through mii for PHYs in mask;
@@ -25,7 +25,7 @@ mii(Mii* mii, int mask)
 	 */
 	rmask = 0;
 	for(phyno = 0; phyno < NMiiPhy; phyno++){
-		bit = 1<<phyno;
+		bit = 1U<<phyno;
 		if(!(mask & bit))
 			continue;
 		if(mii->mask & bit){
@@ -40,21 +40,21 @@ mii(Mii* mii, int mask)
 		if(oui == 0xFFFFF || oui == 0)
 			continue;
 
-		if((miiphy = malloc(sizeof(MiiPhy))) == nil)
+		if((phy = malloc(sizeof(MiiPhy))) == nil)
 			continue;
 
-		miiphy->mii = mii;
-		miiphy->id = id;
-		miiphy->oui = oui;
-		miiphy->phyno = phyno;
+		phy->mii = mii;
+		phy->id = id;
+		phy->oui = oui;
+		phy->phyno = phyno;
 
-		miiphy->anar = ~0;
-		miiphy->fc = ~0;
-		miiphy->mscr = ~0;
+		phy->anar = ~0;
+		phy->fc = ~0;
+		phy->mscr = ~0;
 
-		mii->phy[phyno] = miiphy;
+		mii->phy[phyno] = phy;
 		if(mii->curphy == nil)
-			mii->curphy = miiphy;
+			mii->curphy = phy;
 		mii->mask |= bit;
 		mii->nphy++;
 
@@ -64,48 +64,46 @@ mii(Mii* mii, int mask)
 }
 
 int
-miimir(Mii* mii, int r)
+miimir(MiiPhy *phy, int r)
 {
-	if(mii == nil || mii->ctlr == nil || mii->curphy == nil)
+	Mii *mii;
+
+	if(phy == nil || (mii = phy->mii) == nil || mii->ctlr == nil)
 		return -1;
-	return mii->mir(mii, mii->curphy->phyno, r);
+	return mii->mir(mii, phy->phyno, r & 0x1F);
 }
 
 int
-miimiw(Mii* mii, int r, int data)
+miimiw(MiiPhy *phy, int r, int data)
 {
-	if(mii == nil || mii->ctlr == nil || mii->curphy == nil)
+	Mii *mii;
+
+	if(phy == nil || (mii = phy->mii) == nil || mii->ctlr == nil)
 		return -1;
-	return mii->miw(mii, mii->curphy->phyno, r, data);
+	return mii->miw(mii, phy->phyno, r & 0x1F, data & 0xFFFF);
 }
 
 int
-miireset(Mii* mii)
+miireset(MiiPhy *phy)
 {
 	int bmcr;
 
-	if(mii == nil || mii->ctlr == nil || mii->curphy == nil)
-		return -1;
-	bmcr = mii->mir(mii, mii->curphy->phyno, Bmcr);
+	bmcr = miimir(phy, Bmcr);
 	if(bmcr == -1)
 		return -1;
 	bmcr |= BmcrR;
-	mii->miw(mii, mii->curphy->phyno, Bmcr, bmcr);
+	miimiw(phy, Bmcr, bmcr);
 	microdelay(1);
 
 	return 0;
 }
 
 int
-miiane(Mii* mii, int a, int p, int e)
+miiane(MiiPhy *phy, int a, int p, int e)
 {
-	int anar, bmsr, mscr, r, phyno;
+	int anar, bmsr, mscr, r;
 
-	if(mii == nil || mii->ctlr == nil || mii->curphy == nil)
-		return -1;
-	phyno = mii->curphy->phyno;
-
-	bmsr = mii->mir(mii, phyno, Bmsr);
+	bmsr = miimir(phy, Bmsr);
 	if(bmsr == -1)
 		return -1;
 	if(!(bmsr & BmsrAna))
@@ -113,10 +111,10 @@ miiane(Mii* mii, int a, int p, int e)
 
 	if(a != ~0)
 		anar = (AnaTXFD|AnaTXHD|Ana10FD|Ana10HD) & a;
-	else if(mii->curphy->anar != ~0)
-		anar = mii->curphy->anar;
+	else if(phy->anar != ~0)
+		anar = phy->anar;
 	else{
-		anar = mii->mir(mii, phyno, Anar);
+		anar = miimir(phy, Anar);
 		if(anar == -1)
 			return -1;
 		anar &= ~(AnaAP|AnaP|AnaT4|AnaTXFD|AnaTXHD|Ana10FD|Ana10HD);
@@ -129,25 +127,25 @@ miiane(Mii* mii, int a, int p, int e)
 		if(bmsr & Bmsr100TXFD)
 			anar |= AnaTXFD;
 	}
-	mii->curphy->anar = anar;
+	phy->anar = anar;
 
 	if(p != ~0)
 		anar |= (AnaAP|AnaP) & p;
-	else if(mii->curphy->fc != ~0)
-		anar |= mii->curphy->fc;
-	mii->curphy->fc = (AnaAP|AnaP) & anar;
+	else if(phy->fc != ~0)
+		anar |= phy->fc;
+	phy->fc = (AnaAP|AnaP) & anar;
 
 	if(bmsr & BmsrEs){
-		mscr = mii->mir(mii, phyno, Mscr);
+		mscr = miimir(phy, Mscr);
 		if(mscr == -1)
 			return -1;
 		mscr &= ~(Mscr1000TFD|Mscr1000THD);
 		if(e != ~0)
 			mscr |= (Mscr1000TFD|Mscr1000THD) & e;
-		else if(mii->curphy->mscr != ~0)
-			mscr = mii->curphy->mscr;
+		else if(phy->mscr != ~0)
+			mscr = phy->mscr;
 		else{
-			r = mii->mir(mii, phyno, Esr);
+			r = miimir(phy, Esr);
 			if(r == -1)
 				return -1;
 			if(r & Esr1000THD)
@@ -155,39 +153,33 @@ miiane(Mii* mii, int a, int p, int e)
 			if(r & Esr1000TFD)
 				mscr |= Mscr1000TFD;
 		}
-		mii->curphy->mscr = mscr;
-		mii->miw(mii, phyno, Mscr, mscr);
+		phy->mscr = mscr;
+		miimiw(phy, Mscr, mscr);
 	}
-	if(mii->miw(mii, phyno, Anar, anar) == -1)
+	if(miimiw(phy, Anar, anar) == -1)
 		return -1;
 
-	r = mii->mir(mii, phyno, Bmcr);
+	r = miimir(phy, Bmcr);
 	if(r == -1)
 		return -1;
 	if(!(r & BmcrR)){
 		r |= BmcrAne|BmcrRan;
-		mii->miw(mii, phyno, Bmcr, r);
+		miimiw(phy, Bmcr, r);
 	}
 
 	return 0;
 }
 
 int
-miistatus(Mii* mii)
+miistatus(MiiPhy* phy)
 {
-	MiiPhy *phy;
-	int anlpar, bmsr, p, r, phyno;
-
-	if(mii == nil || mii->ctlr == nil || mii->curphy == nil)
-		return -1;
-	phy = mii->curphy;
-	phyno = phy->phyno;
-
+	int anlpar, bmsr, p, r;
+	
 	/*
 	 * Check Auto-Negotiation is complete and link is up.
 	 * (Read status twice as the Ls bit is sticky).
 	 */
-	bmsr = mii->mir(mii, phyno, Bmsr);
+	bmsr = miimir(phy, Bmsr);
 	if(bmsr == -1)
 		return -1;
 	if(!(bmsr & (BmsrAnc|BmsrAna))) {
@@ -195,7 +187,7 @@ miistatus(Mii* mii)
 		return -1;
 	}
 
-	bmsr = mii->mir(mii, phyno, Bmsr);
+	bmsr = miimir(phy, Bmsr);
 	if(bmsr == -1)
 		return -1;
 	if(!(bmsr & BmsrLs)){
@@ -206,7 +198,7 @@ miistatus(Mii* mii)
 
 	phy->speed = phy->fd = phy->rfc = phy->tfc = 0;
 	if(phy->mscr){
-		r = mii->mir(mii, phyno, Mssr);
+		r = miimir(phy, Mssr);
 		if(r == -1)
 			return -1;
 		if((phy->mscr & Mscr1000TFD) && (r & Mssr1000TFD)){
@@ -217,7 +209,7 @@ miistatus(Mii* mii)
 			phy->speed = 1000;
 	}
 
-	anlpar = mii->mir(mii, phyno, Anlpar);
+	anlpar = miimir(phy, Anlpar);
 	if(anlpar == -1)
 		return -1;
 	if(phy->speed == 0){
@@ -257,27 +249,27 @@ miistatus(Mii* mii)
 }
 
 int
-miimmdr(Mii* mii, int a, int r)
+miimmdr(MiiPhy *phy, int a, int r)
 {
 	a &= 0x1F;
-	if(miimiw(mii, Mmdctrl, a) == -1)
+	if(miimiw(phy, Mmdctrl, a) == -1)
 		return -1;
-	if(miimiw(mii, Mmddata, r) == -1)
+	if(miimiw(phy, Mmddata, r) == -1)
 		return -1;
-	if(miimiw(mii, Mmdctrl, a | 0x4000) == -1)
+	if(miimiw(phy, Mmdctrl, a | 0x4000) == -1)
 		return -1;
-	return miimir(mii, Mmddata);
+	return miimir(phy, Mmddata);
 }
 
 int
-miimmdw(Mii* mii, int a, int r, int data)
+miimmdw(MiiPhy *phy, int a, int r, int data)
 {
 	a &= 0x1F;
-	if(miimiw(mii, Mmdctrl, a) == -1)
+	if(miimiw(phy, Mmdctrl, a) == -1)
 		return -1;
-	if(miimiw(mii, Mmddata, r) == -1)
+	if(miimiw(phy, Mmddata, r) == -1)
 		return -1;
-	if(miimiw(mii, Mmdctrl, a | 0x4000) == -1)
+	if(miimiw(phy, Mmdctrl, a | 0x4000) == -1)
 		return -1;
-	return miimiw(mii, Mmddata, data);
+	return miimiw(phy, Mmddata, data);
 }

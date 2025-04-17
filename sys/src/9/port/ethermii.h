@@ -83,9 +83,8 @@ enum {					/* Esr */
 };
 
 typedef struct Mii {
-	Lock;
 	int	nphy;
-	int	mask;
+	uint	mask;
 	MiiPhy*	phy[NMiiPhy];
 	MiiPhy*	curphy;
 
@@ -96,7 +95,7 @@ typedef struct Mii {
 
 typedef struct MiiPhy {
 	Mii*	mii;
-	u32int	id;
+	uint	id;
 	int	oui;
 	int	phyno;
 
@@ -111,12 +110,11 @@ typedef struct MiiPhy {
 	int	tfc;
 };
 
-extern int mii(Mii*, int);
-extern int miiane(Mii*, int, int, int);
-extern int miimir(Mii*, int);
-extern int miimiw(Mii*, int, int);
-extern int miireset(Mii*);
-extern int miistatus(Mii*);
-
-extern int miimmdr(Mii*, int, int);
-extern int miimmdw(Mii*, int, int, int);
+extern uint mii(Mii*, uint);
+extern int miiane(MiiPhy*, int, int, int);
+extern int miimir(MiiPhy*, int);
+extern int miimiw(MiiPhy*, int, int);
+extern int miireset(MiiPhy*);
+extern int miistatus(MiiPhy*);
+extern int miimmdr(MiiPhy*, int, int);
+extern int miimmdw(MiiPhy*, int, int, int);

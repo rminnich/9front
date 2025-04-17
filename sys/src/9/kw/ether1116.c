@@ -1096,12 +1096,13 @@ static int hackflavour;
  * on openrd, ether0's phy has address 8, ether1's is ether0's 24.
  * on guruplug, ether0's is phy 0 and ether1's is ether0's phy 1.
  */
-int
-mymii(Mii* mii, int mask)
+uint
+mymii(Mii* mii, uint mask)
 {
 	Ctlr *ctlr;
-	MiiPhy *miiphy;
-	int bit, ctlrno, oui, model, phyno, r, rmask;
+	MiiPhy *phy;
+	int ctlrno, oui, model, phyno, r;
+	uint bit, rmask;
 	static int dualport, phyidx;
 	static int phynos[NMiiPhy];
 
@@ -1112,7 +1113,7 @@ mymii(Mii* mii, int mask)
 	dualport = 0;
 	if (ctlrno == 0) {
 		for(phyno = 0; phyno < NMiiPhy; phyno++){
-			bit = 1<<phyno;
+			bit = 1U<<phyno;
 			if(!(mask & bit) || mii->mask & bit)
 				continue;
 			if(mii->mir(mii, phyno, Bmsr) == -1)
@@ -1151,11 +1152,11 @@ mymii(Mii* mii, int mask)
 		MIIDBG("ctlrno %d using ctlrno 0's phyno %d\n",
 			ctlrno, phynos[ctlrno]);
 		ctlr->mii = mii = ctlrs[0]->mii;
-		mask = 1 << phynos[ctlrno];
+		mask = 1U << phynos[ctlrno];
 		mii->mask = ~mask;
 	}
 	for(phyno = 0; phyno < NMiiPhy; phyno++){
-		bit = 1<<phyno;
+		bit = 1U<<phyno;
 		if(!(mask & bit))
 			continue;
 		if(mii->mask & bit){
@@ -1171,19 +1172,19 @@ mymii(Mii* mii, int mask)
 		if(oui == 0xFFFFF || oui == 0)
 			continue;
 
-		if((miiphy = malloc(sizeof(MiiPhy))) == nil)
+		if((phy = malloc(sizeof(MiiPhy))) == nil)
 			continue;
-		miiphy->mii = mii;
-		miiphy->oui = oui;
-		miiphy->phyno = phyno;
+		phy->mii = mii;
+		phy->oui = oui;
+		phy->phyno = phyno;
 
-		miiphy->anar = ~0;
-		miiphy->fc = ~0;
-		miiphy->mscr = ~0;
+		phy->anar = ~0;
+		phy->fc = ~0;
+		phy->mscr = ~0;
 
-		mii->phy[phyno] = miiphy;
+		mii->phy[phyno] = phy;
 		if(ctlrno == 0 || hackflavour != Hackdual && mii->curphy == nil)
-			mii->curphy = miiphy;
+			mii->curphy = phy;
 		mii->mask |= bit;
 		mii->nphy++;
 
@@ -1218,26 +1219,26 @@ kirkwoodmii(Ether *ether)
 	MIIDBG("oui %#X phyno %d\n", phy->oui, phy->phyno);
 	// TODO: does this make sense? shouldn't each phy be initialised?
 	if((ctlr->ether->ctlrno == 0 || hackflavour != Hackdual) &&
-	    miistatus(ctlr->mii) < 0){
-		miireset(ctlr->mii);
+	    miistatus(phy) < 0){
+		miireset(phy);
 		MIIDBG("miireset\n");
-		if(miiane(ctlr->mii, ~0, 0, ~0) < 0){
+		if(miiane(phy, ~0, 0, ~0) < 0){
 			iprint("miiane failed\n");
 			return -1;
 		}
 		MIIDBG("miistatus\n");
-		miistatus(ctlr->mii);
-		if(miird(ctlr->mii, phy->phyno, Bmsr) & BmsrLs){
+		miistatus(phy);
+		if(miimir(phy, Bmsr) & BmsrLs){
 			for(i = 0; ; i++){
 				if(i > 600){
 					iprint("ether1116: autonegotiation failed\n");
 					break;
 				}
-				if(miird(ctlr->mii, phy->phyno, Bmsr) & BmsrAnc)
+				if(miimir(phy, Bmsr) & BmsrAnc)
 					break;
 				delay(10);
 			}
-			if(miistatus(ctlr->mii) < 0)
+			if(miistatus(phy) < 0)
 				iprint("miistatus failed\n");
 		}else{
 			iprint("ether1116: no link\n");
@@ -1290,12 +1291,12 @@ miiphyinit(Mii *mii)
 	miiregpage(mii, dev, Pagrgmii);
 	miiwr(mii, dev, Scr, miird(mii, dev, Scr) | Rgmiipwrup);
 	/* must now do a software reset, says the manual */
-	miireset(ctlr->mii);
+	miireset(mii->curphy);
 
 	/* enable RGMII delay on Tx and Rx for CPU port */
 	miiwr(mii, dev, Recr, miird(mii, dev, Recr) | Rxtiming | Rxtiming);
 	/* must now do a software reset, says the manual */
-	miireset(ctlr->mii);
+	miireset(mii->curphy);
 
 	miiregpage(mii, dev, Pagcopper);
 	miiwr(mii, dev, Scr,

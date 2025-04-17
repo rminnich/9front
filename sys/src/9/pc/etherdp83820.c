@@ -921,7 +921,7 @@ dp83820ifstat(void *a, char *p, char *e)
 		for(i = 0; i < NMiiPhyr; i++){
 			if(i && ((i & 0x07) == 0))
 				p = seprint(p, e, "\n    ");
-			r = miimir(ctlr->mii, i);
+			r = miimir(ctlr->mii->curphy, i);
 			p = seprint(p, e, " %4.4uX", r);
 		}
 		p = seprint(p, e, "\n");

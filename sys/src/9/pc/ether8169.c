@@ -427,18 +427,17 @@ rtl8169mii(Ether *edev)
 		rtl8169miimiw(ctlr->mii, 1, 0x0B, 0x0000);	/* magic */
 	}
 
-	if(mii(ctlr->mii, (1<<1)) == 0 || (phy = ctlr->mii->curphy) == nil){
+	if(mii(ctlr->mii, (1<<1)) == 0 || (phy = ctlr->mii->curphy) == nil)
 		error("no phy");
-	}
 
 	print("#l%d: rtl8169: oui %#ux phyno %d, macv = %#8.8ux phyv = %#4.4ux\n",
 		edev->ctlrno, phy->oui, phy->phyno, ctlr->macv, ctlr->phyv);
 
-	miireset(ctlr->mii);
+	miireset(phy);
 
 	microdelay(100);
 
-	miiane(ctlr->mii, ~0, ~0, ~0);
+	miiane(phy, ~0, ~0, ~0);
 }
 
 static void
@@ -596,7 +595,7 @@ rtl8169ifstat(void *arg, char *p, char *e)
 		for(i = 0; i < NMiiPhyr; i++){
 			if(i && ((i & 0x07) == 0))
 				p = seprint(p, e, "\n       ");
-			r = miimir(ctlr->mii, i);
+			r = miimir(ctlr->mii->curphy, i);
 			p = seprint(p, e, " %4.4ux", r);
 		}
 		p = seprint(p, e, "\n");

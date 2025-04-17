@@ -473,10 +473,10 @@ linkproc(void *arg)
 
 	while(waserror())
 		;
-	miiane(ctlr->mii, ~0, ~0, ~0);
+	phy = ctlr->mii->curphy;
+	miiane(phy, ~0, ~0, ~0);
 	for(;;){
-		miistatus(ctlr->mii);
-		phy = ctlr->mii->curphy;
+		miistatus(phy);
 		if(phy->link == link){
 			tsleep(ctlr->mii, return0, nil, 5000);
 			continue;

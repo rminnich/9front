@@ -444,7 +444,7 @@ rtl8169mii(Ctlr* ctlr)
 	print("rtl8169: oui %#ux phyno %d, macv = %#8.8ux phyv = %#4.4ux\n",
 		phy->oui, phy->phyno, ctlr->macv, ctlr->phyv);
 
-	miiane(ctlr->mii, ~0, ~0, ~0);
+	miiane(phy, ~0, ~0, ~0);
 	iunlock(&ctlr->reglock);
 
 	return 0;
@@ -610,7 +610,7 @@ rtl8169ifstat(void *arg, char *p, char *e)
 		for(i = 0; i < NMiiPhyr; i++){
 			if(i && ((i & 0x07) == 0))
 				p = seprint(p, e, "\n       ");
-			r = miimir(ctlr->mii, i);
+			r = miimir(ctlr->mii->curphy, i);
 			p = seprint(p, e, " %4.4ux", r);
 		}
 		p = seprint(p, e, "\n");
@@ -1221,7 +1221,7 @@ rtl8169attach(Ether* edev)
 
 	s = spllo();
 	/* Don't wait long for link to be ready. */
-	for(timeo = 0; timeo < 50 && miistatus(ctlr->mii) != 0; timeo++)
+	for(timeo = 0; timeo < 50 && miistatus(ctlr->mii->curphy) != 0; timeo++)
 //		tsleep(&up->sleep, return0, 0, 100); /* fewer miistatus msgs */
 		delay(100);
 
