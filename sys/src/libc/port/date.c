@@ -167,6 +167,11 @@ loadzone(Tzone *tz, char *name)
 	int i, f, r;
 
 	memset(tz, 0, sizeof(Tzone));
+	strncpy(tz->tzname, name, sizeof(tz->tzname));
+	if(tz->tzname[sizeof(tz->tzname)-1]){
+		werrstr("timezone name too long");
+		return -1;
+	}
 	if(strcmp(name, "local") == 0)
 		snprint(path, sizeof(path), "/env/timezone");
 	else
@@ -223,15 +228,11 @@ tzload(char *tzname)
 	tz = malloc(sizeof(Tzone));
 	if(tz == nil)
 		goto error;
+	if(loadzone(tz, tzname) != 0)
+		goto error;
 	newzones = realloc(zones, (nzones + 1) * sizeof(Tzone*));
 	if(newzones == nil)
 		goto error;
-	if(loadzone(tz, tzname) != 0)
-		goto error;
-	if(snprint(tz->tzname, sizeof(tz->tzname), tzname) >= sizeof(tz->tzname)){
-		werrstr("timezone name too long");
-		return nil;
-	}
 	zones = newzones;
 	zones[nzones] = tz;
 	nzones++;
