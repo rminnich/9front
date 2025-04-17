@@ -29,6 +29,9 @@ dotrap(void)
 			 */
 			while(!runq->iflag) Xreturn();
 		}
+		else if(strcmp(trapreq->name, "sigwinch") == 0){
+			/* ignore if theres no handler */
+		}
 		else Exit();
 	}
 }
