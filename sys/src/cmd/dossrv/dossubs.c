@@ -1774,6 +1774,9 @@ gtime(Dosdir *dp)
 	tm.zone[0] = '\0';
 	tm.tzoff = 0;
 	tm.yday = 0;
+	tm.tz = tzload("local");
+
+	tmnorm(&tm);
 
 	return tm2sec(&tm);
 }
