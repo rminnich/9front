@@ -7,7 +7,6 @@ lib
 		iwm-8000C-34
 		iwm-8265-34
 		iwm-9260-34
-
 		iwn-1000
 		iwn-2000
 		iwn-2030
@@ -18,4 +17,3 @@ lib
 		iwn-6005
 		iwn-6030
 		iwn-6050
-		iwn-license
