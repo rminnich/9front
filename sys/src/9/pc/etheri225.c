@@ -643,6 +643,8 @@ out:
 static void
 i225txattach(Ctlr *c)
 {
+	uvlong pa;
+
 	/* disable transmit and the transmit ring during configuration */
 	csr32w(c, Rtxctrl, csr32r(c, Rtxctrl) & ~TXCenable);
 	csr32w(c, Rtxrctrl, 0);
@@ -661,8 +663,10 @@ i225txattach(Ctlr *c)
 	csr32w(c, Rtxrptr, c->tx.ptr);
 	csr32w(c, Rtxrptrtail, c->tx.ptrtail);
 	csr32w(c, Rtxrlen, c->tx.len * 16);
-	csr32w(c, Rtxraddr, PCIWADDR(c->tx.desc));
-	csr32w(c, Rtxraddrhi, PCIWADDR(c->tx.desc) >> 32);
+
+	pa = PCIWADDR(c->tx.desc);
+	csr32w(c, Rtxraddr, pa);
+	csr32w(c, Rtxraddrhi, pa >> 32);
 
 	/* enable transmit and the transmit ring */
 	csr32w(c, Rtxrctrl, TXRthreshp | TXRthreshh | TXRthreshw | TXRcount | TXRgran | TXRenable);
@@ -858,9 +862,9 @@ i225rx(Ctlr *c, u32int ptr)
 
 		/* if this is an error, concatenate and free */
 		if (d.status & RDerr) {
+			freeblist(bl);
 			bl = nil;
 			blt = nil;
-			freeblist(b);
 			goto next;
 		}
 
