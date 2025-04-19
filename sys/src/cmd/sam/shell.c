@@ -46,7 +46,6 @@ plan9(File *f, int type, String *s, int nest)
 	long l;
 	int m;
 	int pid, fd;
-	int retcode;
 	char *retmsg;
 	int pipe1[2], pipe2[2];
 
@@ -96,20 +95,21 @@ plan9(File *f, int type, String *s, int nest)
 				 */
 				close(pipe2[0]);
 				io = pipe2[1];
-				if(retcode=!setjmp(mainloop)){	/* assignment = */
-					char *c;
-					for(l = 0; l<plan9buf.nc; l+=m){
-						m = plan9buf.nc-l;
-						if(m>BLOCKSIZE-1)
-							m = BLOCKSIZE-1;
-						bufread(&plan9buf, l, genbuf, m);
-						genbuf[m] = 0;
-						c = Strtoc(tmprstr(genbuf, m+1));
-						Write(pipe2[1], c, strlen(c));
-						free(c);
-					}
+				if(setjmp(mainloop))
+					exits("error");
+
+				char *c;
+				for(l = 0; l<plan9buf.nc; l+=m){
+					m = plan9buf.nc-l;
+					if(m>BLOCKSIZE-1)
+						m = BLOCKSIZE-1;
+					bufread(&plan9buf, l, genbuf, m);
+					genbuf[m] = 0;
+					c = Strtoc(tmprstr(genbuf, m+1));
+					Write(pipe2[1], c, strlen(c));
+					free(c);
 				}
-				exits(retcode? "error" : 0);
+				exits(nil);
 			}
 			if(pid==-1){
 				fprint(2, "Can't fork?!\n");
