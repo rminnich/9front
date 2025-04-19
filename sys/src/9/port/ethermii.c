@@ -10,12 +10,23 @@
 
 #include "ethermii.h"
 
+/* hook for devmii */
+static void dummy(Mii*){}
+void (*addmiibus)(Mii*) = dummy;
+void (*delmiibus)(Mii*) = dummy;
+
 uint
 mii(Mii* mii, uint mask)
 {
 	MiiPhy *phy;
 	int oui, phyno;
 	uint bit, rmask, id;
+
+	qlock(mii);
+	if(up != nil && waserror()){
+		qunlock(mii);
+		nexterror();
+	}
 
 	/*
 	 * Probe through mii for PHYs in mask;
@@ -32,10 +43,10 @@ mii(Mii* mii, uint mask)
 			rmask |= bit;
 			continue;
 		}
-		if(mii->mir(mii, phyno, Bmsr) == -1)
+		if((*mii->mir)(mii, phyno, Bmsr) == -1)
 			continue;
-		id = mii->mir(mii, phyno, Phyidr1) << 16;
-		id |= mii->mir(mii, phyno, Phyidr2);
+		id = (*mii->mir)(mii, phyno, Phyidr1) << 16;
+		id |= (*mii->mir)(mii, phyno, Phyidr2);
 		oui = (id & 0x3FFFFC00)>>10;
 		if(oui == 0xFFFFF || oui == 0)
 			continue;
@@ -60,6 +71,10 @@ mii(Mii* mii, uint mask)
 
 		rmask |= bit;
 	}
+
+	qunlock(mii);
+	if(up != nil) poperror();
+
 	return rmask;
 }
 
@@ -67,20 +82,38 @@ int
 miimir(MiiPhy *phy, int r)
 {
 	Mii *mii;
+	int ret;
 
-	if(phy == nil || (mii = phy->mii) == nil || mii->ctlr == nil)
+	if(phy == nil || (mii = phy->mii) == nil)
 		return -1;
-	return mii->mir(mii, phy->phyno, r & 0x1F);
+	qlock(mii);
+	if(up != nil && waserror()){
+		qunlock(mii);
+		nexterror();
+	}
+	ret = (*mii->mir)(mii, phy->phyno, r & 0x1F);
+	qunlock(mii);
+	if(up != nil) poperror();
+	return ret;
 }
 
 int
 miimiw(MiiPhy *phy, int r, int data)
 {
 	Mii *mii;
+	int ret;
 
-	if(phy == nil || (mii = phy->mii) == nil || mii->ctlr == nil)
+	if(phy == nil || (mii = phy->mii) == nil)
 		return -1;
-	return mii->miw(mii, phy->phyno, r & 0x1F, data & 0xFFFF);
+	qlock(mii);
+	if(up != nil && waserror()){
+		qunlock(mii);
+		nexterror();
+	}
+	ret = (*mii->miw)(mii, phy->phyno, r & 0x1F, data & 0xFFFF);
+	qunlock(mii);
+	if(up != nil) poperror();
+	return ret;
 }
 
 int
@@ -251,25 +284,53 @@ miistatus(MiiPhy* phy)
 int
 miimmdr(MiiPhy *phy, int a, int r)
 {
+	Mii *mii;
+	int ret;
+
+	if(phy == nil || (mii = phy->mii) == nil)
+		return -1;
+	qlock(mii);
+	if(up != nil && waserror()){
+		qunlock(mii);
+		nexterror();
+	}
 	a &= 0x1F;
-	if(miimiw(phy, Mmdctrl, a) == -1)
-		return -1;
-	if(miimiw(phy, Mmddata, r) == -1)
-		return -1;
-	if(miimiw(phy, Mmdctrl, a | 0x4000) == -1)
-		return -1;
-	return miimir(phy, Mmddata);
+	if((ret = (*mii->miw)(mii, phy->phyno, Mmdctrl, a)) == -1)
+		goto out;
+	if((ret = (*mii->miw)(mii, phy->phyno, Mmddata, r & 0xFFFF)) == -1)
+		goto out;
+	if((ret = (*mii->miw)(mii, phy->phyno, Mmdctrl, a | 0x4000)) == -1)
+		goto out;
+	ret = (*mii->mir)(mii, phy->phyno, Mmddata);
+out:
+	qunlock(mii);
+	if(up != nil) poperror();
+	return ret;
 }
 
 int
 miimmdw(MiiPhy *phy, int a, int r, int data)
 {
+	Mii *mii;
+	int ret;
+
+	if(phy == nil || (mii = phy->mii) == nil)
+		return -1;
+	qlock(mii);
+	if(up != nil && waserror()){
+		qunlock(mii);
+		nexterror();
+	}
 	a &= 0x1F;
-	if(miimiw(phy, Mmdctrl, a) == -1)
-		return -1;
-	if(miimiw(phy, Mmddata, r) == -1)
-		return -1;
-	if(miimiw(phy, Mmdctrl, a | 0x4000) == -1)
-		return -1;
-	return miimiw(phy, Mmddata, data);
+	if((ret = (*mii->miw)(mii, phy->phyno, Mmdctrl, a)) == -1)
+		goto out;
+	if((ret = (*mii->miw)(mii, phy->phyno, Mmddata, r & 0xFFFF)) == -1)
+		goto out;
+	if((ret = (*mii->miw)(mii, phy->phyno, Mmdctrl, a | 0x4000)) == -1)
+		goto out;
+	ret = (*mii->miw)(mii, phy->phyno, Mmddata, data & 0xFFFF);
+out:
+	qunlock(mii);
+	if(up != nil) poperror();
+	return ret;
 }

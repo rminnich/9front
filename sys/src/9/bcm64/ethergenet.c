@@ -835,6 +835,7 @@ attach(Ether *edev)
 	}
 	if(waserror()){
 		print("#l%d: %s\n", edev->ctlrno, up->errstr);
+		delmiibus(ctlr->mii);
 		shutdown(edev);
 		freebufs(ctlr);
 		qunlock(ctlr);
@@ -873,13 +874,17 @@ attach(Ether *edev)
 	REG(ctlr->regs[SysPortCtrl]) = PortModeExtGphy;
 	REG(ctlr->regs[ExtRgmiiOobCtrl]) |= RgmiiModeEn | IdModeDis;
 
+	ctlr->mii->name = edev->name;
 	ctlr->mii->ctlr = ctlr;
 	ctlr->mii->mir = mdior;
 	ctlr->mii->miw = mdiow;
+	addmiibus(ctlr->mii);
+
 	mii(ctlr->mii, ~0);
 	phy = ctlr->mii->curphy;
 	if(phy == nil)
 		error("no phy");
+
 
 	print("#l%d: phy%d id %.8ux oui %x\n", 
 		edev->ctlrno, phy->phyno, phy->id, phy->oui);

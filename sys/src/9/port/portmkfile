@@ -119,4 +119,4 @@ usbxhci.$O usbxhcipci.$O:	../port/usbxhci.h
 devether.$O: ../ip/ip.h ../ip/ipv6.h
 devether.$O ethersink.$O etheriwl.$O ethervirtio10.$O wifi.$O:	../port/netif.h ../port/etherif.h
 etheriwl.$O wifi.$O:	../port/wifi.h
-ethermii.$O:	../port/ethermii.h
+ethermii.$O devmii.$O:	../port/ethermii.h

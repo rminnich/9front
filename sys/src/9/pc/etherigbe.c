@@ -1475,7 +1475,6 @@ igbemii(Ctlr* ctlr)
 		ctlr->mii = nil;
 		return -1;
 	}
-
 	if(mii(ctlr->mii, ~0) == 0 || (phy = ctlr->mii->curphy) == nil){
 		free(ctlr->mii);
 		ctlr->mii = nil;

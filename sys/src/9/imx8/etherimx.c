@@ -237,7 +237,8 @@ struct Ctlr
 	struct {
 		Mii;
 		int done;
-		Rendez;
+		Rendez	io;	/* for i/o done */
+		Rendez	link;	/* for link-change */
 	}	mii[1];
 
 	int	attached;
@@ -259,7 +260,7 @@ mdiowait(Ctlr *ctlr)
 	int i;
 
 	for(i = 0; i < 200; i++){
-		tsleep(ctlr->mii, mdiodone, ctlr, 5);
+		tsleep(&ctlr->mii->io, mdiodone, ctlr, 5);
 		if(mdiodone(ctlr))
 			return 0;
 	}
@@ -306,7 +307,8 @@ interrupt(Ureg*, void *arg)
 	if(e & INT_TXF) wakeup(ctlr->tx);
 	if(e & INT_MII) {
 		ctlr->mii->done = 1;
-		wakeup(ctlr->mii);
+		wakeup(&ctlr->mii->io);
+		wakeup(&ctlr->mii->link);
 	}
 	wr(ctlr, ENET_EIR, e);
 }
@@ -478,7 +480,7 @@ linkproc(void *arg)
 	for(;;){
 		miistatus(phy);
 		if(phy->link == link){
-			tsleep(ctlr->mii, return0, nil, 5000);
+			tsleep(&ctlr->mii->link, return0, nil, 5000);
 			continue;
 		}
 		link = phy->link;
@@ -552,10 +554,11 @@ attach(Ether *edev)
 
 	ctlr->intmask |= INT_MII;
 	wr(ctlr, ENET_EIMR, ctlr->intmask);
-	mii(ctlr->mii, ~0);
 
+	mii(ctlr->mii, ~0);
 	if(ctlr->mii->curphy == nil)
 		error("no phy");
+	addmiibus(ctlr->mii);
 
 	print("#l%d: phy%d id %.8ux oui %x\n", 
 		edev->ctlrno, ctlr->mii->curphy->phyno, 
@@ -704,6 +707,7 @@ pnp(Ether *edev)
 
 	ctlr->regs = (u32int*)(VIRTIO + 0xbe0000);
 
+	ctlr->mii->name = edev->name;
 	ctlr->mii->ctlr = ctlr;
 	ctlr->mii->mir = mdior;
 	ctlr->mii->miw = mdiow;

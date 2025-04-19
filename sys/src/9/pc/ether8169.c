@@ -402,6 +402,8 @@ rtl8169mii(Ether *edev)
 	ctlr->mii->mir = rtl8169miimir;
 	ctlr->mii->miw = rtl8169miimiw;
 	ctlr->mii->ctlr = ctlr;
+	ctlr->mii->name = edev->name;
+	addmiibus(ctlr->mii);
 
 	/*
 	 * PHY wakeup

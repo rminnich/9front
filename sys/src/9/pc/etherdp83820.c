@@ -691,6 +691,7 @@ dp83820attach(Ether* edev)
 
 	if(waserror()){
 		if(ctlr->mii != nil){
+			delmiibus(ctlr->mii);
 			free(ctlr->mii);
 			ctlr->mii = nil;
 		}
@@ -705,9 +706,11 @@ dp83820attach(Ether* edev)
 	if(!(ctlr->cfg & Tbien)){
 		if((ctlr->mii = malloc(sizeof(Mii))) == nil)
 			error(Enomem);
+		ctlr->mii->name = edev->name;
 		ctlr->mii->ctlr = ctlr;
 		ctlr->mii->mir = dp83820miimir;
 		ctlr->mii->miw = dp83820miimiw;
+		addmiibus(ctlr->mii);
 		if(mii(ctlr->mii, ~0) == 0)
 			error("no PHY");
 		ctlr->cfg |= Dupstsien|Lnkstsien|Spdstsien;

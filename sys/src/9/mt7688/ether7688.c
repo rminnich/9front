@@ -547,6 +547,7 @@ initmii(Ctlr *ctlr)
 	if((ctlr->mii = malloc(sizeof(Mii))) == nil)
 		return -1;
 
+	ctlr->mii->name = edev->name;
 	ctlr->mii->ctlr	= ctlr;
 	ctlr->mii->mir	= miird;
 	ctlr->mii->miw	= miiwr;
@@ -557,7 +558,8 @@ initmii(Ctlr *ctlr)
 		ctlr->mii = nil;
 		return -1;
 	}
-	
+	addmiibus(ctlr->mii);
+
 	iprint("#l%d: phy%d id %.8ux oui %x\n", 
 		edev->ctlrno, ctlr->mii->curphy->phyno, 
 		ctlr->mii->curphy->id, ctlr->mii->curphy->oui);

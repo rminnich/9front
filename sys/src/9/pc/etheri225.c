@@ -581,10 +581,12 @@ i225mii(Ctlr *c)
 	c->mii->ctlr = c;
 	c->mii->mir = i225miir;
 	c->mii->miw = i225miiw;
+	c->mii->name = c->edev->name;
 	if (mii(c->mii, ~0) == 0 || (phy = c->mii->curphy) == nil) {
 		free(c->mii); c->mii = nil;
 		error("phy");
 	}
+	addmiibus(c->mii);
 
 	/* configure for auto-negotiated link */
 	csr32w(c, Rdevctrl, csr32r(c, Rdevctrl) | DClink | DClinkauto);
