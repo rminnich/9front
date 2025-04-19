@@ -11,12 +11,12 @@ vdiff \- a visual diff viewer
 .I nstrip
 ]
 [
-.I file
+.I patches...
 ]
 .SH DESCRIPTION
-.I vdiff
-reads unified diff output from
-.I file
+.I Vdiff
+reads unified diff output from the list of
+.I patches
 or standard input and displays a colored version.
 Each file within the diff is displayed in a separate block that can be collapsed by clicking on the file name.
 Right clicking on a line will send a
@@ -34,6 +34,9 @@ will exit
 A menu may be summoned with button 2 of the mouse.
 It provides menu items for collapsing and expanding all files,
 as well as items for each patch present in the input.
+.I Vdiff
+understands terminators supplied by
+.IR git/export (2).
 .PP
 The
 .B -b

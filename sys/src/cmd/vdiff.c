@@ -245,12 +245,16 @@ pan(int off)
 }
 
 void
-clampoffset(void)
+clampoffset(int off)
 {
 	if(offset<0)
 		offset = 0;
-	if(offset+viewh>totalh)
-		offset = totalh - viewh;
+	if(offset+viewh>totalh){
+		if(off > 0)
+			offset = totalh - viewh;
+		else
+			offset = 0;
+	}
 }
 
 void
@@ -261,7 +265,7 @@ scroll(int off)
 	if(off>0 && offset+viewh>totalh)
 		return;
 	offset += off;
-	clampoffset();
+	clampoffset(off);
 	redraw();
 }
 
@@ -312,8 +316,10 @@ eresize(int new)
 	}
 	totalh = totalh - Margin + Vpadding;
 	scrollsize = viewh / 2.0;
-	if(offset > 0 && offset+viewh>totalh)
-		offset = totalh - viewh;
+	if(viewh <= totalh)
+		clampoffset(1);
+	else
+		clampoffset(0);
 	redraw();
 }
 
@@ -362,7 +368,7 @@ genmenu(int i)
 		return "expand";
 	default:
 		i -= Nmenu;
-		if(i >= npatches)
+		if(i >= npatches || npatches == 1)
 			return nil;
 		if(patches[i].name == nil)
 			patches[i].name = smprint("%d", i);
@@ -387,6 +393,22 @@ blockmouse(Block *b, Mouse m)
 	}
 }
 
+Menu menu = {
+	nil,
+	genmenu,
+};
+
+void
+collapse(int v)
+{
+	int i;
+
+	for(i = 0; i < cur->nblocks; i++)
+		if(cur->blocks[i]->f != nil)
+			cur->blocks[i]->v = v;
+	eresize(0);
+}
+
 void
 emouse(Mouse m)
 {
@@ -406,11 +428,29 @@ emouse(Mouse m)
 		}else if(m.buttons&2){
 			offset = (m.xy.y - scrollr.min.y) * totalh/Dy(scrollr);
 			offset = offset/lineh * lineh;
-			clampoffset();
+			if(viewh <= totalh)
+				clampoffset(1);
+			else
+				clampoffset(0);
 			redraw();
 		}else if(m.buttons&4){
 			scroll(n);
 			return;
+		}
+	}else if(!scrolling && m.buttons&2){
+		n = menuhit(2, mctl, &menu, nil);
+		switch(n){
+		case -1:
+			break;
+		case Mexpand: case Mcollapse:
+			collapse(n);
+			break;
+		default:
+			n -= Nmenu;
+			if(cur == patches+n)
+				break;
+			cur = patches+n;
+			eresize(0);
 		}
 	}else if(m.buttons&8){
 		scroll(-n);
@@ -564,18 +604,7 @@ lineno(char *s)
 }
 
 void
-collapse(int v)
-{
-	int i;
-
-	for(i = 0; i < cur->nblocks; i++)
-		if(cur->blocks[i]->f != nil)
-			cur->blocks[i]->v = v;
-	eresize(0);
-}
-
-void
-parse(int fd)
+parse(int fd, char *name)
 {
 	Biobuf *bp;
 	Block *b;
@@ -605,7 +634,7 @@ parse(int fd)
 			cur = patches+npatches-1;
 			cur->blocks = nil;
 			cur->nblocks = 0;
-			cur->name = nil;
+			cur->name = name;
 			b = addblock();
 			n = 0;
 			ab = 0;		
@@ -640,8 +669,10 @@ parse(int fd)
 			if(f != nil && (f = strchr(f+1, ' '))){
 				f++;
 				if(strcmp(f, "uncommitted") != 0){
-					cur->name = strdup(f);
-					cur->name[9] = '\0';
+					if(name != nil)
+						cur->name = smprint("%s %.*s", name, 9, f);
+					else
+						cur->name = smprint("%.*s", 9, f);
 				}
 			}
 			t = Lnone;
@@ -659,13 +690,13 @@ parse(int fd)
 	}
 	if(gotterm)
 		npatches--;
-	cur = patches;
+	Bterm(bp);
 }
 
 void
 usage(void)
 {
-	fprint(2, "usage: %s [-b] [-p nstrip] [file]\n", argv0);
+	fprint(2, "usage: %s [-b] [-p nstrip] [patches...]\n", argv0);
 	exits("usage");
 }
 
@@ -681,11 +712,7 @@ threadmain(int argc, char *argv[])
 		{ nil, &k,  CHANRCV },
 		{ nil, nil, CHANEND },
 	};
-	Menu menu = {
-		nil,
-		genmenu,
-	};
-	int b, n;
+	int i, b, fd;
 
 	b = 0;
 	ARGBEGIN{
@@ -699,17 +726,16 @@ threadmain(int argc, char *argv[])
 		usage();
 		break;
 	}ARGEND;
-	switch(argc){
-	default:
-		usage();
-	case 1:
-		close(0);
-		if(open(argv[0], OREAD) < 0)
+	if(argc == 0)
+		parse(0, nil);
+	else for(i = 0; i < argc; i++){
+		fd = open(argv[i], OREAD);
+		if(fd < 0)
 			sysfatal("open: %r");
-	case 0:
-		break;
+		parse(fd, argv[i]);
+		close(fd);
 	}
-	parse(0);
+	cur = patches;
 	if(cur->nblocks==1 && cur->blocks[0]->nlines==0){
 		fprint(2, "no diff\n");
 		exits(nil);
@@ -731,23 +757,7 @@ threadmain(int argc, char *argv[])
 	for(;;){
 		switch(alt(a)){
 		case Emouse:
-			if((m.buttons&2) != 0){
-				n = menuhit(2, mctl, &menu, nil);
-				switch(n){
-				case -1:
-					break;
-				case Mexpand: case Mcollapse:
-					collapse(n);
-					break;
-				default:
-					n -= Nmenu;
-					if(cur == patches+n)
-						break;
-					cur = patches+n;
-					eresize(0);
-				}
-			} else
-				emouse(m);
+			emouse(m);
 			break;
 		case Eresize:
 			eresize(1);
