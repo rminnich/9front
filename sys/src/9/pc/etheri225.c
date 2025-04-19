@@ -313,6 +313,8 @@ struct RXq {
 	/* receive queue */
 	Rendez;
 
+	Bpool pool;
+
 	u32int len;
 	u32int ptr;
 	u32int ptrtail;
@@ -780,10 +782,8 @@ i225rxfill(Ctlr *c)
 	 * until the tail pointer catches up to the head pointer
 	 */
 	while (c->rx.ptrtailn != c->rx.ptr) {
-		b = allocb(BY2PG*2);
-		b->wp = (uchar*)PGROUND((uintptr)b->base);
-		b->rp = (uchar*)PGROUND((uintptr)b->base);
-
+		while ((b = iallocbp(&c->rx.pool)) == nil)
+			resrcwait("out of i225 rx buffers");
 		c->rx.descb[c->rx.ptrtail] = b;
 
 		d.addr = PCIWADDR(b->rp);
@@ -858,10 +858,9 @@ i225rx(Ctlr *c, u32int ptr)
 
 		/* if this is an error, concatenate and free */
 		if (d.status & RDerr) {
-			b = concatblock(bl);
 			bl = nil;
 			blt = nil;
-			freeb(b);
+			freeblist(b);
 			goto next;
 		}
 
@@ -891,6 +890,8 @@ next:
 static void
 i225rxattach(Ctlr *c)
 {
+	uvlong pa;
+
 	/* disable receive and the receive ring during configuration */
 	csr32w(c, Rrxctrl, csr32r(c, Rrxctrl) & ~(RXCmultimask | RXCsizeex | RXCenable));
 	csr32w(c, Rrxrctrl, 0);
@@ -899,6 +900,11 @@ i225rxattach(Ctlr *c)
 	c->rx.ptr = 0;
 	c->rx.ptrtail = 0;
 	c->rx.ptrtailn = 1;
+	if (c->rx.pool.size == 0) {
+		c->rx.pool.size = 4096;
+		c->rx.pool.align = 4096;
+		growbp(&c->rx.pool, c->rx.len * 2);
+	}
 
 	/* allocate receive block and receive descriptor arrays */
 	c->rx.desc = mallocalign(c->rx.len * 16, 128, 0, 0);
@@ -910,8 +916,10 @@ i225rxattach(Ctlr *c)
 	csr32w(c, Rrxrptr, c->rx.ptr);
 	csr32w(c, Rrxrptrtail, c->rx.ptrtail);
 	csr32w(c, Rrxrlen, c->rx.len * 16);
-	csr32w(c, Rrxraddr, PCIWADDR(c->rx.desc));
-	csr32w(c, Rrxraddrhi, PCIWADDR(c->rx.desc) >> 32);
+
+	pa = PCIWADDR(c->rx.desc);
+	csr32w(c, Rrxraddr, pa);
+	csr32w(c, Rrxraddrhi, pa >> 32);
 
 	/* configure the receive descriptor format */
 	csr32w(c, Rrxrsr, (csr32r(c, Rrxrsr) & ~RXSdescmask) | RXSdesc);
