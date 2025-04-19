@@ -1,7 +1,8 @@
 typedef struct Mii Mii;
 typedef struct MiiPhy MiiPhy;
 
-enum {					/* registers */
+enum {
+	/* registers */
 	Bmcr		= 0x00,		/* Basic Mode Control */
 	Bmsr		= 0x01,		/* Basic Mode Status */
 	Phyidr1		= 0x02,		/* PHY Identifier #1 */
@@ -21,7 +22,15 @@ enum {					/* registers */
 	NMiiPhy		= 32,
 };
 
-enum {					/* Bmcr */
+enum {
+	/* MMD Auto Negotiation */
+	MMDan = 7,
+	MMDanmgcr = 0x20, /* Multi Gigabit BASE-T Control */
+	MMDanmgsr = 0x21, /* Multi Gigabit BASE-T Status */
+};
+
+enum {
+	/* Basic Mode Control */
 	BmcrSs1		= 0x0040,	/* Speed Select[1] */
 	BmcrCte		= 0x0080,	/* Collision Test Enable */
 	BmcrDm		= 0x0100,	/* Duplex Mode */
@@ -34,7 +43,8 @@ enum {					/* Bmcr */
 	BmcrR		= 0x8000,	/* Reset */
 };
 
-enum {					/* Bmsr */
+enum {
+	/* Basic Mode Status */
 	BmsrEc		= 0x0001,	/* Extended Capability */
 	BmsrJd		= 0x0002,	/* Jabber Detect */
 	BmsrLs		= 0x0004,	/* Link Status */
@@ -52,7 +62,8 @@ enum {					/* Bmsr */
 	Bmsr100T4	= 0x8000,	/* 100BASE-T4 Capable */
 };
 
-enum {					/* Anar/Anlpar */
+enum {
+	/* Auto-Negotiation Advertisement / Partner Ability */
 	Ana10HD		= 0x0020,	/* Advertise 10BASE-T */
 	Ana10FD		= 0x0040,	/* Advertise 10BASE-T FD */
 	AnaTXHD		= 0x0080,	/* Advertise 100BASE-TX */
@@ -65,21 +76,36 @@ enum {					/* Anar/Anlpar */
 	AnaNp		= 0x8000,	/* Next Page Indication */
 };
 
-enum {					/* Mscr */
+enum {
+	/* MASTER-SLAVE Control */
 	Mscr1000THD	= 0x0100,	/* Advertise 1000BASE-T HD */
 	Mscr1000TFD	= 0x0200,	/* Advertise 1000BASE-T FD */
 };
 
-enum {					/* Mssr */
+enum {
+	/* MASTER-SLAVE Status */
 	Mssr1000THD	= 0x0400,	/* Link Partner 1000BASE-T HD able */
 	Mssr1000TFD	= 0x0800,	/* Link Partner 1000BASE-T FD able */
 };
 
-enum {					/* Esr */
+enum {
+	/* Extended Status */
 	Esr1000THD	= 0x1000,	/* 1000BASE-T HD Capable */
 	Esr1000TFD	= 0x2000,	/* 1000BASE-T FD Capable */
 	Esr1000XHD	= 0x4000,	/* 1000BASE-X HD Capable */
 	Esr1000XFD	= 0x8000,	/* 1000BASE-X FD Capable */
+};
+
+enum {
+	/* Multi Gigabit Base-T Control */
+	MMDanmgcr2500T	= 1<<7,	/* Advertise 2.5G BASE-T */
+	MMDanmgcr5000T	= 1<<8,	/* Advertise 5.0G BASE-T */
+	MMDanmgcr10000T	= 1<<12,	/* Advertise 10.0G BASE-T */
+
+	/* Multi Gigabit Base-T Status */
+	MMDanmgsr2500T	= 1<<5, /* 2.5G BASE-T Capable */
+	MMDanmgsr5000T	= 1<<6, /* 5.0G BASE-T Capable */
+	MMDanmgsr10000T	= 1<<11, /* 10.0G BASE-T Capable */
 };
 
 typedef struct Mii {
@@ -105,6 +131,7 @@ typedef struct MiiPhy {
 	int	anar;
 	int	fc;
 	int	mscr;
+	int	mgcr;
 
 	int	link;
 	int	speed;
@@ -115,10 +142,12 @@ typedef struct MiiPhy {
 
 extern uint mii(Mii*, uint);
 extern int miiane(MiiPhy*, int, int, int);
+extern int miianec45(MiiPhy*, int);
 extern int miimir(MiiPhy*, int);
 extern int miimiw(MiiPhy*, int, int);
 extern int miireset(MiiPhy*);
 extern int miistatus(MiiPhy*);
+extern int miistatusc45(MiiPhy*);
 extern int miimmdr(MiiPhy*, int, int);
 extern int miimmdw(MiiPhy*, int, int, int);
 

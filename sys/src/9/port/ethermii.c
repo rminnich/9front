@@ -204,6 +204,26 @@ miiane(MiiPhy *phy, int a, int p, int e)
 }
 
 int
+miianec45(MiiPhy* phy, int m)
+{
+	int r;
+
+	phy->mgcr = m;
+	phy->mgcr &= (MMDanmgcr2500T|MMDanmgcr5000T|MMDanmgcr10000T);
+
+	r = miimmdr(phy, MMDan, MMDanmgcr);
+	if (r == -1)
+		return -1;
+
+	r &= ~phy->mgcr;
+	r |= phy->mgcr;
+	if (miimmdw(phy, MMDan, MMDanmgcr, r) == -1)
+		return -1;
+
+	return 0;
+}
+
+int
 miistatus(MiiPhy* phy)
 {
 	int anlpar, bmsr, p, r;
@@ -277,6 +297,32 @@ miistatus(MiiPhy* phy)
 	}
 
 	phy->link = 1;
+	return 0;
+}
+
+int
+miistatusc45(MiiPhy *phy)
+{
+	int r;
+
+	r = miimmdr(phy, MMDan, MMDanmgsr);
+	if (r == -1)
+		return -1;
+
+	if (r & MMDanmgsr2500T) {
+		phy->speed = 2500;
+		phy->fd = 1;
+	}
+
+	if (r & MMDanmgsr5000T) {
+		phy->speed = 5000;
+		phy->fd = 1;
+	}
+
+	if (r & MMDanmgsr10000T) {
+		phy->speed = 10000;
+		phy->fd = 1;
+	}
 
 	return 0;
 }
