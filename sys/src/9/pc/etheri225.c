@@ -594,6 +594,7 @@ i225mii(Ctlr *c)
 	csr32w(c, Rdevctrl, csr32r(c, Rdevctrl) | DClink | DClinkauto);
 	miimiw(phy, Bmcr, miimir(phy, Bmcr) & ~BmcrPd); microdelay(300);
 	miiane(phy, ~0, ~0, ~0);
+	miianec45(phy, ~0);
 }
 
 static void
@@ -1021,12 +1022,15 @@ i225proclink(void *a)
 			/* phy missing? */
 			continue;
 		}
-		miistatus(phy);
+
+		if (miistatus(phy) == 0)
+			miistatusc45(phy);
 		if (phy->speed == 0) {
 			/* phy errata: rinse and repeat, should only happen once */
 			miireset(phy);
 			continue;
 		}
+
 		/* report status */
 		ethersetspeed(c->edev, phy->speed);
 		ethersetlink(c->edev, phy->link);
