@@ -15,7 +15,6 @@ typedef struct Col Col;
 typedef struct Patch Patch;
 
 struct Block {
-	Image *b;
 	Rectangle r;
 	Rectangle sr;
 	int v;
@@ -80,6 +79,7 @@ Col cols[Ncols];
 Col scrlcol;
 Image *bord;
 Image *expander[2];
+Image *fb;
 int totalh;
 int viewh;
 int scrollsize;
@@ -168,23 +168,22 @@ renderline(Image *b, Rectangle r, int pad, int lt, char *ls)
 }
 
 void
-renderblock(Block *b)
+renderblock(Block *b, Rectangle sr)
 {
 	Rectangle r, lr, br;
 	Line *l;
 	int i, pad;
 
 	pad = 0;
-	r = insetrect(b->r, 1);
-	draw(b->b, b->r, cols[Lnone].bg, nil, ZP);
+	r = insetrect(sr, 1);
 	if(b->f != nil){
 		pad = Margin;
 		lr = r;
-		lr.max.y = lineh;
+		lr.max.y = lr.min.y + lineh;
 		br = rectaddpt(expander[0]->r, Pt(lr.min.x+Hpadding, lr.min.y+Vpadding));
-		border(b->b, b->r, 1, bord, ZP);
-		renderline(b->b, lr, Dx(expander[0]->r)+Hpadding, Lfile, b->f);
-		draw(b->b, br, expander[b->v], nil, ZP);
+		border(fb, sr, 1, bord, ZP);
+		renderline(fb, lr, Dx(expander[0]->r)+Hpadding, Lfile, b->f);
+		draw(fb, br, expander[b->v], nil, ZP);
 		r.min.y += lineh;
 	}
 	if(b->v == 0)
@@ -192,7 +191,7 @@ renderblock(Block *b)
 	for(i = 0; i < b->nlines; i++){
 		l = b->lines[i];
 		lr = Rect(r.min.x, r.min.y+i*lineh, r.max.x, r.min.y+(i+1)*lineh);
-		renderline(b->b, lr, pad, l->t, l->s);
+		renderline(fb, lr, pad, l->t, l->s);
 	}
 }
 
@@ -203,8 +202,8 @@ redraw(void)
 	int i, h, y, ye, vmin, vmax;
 	Block *b;
 
-	draw(screen, sr, cols[Lnone].bg, nil, ZP);
-	draw(screen, scrollr, scrlcol.bg, nil, ZP);
+	draw(fb, fb->r, cols[Lnone].bg, nil, ZP);
+	draw(fb, scrollr, scrlcol.bg, nil, ZP);
 	if(viewh < totalh){
 		h = ((double)viewh/totalh)*Dy(scrollr);
 		y = ((double)offset/totalh)*Dy(scrollr);
@@ -214,19 +213,18 @@ redraw(void)
 		scrposr = Rect(scrollr.min.x, scrollr.min.y+y+1, scrollr.max.x-1, ye);
 	}else
 		scrposr = Rect(scrollr.min.x, scrollr.min.y, scrollr.max.x-1, scrollr.max.y);
-	draw(screen, scrposr, scrlcol.fg, nil, ZP);
+ 	draw(fb, scrposr, scrlcol.fg, nil, ZP);
 	vmin = viewr.min.y + offset;
 	vmax = viewr.max.y + offset;
 	clipr = screen->clipr;
-	replclipr(screen, 0, viewr);
+	replclipr(fb, 0, viewr);
 	for(i = 0; i < cur->nblocks; i++){
 		b = cur->blocks[i];
-		if(b->sr.min.y <= vmax && b->sr.max.y >= vmin){
-			renderblock(b);
-			draw(screen, rectaddpt(b->sr, Pt(0, -offset)), b->b, nil, ZP);
-		}
+		if(b->sr.min.y <= vmax && b->sr.max.y >= vmin)
+			renderblock(b, rectaddpt(b->sr, Pt(0, -offset)));
 	}
-	replclipr(screen, 0, clipr);
+	replclipr(fb, 0, clipr);
+	draw(screen, screen->r, fb, nil, fb->r.min);
 	flushimage(display, 1);
 }
 
@@ -281,10 +279,6 @@ blockresize(Block *b)
 	if(b->v)
 		h += b->nlines*lineh;
 	b->r = Rect(0, 0, w, h);
-	freeimage(b->b);
-	b->b = allocimage(display, b->r, screen->chan, 0, DNofill);
-	if(b-> b == nil)
-		sysfatal("allocimage: %r");
 }
 
 void
@@ -320,6 +314,10 @@ eresize(int new)
 		clampoffset(1);
 	else
 		clampoffset(0);
+	free(fb);
+	fb = allocimage(display, screen->r, screen->chan, 0, DBlack);
+	if(fb == nil)
+		sysfatal("allocimage: %r");
 	redraw();
 }
 
@@ -517,6 +515,8 @@ initicons(void)
 	w = font->height;
 	h = font->height;
 	expander[0] = allocimage(display, Rect(0, 0, w, h), screen->chan, 0, DNofill);
+	if(expander[0] == nil)
+		sysfatal("allocimage: %r");
 	draw(expander[0], expander[0]->r, cols[Lfile].bg, nil, ZP);
 	p[0] = Pt(0.25*w, 0.25*h);
 	p[1] = Pt(0.25*w, 0.75*h);
@@ -524,6 +524,8 @@ initicons(void)
 	p[3] = p[0];
 	fillpoly(expander[0], p, 4, 0, bord, ZP);
 	expander[1] = allocimage(display, Rect(0, 0, w, h), screen->chan, 0, DNofill);
+	if(expander[1] == nil)
+		sysfatal("allocimage: %r");
 	draw(expander[1], expander[1]->r, cols[Lfile].bg, nil, ZP);
 	p[0] = Pt(0.25*w, 0.25*h);
 	p[1] = Pt(0.75*w, 0.25*h);
@@ -539,7 +541,6 @@ addblock(void)
 	Block *b;
 
 	b = emalloc(sizeof *b);
-	b->b = nil;
 	b->v = 1;
 	b->f = nil;
 	b->lines = nil;
