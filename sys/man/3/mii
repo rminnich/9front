@@ -1,0 +1,84 @@
+.TH MII 3
+.SH NAME
+mii \- MII/MDIO/SMI PHY debug driver
+.SH SYNOPSIS
+.nf
+.B bind -a '#Φ' /mnt/mii
+.PP
+.nf
+.BI /mnt/mii/ bus / phy /ctl
+.BI /mnt/mii/ bus / phy /mii
+.BI /mnt/mii/ bus / phy /mmd
+.SH DESCRIPTION
+Ethernet drivers can expose thei'r MII/MDIO controllers
+allowing introspection on the PHYs.
+This driver provides direct access to the PHYs thru their
+MII and MMD register spaces.
+.PP
+On on its root directory, the driver serves a
+directory named
+.I phy
+per MII controller. It is usually named
+by the the ethernet device (like
+.BI ether N
+) providing the access, but can be anything
+if the machine/platform/soc shares the MDIO bus across
+multiple MAC's.
+.PP
+Inside each
+.I bus
+directory, there are the phys detected on the bus,
+named by their decimal
+.I phy
+number (
+.BR 0 - 31
+).
+.PP
+Each
+.I phy
+directory contains the following files:
+.PP
+The
+.B ctl
+file provides a textual representation of the phy status.
+The following text commands can be written to it:
+.TP
+.B reset
+Reset the phy
+.TP
+.B status
+Update the phy status fields
+.TP
+.B autoneg
+Restart auto-negotiation on the phy
+.PP
+In addition, the file
+.B mii
+allows direct access to the clause22 registers.
+The read/write offset is directly mapped to the register
+number (0-31).
+Reads and writes needs to be exactly 2 bytes,
+with the least significant byte first.
+The
+.B mmd
+file provides access to the clause45 registers.
+The lest significant 16 bits of the offset are mapped
+to the register number (0-65535) and the top bits [16-20]
+map to the device address. So accessing the
+.BR ID1 / ID2
+register
+.B 1.1
+and
+.B 1.2
+map to offsets
+.B 0x10001
+and
+.B 0x10002
+respectively.
+.SH "SEE ALSO"
+.IR io (1)
+.IR ether (3)
+.SH SOURCE
+.B /sys/src/9/port/devmii.c
+.br
+.B /sys/src/9/port/ethermii.c
