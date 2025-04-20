@@ -3,40 +3,49 @@
 mii \- MII/MDIO/SMI PHY debug driver
 .SH SYNOPSIS
 .nf
-.B bind -a '#Φ' /mnt/mii
+.B bind '#Φ' /mnt/mii
 .PP
 .nf
 .BI /mnt/mii/ bus / phy /ctl
 .BI /mnt/mii/ bus / phy /mii
 .BI /mnt/mii/ bus / phy /mmd
 .SH DESCRIPTION
-Ethernet drivers can expose thei'r MII/MDIO controllers
-allowing introspection on the PHYs.
-This driver provides direct access to the PHYs thru their
-MII and MMD register spaces.
+Ethernet hardware is usually split into media-access (MAC)
+and PHY parts with a media-independent-interface (MII)
+in between.
+The MII has a electrical high-speed connection,
+for the ethernet frames,
+and a low-speed 2-wire serial connection
+for PHY management.
+There can be multiple PHYs on a single management bus.
 .PP
-On on its root directory, the driver serves a
-directory named
+Ethernet drivers can expose this PHY management bus
+giving direct access to the PHYs.
+.PP
+On its top-level directory, the driver serves a
 .I bus
-per MII controller. It is usually named
-by the the ethernet device (like
+directory, one per controller.
+It is usually named by the the ethernet device
+that registered it (like
 .BI ether N
-) providing the access, but can be anything
-if the machine/platform/soc shares the MDIO bus across
-multiple MAC's.
+),
+but it can be anything.
 .PP
 Inside each
 .I bus
-directory, there are the phys detected on the bus,
-named by their decimal
+directory,
+there appear
 .I phy
-number (
-.BR 0 - 31
-).
+directories,
+named by their 5-bit bus address (phy number) in decimal:
+.BR 0 - 31 .
 .PP
 Each
 .I phy
 directory contains the following files:
+.BR ctl ,
+.BR mii ,
+.BR mmd .
 .PP
 The
 .B ctl
@@ -52,16 +61,19 @@ Update the phy status fields
 .B autoneg
 Restart auto-negotiation on the phy
 .PP
-In addition, the file
+The
 .B mii
-allows direct access to the clause22 registers.
-The read/write offset is directly mapped to the register
-number (0-31).
+file allows direct access to the clause 22 registers.
+The read/write offset is directly mapped to
+the 5-bit register number:
+.BR 0 - 31 .
 Reads and writes needs to be exactly 2 bytes,
-with the least significant byte first.
+containing the 16-bit value, with the least
+significant byte first.
+.PP
 The
 .B mmd
-file provides access to the clause45 registers.
+file provides access to the clause 45 registers.
 The lest significant 16 bits of the offset are mapped
 to the register number (0-65535) and the top bits [16-20]
 map to the device address. So accessing the
@@ -75,6 +87,14 @@ map to offsets
 and
 .B 0x10002
 respectively.
+.SH EXAMPLE
+Read the ID1/ID2 registers:
+.IP
+.EX
+bind '#Φ' /mnt/mii
+io -f /mnt/mii/ether0/1/mii -Wr 1
+io -f /mnt/mii/ether0/1/mii -Wr 2
+.EE
 .SH "SEE ALSO"
 .IR io (1)
 .IR ether (3)
