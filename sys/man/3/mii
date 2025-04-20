@@ -17,7 +17,7 @@ MII and MMD register spaces.
 .PP
 On on its root directory, the driver serves a
 directory named
-.I phy
+.I bus
 per MII controller. It is usually named
 by the the ethernet device (like
 .BI ether N
