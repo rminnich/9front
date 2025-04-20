@@ -728,6 +728,8 @@ is the reason for the error.
 .SH SOURCE
 .B /sys/src/cmd/auth/factotum
 .SH "SEE ALSO"
+.IR delkey (1),
+.IR secstore (1),
 .IR authsrv (6)
 .SH "HISTORY"
 Since November 2024,
