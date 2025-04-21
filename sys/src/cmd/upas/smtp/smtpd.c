@@ -1584,23 +1584,25 @@ s_dec64(String *sin)
 void
 starttls(void)
 {
-	int certlen, fd;
-	uchar *cert;
+	int fd;
 	TLSconn conn;
+	PEMChain *chain;
 
 	if (tlscert == nil) {
 		reply("500 5.5.1 illegal command or bad syntax\r\n");
 		return;
 	}
-	cert = readcert(tlscert, &certlen);
-	if (cert == nil) {
+	chain = readcertchain(tlscert);
+	if (chain == nil) {
 		reply("454 4.7.5 TLS not available\r\n");
 		return;
 	}
 	reply("220 2.0.0 Go ahead make my day\r\n");
 	memset(&conn, 0, sizeof(conn));
-	conn.cert = cert;
-	conn.certlen = certlen;
+	conn.cert = chain->pem;
+	conn.certlen = chain->pemlen;
+	conn.chain = chain->next;
+	free(chain);	/* chain->pem freed by tlsSevrer() */
 	fd = tlsServer(Bfildes(&bin), &conn);
 	if (fd < 0) {
 		syslog(0, "smtpd", "TLS start-up failed with %s", him);
@@ -1611,7 +1613,12 @@ starttls(void)
 		fprint(2, "dup of %d failed: %r\n", fd);
 	close(fd);
 	Binit(&bin, 0, OREAD);
-	free(conn.cert);
+	while((chain = conn.chain) != nil){
+		conn.chain = chain->next;
+		free(chain->pem);
+		free(chain);
+	}
+	free(conn.cert);	/* client cert */
 	free(conn.sessionID);
 	passwordinclear = 1;
 	syslog(0, "smtpd", "started TLS with %s", him);
