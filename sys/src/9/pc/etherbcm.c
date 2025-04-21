@@ -629,6 +629,7 @@ bcminit(Ether *edev)
 	case BCM5762:
 	case BCM57765:
 	case BCM57766:
+	case BCM57781:
 		/* 57765 series have the max frame length field,
 		 * but not the different receive bd addr */
 		csr32(ctlr, ReceiveBDFlags) = RecvProdRingLen << 16 | 1536 << 2;
