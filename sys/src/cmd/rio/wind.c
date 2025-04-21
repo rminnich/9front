@@ -1101,8 +1101,8 @@ wstretchsel(Window *w, uint pt, uint *q0, uint *q1, int mode)
 			r = right[i];
 			p = strrune(l, lc);
 			if(p && r[p-l] == rc){
-				*q0 -= lc != '\n';
-				(*q1)++;
+				*q0 -= *q0 > 0 && lc != '\n';
+				*q1 += *q1 < w->nr;
 				return;
 			}
 		}

@@ -156,8 +156,8 @@ stretchsel(File *f, Posn p1, int mode)
 			r = right[i];
 			x = strrune(l, lc);
 			if(x && r[x-l] == rc){
-				f->dot.r.p1 -= lc != '\n';
-				f->dot.r.p2++;
+				f->dot.r.p1 -= f->dot.r.p1 > 0 && lc != '\n';
+				f->dot.r.p2 += f->dot.r.p2 < f->nc;
 				return;
 			}
 		}

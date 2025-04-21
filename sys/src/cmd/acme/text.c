@@ -1333,8 +1333,8 @@ textstretchsel(Text *t, uint *q0, uint *q1, int mode)
 			r = right[i];
 			x = runestrchr(l, lc);
 			if(x && r[x-l] == rc){
-				(*q0) -= lc != '\n';
-				(*q1)++;
+				*q0 -= *q0 > 0 && lc != '\n';
+				*q1 += *q1 < t->file->nc;
 				return;
 			}
 		}
