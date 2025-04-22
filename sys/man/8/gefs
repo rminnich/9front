@@ -164,7 +164,7 @@ Lists snapshots and their attributes.
 This flag accepts no arguments.
 .TP
 .BI "-d " snap
-Deletes a snapshot, reclaiming whatever space is not shared
+Deletes a snapshot, reclaiming whatever space
 is not shared with other snapshots.
 This flag accepts a single argument,
 .IR old ,
@@ -175,7 +175,6 @@ Marks the newly created snapshot as mutable,
 rather than read-only.
 This flag only has an effect when tagging a new snapshot,
 and is ignored otherwise.
-.TP
 .PP
 .I Sync
 writes dirty blocks in memory to the disk.
@@ -190,13 +189,13 @@ If a file is not specified, it prints to the console.
 .SH SNAPSHOTS
 Snapshots are independent views of a filesystem hierarchy.
 A snapshot may be mutable or immutable.
-Mutable snapshots can be mounted and written to,
-Immutable snapshots are a view of a file system hierarchy at a point im time.
+Mutable snapshots can be mounted and written to;
+immutable snapshots are a view of a file system hierarchy at a point in time.
 They are referred to by name, and are selected at mount time with an attach spec.
 When the attach spec starts with the
 .B %
 sigil, a snapshot is mounted in permissive mode.
-This allows the mounting user to bypass normal file system permission checks.'
+This allows the mounting user to bypass normal file system permission checks.
 In order to mount a snapshot in permissive mode, the mounting user must be in the
 .I adm
 group.
