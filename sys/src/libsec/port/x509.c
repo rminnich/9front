@@ -705,7 +705,8 @@ cloop_done:
 		if(err != ASN_OK){
 			freebytes(ans);
 			ans = nil;
-		}
+		} else if(ans == nil)
+			ans = newbytes(0);
 	}
 	*pp = p;
 	*pbytes = ans;
