@@ -3187,25 +3187,39 @@ edump(Elem e)
 {
 	Value v;
 	Elist *el;
-	int i;
+	int i, n;
 
 	print("%s{", tagdump(e.tag));
 	v = e.val;
 	switch(v.tag){
 	case VBool: print("Bool %d",v.u.boolval); break;
 	case VInt: print("Int %d",v.u.intval); break;
-	case VOctets: print("Octets[%d] %.2x%.2x...",v.u.octetsval->len,v.u.octetsval->data[0],v.u.octetsval->data[1]); break;
-	case VBigInt: print("BigInt[%d] %.2x%.2x...",v.u.bigintval->len,v.u.bigintval->data[0],v.u.bigintval->data[1]); break;
 	case VReal: print("Real..."); break;
 	case VOther: print("Other..."); break;
-	case VBitString: print("BitString[%d]...", v.u.bitstringval->len*8 - v.u.bitstringval->unusedbits); break;
 	case VNull: print("Null"); break;
 	case VEOC: print("EOC..."); break;
+	case VBitString: print("BitString[%d]...", v.u.bitstringval->len*8 - v.u.bitstringval->unusedbits); break;
+	case VString: print("String \"%s\"",v.u.stringval); break;
+	case VOctets:
+		n = v.u.octetsval->len;
+		print("Octets[%d] ", v.u.octetsval->len);
+		for(i = 0; i < n && i < 16; i++)
+			print("%.2x", v.u.octetsval->data[i]);
+		if(n > i)
+			print("...");
+		break;
+	case VBigInt:
+		n = v.u.bigintval->len;
+		print("BigInt[%d] ", v.u.bigintval->len);
+		for(i = 0; i < n && i < 16; i++)
+			print("%.2x", v.u.bigintval->data[i]);
+		if(n > i)
+			print("...");
+		break;
 	case VObjId: print("ObjId");
 		for(i = 0; i<v.u.objidval->len; i++)
 			print(" %d", v.u.objidval->data[i]);
 		break;
-	case VString: print("String \"%s\"",v.u.stringval); break;
 	case VSeq: print("Seq\n");
 		for(el = v.u.seqval; el!=nil; el = el->tl)
 			edump(el->hd);
