@@ -741,6 +741,7 @@ newproc(void)
 	return p;
 }
 
+extern int isnixac(int core);
 /*
  * wire this proc to a machine
  */
@@ -762,14 +763,21 @@ procwired(Proc *p, int a)
 		}
 		a = 0;
 		for(i=0; i<conf.nmach; i++)
-			if(nwired[i] < nwired[a])
+			if(!isnixac(i) && (nwired[i] < nwired[a]))
 				a = i;
 	} else {
 		/* use the virtual machine requested */
 		a = a % conf.nmach;
+		if(isnixac(a)){
+			DBG("Failed to wire proc %ld to core %d\n", p->pid, a);
+			error("Can't wire process to a NIX AC");
+			return;
+		}
 	}
 	p->affinity = a;
 	p->wired = 1;
+
+	DBG("Wiring proc %ld to core %d\n", p->pid, a);
 }
 
 void

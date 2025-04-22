@@ -19,6 +19,15 @@ Lock nixaclock;	/* NIX AC lock; held while assigning procs to cores */
 extern void actrapret(void);
 extern void acsysret(void);
 
+int
+isnixac(int core) {
+	Mach *mp;
+	mp = machp[core];
+	if(mp == nil || mp->online == 0 || mp->proc != nil)
+		return 0;
+	return mp->nixtype == NIXAC;
+}
+
 Mach*
 getac(Proc *p, int core)
 {
