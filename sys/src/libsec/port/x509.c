@@ -143,16 +143,17 @@ static void	edump(Elem);
 
 enum {
 	Domlen = 256,
+	Maxdepth = 32,
 };
 
-static int ber_decode(uchar** pp, uchar* pend, Elem* pelem);
+static int ber_decode(uchar** pp, uchar* pend, Elem* pelem, int depth);
 static int tag_decode(uchar** pp, uchar* pend, Tag* ptag, int* pisconstr);
 static int length_decode(uchar** pp, uchar* pend, int* plength);
-static int value_decode(uchar** pp, uchar* pend, int length, int kind, int isconstr, Value* pval);
+static int value_decode(uchar** pp, uchar* pend, int length, int kind, int isconstr, Value* pval, int depth);
 static int int_decode(uchar** pp, uchar* pend, int count, int unsgned, int* pint);
 static int uint7_decode(uchar** pp, uchar* pend, int* pint);
-static int octet_decode(uchar** pp, uchar* pend, int length, int isconstr, Bytes** pbytes);
-static int seq_decode(uchar** pp, uchar* pend, int length, int isconstr, Elist** pelist);
+static int octet_decode(uchar** pp, uchar* pend, int length, int isconstr, Bytes** pbytes, int depth);
+static int seq_decode(uchar** pp, uchar* pend, int length, int isconstr, Elist** pelist, int depth);
 static int enc(uchar** pp, Elem e, int lenonly);
 static int val_enc(uchar** pp, Elem e, int *pconstr, int lenonly);
 static void uint7_enc(uchar** pp, int num, int lenonly);
@@ -197,7 +198,7 @@ decode(uchar* a, int alen, Elem* pelem)
 	uchar* p = a;
 	int err;
 
-	err = ber_decode(&p, &a[alen], pelem);
+	err = ber_decode(&p, &a[alen], pelem, 0);
 	if(err == ASN_OK && p != &a[alen])
 		err = ASN_EVALLEN;
 	return err;
@@ -218,7 +219,7 @@ decode(uchar* a, int alen, Elem* pelem)
 
 /* Decode an ASN1 'Elem' (tag, length, value) */
 static int
-ber_decode(uchar** pp, uchar* pend, Elem* pelem)
+ber_decode(uchar** pp, uchar* pend, Elem* pelem, int depth)
 {
 	int err;
 	int isconstr;
@@ -226,15 +227,17 @@ ber_decode(uchar** pp, uchar* pend, Elem* pelem)
 	Tag tag;
 	Value val;
 
+	if(depth > Maxdepth)
+		return ASN_ETOOBIG;
 	memset(pelem, 0, sizeof(*pelem));
 	err = tag_decode(pp, pend, &tag, &isconstr);
 	if(err == ASN_OK) {
 		err = length_decode(pp, pend, &length);
 		if(err == ASN_OK) {
 			if(tag.class == Universal)
-				err = value_decode(pp, pend, length, tag.num, isconstr, &val);
+				err = value_decode(pp, pend, length, tag.num, isconstr, &val, depth);
 			else
-				err = value_decode(pp, pend, length, OCTET_STRING, 0, &val);
+				err = value_decode(pp, pend, length, OCTET_STRING, 0, &val, depth);
 			if(err == ASN_OK) {
 				pelem->tag = tag;
 				pelem->val = val;
@@ -300,7 +303,7 @@ length_decode(uchar** pp, uchar* pend, int* plength)
 
 /* Decode a value field  */
 static int
-value_decode(uchar** pp, uchar* pend, int length, int kind, int isconstr, Value* pval)
+value_decode(uchar** pp, uchar* pend, int length, int kind, int isconstr, Value* pval, int depth)
 {
 	int err;
 	Bytes* va;
@@ -396,7 +399,7 @@ value_decode(uchar** pp, uchar* pend, int length, int kind, int isconstr, Value*
 
 	case OCTET_STRING:
 	case ObjectDescriptor:
-		err = octet_decode(&p, pend, length, isconstr, &va);
+		err = octet_decode(&p, pend, length, isconstr, &va, depth+1);
 		if(err == ASN_OK) {
 			pval->tag = VOctets;
 			pval->u.octetsval = va;
@@ -468,7 +471,7 @@ value_decode(uchar** pp, uchar* pend, int length, int kind, int isconstr, Value*
 		break;
 
 	case SEQUENCE:
-		err = seq_decode(&p, pend, length, isconstr, &vl);
+		err = seq_decode(&p, pend, length, isconstr, &vl, depth+1);
 		if(err == ASN_OK) {
 			pval->tag = VSeq ;
 			pval->u.seqval = vl;
@@ -476,7 +479,7 @@ value_decode(uchar** pp, uchar* pend, int length, int kind, int isconstr, Value*
 		break;
 
 	case SETOF:
-		err = seq_decode(&p, pend, length, isconstr, &vl);
+		err = seq_decode(&p, pend, length, isconstr, &vl, depth+1);
 		if(err == ASN_OK) {
 			pval->tag = VSet;
 			pval->u.setval = vl;
@@ -496,7 +499,7 @@ value_decode(uchar** pp, uchar* pend, int length, int kind, int isconstr, Value*
 	case GeneralString:
 	case UniversalString:
 	case BMPString:
-		err = octet_decode(&p, pend, length, isconstr, &va);
+		err = octet_decode(&p, pend, length, isconstr, &va, depth+1);
 		if(err == ASN_OK) {
 			uchar *s;
 			char *d;
@@ -649,7 +652,7 @@ uint7_decode(uchar** pp, uchar* pend, int* pint)
  * and otherwise that specified length fits within (*pp..pend)
  */
 static int
-octet_decode(uchar** pp, uchar* pend, int length, int isconstr, Bytes** pbytes)
+octet_decode(uchar** pp, uchar* pend, int length, int isconstr, Bytes** pbytes, int depth)
 {
 	int err;
 	uchar* p;
@@ -676,7 +679,7 @@ octet_decode(uchar** pp, uchar* pend, int length, int isconstr, Bytes** pbytes)
 				break;
 			}
 			pold = p;
-			err = ber_decode(&p, pend, &elem);
+			err = ber_decode(&p, pend, &elem, depth);
 			if(err != ASN_OK)
 				break;
 			switch(elem.val.tag) {
@@ -715,7 +718,7 @@ cloop_done:
  * and otherwise that specified length fits within (*p..pend)
  */
 static int
-seq_decode(uchar** pp, uchar* pend, int length, int isconstr, Elist** pelist)
+seq_decode(uchar** pp, uchar* pend, int length, int isconstr, Elist** pelist, int depth)
 {
 	int err;
 	uchar* p;
@@ -742,7 +745,7 @@ seq_decode(uchar** pp, uchar* pend, int length, int isconstr, Elist** pelist)
 				break;
 			}
 			pold = p;
-			err = ber_decode(&p, pend, &elem);
+			err = ber_decode(&p, pend, &elem, depth+1);
 			if(err != ASN_OK)
 				break;
 			if(elem.val.tag == VEOC) {
@@ -2120,7 +2123,7 @@ digest_certinfo(uchar *cert, int ncert, DigestAlg *da, uchar *digest)
 	   p+length < p)
 		return -1;
 	info = p;
-	if(ber_decode(&p, pend, &elem) != ASN_OK)
+	if(ber_decode(&p, pend, &elem, 0) != ASN_OK)
 		return -1;
 	freevalfields(&elem.val);
 	if(elem.tag.num != SEQUENCE)
