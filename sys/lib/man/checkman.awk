@@ -68,6 +68,8 @@ BEGIN {
 	Omittedlib["main"] = 1
 	Omittedlib["oseek"] = 1
 	Omittedlib["sysr1"] = 1
+
+	Omittedfile["libsunrpc.a"] = 1
 }
 
 FNR==1	{
@@ -172,6 +174,7 @@ $0 ~ /^\.[A-Z].*\([1-9]\)/ {
 }
 
 END {
+	cputype = ENVIRON["cputype"]
 	print "Checking Cross-Referenced Pages"
 	for (i in Refs) {
 		if (!(i in Pages)){
@@ -185,7 +188,7 @@ END {
 	getindex("/sys/man/4")
 	getindex("/sys/man/7")
 	getindex("/sys/man/8")
-	getbinlist("/386/bin")
+	getbinlist("/"cputype"/bin")
 	getbinlist("/rc/bin")
 	for (i in List) {
 		if (!(i in Index) && !(i in Omitted))
@@ -201,32 +204,10 @@ END {
 	print ""
 	print "Checking libraries"
 	getindex("/sys/man/2")
-	getnmlist("/386/lib/lib9p.a")
-	getnmlist("/386/lib/libauth.a")
-	getnmlist("/386/lib/libauthsrv.a")
-	getnmlist("/386/lib/libbin.a")
-	getnmlist("/386/lib/libbio.a")
-	getnmlist("/386/lib/libc.a")
-	getnmlist("/386/lib/libcontrol.a")
-	getnmlist("/386/lib/libdisk.a")
-	getnmlist("/386/lib/libdraw.a")
-	getnmlist("/386/lib/libflate.a")
-	getnmlist("/386/lib/libframe.a")
-	getnmlist("/386/lib/libgeometry.a")
-	getnmlist("/386/lib/libhtml.a")
-	getnmlist("/386/lib/libhttpd.a")
-	getnmlist("/386/lib/libip.a")
-	getnmlist("/386/lib/libmach.a")
-	getnmlist("/386/lib/libmemdraw.a")
-	getnmlist("/386/lib/libmemlayer.a")
-	getnmlist("/386/lib/libmp.a")
-	getnmlist("/386/lib/libndb.a")
-	getnmlist("/386/lib/libplumb.a")
-	getnmlist("/386/lib/libregexp.a")
-	getnmlist("/386/lib/libsec.a")
-	getnmlist("/386/lib/libstdio.a")
-	getnmlist("/386/lib/libString.a")
-	getnmlist("/386/lib/libthread.a")
+	while ("ls -p /"cputype"/lib/lib*.a" | getline l) {
+		if (!(l in Omittedfile))
+			getnmlist("/"cputype"/lib/"l)
+	}
 	for (i in List) {
 		if (!(i in Index) && !(i in Omittedlib))
 			print "Need", i, "(in " List[i] ")"
