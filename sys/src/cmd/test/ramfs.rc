@@ -11,7 +11,7 @@ Rwalk
 '
 
 fn assert{
-	aux/9pcon -ac '../6.ramfs -i' >/dev/null || exit $status
+	aux/9pcon -ac '../$O.ramfs -i' >/dev/null || exit $status
 }
 
 
