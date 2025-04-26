@@ -84,8 +84,8 @@ t 1 -x /dev/null
 t 0 -x /bin/rc
 #t 0 -c /dev/null
 #t 0 -b /dev/fd0a -o -b /dev/rfd0a -o true
-t 0 -f /adm/users
-t 0 -s /adm/users
+t 0 -f /lib/ndb/common
+t 0 -s /lib/ndb/common
 
 t 1 ! '(' 700 -le 1000 -a -n 1 -a 20 '=' 20 ')'
 t 0 100 -eq 100
