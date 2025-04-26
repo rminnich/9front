@@ -1,6 +1,6 @@
 .TH RUNECOMP 2
 .SH NAME
-runecomp, runedecomp, fullrunenorm, runegbreak, runewbreak, utfcomp, utfdecomp, fullutfnorm, utfgbreak, utfwbreak \- multi-rune graphemes
+norminit, normpull, runecomp, runedecomp, runegbreak, runewbreak, utfcomp, utfdecomp, utfgbreak, utfwbreak \- multi-rune graphemes
 .SH SYNOPSIS
 .ta \w'\fLchar*xx'u
 .B #include <u.h>
