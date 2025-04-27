@@ -179,10 +179,12 @@ mmualloc(void)
 			n = 256;
 			p = malloc(n * sizeof(MMU));
 			if(p == nil)
-				panic("mmualloc: out of memory for MMU");
+				return nil;
 			p->page = mallocalign(n * PTSZ, BY2PG, 0, 0);
-			if(p->page == nil)
-				panic("mmualloc: out of memory for MMU pages");
+			if(p->page == nil){
+				free(p);
+				return nil;
+			}
 			for(i=1; i<n; i++){
 				p[i].page = p[i-1].page + (1<<PTSHIFT);
 				p[i-1].next = &p[i];
@@ -210,8 +212,8 @@ mmucreate(uintptr *table, uintptr va, int level, int index)
 	if(va < VMAP){
 		assert(up != nil);
 		assert((va < USTKTOP) || (va >= KMAP && va < KMAP+KMAPSIZE));
-
-		p = mmualloc();
+		if((p = mmualloc()) == nil)
+			return nil;
 		p->index = index;
 		p->level = level;
 		if(va < USTKTOP){
@@ -246,7 +248,7 @@ mmucreate(uintptr *table, uintptr va, int level, int index)
 }
 
 uintptr*
-mmuwalk(uintptr* table, uintptr va, int level, int create)
+mmuwalk(uintptr *table, uintptr va, int level, int create)
 {
 	uintptr pte;
 	int i, x;
@@ -256,7 +258,7 @@ mmuwalk(uintptr* table, uintptr va, int level, int create)
 		pte = table[x];
 		if(pte & PTEVALID){
 			if(pte & PTESIZE)
-				return 0;
+				return nil;
 			pte = PPN(pte);
 			if(pte >= (uintptr)-KZERO)
 				table = (void*)(pte + VMAP);
@@ -264,12 +266,30 @@ mmuwalk(uintptr* table, uintptr va, int level, int create)
 				table = (void*)(pte + KZERO);
 		} else {
 			if(!create)
-				return 0;
+				return nil;
 			table = mmucreate(table, va, i, x);
+			if(table == nil)
+				return nil;
 		}
 		x = PTLX(va, i);
 	}
 	return &table[x];
+}
+
+static uintptr*
+getpte(uintptr va)
+{
+	uintptr *pte;
+
+	if((pte = mmuwalk(m->pml4, va, 0, 1)) == nil){
+		flushmmu();
+		while((pte = mmuwalk(m->pml4, va, 0, 1)) == nil){
+			int x = spllo();
+			resrcwait("out of MMU pages");
+			splx(x);
+		}
+	}
+	return pte;
 }
 
 static int
@@ -500,9 +520,7 @@ putmmu(uintptr va, uintptr pa, Page *)
 	int x;
 
 	x = splhi();
-	pte = mmuwalk(m->pml4, va, 0, 1);
-	if(pte == 0)
-		panic("putmmu: bug: va=%#p pa=%#p", va, pa);
+	pte = getpte(va);
 	old = *pte;
 	*pte = pa | PTEACCESSED|PTEDIRTY|PTEUSER;
 	splx(x);
@@ -522,7 +540,7 @@ checkmmu(uintptr va, uintptr pa)
 
 	x = splhi();
 	pte = mmuwalk(m->pml4, va, 0, 0);
-	if(pte == 0 || ((old = *pte) & PTEVALID) == 0 || PPN(old) == pa){
+	if(pte == nil || ((old = *pte) & PTEVALID) == 0 || PPN(old) == pa){
 		splx(x);
 		return;
 	}
@@ -550,8 +568,8 @@ kmap(Page *page)
 
 	x = splhi();
 	va = KMAP + (((uintptr)up->kmapindex++ << PGSHIFT) & (KMAPSIZE-1));
-	pte = mmuwalk(m->pml4, va, 0, 1);
-	if(pte == 0 || (*pte & PTEVALID) != 0)
+	pte = getpte(va);
+	if((*pte & PTEVALID) != 0)
 		panic("kmap: pa=%#p va=%#p", pa, va);
 	*pte = pa | PTEACCESSED|PTEDIRTY|PTEWRITE|PTENOEXEC|PTEVALID;
 	splx(x);
@@ -571,7 +589,7 @@ kunmap(KMap *k)
 
 	x = splhi();
 	pte = mmuwalk(m->pml4, va, 0, 0);
-	if(pte == 0 || (*pte & PTEVALID) == 0)
+	if(pte == nil || (*pte & PTEVALID) == 0)
 		panic("kunmap: va=%#p", va);
 	*pte = 0;
 	splx(x);
@@ -632,9 +650,9 @@ patwc(void *a, int n)
 	for(va = (uintptr)a; n > 0; n -= z, va += z){
 		l = 0;
 		pte = mmuwalk(m->pml4, va, l, 0);
-		if(pte == 0)
+		if(pte == nil)
 			pte = mmuwalk(m->pml4, va, ++l, 0);
-		if(pte == 0 || (*pte & PTEVALID) == 0)
+		if(pte == nil || (*pte & PTEVALID) == 0)
 			panic("patwc: va=%#p", va);
 		z = PGLSZ(l);
 		z -= va & (z-1);
