@@ -321,6 +321,15 @@ To create a new user:
 % mount /srv/gefs /adm adm
 % sam /adm/users
 
+# add the users, and reload the user table.
+# if there is an error in the user file,
+# an error will be printed on the console.
+% con -C /srv/gefs.cmd
+gefs# users
+refreshed users
+gefs# ^\
+>>> q
+
 # create the user home directory
 # and tmp snapshot
 % mount /srv/gefs /n/u %main
