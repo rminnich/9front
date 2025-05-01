@@ -1,5 +1,6 @@
 #include <u.h>
 #include <libc.h>
+#include <tos.h>
 #include <fcall.h>
 #include <thread.h>
 #include <9p.h>
@@ -8,10 +9,11 @@
 
 enum {
 	NBUF = 8*1024,
-	NDELAY = 1764,	/* 25.0ms */
+	NDELAY = 1764,	/* 40.0ms */
 	NQUANTA = 64,	/* ~1.45ms */
 	NCHAN = 2,
 	ABUF = NBUF*NCHAN*2,
+	Nsec = 1000000000ULL,
 };
 
 #define MIN(a,b) ((a)<(b)?(a):(b))
@@ -50,6 +52,7 @@ int	vol64k[2] = {65536, 65536};
 Pcmdesc	fmt;
 Lock	fmtlock;
 int	fmtchanged;
+int	isnulldev;
 int delay;
 
 int
@@ -129,7 +132,8 @@ reopendevs(char *name)
 			/* hack: restrict to known audio device names */
 			if((strncmp(name, "/dev/audio", 10) != 0 || strchr(name+10, '/') != nil)
 			&& (strncmp(name, "#u/audio", 8) != 0 || strchr(name+8, '/') != nil)
-			&& (strncmp(name, "#A/audio", 8) != 0 || strchr(name+8, '/') != nil)){
+			&& (strncmp(name, "#A/audio", 8) != 0 || strchr(name+8, '/') != nil)
+			&& (strncmp(name, "/dev/null", 9) != 0 || strchr(name+9, '/') != nil)){
 				werrstr("name doesnt look like an audio device");
 				return -1;
 			}
@@ -169,6 +173,7 @@ found:
 	qlock(&devlock);
 	free(devaudio);
 	devaudio = name;
+	isnulldev = 0;
 	audiofd = dup(afd, audiofd);
 	qunlock(&devlock);
 
@@ -187,6 +192,9 @@ found:
 		free(name);
 		if(volfd >= 0)
 			fprint(volfd, "delay %d\n", delay);
+		updfmt();
+	}else if(strncmp(p, "null", 4) == 0){
+		isnulldev = 1;
 		updfmt();
 	}
 	return 0;
@@ -256,11 +264,40 @@ eqfmt(Pcmdesc *a, Pcmdesc *b)
 		&& a->fmt == b->fmt;
 }
 
+uvlong
+nanosec(void)
+{
+	static uvlong fasthz, xstart;
+	uvlong x;
+
+	if(fasthz == ~0ULL)
+		return nsec() - xstart;
+
+	if(fasthz == 0){
+		if(_tos->cyclefreq){
+			fasthz = _tos->cyclefreq;
+			cycles(&xstart);
+		} else {
+			fasthz = ~0ULL;
+			xstart = nsec();
+		}
+		return 0;
+	}
+	cycles(&x);
+	x -= xstart;
+
+	uvlong q = x / fasthz;
+	uvlong r = x % fasthz;
+
+	return q*Nsec + r*Nsec/fasthz;
+}
+
 void
 audioproc(void *)
 {
 	static uchar buf[ABUF];
 	int sweep, i, j, n, m, v, rate;
+	uvlong t0, dt, ns;
 	ulong rp;
 	Stream *s;
 	uchar *p, *bufconv;
@@ -272,7 +309,9 @@ audioproc(void *)
 	sweep = 0;
 	rate = fmt.rate;
 	delay = NDELAY;
+	ns = Nsec/pcmdescdef.rate;
 
+	t0 = nanosec();
 	for(;;){
 		m = NBUF;
 		for(s = streams; s < streams+nelem(streams); s++){
@@ -323,8 +362,14 @@ audioproc(void *)
 			continue;
 		}
 
-		if(m > NQUANTA)
-			m = NQUANTA;
+		if(isnulldev){
+			dt = nanosec() - t0;
+			m = (dt+ns-1)/ns;
+			m = MAX(NQUANTA, m);
+			m = MIN(m, NBUF);
+			t0 += dt;
+		}else
+			m = MIN(m, NQUANTA);
 
 		p = buf;
 		rp = mixrp;
@@ -343,6 +388,11 @@ audioproc(void *)
 		lock(&rplock);
 		mixrp = rp;
 		unlock(&rplock);
+
+		if(isnulldev){
+			sleep(5);
+			continue;
+		}
 
 		lock(&fmtlock);
 		if(fmtchanged){
@@ -484,8 +534,10 @@ fswrite(Req *r)
 				x[0] += volume[0];
 				x[1] += volume[1];
 			}
-			volume[0] = MIN(MAX(0, x[0]), 100);
-			volume[1] = MIN(MAX(0, x[1]), 100);
+			volume[0] = MAX(0, x[0]);
+			volume[0] = MIN(volume[0], 100);
+			volume[1] = MAX(0, x[1]);
+			volume[1] = MIN(volume[1], 100);
 			/* ≈60dB dynamic range; [0-100] → [0-65536] */
 			vol64k[0] = 65.536 * (exp(volume[0] * 0.0690876) - 1.0);
 			vol64k[1] = 65.536 * (exp(volume[1] * 0.0690876) - 1.0);
