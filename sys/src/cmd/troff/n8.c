@@ -1,7 +1,6 @@
 #include "tdef.h"
 #include "fns.h"
 #include "ext.h"
-#include <assert.h>
 
 #define	HY_BIT	0200	/* stuff in here only works for 7-bit ascii */
 			/* this value is used (as a literal) in suftab.c */
@@ -306,12 +305,11 @@ Tchar *chkvow(Tchar *w)
 
 void digram(void)
 {
-	Tchar *w;
-	int val;
-	Tchar *nhyend, *maxw;
-	int maxval;
+	int maxval, val;
+	Tchar *nhyend, *maxw, *w;
 	extern char bxh[26][13], bxxh[26][13], xxh[26][13], xhx[26][13], hxx[26][13];
 
+	maxw = 0;
 again:
 	if (!(w = chkvow(hyend + 1)))
 		return;
@@ -465,7 +463,8 @@ static int texit(Tchar *start, Tchar *end)	/* hyphenate as in tex, return # foun
 static int readpats(void)
 {
 	FILE *fp;
-	char buf[200], buf1[200];
+	char *p, *wd;
+	char buf[200];
 
 	if ((fp = fopen(TEXHYPHENS, "r")) == NULL
 	 && (fp = fopen(DWBalthyphens, "r")) == NULL) {
@@ -474,8 +473,14 @@ static int readpats(void)
 	}
 
 	while (fgets(buf, sizeof buf, fp) != NULL) {
-		sscanf(buf, "%s", buf1);
-		if (strcmp(buf1, "\\patterns{") == 0)
+		p = buf;
+		if (isspace(*p))
+			p++;
+		wd = p;
+		if (*p != '\0' && !isspace(*p))
+			p++;
+		*p = '\0';
+		if (strcmp(wd, "\\patterns{") == 0)
 			break;
 	}
 	while (fgets(buf, sizeof buf, fp) != NULL) {

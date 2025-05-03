@@ -73,11 +73,7 @@
  *
  */
 
-#include <stdio.h>
-#include <ctype.h>
-#include <string.h>
-#include <stdlib.h>
-
+#include "tdef.h"
 #include "dwbinit.h"
 
 #ifndef DWBCONFIG
@@ -89,7 +85,7 @@
 #endif
 
 #ifndef DWBHOME
-#define DWBHOME		""
+#define DWBHOME		"/"
 #endif
 
 #ifndef DWBDEBUG
@@ -277,37 +273,3 @@ void DWBinit(char *prog, dwbinit *paths)
     DWBdebug(opaths, 1);
 
 }   /* End of DWBinit */
-
-/*****************************************************************************/
-
-void DWBprefix( char *prog, char *path, int length)
-{
-
-    char	*home;
-    char	buf[512];
-    int		len = strlen(DWBPREFIX);
-
-/*
- *
- * Replace a leading DWBPREFIX string in path by the current DWBhome().
- * Used by programs that pretend to handle .so requests. Assumes path
- * is an array with room for length characters. The implementation is
- * not great, but should be good enough for now. Also probably should
- * have DWBhome() only do the lookup once, and remember the value if
- * called again.
- * 
- */
-
-    if ( strncmp(path, DWBPREFIX, len) == 0 ) {
-	if ( (home = DWBhome()) != NULL ) {
-	    if ( strlen(home) + strlen(path+len) < length ) {
-		sprintf(buf, "%s%s", home, path+len);
-		strcpy(path, buf);		/* assuming there's room in path */
-	    } else fprintf(stderr, "%s: no room to grow path %s", prog, path);
-	}   /* End if */
-    }	/* End if */
-
-}   /* End of DWBprefix */
-
-/*****************************************************************************/
-

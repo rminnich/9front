@@ -7,13 +7,8 @@
 #include "tdef.h"
 #include "fns.h"
 #include "ext.h"
-#include <setjmp.h>
 
-#ifdef STRICT
-	/* not in ANSI or POSIX */
-FILE*	popen(char*, char*);
-#endif
-
+FILE*	popen(char*, char*);	/* not in ANSI or POSIX */
 
 extern	jmp_buf	sjbuf;
 int	toolate;
@@ -92,7 +87,7 @@ void pchar1(Tchar i)
 		dip->op = offset;
 		return;
 	}
-	if (!tflg && !print) {
+	if (!tflg && !doprint) {
 		if (j == '\n')
 			dip->alss = dip->blss = 0;
 		return;
@@ -100,7 +95,7 @@ void pchar1(Tchar i)
 	if (j == FILLER && !xon)
 		return;
 	if (tflg) {	/* transparent mode, undiverted */
-		if (print)			/* assumes that it's ok to print */
+		if (doprint)		/* assumes that it's ok to print */
 			/* OUT "%c", j PUT;	/* i.e., is ascii */
 			outascii(i);
 		return;
@@ -137,7 +132,6 @@ void outweird(int k)	/* like ptchname() but ascii */
 
 void outascii(Tchar i)	/* print i in best-guess ascii */
 {
-	char *p;
 	int j = cbits(i);
 
 /* is this ever called with NROFF set? probably doesn't work at all. */
