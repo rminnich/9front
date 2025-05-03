@@ -589,18 +589,16 @@ fsdestroyfid(Fid *fid)
 			}
 			free(d);
 		}
-		if(TYPE(fid->qid.path) == Qctl){
-			if(c->prom){
-				c->prom = 0;
-				if(--nprom == 0 && eppromiscuous != nil)
-					(*eppromiscuous)(epctl, 0);
-			}
-		}
 		if(TYPE(fid->qid.path) == Qdata && c->bridge)
 			memset(mactab, 0, sizeof(mactab));
 		if(--c->used == 0){
 			if(c->bypass)
 				bypass = nil;
+			if(c->prom){
+				c->prom = 0;
+				if(--nprom == 0 && eppromiscuous != nil)
+					(*eppromiscuous)(epctl, 0);
+			}
 		}
 		qunlock(c);
 	}
