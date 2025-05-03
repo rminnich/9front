@@ -2,14 +2,11 @@
 #include "fns.h"
 #include "ext.h"
 
-#ifdef STRICT
-	/* not in ANSI or POSIX */
-#define	isascii(a) ((a) >= 0 && (a) <= 127)
-#endif
+#undef  isascii
+#define	isascii(a) ((a) >= 0 && (a) <= 127)	/* not in ANSI or POSIX */
 
 #define GETCH gettch
 Tchar	gettch(void);
-
 
 /*
  * troff7.c
@@ -354,6 +351,7 @@ void newline(int a)
 	int i, j, nlss;
 	int opn;
 
+	nlss = 0;
 	if (a)
 		goto nl1;
 	if (dip != d) {
@@ -413,17 +411,17 @@ nl1:
 	}
 nlpn:
 	if (numtabp[PN].val == pfrom) {
-		print++;
+		doprint++;
 		pfrom = -1;
 	} else if (opn == pto) {
-		print = 0;
+		doprint = 0;
 		opn = -1;
 		chkpn();
 		goto nlpn;
 	}
-	if (print)
+	if (doprint)
 		ptpage(numtabp[PN].val);	/* supposedly in a clean state so can pause */
-	if (stop && print) {
+	if (stop && doprint) {
 		dpn++;
 		if (dpn >= stop) {
 			dpn = 0;
@@ -472,7 +470,7 @@ void chkpn(void)
 	}
 	if (pto < 0) {
 		pto = -pto;
-		print++;
+		doprint++;
 		pfrom = 0;
 	}
 }
@@ -656,7 +654,7 @@ getword(int x)
 	int noword;
 	int obits;
 
-	noword = 0;
+	j = noword = 0;
 	if (x)
 		if (pendw) {
 			*pendw = 0;

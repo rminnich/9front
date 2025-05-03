@@ -10,9 +10,6 @@
 #include "ext.h"
 #include "dwbinit.h"
 
-#include <setjmp.h>
-#include <time.h>
-
 char	*Version	= "March 11, 1994";
 
 #ifndef DWBVERSION
@@ -52,9 +49,8 @@ main(int argc, char *argv[])
 	char *p;
 	int j;
 	Tchar i;
-	char buf[100];
+	char buf[200];
 
-	buf[0] = '\0';		/* make sure it's empty (silly 3b2) */
 	progname = argv[0];
 	if ((p = strrchr(progname, '/')) == NULL)
 		p = progname;
@@ -72,6 +68,7 @@ main(int argc, char *argv[])
 	nrehash();
 	numtabp[NL].val = -1;
 
+	buf[0] = '\0';
 	while (--argc > 0 && (++argv)[0][0] == '-')
 		switch (argv[0][1]) {
 
@@ -193,7 +190,8 @@ loop:
 		while (cbits(i) != '\n')
 			pchar(i = getch());
 		tflg = 0;
-		copyf--;
+		copyf--;			/* pointless */
+		USED(copyf);
 		goto loop;
 	}
 	if (j == cc || j == c2) {
@@ -221,7 +219,7 @@ Lt:
 void init2(void)
 {
 	int i;
-	char buf[100];
+	char buf[256];
 
 	for (i = NTRTAB; --i; )
 		trtab[i] = i;
@@ -239,9 +237,9 @@ void init2(void)
 	numtabp[NL].val = -1;
 	nfo = 0;
 	copyf = raw = 0;
-	sprintf(buf, ".ds .T %s\n", devname);
+	snprintf(buf, sizeof buf, ".ds .T %s\n", devname);
 	cpushback(buf);
-	sprintf(buf, ".ds .P %s\n", DWBhomedir);
+	snprintf(buf, sizeof buf, ".ds .P %s\n", DWBhomedir);
 	cpushback(buf);
 	numtabp[CD].val = -1;	/* compensation */
 	nx = mflg;
@@ -273,16 +271,16 @@ void init2(void)
 
 void cvtime(void)
 {
-	long tt;
-	struct tm *ltime;
+	Tm ltime;
+	Tzone *tz;
 
-	time(&tt);
-	ltime = localtime(&tt);
-	numtabp[YR].val = ltime->tm_year % 100;
+	tz = tzload("local");
+	tmnow(&ltime, tz);
+	numtabp[YR].val = ltime.year % 100;
 	numtabp[YR].fmt = 2;
-	numtabp[MO].val = ltime->tm_mon + 1;	/* troff uses 1..12 */
-	numtabp[DY].val = ltime->tm_mday;
-	numtabp[DW].val = ltime->tm_wday + 1;	/* troff uses 1..7 */
+	numtabp[MO].val = ltime.mon + 1;	/* troff uses 1..12 */
+	numtabp[DY].val = ltime.mday;
+	numtabp[DW].val = ltime.wday + 1;	/* troff uses 1..7 */
 }
 
 
@@ -670,7 +668,6 @@ char	ifilt[32] = { 0, 001, 002, 003, 0, 005, 006, 007, 010, 011, 012 };
 
 Tchar getch0(void)
 {
-	int j;
 	Tchar i;
 
 again:
@@ -713,7 +710,6 @@ g0:
 			if (ip)
 				goto again;
 		}
-g2:
 		if (i >= 040)			/* zapped: && i < 0177 */
 			goto g4;
 		i = ifilt[i];
@@ -741,14 +737,16 @@ Tchar get1ch(FILE *fp)	/* get one "character" from input, figure out what alphab
 	char buf[100], *p;
 	int i, n, c;
 
+	n = c = 0;
 	for (i = 0, p = buf; i < MB_CUR_MAX; i++) {
 		if ((c = getc(fp)) == EOF)
 			return c;
 		*p++ = c;
+		*p = '\0';
 		if ((n = mbtowc(&wc, buf, p-buf)) >= 0)
 			break;
 	}
-	if (n == 1)	/* real ascii, presumably */
+	if (n == 1)		/* real ascii, presumably */
 		return wc;
 	if (n == 0)
 		return p[-1];	/* illegal, but what else to do? */
@@ -911,7 +909,6 @@ void casenx(void)
 getname(void)
 {
 	int j, k;
-	Tchar i;
 
 	lgf++;
 	for (k = 0; k < NS - 1; k++) {
@@ -929,10 +926,10 @@ getname(void)
 void caseso(void)
 {
 	FILE *fp;
-	char *p, *q;
 
 	lgf++;
 	nextf[0] = 0;
+	fp = NULL;
 	if (skip() || !getname() || (fp = fopen(nextf, "r")) == NULL || ifi >= NSO) {
 		ERROR "can't open file %s", nextf WARN;
 		done(02);
@@ -1105,7 +1102,7 @@ void getpn(char *a)
 	if (neg)
 		*pnp++ = -9999;
 	*pnp = -INT_MAX;
-	print = 0;
+	doprint = 0;
 	pnp = pnlist;
 	if (*pnp != -INT_MAX)
 		chkpn();
