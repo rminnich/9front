@@ -1744,7 +1744,7 @@ procpagecount(Proc *p)
 }
 
 void
-killbig(char *why)
+killbig(void)
 {
 	int i;
 	Segment *s;
@@ -1766,31 +1766,52 @@ killbig(char *why)
 	}
 	if(kp == nil)
 		return;
-	print("%lud: %s killed: %s\n", kp->pid, kp->text, why);
-	qlock(&kp->seglock);
-	for(i = 0; (p = proctab(i)) != nil; i++) {
-		if(p->state <= New || p->kp)
-			continue;
-		if(p != kp && p->seg[BSEG] != nil && p->seg[BSEG] == kp->seg[BSEG])
-			p->procctl = Proc_exitbig;
+	qlock(&kp->debug);
+	if(kp->pid == 0 || kp->procctl == Proc_exitbig){
+		qunlock(&kp->debug);
+		return;
 	}
-	kp->procctl = Proc_exitbig;
-	for(i = 0; i < NSEG; i++) {
-		s = kp->seg[i];
-		if(s == nil)
-			continue;
-		switch(s->type & SG_TYPE){
-		case SG_SHARED:
-		case SG_PHYSICAL:
-		case SG_FIXED:
-		case SG_STICKY:
-			continue;
+	qlock(&kp->seglock);
+	s = kp->seg[BSEG];
+	if(s != nil && s->ref > 1){
+		for(i = 0; (p = proctab(i)) != nil; i++) {
+			if(p == kp || p->state <= New || p->kp)
+				continue;
+			qlock(&p->debug);
+			if(p->pid != 0 && matchseg(p, s))
+				killproc(p, Proc_exitbig);
+			qunlock(&p->debug);
 		}
-		qlock(s);
-		mfreeseg(s, s->base, (s->top - s->base)/BY2PG);
-		qunlock(s);
 	}
 	qunlock(&kp->seglock);
+	killproc(kp, Proc_exitbig);
+	qunlock(&kp->debug);
+}
+
+/*
+ *  called with p->debug locked.
+ */
+void
+killproc(Proc *p, int ctl)
+{
+	static Note killnote = {
+		"sys: killed",
+		NExit,
+		1,
+	};
+
+	if(p->state <= New || p->pid == 0 || p->kp)
+		return;
+	if(p->state == Broken){
+		unbreak(p);
+		return;
+	}
+	if(ctl != 0)
+		p->procctl = ctl;
+	incref(&killnote);
+	pushnote(p, &killnote);
+	if(p->state == Stopped)
+		ready(p);
 }
 
 /*

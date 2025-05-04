@@ -176,7 +176,7 @@ pager(void*)
 		if(swapimage.c == nil || swapalloc.free == 0){
 		Killbig:
 			if(!freebroken())
-				killbig("out of memory");
+				killbig();
 			sched();
 			continue;
 		}

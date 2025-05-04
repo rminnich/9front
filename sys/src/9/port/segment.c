@@ -497,7 +497,13 @@ mcountseg(Segment *s)
 }
 
 /*
- *  called with s locked
+ *  Must be called with s locked.
+ *  This relies on s->ref > 1 indicating that
+ *  the segment is shared with other processes
+ *  different from the calling one.
+ *  The calling process (up) is responsible for
+ *  flushing its own TBL by calling flushmmu()
+ *  afterwards.
  */
 void
 mfreeseg(Segment *s, uintptr start, ulong pages)

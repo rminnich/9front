@@ -1445,12 +1445,6 @@ parsetime(vlong *rt, char *s)
 static void
 procctlreq(Proc *p, char *va, int n)
 {
-	static Note killnote = {
-		"sys: killed",
-		NExit,
-		1,
-	};
-
 	Segment *s;
 	uintptr npc;
 	int pri;
@@ -1479,21 +1473,7 @@ procctlreq(Proc *p, char *va, int n)
 		p->hang = 1;
 		break;
 	case CMkill:
-		switch(p->state) {
-		case Broken:
-			unbreak(p);
-			break;
-		case Stopped:
-			p->procctl = Proc_exitme;
-			incref(&killnote);
-			pushnote(p, &killnote);
-			ready(p);
-			break;
-		default:
-			p->procctl = Proc_exitme;
-			incref(&killnote);
-			pushnote(p, &killnote);
-		}
+		killproc(p, Proc_exitme);
 		break;
 	case CMnohang:
 		p->hang = 0;
