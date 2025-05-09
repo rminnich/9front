@@ -835,7 +835,8 @@ parseauthor(char **str, int *nstr, char **name, vlong *time)
 	if(n >= sizeof(buf))
 		sysfatal("overlong author line");
 	memset(m, 0, sizeof(m));
-	snprint(buf, n + 1, *str);
+	memcpy(buf, *str, n);
+	buf[n] = 0;
 	*str = p;
 	*nstr -= n;
 	
@@ -862,7 +863,7 @@ parseauthor(char **str, int *nstr, char **name, vlong *time)
 static void
 parsecommit(Object *o)
 {
-	char *p, *t, buf[128];
+	char *p, *t, buf[512];
 	int np;
 
 	p = o->data;
