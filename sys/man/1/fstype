@@ -50,5 +50,9 @@ long file name cache worm file system (see
 .B hjfs
 hj file system (see
 .IR hjfs (4))
+.TP 
+.B gefs 
+experimental file system (see 
+.IR gefs (4)) 
 .SH SOURCE
 .B /rc/bin/fstype
