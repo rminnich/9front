@@ -2,7 +2,6 @@
 #include <libc.h>
 #include "git.h"
 
-typedef struct Seen	Seen;
 typedef struct Idxed	Idxed;
 typedef struct Idxent	Idxent;
 
@@ -17,118 +16,92 @@ enum {
 	Tflg	= 1 << 4,
 };
 
-struct Seen {
-	Dir*	cache;
-	int	n;
-	int	max;
-};
-
 struct Idxed {
 	char**	cache;
 	int	n;
 	int	max;
 };
 
-Seen	seentab[NCACHE];
 Idxed	idxtab[NCACHE];
 char	repopath[1024];
 char	wdirpath[1024];
 char	relapath[1024];
-int	nslash;
 char	*rstr	= "R ";
 char	*mstr	= "M ";
 char	*astr	= "A ";
 char	*ustr	= "U ";
 char	*tstr 	= "T ";
 char	*bdir = ".git/fs/HEAD/tree";
-int	useidx	= 1;
+int	nslash;
 int	nrel;
 int	quiet;
 int	dirty;
+int	isindexed = 1;
+int	intree;
 int	printflg;
 
 Idxent	*idx;
 int	idxsz;
 int	nidx;
-int	staleidx;
+
+int	cleanidx = 0;	/* skip tree check for checkedin() */
+int	staleidx = 0;
+
 Idxent	*wdir;
 int	wdirsz;
 int	nwdir;
 
-int	loadwdir(char*);
-
-int
-seen(Dir *dir)
-{
-	Seen *c;
-	Dir *dp;
-	int i;
-
-	c = &seentab[dir->qid.path&(NCACHE-1)];
-	dp = c->cache;
-	for(i=0; i<c->n; i++, dp++)
-		if(dir->qid.path == dp->qid.path
-		&& dir->qid.type == dp->qid.type
-		&& dir->dev == dp->dev)
-			return 1;
-	if(c->n == c->max){
-		if (c->max == 0)
-			c->max = 8;
-		else
-			c->max += c->max/2;
-		c->cache = realloc(c->cache, c->max*sizeof(Dir));
-		if(c->cache == nil)
-			sysfatal("realloc: %r");
-	}
-	c->cache[c->n++] = *dir;
-	return 0;
-}
+void	loadwdir(char*);
 
 int
 checkedin(Idxent *e, int change)
 {
-	Dir *d;
 	char *p;
 	int r;
 
-	p = smprint("%s/%s", bdir, e->path);
-	d = dirstat(p);
-	r = d != nil && !(d->mode&DMDIR);
-	if(r && change){
+	/* clean index, no need to check tree */
+	if(cleanidx)
+		return e >= &idx[0] && e < &idx[nidx] && e->state != 'R';
+
+	if((p = smprint("%s/%s", bdir, e->path)) == nil)
+		sysfatal("smprint: %r");
+
+	r = access(p, AEXIST);
+	if(r == 0 && change){
 		if(e->state != 'R')
 			e->state = 'T';
 		staleidx = 1;
 	}
 	free(p);
-	free(d);
-	return r;
+
+	return r == 0;
 }
 
 int
-indexed(char *path, int isdir)
+pathcmp(char *s, char *path, int dir, int len)
 {
-	int lo, hi, mid, n, r;
-	char *s;
+	int r;
 
-	if(!useidx){
-		s = smprint("%s/%s", bdir, path);
-		r = access(s, AEXIST);
-		free(s);
-		return r == 0;
-	}
-	s = path;
-	if(isdir)
-		s = smprint("%s/", path);
+	r = strncmp(s, path, len);
+	if(r != 0)
+		return r;
+	if(path[len] == 0 || dir && path[len] == '/')
+		return 0;
+	return -1;
+}
+
+int
+indexed(char *path, int dir)
+{
+	int lo, hi, mid, r, len;
+
 	r = -1;
 	lo = 0;
 	hi = nidx-1;
-	n = strlen(s);
+	len = strlen(path);
 	while(lo <= hi){
 		mid = (hi + lo) / 2;
-		if(isdir)
-			r = strncmp(s, idx[mid].path, n);
-		else
-			r = strcmp(s, idx[mid].path);
+		r = pathcmp(path, idx[mid].path, dir, len);
 		if(r < 0)
 			hi = mid-1;
 		else if(r > 0)
@@ -136,8 +109,6 @@ indexed(char *path, int isdir)
 		else
 			break;
 	}
-	if(isdir)
-		free(s);
 	return r == 0;
 }
 
@@ -151,8 +122,8 @@ idxcmp(void *pa, void *pb)
 	b = (Idxent*)pb;
 	if((c = strcmp(a->path, b->path)) != 0)
 		return c;
-	/* order is unique */
-	return a-> order < b->order ? -1 : 1;
+	/* maintain load order if name is identical */
+	return a->order < b->order ? -1 : 1;
 }
 
 /*
@@ -225,33 +196,24 @@ mismatch:
 	return same;
 }
 
-int
+void
 loadent(char *dir, Dir *d, int fullpath)
 {
 	char *path;
-	int ret, isdir;
 	Idxent *e;
 
 	if(fullpath)
-		path = strdup(dir);
-	else
-		path = smprint("%s/%s", dir, d->name);
-	if(path == nil)
+		path = estrdup(dir);
+	else if((path = smprint("%s/%s", dir, d->name)) == nil)
 		sysfatal("smprint: %r");
 
 	cleanname(path);
-	if(strncmp(path, ".git/", 5) == 0){
+	if(!intree && (printflg & Uflg) == 0 && !indexed(path, d->qid.type & QTDIR)){
 		free(path);
-		return 0;
+		return;
 	}
-	ret = 0;
-	isdir = d->qid.type & QTDIR;
-	if((printflg & Uflg) == 0 && !indexed(path, isdir)){
-		free(path);
-		return 0;
-	}
-	if(isdir){
-		ret = loadwdir(path);
+	if(d->qid.type & QTDIR){
+		loadwdir(path);
 		free(path);
 	}else{
 		if(nwdir == wdirsz){
@@ -260,48 +222,44 @@ loadent(char *dir, Dir *d, int fullpath)
 		}
 		e = wdir + nwdir;
 		e->path = path;
-		e->qid = d->qid;
+		e->qid = !intree? d->qid : (Qid){-1,-1,-1};
 		e->mode = d->mode;
 		e->order = nwdir;
 		e->state = 'T';
 		nwdir++;
 	}
-	return ret;
 }
 
-int
+void
 loadwdir(char *path)
 {
-	int fd, ret, i, n;
+	int fd, i, n;
 	Dir *d, *e;
 
 	d = nil;
 	e = nil;
-	ret = -1;
 	cleanname(path);
-	if(strncmp(path, ".git/", 5) == 0)
-		return 0;
+	if(!intree
+	&& strncmp(path, ".git", 4) == 0
+	&& (path[4] == '/' || path[4] == 0))
+		return;
+
 	if((fd = open(path, OREAD)) < 0)
 		goto error;
 	if((e = dirfstat(fd)) == nil)
-		sysfatal("fstat: %r");
+		fprint(2, "fstat: %r");
 	if(e->qid.type & QTDIR)
 		while((n = dirread(fd, &d)) > 0){
 			for(i = 0; i < n; i++)
-				if(loadent(path, &d[i], 0) == -1)
-					goto error;
+				loadent(path, &d[i], 0);
 			free(d);
 		}
-	else{
-		if(loadent(path, e, 1) == -1)
-			goto error;
-	}
-	ret = 0;
+	else
+		loadent(path, e, 1);
 error:
 	free(e);
 	if(fd != -1)
 		close(fd);
-	return ret;
 }
 
 int
@@ -332,9 +290,10 @@ reporel(char *s)
 	int n;
 
 	if(*s == '/')
-		s = strdup(s);
-	else
-		s = smprint("%s/%s", wdirpath, s);
+		s = estrdup(s);
+	else if((s = smprint("%s/%s", wdirpath, s)) == nil)
+		sysfatal("smprint: %r");
+
 	p = cleanname(s);
 	n = strlen(repopath);
 	if(strncmp(s, repopath, n) != 0)
@@ -398,7 +357,7 @@ findslashes(char *path)
 void
 usage(void)
 {
-	fprint(2, "usage: %s [-qbc] [-f filt] [-b base] [-r rel] [paths...]\n", argv0);
+	fprint(2, "usage: %s [-qbcI] [-f filt] [-b base] [paths...]\n", argv0);
 	exits("usage");
 }
 
@@ -408,7 +367,7 @@ main(int argc, char **argv)
 	char *p, *e, *ln, *base, **argrel, *parts[4], xbuf[8];
 	int i, j, c, line, wfd, *argn;
 	Biobuf *f, *o, *w;
-	Hash h, hd;
+	Hash h;
 	Dir rn;
 
 	gitinit();
@@ -444,14 +403,14 @@ main(int argc, char **argv)
 		}
 		break;
 	case 'b':
-		useidx = 0;
 		base = EARGF(usage());
 		if(resolveref(&h, base) == -1)
 			sysfatal("no such ref '%s'", base);
-		/* optimization: we're a lot faster when using the index */
-		if(resolveref(&hd, "HEAD") == 0 && hasheq(&h, &hd))
-			useidx = 1;
 		bdir = smprint(".git/fs/object/%H/tree", h);
+		break;
+	case 'I':
+		/* invalidate index */
+		staleidx = 1;
 		break;
 	case 'r':
 		findslashes(EARGF(usage()));
@@ -463,31 +422,30 @@ main(int argc, char **argv)
 	if(printflg == 0)
 		printflg = Tflg | Aflg | Mflg | Rflg;
 
-	nidx = 0;
-	idxsz = 32;
-	idx = emalloc(idxsz*sizeof(Idxent));
-	nwdir = 0;
-	wdirsz = 32;
-	wdir = emalloc(wdirsz*sizeof(Idxent));
 	argrel = emalloc(argc*sizeof(char*));
 	argn = emalloc(argc*sizeof(int));
 	for(i = 0; i < argc; i++){
 		argrel[i] = reporel(argv[i]);
 		argn[i] = strlen(argrel[i]);
 	}
-	if((o = Bfdopen(1, OWRITE)) == nil)
-		sysfatal("open out: %r");
-	if(useidx){
+
+	if(isindexed && !staleidx){
 		if((f = Bopen(".git/INDEX9", OREAD)) == nil){
-			fprint(2, "open index: %r\n");
 			if(access(".git/index9", AEXIST) == 0){
 				fprint(2, "index format conversion needed:\n");
 				fprint(2, "\tcd %s && git/fs\n", repopath);
 				fprint(2, "\t@{cd .git/index9/removed >[2]/dev/null && walk -f | sed 's/^/R NOQID 0 /'} >> .git/INDEX9\n");
 				fprint(2, "\t@{cd .git/fs/HEAD/tree && walk -f | sed 's/^/T NOQID 0 /'} >> .git/INDEX9\n");
+				exits("noindex");
 			}
-			exits("noindex");
+			staleidx = 1;
+			goto Stale;
 		}
+
+		nidx = 0;
+		idxsz = 32;
+		idx = emalloc(idxsz*sizeof(Idxent));
+
 		line = 0;
 		while((ln = Brdstr(f, '\n', 1)) != nil){
 			line++;
@@ -496,40 +454,62 @@ main(int argc, char **argv)
 				continue;
 			if(getfields(ln, parts, nelem(parts), 0, " \t") != nelem(parts))
 				sysfatal(".git/INDEX9:%d: corrupt index", line);
+			cleanname(parts[3]);
 			if(nidx == idxsz){
 				idxsz += idxsz/2;
-				idx = realloc(idx, idxsz*sizeof(Idxent));
-			}
-			cleanname(parts[3]);
-			if(strncmp(parts[3], ".git/", 5) == 0){
-				staleidx = 1;
-				free(ln);
-				continue;
+				idx = erealloc(idx, idxsz*sizeof(Idxent));
 			}
 			idx[nidx].state = *parts[0];
 			idx[nidx].qid = parseqid(parts[1]);
 			idx[nidx].mode = strtol(parts[2], nil, 8);
-			idx[nidx].path = strdup(parts[3]);
+			idx[nidx].path = estrdup(parts[3]);
 			idx[nidx].order = nidx;
 			nidx++;
 			free(ln);
 		}
-		qsort(idx, nidx, sizeof(Idxent), idxcmp);
-	}
+		Bterm(f);
+	} else {
+Stale:
+		nwdir = 0;
+		wdirsz = 32;
+		wdir = emalloc(wdirsz*sizeof(Idxent));
 
-	for(i = 0; i < argc; i++){
-		argrel[i] = reporel(argv[i]);
-		argn[i] = strlen(argrel[i]);
+		if(chdir(bdir) == -1)
+			sysfatal("chdir: %r");
+
+		/* load whole tree into index when stale */
+		intree = 1;
+		if(staleidx || argc == 0)
+			loadwdir(".");
+		else for(i = 0; i < argc; i++)
+			loadwdir(argrel[i]);
+
+		if(chdir(repopath) == -1)
+			sysfatal("chdir: %r");
+
+		/* use as index */
+		idx = wdir;
+		nidx = nwdir;
+		idxsz = wdirsz;
+
+		cleanidx = 1;
 	}
+	qsort(idx, nidx, sizeof(Idxent), idxcmp);
+
+	nwdir = 0;
+	wdirsz = 32;
+	wdir = emalloc(wdirsz*sizeof(Idxent));
+
+	intree = 0;
 	if(argc == 0)
 		loadwdir(".");
 	else for(i = 0; i < argc; i++)
 		loadwdir(argrel[i]);
 	qsort(wdir, nwdir, sizeof(Idxent), idxcmp);
-	for(i = 0; i < argc; i++){
-		argrel[i] = reporel(argv[i]);
-		argn[i] = strlen(argrel[i]);
-	}
+
+	if((o = Bfdopen(1, OWRITE)) == nil)
+		sysfatal("open out: %r");
+
 	i = 0;
 	j = 0;
 	while(i < nidx || j < nwdir){
@@ -571,10 +551,14 @@ main(int argc, char **argv)
 		}else if(c < 0){
 			if(checkedin(&idx[i], 0))
 				show(o, Rflg, rstr, idx[i].path);
+			else{
+				idx[i].state = 'U';
+				staleidx = 1;
+			}
 			i++;
 		/* only exists on disk */
 		}else{
-			if(!useidx && checkedin(&wdir[j], 0)){
+			if(checkedin(&wdir[j], 0)){
 				if(samedata(nil, &wdir[j]))
 					show(o, Tflg, tstr, wdir[j].path);
 				else
@@ -586,7 +570,7 @@ main(int argc, char **argv)
 	}
 	Bterm(o);
 
-	if(useidx && staleidx)
+	if(isindexed && staleidx)
 	if((wfd = create(".git/INDEX9.new", OWRITE, 0644)) != -1){
 		if((w = Bfdopen(wfd, OWRITE)) == nil){
 			close(wfd);
