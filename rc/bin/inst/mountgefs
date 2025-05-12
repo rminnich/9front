@@ -51,10 +51,15 @@ case go
 	}
 	gefs -n $sname $fsflags -SAf $fs
 
+	log Creating "other" dataset
 	log Mounting $fstype file server for $fs
+	echo snap -m empty other >>/srv/$sname.cmd
+	echo set other retain '''''' >>/srv/$sname.cmd
 	while(! logprog mount -c /srv/$sname /n/newfs %main)
 		sleep 2
 	while(! logprog mount -c /srv/$sname /n/newfs.adm %adm)
+		sleep 2
+	while(! logprog mount -c /srv/$sname /n/newfs.other %other)
 		sleep 2
 	log Configuring $fstype file server for $fs
 	echo $"userfile > /n/newfs.adm/users
@@ -69,6 +74,10 @@ case go
 		logprog chgrp $usrgrp /n/newfs/$dir
 		logprog chgrp -u $usrgrp /n/newfs/$dir
 	}
+	logprog mkdir -p /n/newfs.other/usr/$user/tmp
+	logprog chmod 700 /n/newfs.other/usr/$user^('' /tmp)
+	logprog chgrp $user /n/newfs.other/usr/$user^('' /tmp)
+	logprog chgrp -u $user /n/newfs.other/usr/$user^('' /tmp)
 
 case checkready checkdone
 	if(! ~ $fstype '' && ~ $#fs 1 && test -f $fs){
