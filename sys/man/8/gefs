@@ -1,4 +1,3 @@
-	logprog chgrp -u $user /n/newfs.other/$user^('' tmp)
 .TH GEFS 8
 .SH NAME
 gefs \- file server maintenance
