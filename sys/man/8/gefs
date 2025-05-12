@@ -1,3 +1,4 @@
+	logprog chgrp -u $user /n/newfs.other/$user^('' tmp)
 .TH GEFS 8
 .SH NAME
 gefs \- file server maintenance
@@ -316,12 +317,12 @@ gefs# set retain @d
 To create a new user:
 .IP
 .EX
-# mount the adm namespace (as a user in adm group):
+# Mount the adm namespace (as a user in adm group):
 # and add the user to the user file
 % mount /srv/gefs /adm adm
 % sam /adm/users
 
-# add the users, and reload the user table.
+# From the console, reload the user table.
 # if there is an error in the user file,
 # an error will be printed on the console.
 % con -C /srv/gefs.cmd
@@ -330,12 +331,20 @@ refreshed users
 gefs# ^\
 >>> q
 
-# create the user home directory
-# and tmp snapshot
+# Mount the file system in permissive mode to allow
+# changing file ownership, then create the user dir
 % mount /srv/gefs /n/u %main
 % mkdir /n/u/usr/$newuser
 % chgrp -u $newuser /n/u/usr/$newuser
 % chgrp $newuser /n/u/usr/$newuser
+
+# Ceate a tmp dir in the unsnapshotted 'other'
+# dataset. If it's present, the default namespace
+# will use it.
+% mount /srv/gefs /n/o %other
+% mkdir -p /n/o/usr/$newuser/tmp
+% chgrp $newuser /n/o/usr/$newuser^('' /tmp)
+% chmod 700 $newuser/n/o/usr/$newuser^('' /tmp)
 .EE
 .SH BUGS
 .PP
