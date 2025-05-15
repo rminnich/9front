@@ -327,7 +327,7 @@ To create a new user:
 % con -C /srv/gefs.cmd
 gefs# users
 refreshed users
-gefs# ^\
+gefs# ^\\
 >>> q
 
 # Mount the file system in permissive mode to allow
