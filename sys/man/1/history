@@ -96,3 +96,7 @@ history /usr/ches/tmp
 .SH SEE ALSO
 .IR fs (4) ,
 .IR yesterday (1)
+.SH HISTORY
+The
+.B -D
+flag used to print non-unified diffs.

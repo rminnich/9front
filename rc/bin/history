@@ -40,8 +40,12 @@ fn ysearch {
 		print}' |
 	while(new=`$nl{read}){
 		prfile $new
-		if (~ $flagD 1 && ~ $#old 1)
-			diff `{diffflags} $new $old
+		if (~ $flagD 1 && ~ $#old 1){
+			diff -u `{diffflags} $new $old
+			echo '--'
+			echo '⑨'
+			echo
+		}
 		old=$new
 	}
 }
