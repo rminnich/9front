@@ -15,4 +15,4 @@ $O.test: test.$O
 	$LD $LDFLAGS -o $target $prereq
 
 test:V: $O.out $O.test
-	$O.test $O.out
+	./$O.test $O.out

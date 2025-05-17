@@ -156,7 +156,7 @@ $GEN:	$UCD
 		eval `{grep '^[A-Z]' /$cputype/mkfile}
 		$CC $CFLAGS -o mkrunetype.$O mkrunetype.c
 		$LD $LDFLAGS -o $O.mkrunetype mkrunetype.$O
-		$O.mkrunetype
+		./$O.mkrunetype
 	}
 
 $EXTRA:		$GEN

@@ -1,6 +1,6 @@
 #!/bin/rc
 
-. util.rc
+. ./util.rc
 
 rm -fr scratch
 mkdir -p scratch/repo

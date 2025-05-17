@@ -1,6 +1,6 @@
 #!/bin/rc
 
-. util.rc
+. ./util.rc
 
 wrkdir=`{pwd}
 rm -fr scratch
