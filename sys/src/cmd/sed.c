@@ -11,7 +11,7 @@ enum {
 	MAXCMDS		= 512,		/* max sed commands */
 	ADDSIZE		= 10000,	/* size of add & read buffer */
 	MAXADDS		= 20,		/* max pending adds and reads */
-	LBSIZE		= 8192,		/* input line size */
+	LBSIZE		= 32768,	/* input line size */
 	LABSIZE		= 50,		/* max number of labels */
 	MAXSUB		= 10,		/* max number of sub reg exp */
 	MAXFILES	= 120,		/* max output files */
