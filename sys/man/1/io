@@ -16,6 +16,8 @@ io \- access PC I/O registers
 .I address
 [
 .I value
+] [
+.I mask
 ]
 .SH DESCRIPTION
 .I io
@@ -25,15 +27,28 @@ The operation to be performed is selected with
 or
 .B -w
 for reading or writing, respectively.
+When a
+.I mask
+is provided for a read,
+it is applied with a logical
+.B AND
+operation to the value.
+When a
+.I mask
+is provided for a write,
+the set bits in the mask select the bits from
+.I value
+to be modified.
 The default operation size is a byte.
 C style notation for integers (e.g.
 .B 0x42
 or
 .BR 023 )
 is accepted for the
-.I address
-and
+.IR address ,
 .I value
+and
+.I mask
 parameters.
 .PP
 .TP

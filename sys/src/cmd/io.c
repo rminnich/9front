@@ -7,7 +7,7 @@ char *file;
 void
 usage(void)
 {
-	fprint(2, "%s: [-f file] [ -WLME ] [-r | -w] address [ value ]\n", argv0);
+	fprint(2, "%s: [-f file] [ -WLME ] [-r | -w] address [ value ] [ mask ]\n", argv0);
 	exits("usage");
 }
 
@@ -15,10 +15,10 @@ void
 main(int argc, char** argv) {
 	int fd, size, op;
 	ulong port;
-	uvlong data;
+	uvlong data, value, mask;
 	uchar datab[8];
 	
-	data = 0;
+	data = value = mask = 0;
 	size = 1;
 	op = -1;
 	ARGBEGIN {
@@ -33,14 +33,39 @@ main(int argc, char** argv) {
 	} ARGEND;
 	if(op == -1) usage();
 	if(argc < 1) usage();
-	if(op == OWRITE && argc < 2) usage();
-	port = strtoul(argv[0], 0, 0);
-	if(op == OWRITE) data = strtoull(argv[1], 0, 0);
-	
+	port = strtoul(*argv, 0, 0);
+	argv++, argc--;
+	if(op == OWRITE) {
+		if(argc < 1) usage();
+		value = strtoull(*argv, 0, 0);
+		argv++, argc--;
+	}
+	if(argc > 0){
+		mask = ~strtoull(*argv, 0, 0);
+		argv++, argc--;
+		if(op == OWRITE){
+			op = ORDWR;
+			value &= ~mask;
+		}
+	}  
+	if(op == OREAD)
+		mask = ~mask;
+	USED(argv);
+	if(argc != 0) usage();
 	fd = open(file==nil?datac[size]:file, op);
 	if(fd == -1) sysfatal("open: %r");
-	
-	if(op == OWRITE) {
+	if(op == OREAD || op == ORDWR) {
+		memset(datab, 0, 8);
+		if(pread(fd, datab, size, port) != size)
+			sysfatal("pread: %r");
+		data = datab[0] | (datab[1] << 8) | (datab[2] << 16) |
+			(datab[3] << 24) | ((uvlong)datab[4] << 32) |
+			((uvlong)datab[5] << 40) | ((uvlong)datab[6] << 48) | 
+			((uvlong)datab[7] << 56);
+		data &= mask;
+	}
+	if(op == OWRITE || op == ORDWR) {
+		data |= value;
 		datab[0] = data;
 		datab[1] = data >> 8;
 		datab[2] = data >> 16;
@@ -52,15 +77,6 @@ main(int argc, char** argv) {
 		if(pwrite(fd, datab, size, port) != size)
 			sysfatal("pwrite: %r");
 	}
-	else {
-		memset(datab, 0, 8);
-		if(pread(fd, datab, size, port) != size)
-			sysfatal("pread: %r");
-		data = datab[0] | (datab[1] << 8) | (datab[2] << 16) |
-			(datab[3] << 24) | ((vlong)datab[4] << 32) |
-			((vlong)datab[5] << 40) | ((vlong)datab[6] << 48) | 
-			((vlong)datab[7] << 56);
-		print("0x%ullx\n", data);
-	}
+	print("0x%ullx\n", data);
 	exits(nil);
 }
