@@ -39,10 +39,10 @@ blake2s_256(uchar *p, ulong len, uchar *digest, DigestState *s)
 		s->state[6] = 0x1F83D9ABUL;
 		s->state[7] = 0x5BE0CD19UL;
 
-		s->state[0] ^= 0x01010000 ^ B2s_256dlen;
+		s->state[0] ^= 0x01010000 ^ BLAKE2S_256dlen;
 		s->seeded = 1;
 	}
-	return blake2s_512(p, len, digest, s, B2s_256dlen);
+	return blake2s_512(p, len, digest, s, BLAKE2S_256dlen);
 }
 
 enum{
@@ -131,5 +131,5 @@ Last:
 DigestState*
 hmac_blake2s_256(uchar *p, ulong len, uchar *key, ulong klen, uchar *digest, DigestState *s)
 {
-	return hmac_x(p, len, key, klen, digest, s, blake2s_256, B2s_256dlen);
+	return hmac_x(p, len, key, klen, digest, s, blake2s_256, BLAKE2S_256dlen);
 }

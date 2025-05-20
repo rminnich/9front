@@ -39,7 +39,7 @@ void
 main(int, char**)
 {
 	DigestState *s;
-	uchar digest[B2s_256dlen];
+	uchar digest[BLAKE2S_256dlen];
 	char buf[256];
 	int i;
 	char *p;
@@ -47,19 +47,19 @@ main(int, char**)
 	fmtinstall('H', encodefmt);
 	for(i = 0; i < nelem(tests); i++){
 		blake2s_256((uchar*)tests[i].in, strlen(tests[i].in), digest, nil);
-		snprint(buf, sizeof buf, "%.*lH", B2s_256dlen, digest);
+		snprint(buf, sizeof buf, "%.*lH", BLAKE2S_256dlen, digest);
 		if(strcmp(buf, tests[i].exp) != 0){
 			fprint(2, "Test: %s\nExp: %s\nGot: %s\n\n", tests[i].in, tests[i].exp, buf);
 			exits("fail");
 		}
 
 		s = nil;
-		memset(digest, 0, B2s_256dlen);
+		memset(digest, 0, BLAKE2S_256dlen);
 		for(p = tests[i].in; *p != 0; p++)
 			s = blake2s_256((uchar*)p, 1, nil, s);
 
 		blake2s_256(nil, 0, digest, s);
-		snprint(buf, sizeof buf, "%.*lH", B2s_256dlen, digest);
+		snprint(buf, sizeof buf, "%.*lH", BLAKE2S_256dlen, digest);
 		if(strcmp(buf, tests[i].exp) != 0){
 			fprint(2, "Trickle Test: %s\nExp: %s\nGot: %s\n\n", tests[i].in, tests[i].exp, buf);
 			exits("fail");

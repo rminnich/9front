@@ -113,7 +113,7 @@ The constants
 .IR SHA2_256dlen ,
 .IR SHA2_384dlen ,
 .IR SHA2_512dlen ,
-.I B2s_256dlen
+.I BLAKE2S_256dlen
 and
 .I Poly1305dlen
 define the lengths of the digests.
