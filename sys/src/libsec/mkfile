@@ -12,6 +12,7 @@ install all:V:
 	}
 
 clean:V:
+	@{cd test && mk $MKFLAGS clean}
 	for(i in $DIRS)@{
 		echo $i
 		cd $i
@@ -33,4 +34,4 @@ everything:V:
 	rm -f */*.[$OS]
 
 test:VQ:
-	# nothing
+	cd test && mk $MKFLAGS

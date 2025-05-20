@@ -1,0 +1,8 @@
+</$objtype/mkfile
+
+TEST=\
+	blake2s\
+
+CFLAGS=$CFLAGS -I../../libmp/port
+
+</sys/src/cmd/mktest
