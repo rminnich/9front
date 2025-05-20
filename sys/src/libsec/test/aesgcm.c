@@ -226,6 +226,8 @@ Test tests[] = {
 	},
 };
 
+int chatty;
+
 int
 parsehex(char *s, uchar *h, char *l)
 {
@@ -243,13 +245,13 @@ parsehex(char *s, uchar *h, char *l)
 	if(m == nil || *e != '\0')
 		abort();
 	mptober(m, h, n);
-	if(l != nil)
+	if(l != nil && chatty)
 		print("%s = %.*H\n", l, n, h);
 	return n;
 }
 
 void
-runtest(Test *t)
+runtest(Test *t, int i)
 {
 	AESGCMstate s;
 	uchar key[1024], plain[1024], aad[1024], iv[1024], tag[16], tmp[16];
@@ -262,11 +264,18 @@ runtest(Test *t)
 
 	setupAESGCMstate(&s, key, nkey, iv, niv);
 	aesgcm_encrypt(plain, nplain, aad, naad, tag, &s);
-	print("C = %.*H\n", nplain, plain);
-	print("T = %.*H\n", 16, tag);
+	if(chatty){
+		print("C = %.*H\n", nplain, plain);
+		print("T = %.*H\n", 16, tag);
+	}
 
 	parsehex(t->T, tmp, nil);
-	assert(memcmp(tmp, tag, 16) == 0);
+	if(memcmp(tmp, tag, 16) != 0){
+		print("Test case %d fail:\n", i);
+		print("\tExp = %.16H\n", tmp);
+		print("\tRes = %.16H\n", tag);
+		exits("fail");
+	}
 }
 
 void
@@ -304,11 +313,12 @@ main(int argc, char **argv)
 	case 'p':
 		perftest();
 		exits(nil);
+	case 'd':
+		chatty++;
+		break;
 	} ARGEND;
 
-	for(i=0; i<nelem(tests); i++){
-		print("Test Case %d\n", i+1);
-		runtest(&tests[i]);
-		print("\n");
-	}
+	for(i=0; i<nelem(tests); i++)
+		runtest(&tests[i], i);
+	exits(nil);
 }

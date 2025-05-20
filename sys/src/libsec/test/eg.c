@@ -30,5 +30,6 @@ main(void)
 	egdecrypt(sk, in, out);
 
 	if(mpcmp(m, out) != 0)
-		print("decrypt failed to recover message\n");
+		sysfatal("decrypt failed to recover message");
+	exits(nil);
 }

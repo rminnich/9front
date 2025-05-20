@@ -7,7 +7,6 @@ main(void)
 {
 	mpint *z = mpnew(0);
 	mpint *p = mpnew(0);
-	mpint *q = mpnew(0);
 	mpint *nine = mpnew(0);
 
 	fmtinstall('B', mpfmt);
@@ -17,19 +16,22 @@ main(void)
 	uitomp(9, nine);
 
 	if(probably_prime(z, 5) == 1)
-		fprint(2, "tricked primality test\n");
+		sysfatal("0x2492491 passed probably_prime");
 	if(probably_prime(nine, 5) == 1)
-		fprint(2, "9 passed primality test!\n");
-	if(probably_prime(p, 25) == 1)
-		fprint(2, "ok\n");
+		sysfatal("9 passed probably_prime");
+	if(probably_prime(p, 25) != 1)
+		sysfatal("25 failed probably_prime");
 
+/*
+	mpint *q = mpnew(0);
 	DSAprimes(q, p, nil);
 	print("q=%B\np=%B\n", q, p);
+*/
 
 	exits(0);
 }
 
-// example output, checked with Maple:
+// example DSAprimes output, checked with Maple:
 // seed EB7B6E35F7CD37B511D96C67D6688CC4DD440E1E
 // q=E0F0EF284E10796C5A2A511E94748BA03C795C13
 //  = 1284186945063585093695748280224501481698995297299

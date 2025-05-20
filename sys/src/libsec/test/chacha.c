@@ -103,115 +103,111 @@ main(int argc, char **argv)
 	Chachastate s;
 	uchar tag[16];
 	int n;
+	int chatty;
 
 	ARGBEGIN{
 	}ARGEND
-	print("rfc7539:\n");
-	print("key:\n");
-	printblock(rfckey, sizeof(rfckey));
+
 	n = strlen(rfctext);
 	setupChachastate(&s, rfckey, sizeof(rfckey), rfcnonce, sizeof(rfcnonce), 0);
 	chacha_setblock(&s, rfccount);
-	print("rfc in:\n");
-	printblock((uchar*)rfctext, n);
 	chacha_encrypt2((uchar*)rfctext, rfcout, n, &s);
-	print("rfc out:\n");
-	printblock(rfcout, n);
 	if(memcmp(rfcout, rfcref, sizeof(rfcref)) != 0){
 		print("failure of vision\n");
+		print("rfc7539:\n");
+		print("key:\n");
+		printblock(rfckey, sizeof(rfckey));
+		print("rfc in:\n");
+		printblock((uchar*)rfctext, n);
+		print("rfc out:\n");
+		printblock(rfcout, n);
 		exits("wrong");
 	}
-	print("\n");
 
-
-	print("xchacha key:\n");
-	printblock(xcckey, sizeof(xcckey));
-
-	print("xchacha iv:\n");
-	printblock(xcciv, sizeof(xcciv));
 
 	setupChachastate(&s, xcckey, sizeof(xcckey), xcciv, sizeof(xcciv), 20);
 	memset(rfcout, 0, sizeof(xccref));
 	chacha_encrypt(rfcout, sizeof(xccref), &s);
-
-	print("xchacha out:\n");
-	printblock(rfcout, sizeof(xccref));
 	if(memcmp(rfcout, xccref, sizeof(xccref)) != 0){
 		print("failure of vision\n");
+		print("xchacha key:\n");
+		printblock(xcckey, sizeof(xcckey));
+		print("xchacha iv:\n");
+		printblock(xcciv, sizeof(xcciv));
+		print("xchacha out:\n");
+		printblock(rfcout, sizeof(xccref));
 		exits("wrong");
 	}
-	print("\n");
 
-
-	print("ccpoly key:\n");
-	printblock(ccpkey, sizeof(ccpkey));
-
-	print("ccpoly iv:\n");
-	printblock(ccpiv, sizeof(ccpiv));
+#define DUMP()\
+	print("ccpoly key:\n");\
+	printblock(ccpkey, sizeof(ccpkey));\
+	print("ccpoly iv:\n");\
+	printblock(ccpiv, sizeof(ccpiv));\
+	print("ccpoly cipher:\n");\
+	printblock(rfcout, sizeof(rfctext)-1);\
+	print("ccpoly tag:\n");\
+	printblock(tag, sizeof(tag));
 
 	setupChachastate(&s, ccpkey, sizeof(ccpkey), ccpiv, sizeof(ccpiv), 20);
-
 	memmove(rfcout, rfctext, sizeof(rfctext)-1);
 	ccpoly_encrypt(rfcout, sizeof(rfctext)-1, ccpaad, sizeof(ccpaad), tag, &s);
 
-	print("ccpoly cipher:\n");
-	printblock(rfcout, sizeof(rfctext)-1);
-
-	print("ccpoly tag:\n");
-	printblock(tag, sizeof(tag));
-
 	if(memcmp(tag, ccptag, sizeof(tag)) != 0){
 		print("bad ccpoly tag\n");
+		DUMP()
 		exits("wrong");
 	}
 
 	if(ccpoly_decrypt(rfcout, sizeof(rfctext)-1, ccpaad, sizeof(ccpaad), tag, &s) != 0){
 		print("ccpoly decryption failed\n");
+		DUMP()
 		exits("wrong");
 	}
 
 	if(memcmp(rfcout, rfctext, sizeof(rfctext)-1) != 0){
 		print("ccpoly bad decryption\n");
+		DUMP()
 		exits("wrong");
 	}
-	print("\n");
+#undef DUMP
 
 
-	print("ccpoly64 key:\n");
-	printblock(ccp64key, sizeof(ccp64key));
-
-	print("ccpoly64 iv:\n");
-	printblock(ccp64iv, sizeof(ccp64iv));
+#define DUMP()\
+	print("ccpoly64 key:\n");\
+	printblock(ccp64key, sizeof(ccp64key));\
+	print("ccpoly64 iv:\n");\
+	printblock(ccp64iv, sizeof(ccp64iv));\
+	print("ccpoly64 cipher:\n");\
+	printblock(rfcout, sizeof(ccp64inp));\
+	print("ccpoly64 tag:\n");\
+	printblock(tag, sizeof(tag));
 
 	setupChachastate(&s, ccp64key, sizeof(ccp64key), ccp64iv, sizeof(ccp64iv), 20);
-
 	memmove(rfcout, ccp64inp, sizeof(ccp64inp));
 	ccpoly_encrypt(rfcout, sizeof(ccp64inp), ccp64aad, sizeof(ccp64aad), tag, &s);
 
-	print("ccpoly64 cipher:\n");
-	printblock(rfcout, sizeof(ccp64inp));
-
-	print("ccpoly64 tag:\n");
-	printblock(tag, sizeof(tag));
-
 	if(memcmp(rfcout, ccp64out, sizeof(ccp64out)) != 0){
 		print("ccpoly64 bad ciphertext\n");
+		DUMP()
 		exits("wrong");
 	}
 	if(memcmp(tag, ccp64tag, sizeof(ccp64tag)) != 0){
 		print("ccpoly64 bad encryption tag\n");
+		DUMP()
 		exits("wrong");
 	}
 
 	if(ccpoly_decrypt(rfcout, sizeof(ccp64inp), ccp64aad, sizeof(ccp64aad), tag, &s) != 0){
 		print("ccpoly64 decryption failed\n");
+		DUMP()
 		exits("wrong");
 	}
 	if(memcmp(rfcout, ccp64inp, sizeof(ccp64inp)) != 0){
 		print("ccpoly64 bad decryption\n");
+		DUMP()
 		exits("wrong");
 	}
 
-	print("passed\n");
 	exits(nil);
 }

@@ -2,6 +2,15 @@
 
 TEST=\
 	blake2s\
+	aesgcm\
+	bf\
+	chacha\
+	eg\
+	hmac\
+	md4\
+	prime\
+	rsa\
+	sha2\
 
 CFLAGS=$CFLAGS -I../../libmp/port
 

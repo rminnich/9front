@@ -4,7 +4,7 @@
 #include <bio.h>
 
 void
-main(void)
+main(int argc, char **argv)
 {
 	int n;
 	vlong start;
@@ -13,6 +13,17 @@ main(void)
 	Biobuf b;
 	RSApriv *rsa;
 	mpint *clr, *enc, *clr2;
+	int iflag, pflag;
+
+	iflag = pflag = 0;
+	ARGBEGIN{
+	case 'i':
+		iflag++;
+		break;
+	case 'p':
+		pflag++;
+		break;
+	}ARGEND
 
 	fmtinstall('B', mpfmt);
 
@@ -30,16 +41,20 @@ main(void)
 	start = nsec();
 	for(n = 0; n < 10; n++)
 		rsadecrypt(rsa, enc, clr);
-	print("%lld\n", nsec()-start);
+	if(pflag)
+		print("%lld\n", nsec()-start);
 
 	start = nsec();
 	for(n = 0; n < 10; n++)
 		mpexp(enc, rsa->dk, rsa->pub.n, clr2);
-	print("%lld\n", nsec()-start);
+	if(pflag)
+		print("%lld\n", nsec()-start);
 
 	if(mpcmp(clr, clr2) != 0)
-		print("%B != %B\n", clr, clr2);
-	
+		sysfatal("%B != %B", clr, clr2);
+
+	if(!iflag)
+		exits(nil);
 	print("> ");
 	while(p = Brdline(&b, '\n')){
 		n = Blinelen(&b);
