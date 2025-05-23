@@ -37,6 +37,7 @@ main(int argc, char **argv)
 	USED(argc);
 
 	flags = 0;
+	files = nil;
 	link = &flags;
 	for(argv++; *argv && (**argv == '-'); argv++, link = &(*link)->next)
 	{
