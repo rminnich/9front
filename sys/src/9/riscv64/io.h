@@ -1,0 +1,3 @@
+#define BUSUNKNOWN (-1)
+#define PCIWINDOW	0
+#define	PCIWADDR(x)	(PADDR(x)+PCIWINDOW)
