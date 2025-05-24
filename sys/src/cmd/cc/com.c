@@ -81,6 +81,12 @@ tcomo(Node *n, int f)
 		diag(n, "unknown op in type complex: %O", n->op);
 		goto bad;
 
+	case OBIT:
+		if(tcom(l))
+			goto bad;
+		n->addable = l->addable;
+		break;
+
 	case ODOTDOT:
 		/*
 		 * tcom has already been called on this subtree
