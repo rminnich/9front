@@ -4,7 +4,6 @@
 #include "dat.h"
 #include "fns.h"
 #include "../port/error.h"
-#include "../port/systab.h"
 
 #include <tos.h>
 #include "ureg.h"
