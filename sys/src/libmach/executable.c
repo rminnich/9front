@@ -245,7 +245,7 @@ ExecTable exectab[] =
 		sizeof(Exec)+8,
 		nil,
 		commonllp64 },
-	{ B_MAGIC,
+	{ B_MAGIC,			/* RISCV64 j.out & boot image */
 		"riscv64 plan 9 executable",
 		"riscv64 plan 9 dlm",
 		FRISCV64,
@@ -405,6 +405,12 @@ commonboot(Fhdr *fp)
 		fp->txtaddr = fp->entry;
 		fp->name = "power64 plan 9 boot image";
 		fp->dataddr = fp->txtaddr+fp->txtsz;
+		break;
+	case FRISCV64:
+		fp->type = FRISCV64B;
+		fp->txtaddr = fp->entry;
+		fp->name = "riscv64 plan 9 boot image";
+		fp->dataddr = _round(fp->txtaddr+fp->txtsz, mach->pgsize);
 		break;
 	default:
 		return;
