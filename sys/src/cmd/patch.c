@@ -723,6 +723,8 @@ main(int argc, char **argv)
 			sysfatal("open stdin: %r");
 		if((p = parse(f, "stdin")) == nil)
 			sysfatal("parse patch: %r");
+		if(workdir != nil && chdir(workdir) == -1)
+			sysfatal("chdir %s: %r", workdir);
 		if(apply(p, "stdin") == -1){
 			fprint(2, "apply stdin: %r\n");
 			ok = 0;
