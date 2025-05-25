@@ -50,6 +50,7 @@ struct Fchg {
 
 int	strip;
 int	reverse;
+char	*workdir;
 Fchg	*changed;
 int	nchanged;
 int	dryrun;
@@ -699,6 +700,9 @@ main(int argc, char **argv)
 	int i, ok;
 
 	ARGBEGIN{
+	case 'd':
+		workdir = EARGF(usage());
+		break;
 	case 'p':
 		strip = atoi(EARGF(usage()));
 		break;
@@ -732,6 +736,8 @@ main(int argc, char **argv)
 				sysfatal("open %s: %r", argv[i]);
 			if((p = parse(f, argv[i])) == nil)
 				sysfatal("parse patch: %r");
+			if(workdir != nil && chdir(workdir) == -1)
+				sysfatal("chdir %s: %r", workdir);
 			if(apply(p, argv[i]) == -1){
 				fprint(2, "apply %s: %r\n", argv[i]);
 				ok = 0;

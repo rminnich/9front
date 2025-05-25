@@ -28,6 +28,10 @@ Successfully applied patches are not rolled back.
 .PP
 The following options are supported:
 .TP
+.BI -d \ dir
+Interpret paths in the patch file relative to 
+.IR  dir .
+.TP
 .B -R
 Reverse direction of the patch. Additions become removals,
 and the new and old file names are swapped.
