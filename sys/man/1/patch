@@ -4,7 +4,10 @@ patch \- apply patches
 .SH SYNOPSIS
 .B patch
 [
-.B -R
+.B -nR
+[
+.B -d
+.I rdir
 ]
 [
 .B -p
