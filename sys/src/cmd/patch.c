@@ -151,6 +151,8 @@ hunkheader(Hunk *h, char *s, char *oldpath, char *newpath, int lnum)
 	h->newlen = 0;
 	h->newsz = 32;
 	h->new = emalloc(h->newsz);
+	cleanname(h->oldpath);
+	cleanname(h->newpath);
 	if(strncmp(s, "@@ -", 4) != 0)
 		return -1;
 	e = s + 4;
