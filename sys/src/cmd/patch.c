@@ -17,6 +17,10 @@ struct Patch {
 struct Hunk {
 	int	lnum;
 
+	char	*orig;
+	int	origlen;
+	int	origsz;
+
 	char	*oldpath;
 	int	oldln;
 	int	oldcnt;
@@ -50,6 +54,8 @@ struct Fchg {
 
 int	strip;
 int	reverse;
+int	rejfd = -1;
+char	*rejfile;
 char	*workdir;
 Fchg	*changed;
 int	nchanged;
@@ -136,6 +142,9 @@ hunkheader(Hunk *h, char *s, char *oldpath, char *newpath, int lnum)
 	h->lnum = lnum;
 	h->oldpath = strdup(oldpath);
 	h->newpath = strdup(newpath);
+	h->origlen = 0;
+	h->origsz = 32;
+	h->orig = emalloc(h->origsz);
 	h->oldlen = 0;
 	h->oldsz = 32;
 	h->old = emalloc(h->oldsz);
@@ -179,6 +188,20 @@ hunkheader(Hunk *h, char *s, char *oldpath, char *newpath, int lnum)
 	if(h->oldln < 0 || h->newln < 0 || h->oldcnt < 0 || h->newcnt < 0)
 		sysfatal("malformed hunk %s", s);
 	return 0;
+}
+
+void
+addorig(Hunk *h, char *ln)
+{
+	int n;
+
+	n = strlen(ln);
+	while(h->origlen + n >= h->origsz){
+		h->origsz *= 2;
+		h->orig = erealloc(h->orig, h->origsz);
+	}
+	memcpy(h->orig + h->origlen, ln, n);
+	h->origlen += n;
 }
 
 void
@@ -331,6 +354,7 @@ hunk:
 			break;
 		}
 		c = ln[0];
+		addorig(&h, ln);
 		switch(ln[0]){
 		default:
 			sysfatal("%s:%d: malformed hunk: leading junk", name, lnum);
@@ -575,7 +599,7 @@ searchln(Fbuf *f, Hunk *h, int ln)
 }
 
 char*
-search(Fbuf *f, Hunk *h, char *fname)
+search(Fbuf *f, Hunk *h)
 {
 	int ln, oldln, fuzz, scanning;
 	char *p;
@@ -599,7 +623,17 @@ search(Fbuf *f, Hunk *h, char *fname)
 				return p;
 		}
 	}
-	sysfatal("%s:%d: unable to find hunk offset near %s:%d", fname, h->lnum, h->oldpath, h->oldln);
+	return nil;
+}
+
+void
+rejected(Hunk *h, char *fname)
+{
+	fprint(2, "%s:%d: skipping failed hunk %s:%d\n", fname, h->lnum, h->oldpath, h->oldln);
+	fprint(rejfd, "--- %s:%d \n", h->oldpath, h->oldln);
+	fprint(rejfd, "+++ %s:%d \n", h->newpath, h->newln);
+	fprint(rejfd, "@@ -%d,%d +%d,%d @@\n", h->oldln, h->oldcnt, h->newln, h->newcnt);
+	write(rejfd, h->orig, h->origlen);
 }
 
 char*
@@ -617,12 +651,12 @@ append(char *o, int *sz, char *s, char *e)
 int
 apply(Patch *p, char *fname)
 {
-	char *o, *s, *e, *curfile, *nextfile;
+	char *o, *s, *n, *curfile, *nextfile;
 	int i, osz;
 	Hunk *h, *prevh;
 	Fbuf f;
 
-	e = nil;
+	n = nil;
 	o = nil;
 	osz = 0;
 	curfile = nil;
@@ -639,28 +673,38 @@ apply(Patch *p, char *fname)
 		if(curfile == nil || strcmp(curfile, nextfile) != 0){
 			if(curfile != nil){
 				if(!dryrun)
-					o = append(o, &osz, e, f.buf + f.len);
+					o = append(o, &osz, n, f.buf + f.len);
 				blat(prevh->oldpath, prevh->newpath, o, osz, f.mode);
 				osz = 0;
 			}
 			if(!dryrun){
 				slurp(&f, h->oldpath);
-				e = f.buf;
+				n = f.buf;
 			}
 			curfile = nextfile;
 		}
 		if(!dryrun){
-			s = e;
-			e = search(&f, h, fname);
+			char *e;
+			s = n;
+			e = search(&f, h);
+			if(e == nil){
+				if(rejfd == -1)
+					sysfatal("%s:%d: unable to find hunk offset near %s:%d", fname, h->lnum, h->oldpath, h->oldln);
+				else{
+					rejected(h, fname);
+					goto Next;
+				}
+			}
 			o = append(o, &osz, s, e);
 			o = append(o, &osz, h->new, h->new + h->newlen);
-			e += h->oldlen;
+			n = e + h->oldlen;
 		}
+Next:
 		prevh = h;
 	}
 	if(curfile != nil){
 		if(!dryrun)
-			o = append(o, &osz, e, f.buf + f.len);
+			o = append(o, &osz, n, f.buf + f.len);
 		blat(h->oldpath, h->newpath, o, osz, f.mode);
 	}
 	free(o);
@@ -688,7 +732,7 @@ freepatch(Patch *p)
 void
 usage(void)
 {
-	fprint(2, "usage: %s [-nR] [-p nstrip] [patch...]\n", argv0);
+	fprint(2, "usage: %s [-nR] [-p nstrip] [-r rejfile] [patch...]\n", argv0);
 	exits("usage");
 }
 
@@ -702,6 +746,9 @@ main(int argc, char **argv)
 	ARGBEGIN{
 	case 'd':
 		workdir = EARGF(usage());
+		break;
+	case 'r':
+		rejfile = EARGF(usage());
 		break;
 	case 'p':
 		strip = atoi(EARGF(usage()));
@@ -718,6 +765,11 @@ main(int argc, char **argv)
 	}ARGEND;
 
 	ok = 1;
+	if(rejfile != nil){
+		rejfd = create(rejfile, OWRITE, 0644);
+		if(rejfd == -1)
+			sysfatal("open %s: %r", rejfile);
+	}
 	if(argc == 0){
 		if((f = Bfdopen(0, OREAD)) == nil)
 			sysfatal("open stdin: %r");
