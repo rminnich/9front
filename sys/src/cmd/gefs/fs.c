@@ -1914,6 +1914,8 @@ fsremove(Fmsg *m, int id, Amsg **ao)
 	}
 	if(f->dent->gone)
 		error(Ephase);
+	if((f->dent->qid.type & QTEXCL) && f->dent->ref != 1)
+		error(Elocked);
 	/*
 	 * we need a double check that the file is in the tree
 	 * here, because the walk to the fid is done in a reader
@@ -2005,8 +2007,7 @@ fsopen(Fmsg *m, int id, Amsg **ao)
 	}
 	if(f->dent->gone)
 		error(Ephase);
-	if(f->dent->qid.type & QTEXCL)
-	if(f->dent->ref != 1)
+	if((f->dent->qid.type & QTEXCL) && f->dent->ref != 1)
 		error(Elocked);
 	if(m->mode & ORCLOSE)
 		if((e = candelete(f)) != nil)
