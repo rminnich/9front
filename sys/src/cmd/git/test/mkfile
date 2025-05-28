@@ -9,7 +9,8 @@ TEST=\
 	lca\
 	merge\
 	noam\
-	range
+	range\
+	rebase
 
 </sys/src/cmd/mktest
 
