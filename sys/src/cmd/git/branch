@@ -16,7 +16,7 @@ if(~ $#* 0){
 	if(~ $#listall 0)
 		awk '$1=="branch"{print $2}' < $gitfs/ctl
 	if not
-		cd .git/refs/ && walk -f heads remotes
+		cd .git/refs/ && walk -f heads remotes | sort
 	exit
 }
 if(! ~ $#* 1)
