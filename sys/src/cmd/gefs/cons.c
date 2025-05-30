@@ -173,7 +173,9 @@ showusers(int fd, char**, int)
 	for(i = 0; i < fs->nusers; i++){
 		u = &fs->users[i];
 		fprint(fd, "%d:%s:", u->id, u->name);
-		if((v = uid2user(u->lead)) == nil)
+		if(u->lead == noneid)
+			fprint(fd, ":");
+		else if((v = uid2user(u->lead)) == nil)
 			fprint(fd, "???:");
 		else
 			fprint(fd, "%s:", v->name);

@@ -133,6 +133,7 @@ parseusers(int fd, char *udata)
 			goto Error;
 		}
 		snprint(u->name, sizeof(u->name), "%s", f);
+		u->lead = noneid;
 		u->memb = nil;
 		u->nmemb = 0;
 		i++;
@@ -162,6 +163,11 @@ parseusers(int fd, char *udata)
 			if(u == nil){
 				fprint(fd, "/adm/users:%d: leader %s does not exist\n", lnum, f);
 				err = Enouser;
+				goto Error;
+			}
+			if(u->id == noneid){
+				fprint(fd, "/adm/users:%d: group leader may not be none\n", lnum);
+				err = Esyntax;
 				goto Error;
 			}
 			users[i].lead = u->id;
