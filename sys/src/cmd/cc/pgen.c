@@ -190,8 +190,6 @@ loop:
 	case OLIST:
 	case OCOMMA:
 		gen(n->left);
-
-	rloop:
 		n = n->right;
 		goto loop;
 
@@ -253,7 +251,7 @@ loop:
 		}
 		gbranch(OGOTO);	/* prevent self reference in reg */
 		patch(p, pc);
-		goto rloop;
+		break;
 
 	case OGOTO:
 		canreach = 0;
@@ -289,24 +287,24 @@ loop:
 			cases->def = 1;
 			cases->label = pc;
 			cases->isv = 0;
-			goto rloop;
+			break;
 		}
 		complex(l);
 		if(l->type == T)
-			goto rloop;
+			break;
 		if(l->op != OCONST || !typeswitch[l->type->etype]) {
 			diag(n, "case expression must be integer constant");
-			goto rloop;
+			break;
 		}
 		if(r != Z){
 			complex(r);
 			if(r->op != OCONST || !typeswitch[r->type->etype]) {
 				diag(n, "case expression must be integer constant");
-				goto rloop;
+				break;
 			}
 			if(r->vconst < l->vconst){
 				diag(n, "case range must be increasing");
-				goto rloop;
+				break;
 			}
 			end = r->vconst;
 		} else
@@ -319,7 +317,7 @@ loop:
 			cases->label = pc;
 			cases->isv = typev[l->type->etype];
 		}
-		goto rloop;
+		break;
 
 	case OSWITCH:
 		l = n->left;

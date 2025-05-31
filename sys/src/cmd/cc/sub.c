@@ -2067,7 +2067,7 @@ loop:
 	case OCASE:
 		if(!caseok)
 			return 0;
-		goto rloop;
+		break;
 
 	case OSWITCH:
 		return deadhead(n->right, 1);
