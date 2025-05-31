@@ -77,31 +77,53 @@ checkedin(Idxent *e, int change)
 	return r == 0;
 }
 
+/*
+ * Tricky; we want to know if a file or dir is indexed,
+ * but a dir is only indexed if we have a file with dir/
+ * listed in the index.
+ *
+ * as a result, we need to add a virtual '/' at the end
+ * of the path if we're doing it, so if we have:
+ *	foo.bar/x
+ *	foo/y
+ * and we want to find out if foo is a directory we should
+ * descend into, we need to compare as though foo/ ended
+ * with a '/', or we'll bsearch down do foo.bar, not foo.
+ *
+ * this code resembles entcmp() in util.c, but differs
+ * because we're comparing whole paths.
+ */
 int
-pathcmp(char *s, char *path, int dir, int len)
+pathcmp(char *sa, char *sb, int sadir)
 {
-	int r;
+	unsigned a, b;
 
-	r = strncmp(s, path, len);
-	if(r != 0)
-		return r;
-	if(path[len] == 0 || dir && path[len] == '/')
-		return 0;
-	return -1;
+	while(1){
+		a = *sa++;
+		b = *sb++;
+		if(a != b){
+			if(a == 0 && sadir)
+				a = '/';
+			if(a == '/' && b == '/')
+				return 0;
+			return (a > b) ? 1 : -1;
+		}
+		if(a == 0)
+			return 0;
+	}
 }
 
 int
 indexed(char *path, int dir)
 {
-	int lo, hi, mid, r, len;
+	int lo, hi, mid, r;
 
 	r = -1;
 	lo = 0;
 	hi = nidx-1;
-	len = strlen(path);
 	while(lo <= hi){
 		mid = (hi + lo) / 2;
-		r = pathcmp(path, idx[mid].path, dir, len);
+		r = pathcmp(path, idx[mid].path, dir);
 		if(r < 0)
 			hi = mid-1;
 		else if(r > 0)

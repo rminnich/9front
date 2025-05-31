@@ -11,13 +11,20 @@ fn check{
 
 fn checkpatch{
 	rm -f $1.out
-	../../$O.patch $1.patch
+	../../$O.patch $*(2-) $1.patch
 	check $1.out $1.expected
+}
+
+fn checkrej {
+	rm -f $1.rout
+	checkpatch $1 -r $1.rout
+	check $1.rout $1.rexpected
 }
 
 checkpatch basic
 checkpatch header
 checkpatch create
+checkrej rej
 
 seq 12 > delete.out
 ../../$O.patch delete.patch

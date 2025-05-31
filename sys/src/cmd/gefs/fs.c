@@ -114,8 +114,16 @@ sync(void)
 		nexterror();
 	}
 	tracem("packb");
-	for(mnt = agetp(&fs->mounts); mnt != nil; mnt = mnt->next)
+
+	rlock(&fs->mountlk);
+	if(waserror()){
+		runlock(&fs->mountlk);
+		nexterror();
+	}
+	for(mnt = fs->mounts; mnt != nil; mnt = mnt->next)
 		updatesnap(&mnt->root, mnt->root, mnt->name, mnt->flag);
+	runlock(&fs->mountlk);
+	poperror();
 	/*
 	 * Now that we've updated the snaps, we can sync the
 	 * dlist; the snap tree will not change from here.
@@ -204,16 +212,18 @@ sync(void)
 static void
 snapfs(Amsg *a, Tree **tp)
 {
-	Tree *t, *s;
+	Tree *t, *s, *r;
 	Mount *mnt;
 
+	t = nil;
+	r = nil;
+	*tp = nil;
+	rlock(&fs->mountlk);
 	if(waserror()){
-		*tp = nil;
+		runlock(&fs->mountlk);
 		nexterror();
 	}
-	t = nil;
-	*tp = nil;
-	for(mnt = agetp(&fs->mounts); mnt != nil; mnt = mnt->next){
+	for(mnt = fs->mounts; mnt != nil; mnt = mnt->next){
 		if(strcmp(a->old, mnt->name) == 0){
 			updatesnap(&mnt->root, mnt->root, mnt->name, mnt->flag);
 			t = agetp(&mnt->root);
@@ -224,6 +234,7 @@ snapfs(Amsg *a, Tree **tp)
 	if(t == nil && (t = opensnap(a->old, nil)) == nil){
 		if(a->fd != -1)
 			fprint(a->fd, "snap: open '%s': does not exist\n", a->old);
+		runlock(&fs->mountlk);
 		poperror();
 		return;
 	}
@@ -231,12 +242,13 @@ snapfs(Amsg *a, Tree **tp)
 		if(mnt != nil) {
 			if(a->fd != -1)
 				fprint(a->fd, "snap: snap is mounted: '%s'\n", a->old);
+			runlock(&fs->mountlk);
 			poperror();
 			return;
 		}
 		if(t->nlbl == 1 && t->nref <= 1 && t->succ == -1){
 			ainc(&t->memref);
-			*tp = t;
+			r = t;
 		}
 		delsnap(t, t->succ, a->old);
 	}else{
@@ -244,13 +256,16 @@ snapfs(Amsg *a, Tree **tp)
 			if(a->fd != -1)
 				fprint(a->fd, "snap: already exists '%s'\n", a->new);
 			closesnap(s);
+			runlock(&fs->mountlk);
 			poperror();
 			return;
 		}
 		tagsnap(t, a->new, a->flag);
 	}
 	closesnap(t);
+	runlock(&fs->mountlk);
 	poperror();
+	*tp = r;
 	if(a->fd != -1){
 		if(a->delete)
 			fprint(a->fd, "deleted: %s\n", a->old);
@@ -415,8 +430,16 @@ upsert(Mount *mnt, Msg *m, int nm)
 {
 	if(!(mnt->flag & Lmut))
 		error(Erdonly);
-	if(mnt->root->nlbl != 1 || mnt->root->nref != 0)
+	if(mnt->root->nlbl != 1 || mnt->root->nref != 0){
+		rlock(&fs->mountlk);
+		if(waserror()){
+			runlock(&fs->mountlk);
+			nexterror();
+		}
 		updatesnap(&mnt->root, mnt->root, mnt->name, mnt->flag);
+		poperror();
+		runlock(&fs->mountlk);
+	}
 	btupsert(mnt->root, m, nm);
 }
 
@@ -679,22 +702,19 @@ getmount(char *name)
 		return fs->snapmnt;
 	}
 
-	qlock(&fs->mountlk);
-	for(mnt = agetp(&fs->mounts); mnt != nil; mnt = mnt->next){
+	wlock(&fs->mountlk);
+	for(mnt = fs->mounts; mnt != nil; mnt = mnt->next){
 		if(strcmp(name, mnt->name) == 0){
 			ainc(&mnt->ref);
 			goto Out;
 		}
 	}
-	if((mnt = mallocz(sizeof(*mnt), 1)) == nil){
-		qunlock(&fs->mountlk);
-		error(Enomem);
-	}
 	if(waserror()){
-		qunlock(&fs->mountlk);
+		wunlock(&fs->mountlk);
 		free(mnt);
 		nexterror();
 	}
+	mnt = emalloc(sizeof(*mnt), 1);
 	mnt->ref = 1;
 	snprint(mnt->name, sizeof(mnt->name), "%s", name);
 	if((t = opensnap(name, &flg)) == nil)
@@ -703,11 +723,11 @@ getmount(char *name)
 	mnt->root = t;
 	mnt->next = fs->mounts;
 	loadautos(mnt);
-	asetp(&fs->mounts, mnt);
+	fs->mounts = mnt;
 	poperror();
 
 Out:
-	qunlock(&fs->mountlk);
+	wunlock(&fs->mountlk);
 	return mnt;
 }
 
@@ -718,8 +738,8 @@ clunkmount(Mount *mnt)
 
 	if(mnt == nil)
 		return;
+	wlock(&fs->mountlk);
 	if(adec(&mnt->ref) == 0){
-		qlock(&fs->mountlk);
 		for(p = &fs->mounts; (me = *p) != nil; p = &me->next){
 			if(me == mnt)
 				break;
@@ -727,8 +747,8 @@ clunkmount(Mount *mnt)
 		assert(me != nil);
 		*p = me->next;
 		limbo(DFmnt, me);
-		qunlock(&fs->mountlk);
 	}
+	wunlock(&fs->mountlk);
 }
 
 static void
@@ -1914,6 +1934,8 @@ fsremove(Fmsg *m, int id, Amsg **ao)
 	}
 	if(f->dent->gone)
 		error(Ephase);
+	if((f->dent->qid.type & QTEXCL) && f->dent->ref != 1)
+		error(Elocked);
 	/*
 	 * we need a double check that the file is in the tree
 	 * here, because the walk to the fid is done in a reader
@@ -2005,8 +2027,7 @@ fsopen(Fmsg *m, int id, Amsg **ao)
 	}
 	if(f->dent->gone)
 		error(Ephase);
-	if(f->dent->qid.type & QTEXCL)
-	if(f->dent->ref != 1)
+	if((f->dent->qid.type & QTEXCL) && f->dent->ref != 1)
 		error(Elocked);
 	if(m->mode & ORCLOSE)
 		if((e = candelete(f)) != nil)
@@ -3031,12 +3052,14 @@ runtasks(int, void *)
 
 		tmnow(&tm, nil);
 		now = tmnorm(&tm);
-		for(mnt = agetp(&fs->mounts); mnt != nil; mnt = mnt->next){
+		rlock(&fs->mountlk);
+		for(mnt = fs->mounts; mnt != nil; mnt = mnt->next){
 			if(!(mnt->flag & Lmut))
 				continue;
 			for(i = 0; i < nelem(mnt->cron); i++)
 				cronsync(mnt->name, &mnt->cron[i], &tm, now);
 		}
+		runlock(&fs->mountlk);
 		poperror();
 	}
 }

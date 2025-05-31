@@ -310,6 +310,8 @@ reclaimblocks(vlong gen, vlong succ, vlong prev)
  *
  * If it has one successor and no label, then
  * it will be merged with that successor.
+ *
+ * Must be called with mntlock held for r
  */
 void
 delsnap(Tree *t, vlong succ, char *name)
@@ -360,7 +362,8 @@ delsnap(Tree *t, vlong succ, char *name)
 	btupsert(&fs->snap, m, nm);
 	if(deltree){
 		reclaimblocks(t->gen, succ, t->pred);
-		for(mnt = agetp(&fs->mounts); mnt != nil; mnt = mnt->next){
+		assert(!canwlock(&fs->mountlk));
+		for(mnt = fs->mounts; mnt != nil; mnt = mnt->next){
 			if(mnt->root->gen == t->succ)
 				mnt->root->pred = t->pred;
 			if(mnt->root->gen == t->pred)
