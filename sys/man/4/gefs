@@ -4,7 +4,7 @@ gefs \- file server
 .SH SYNOPSIS
 .B gefs
 [
-.B -A
+.B -ASsc
 ]
 [
 .B -r
@@ -26,12 +26,6 @@ gefs \- file server
 .B -a
 .I ann
 ] ...
-[
-.B -S
-]
-[
-.B -s
-]
 .SH DESCRIPTION
 .PP
 .I Gefs
@@ -64,6 +58,9 @@ to attach as any user.
 .BI "-a " ann
 Announce and listen on the specified network address.
 .TP
+.B -c
+Check the integrity of the file system and exit.
+.TP
 .BI "-f " file
 Use
 .I file
@@ -71,6 +68,8 @@ as the disk.
 .TP
 .B -g
 Grow the file system to fill the current partition.
+When the file system has been grown, exit.
+This must not be run on a mounted file system.
 .TP
 .BI "-m " mem
 Specify the amount of memory to use as cache.
@@ -101,7 +100,6 @@ group.
 After reaming,
 .I gefs
 will exit.
-.TP
 .B -S
 Allow permissive mounts for all users.
 Additionally, if the user file is unreadable, fall back to the default user table.
