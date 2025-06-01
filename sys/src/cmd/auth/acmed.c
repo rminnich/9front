@@ -152,7 +152,7 @@ slurp(int fd, int *n)
 	b[*n] = 0;
 	return b;
 }
-		
+
 static int
 webopen(char *url, char *dir, int ndir)
 {
@@ -175,6 +175,39 @@ Error:
 	return -1;
 }
 
+static void
+weberror(char *dir)
+{
+	char *m, *r, path[80];
+	int fd, nr;
+	JSON *j;
+	JSONEl *e;
+
+	snprint(path, sizeof(path), "%s/%s", dir, "errorbody");
+	if((fd = open(path, OREAD|OCEXEC)) == -1)
+		abort();
+	if((r = slurp(fd, &nr)) != nil){
+		m = r;
+		if(debug)
+			goto Rawdump;
+		if((j = jsonparse(r)) == nil)
+			goto Rawdump;
+		if(j->t != JSONObject)
+			goto Rawdump;
+		for(e = j->first; e != nil; e = e->next){
+			if(e->val->t == JSONString && strcmp(e->name, "detail") == 0){
+				m = e->val->s;
+				break;
+			}
+		}
+Rawdump:
+		fprint(2, "%s\n", m);
+		free(r);
+	}else
+		fprint(2, "error recovering error: %r");
+	close(fd);
+}
+		
 static char*
 get(char *url, int *n)
 {
@@ -186,8 +219,10 @@ get(char *url, int *n)
 	if((cfd = webopen(url, dir, sizeof(dir))) == -1)
 		goto Error;
 	snprint(path, sizeof(path), "%s/%s", dir, "body");
-	if((dfd = open(path, OREAD|OCEXEC)) == -1)
+	if((dfd = open(path, OREAD|OCEXEC)) == -1){
+		weberror(dir);
 		goto Error;
+	}
 	r = slurp(dfd, n);
 Error:
 	if(dfd != -1) close(dfd);
@@ -216,8 +251,10 @@ post(char *url, char *buf, int nbuf, int *nret, Hdr *h)
 		goto Error;
 	close(dfd);
 	snprint(path, sizeof(path), "%s/%s", dir, "body");
-	if((dfd = open(path, OREAD|OCEXEC)) == -1)
+	if((dfd = open(path, OREAD|OCEXEC)) == -1){
+		weberror(dir);
 		goto Error;
+	}
 	if(h != nil){
 		snprint(path, sizeof(path), "%s/%s", dir, h->name);
 		if((hfd = open(path, OREAD|OCEXEC)) == -1)
