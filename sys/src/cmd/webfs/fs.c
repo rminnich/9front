@@ -23,6 +23,7 @@ struct Client
 	int	obody;	/* body opend */
 	int	cbody;	/* body closed */
 	Buq	*qbody;
+	Buq	*qerror;
 };
 
 struct Webfid
@@ -31,7 +32,7 @@ struct Webfid
 
 	Client	*client;
 	Key	*key;	/* copy for Qheader */
-	Buq	*buq;	/* reference for Qbody, Qpost */
+	Buq	*buq;	/* reference for Qbody, Qpost, Qerror */
 };
 
 enum {
@@ -42,6 +43,7 @@ enum {
 			Qctl,
 			Qbody,
 			Qpost,
+			Qerror,
 			Qparsed,
 				Qurl,
 				Qurlschm,
@@ -63,6 +65,7 @@ static char *nametab[] = {
 			"ctl",
 			"body",
 			"postbody",
+			"errorbody",
 			"parsed",
 				"url",
 				"scheme",
@@ -107,6 +110,7 @@ newclient(void)
 	cl->url = nil;
 	cl->hdr = nil;
 	cl->qbody = nil;
+	cl->qerror = nil;
 	
 	return cl;
 }
@@ -119,8 +123,10 @@ freeclient(Client *cl)
 	if(cl == nil || decref(cl))
 		return;
 
-	buclose(cl->qbody, 0);
+	buclose(cl->qbody, nil);
+	buclose(cl->qerror, nil);
 	bufree(cl->qbody);
+	bufree(cl->qerror);
 
 	while(k = cl->hdr){
 		cl->hdr = k->next;
@@ -138,11 +144,23 @@ clienturl(Client *cl)
 {
 	static Url nullurl;
 
+	if(cl->qerror && cl->qerror->url)
+		return cl->qerror->url;
 	if(cl->qbody && cl->qbody->url)
 		return cl->qbody->url;
 	if(cl->url)
 		return cl->url;
 	return &nullurl;
+}
+
+static Key*
+clienthdrs(Client *cl)
+{
+	if(cl->qerror && cl->qerror->hdr)
+		return cl->qerror->hdr;
+	if(cl->qbody && cl->qbody->hdr)
+		return cl->qbody->hdr;
+	return nil;
 }
 
 static void*
@@ -307,13 +325,13 @@ fswalk1(Fid *fid, char *name, Qid *qid)
 					break;
 				}
 			}
-			if(i == Qheader && f->client && f->client->qbody){
+			if(i == Qheader && f->client){
 				char buf[128];
 				Key *k;
 
-				for(k = f->client->qbody->hdr; k; k = k->next){
+				for(k = clienthdrs(f->client); k; k = k->next){
 					nstrcpy(buf, k->key, sizeof(buf));
-					if(!strcmp(name, fshdrname(buf)))
+					if(strcmp(name, fshdrname(buf)) == 0)
 						break;
 				}
 				if(k != nil){
@@ -377,8 +395,13 @@ fsopen(Req *r)
 		if(cl->obody)
 			goto Inuse;
 		if(cl->cbody){
+			buclose(cl->qerror, nil);
+			bufree(cl->qerror);
+			cl->qerror = nil;
+			buclose(cl->qbody, nil);
 			bufree(cl->qbody);
 			cl->qbody = nil;
+
 			cl->cbody = 0;
 		}
 		if(cl->qbody == nil){
@@ -389,7 +412,7 @@ fsopen(Req *r)
 				return;
 			}
 			cl->qbody = bualloc(16*1024);
-			if(f->level != Qbody){
+			if(f->level == Qpost){
 				f->buq = bualloc(64*1024);
 				if(!lookkey(cl->hdr, "Content-Type"))
 					cl->hdr = addkey(cl->hdr, "Content-Type", 
@@ -413,7 +436,8 @@ fsopen(Req *r)
 			if(agent && !lookkey(cl->hdr, "User-Agent"))
 				cl->hdr = addkey(cl->hdr, "User-Agent", agent);
 
-			http(m, cl->url, cl->hdr, cl->qbody, f->buq);
+			cl->qerror = bualloc(16*1024);
+			http(m, cl->url, cl->hdr, cl->qbody, f->buq, cl->qerror);
 			cl->request[0] = 0;
 			cl->url = nil;
 			cl->hdr = nil;
@@ -424,6 +448,16 @@ fsopen(Req *r)
 		incref(cl->qbody);
 		bureq(f->buq = cl->qbody, r);
 		return;
+	case Qerror:
+		if(cl->qerror == nil){
+			respond(r, "request not started");
+			return;
+		}
+		if(f->buq)
+			break;
+		incref(cl->qerror);
+		f->buq = cl->qerror;
+		break;	
 	}
 	respond(r, nil);
 }
@@ -453,9 +487,9 @@ clientgen(int i, Dir *d, void *aux)
 		Key *k;
 
 		i -= Qparsed+1;
-		if(cl == nil || cl->qbody == nil)
+		if(cl == nil)
 			return -1;
-		for(k = cl->qbody->hdr; i > 0 && k; i--, k = k->next)
+		for(k = clienthdrs(cl); i > 0 && k; i--, k = k->next)
 			;
 		if(k == nil || i > 0)
 			return -1;
@@ -520,6 +554,7 @@ fsread(Req *r)
 		urlstr(buf, sizeof(buf), clienturl(f->client), f->level);
 		goto String;
 	case Qbody:
+	case Qerror:
 		bureq(f->buq, r);
 		return;
 	}
@@ -707,15 +742,14 @@ fsdestroyfid(Fid *fid)
 	if(f = fid->aux){
 		fid->aux = nil;
 		if(f->buq){
-			buclose(f->buq, 0);
+			buclose(f->buq, nil);
 			if(f->client->qbody == f->buq){
 				f->client->obody = 0;
 				f->client->cbody = 1;
 			}
 			bufree(f->buq);
 		}
-		if(f->key)
-			free(f->key);
+		if(f->key) free(f->key);
 		freeclient(f->client);
 		free(f);
 	}

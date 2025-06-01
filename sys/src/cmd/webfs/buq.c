@@ -156,6 +156,15 @@ buwrite(Buq *q, void *v, int l)
 }
 
 void
+busethdrs(Buq *q, Url *u, Key *h)
+{
+	qlock(q);
+	q->hdr = h;
+	q->url = u;
+	qunlock(q);
+}
+
+void
 buclose(Buq *q, char *error)
 {
 	if(q == nil)

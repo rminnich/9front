@@ -166,8 +166,19 @@ by the
 .B parsed
 directory will change to the final destination.
 .PP
+Opening the
+.B body
+file can fail, returning HTTP status error in the
+error string.
+If more detailed error is required, the
+.B errorbody
+file can be opend, providing the servers error
+response (usually formatted as HTML).
+.PP
 The resulting data may be read from
 .B body
+and
+.B errorbody
 as it arrives.
 .PP
 The following is a list of attributes that can be

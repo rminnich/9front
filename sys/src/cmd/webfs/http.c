@@ -546,7 +546,7 @@ catch(void *, char *msg)
 #define NOLENGTH 0x7fffffffffffffffLL
 
 void
-http(char *m, Url *u, Key *shdr, Buq *qbody, Buq *qpost)
+http(char *m, Url *u, Key *shdr, Buq *qbody, Buq *qpost, Buq *qerror)
 {
 	int i, l, n, try, pid, fd, cfd, needlength, chunked, retry, nobody, badauth;
 	char *s, *x, buf[IOUNIT+2], status[256], method[16], *host;
@@ -558,6 +558,7 @@ http(char *m, Url *u, Key *shdr, Buq *qbody, Buq *qpost)
 
 	incref(qbody);
 	if(qpost) incref(qpost);
+	incref(qerror);
 	nstrcpy(method, m, sizeof(method));
 	switch(rfork(RFPROC|RFMEM|RFNOWAIT)){
 	default:
@@ -567,6 +568,8 @@ http(char *m, Url *u, Key *shdr, Buq *qbody, Buq *qpost)
 		bufree(qbody);
 		buclose(qpost, "can't fork");
 		bufree(qpost);
+		buclose(qerror, "can't fork");
+		bufree(qerror);
 		while(k = shdr){
 			shdr = k->next;
 			free(k);
@@ -875,6 +878,11 @@ http(char *m, Url *u, Key *shdr, Buq *qbody, Buq *qpost)
 		case 504:	/* Gateway Timeout */
 		case 505:	/* HTTP Version not Supported */
 		Error:
+			if(!retry){
+				busethdrs(qerror, u, rhdr);
+				rhdr = nil;
+				u = nil; 
+			}
 			h->cancel = 1;
 			buclose(qbody, status);
 			buclose(qpost, status);
@@ -887,7 +895,7 @@ http(char *m, Url *u, Key *shdr, Buq *qbody, Buq *qpost)
 					waitpid();
 					pid = 0;
 				}
-				buclose(qpost, 0);
+				buclose(qpost, nil);
 				bufree(qpost);
 				qpost = nil;
 			}
@@ -956,10 +964,12 @@ http(char *m, Url *u, Key *shdr, Buq *qbody, Buq *qpost)
 		case 206:	/* Partial Content */
 			if(h->tunnel)
 				break;
-			qbody->url = u; u = nil;
-			qbody->hdr = rhdr; rhdr = nil;
+			busethdrs(qbody, u, rhdr);
+			rhdr = nil;
+			u = nil;
+			buclose(qerror, nil);	/* no error */
 			if(nobody)
-				buclose(qbody, 0);
+				buclose(qbody, nil);
 			break;
 		}
 
@@ -998,9 +1008,9 @@ http(char *m, Url *u, Key *shdr, Buq *qbody, Buq *qpost)
 		 * skipping the error page so we wont touch qbody.
 		 */
 		while(!nobody){
-			if((qbody->closed || retry) && !h->keep)
+			if((qerror->closed && qbody->closed || retry) && !h->keep)
 				break;
-			if(chunked){
+ 			if(chunked){
 				if(hline(h, buf, sizeof(buf)-1, 0) <= 0)
 					break;
 				length = strtoll(buf, nil, 16);
@@ -1014,7 +1024,7 @@ http(char *m, Url *u, Key *shdr, Buq *qbody, Buq *qpost)
 					break;
 				offset += n;
 				if(!retry)
-					if(buwrite(qbody, buf, n) != n)
+					if(buwrite(qerror->closed?qbody:qerror, buf, n) != n)
 						break;
 			}
 			if(offset != length){
@@ -1035,8 +1045,10 @@ http(char *m, Url *u, Key *shdr, Buq *qbody, Buq *qpost)
 				if(length > 0)
 					continue;
 			}
-			if(!retry)
-				buclose(qbody, 0);
+			if(!retry){
+				buclose(qerror, nil);
+				buclose(qbody, nil);
+			}
 			break;
 		}
 
@@ -1053,6 +1065,9 @@ http(char *m, Url *u, Key *shdr, Buq *qbody, Buq *qpost)
 		h = nil;
 	}
 	alarm(0);
+	buclose(qerror, nil);
+	bufree(qerror);
+
 	snprint(buf, sizeof(buf), "%s %r", status);
 	buclose(qbody, buf);
 	bufree(qbody);

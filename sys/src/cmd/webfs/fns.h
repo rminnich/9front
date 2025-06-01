@@ -28,6 +28,7 @@ int	matchurl(Url *u, Url *s);
 void	freeurl(Url *u);
 
 /* buq */
+void	busethdrs(Buq *q, Url *u, Key *h);
 int	buread(Buq *q, void *v, int l);
 int	buwrite(Buq *q, void *v, int l);
 void	buclose(Buq *q, char *error);
@@ -40,4 +41,4 @@ void	buflushreq(Buq *q, Req *r);
 /* http */
 int authenticate(Url *u, Url *ru, char *method, char *s);
 void flushauth(Url *u, char *t);
-void http(char *m, Url *u, Key *shdr, Buq *qbody, Buq *qpost);
+void http(char *m, Url *u, Key *shdr, Buq *qbody, Buq *qpost, Buq *qerror);
