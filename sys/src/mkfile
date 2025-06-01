@@ -19,7 +19,6 @@ LIBS=\
 	libframe\
 	libgeometry\
 	libhtml\
-	libhttpd\
 	libip\
 	liblex\
 	libjson\
