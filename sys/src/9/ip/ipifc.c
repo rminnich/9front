@@ -790,6 +790,12 @@ ipifcconnect(Conv* c, char **argv, int argc)
 		ipifcdellifc(ifc, &ifc->lifc);
 	wunlock(ifc);
 
+	/* when using dial(1), need to bind first */
+	if(ifc->m == nil){
+		char *a[2] = { "bind", "pkt" };
+		ipifcbind(c, a, 2);
+	}
+
 	err = ipifcadd(ifc, argv, argc, 0, nil);
 	if(err != nil)
 		return err;
