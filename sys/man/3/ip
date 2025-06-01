@@ -243,47 +243,6 @@ echoed back on the same interface.
 .TP
 .BI reassemble\  n
 Reassemble IP fragments before forwarding to this interface
-.
-.\" remainder from netif.c (thus called from devether.c),
-.\" except add6 and ra6 from ipifc.c
-.
-.TP
-.B bridge
-Enable bridging (see
-.IR bridge (3)).
-.TP
-.B promiscuous
-Set the interface into promiscuous mode,
-which makes it accept all incoming packets,
-whether addressed to it or not.
-.TP
-.BI "connect " type
-marks the Ethernet packet
-.I type
-as being in use, if not already in use
-on this interface.
-A
-.I type
-of -1 means `all' but appears to be a no-op.
-.TP
-.BI addmulti\  Media-addr
-Treat the multicast
-.I Media-addr
-on this interface as a local address.
-.TP
-.BI delmulti\  Media-addr
-Delete the multicast address
-.I Media-addr
-from this interface.
-.TP
-.B scanbs
-Make the wireless interface scan for base stations.
-.TP
-.B headersonly
-Set the interface to pass only packet headers, not data too.
-.
-.\" remainder from ipifc.c; tedious, so put them last
-.
 .TP
 .BI "add6 " "v6addr pfx-len [onlink auto validlt preflt]"
 Add the local IPv6 address
@@ -1390,8 +1349,6 @@ header length errors
 .SH "SEE ALSO"
 .IR dial (2),
 .IR ip (2),
-.IR bridge (3),
-.\" .IR ike (4),
 .IR ndb (6),
 .IR listen (8)
 .br
