@@ -21,6 +21,8 @@ OFILES=\
 HFILES=cc.h\
 	compat.h\
 	y.tab.h\
+	lexbody\
+	macbody
 
 YFILES=cc.y\
 
