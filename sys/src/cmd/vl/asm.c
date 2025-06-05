@@ -1470,6 +1470,9 @@ opirr(int a)
 
 	case AADDV:		return SP(3,0);
 	case AADDVU:		return SP(3,1);
+
+	case ALL:		return SP(6,0);
+	case ASC:		return SP(7,0);
 	}
 	diag("bad irr %d", a);
 	return 0;

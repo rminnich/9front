@@ -612,6 +612,8 @@ buildop(void)
 		case AMOVV:
 			buildrep(8, AMOVV);
 			break;
+		case ALL:
+		case ASC:
 		case ABREAK:
 		case AWORD:
 		case ARFE:

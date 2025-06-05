@@ -155,6 +155,9 @@ enum	as
 
 	ASIGNAME,
 
+	ALL,
+	ASC,
+
 	ALAST,
 };
 

@@ -334,6 +334,8 @@ struct
 	"MOVWR",	LTYPE3, AMOVWR,
 	"MOVVL",	LTYPE3, AMOVVL,
 	"MOVVR",	LTYPE3, AMOVVR,
+	"LL",		LTYPE3, ALL,
+	"SC",		LTYPE3, ASC,
 
 	"BREAK",	LTYPEJ, ABREAK,		/* overloaded CACHE opcode */
 	"END",		LTYPE4, AEND,
