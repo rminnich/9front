@@ -689,12 +689,6 @@ outrune(Rune r)
 	case Uminus:
 		r = '-';
 		break;
-	case '\'':
-		Bprint(&bout, "&rsquo;");
-		return;
-	case '`':
-		Bprint(&bout, "&lsquo;");
-		return;
 	case Uamp:
 		Bputrune(&bout, '&');
 		return;
