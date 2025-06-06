@@ -584,6 +584,7 @@ buildop(void)
 			oprange[ATLBR] = oprange[r];
 			oprange[ATLBWI] = oprange[r];
 			oprange[ATLBWR] = oprange[r];
+			oprange[ASYNC] = oprange[r];
 			break;
 		case ACMPEQF:
 			oprange[ACMPGTF] = oprange[r];

@@ -157,6 +157,7 @@ enum	as
 
 	ALL,
 	ASC,
+	ASYNC,
 
 	ALAST,
 };

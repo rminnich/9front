@@ -1360,6 +1360,7 @@ oprrr(int a)
 
 	case ABREAK:	return OP(1,5);
 	case ASYSCALL:	return OP(1,4);
+	case ASYNC:	return OP(1,7);
 	case ATLBP:	return MMU(1,0);
 	case ATLBR:	return MMU(0,1);
 	case ATLBWI:	return MMU(0,2);
