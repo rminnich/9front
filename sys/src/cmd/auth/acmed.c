@@ -178,34 +178,42 @@ Error:
 static void
 weberror(char *dir)
 {
-	char *m, *r, path[80];
+	char *m, *r, path[80], err[ERRMAX];
 	int fd, nr;
 	JSON *j;
 	JSONEl *e;
 
+	err[0] = '\0';
+	errstr(err, sizeof(err));
+
 	snprint(path, sizeof(path), "%s/%s", dir, "errorbody");
 	if((fd = open(path, OREAD|OCEXEC)) == -1)
-		abort();
-	if((r = slurp(fd, &nr)) != nil){
-		m = r;
-		if(debug)
-			goto Rawdump;
-		if((j = jsonparse(r)) == nil)
-			goto Rawdump;
-		if(j->t != JSONObject)
-			goto Rawdump;
-		for(e = j->first; e != nil; e = e->next){
-			if(e->val->t == JSONString && strcmp(e->name, "detail") == 0){
-				m = e->val->s;
-				break;
-			}
-		}
-Rawdump:
-		fprint(2, "%s\n", m);
-		free(r);
-	}else
-		fprint(2, "error recovering error: %r");
+		goto Restore;	/* old webfs, don't complain */
+	if((r = slurp(fd, &nr)) == nil){
+		fprint(2, "error recovering error: %r\n");
+		close(fd);
+		goto Restore;
+	}
 	close(fd);
+
+	m = r;
+	if(debug)
+		goto Rawdump;
+	if((j = jsonparse(r)) == nil)
+		goto Rawdump;
+	if(j->t != JSONObject)
+		goto Rawdump;
+	for(e = j->first; e != nil; e = e->next){
+		if(e->val->t == JSONString && strcmp(e->name, "detail") == 0){
+			m = e->val->s;
+			break;
+		}
+	}
+Rawdump:
+	fprint(2, "%s\n", m);
+	free(r);
+Restore:
+	errstr(err, sizeof(err));
 }
 		
 static char*
