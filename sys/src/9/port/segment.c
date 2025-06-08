@@ -99,6 +99,10 @@ putseg(Segment *s)
 	i = s->image;
 	if(i != nil) {
 		lock(i);
+		if(s->ref != 0){
+			unlock(i);
+			return;
+		}
 		if(i->s == s)
 			i->s = nil;
 		putimage(i);
