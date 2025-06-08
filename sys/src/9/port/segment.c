@@ -93,21 +93,16 @@ putseg(Segment *s)
 	Pte **pte, **emap;
 	Image *i;
 
-	if(s == nil)
+	if(s == nil || decref(s) != 0)
 		return;
 
 	i = s->image;
 	if(i != nil) {
 		lock(i);
-		if(decref(s) != 0){
-			unlock(i);
-			return;
-		}
 		if(i->s == s)
 			i->s = nil;
 		putimage(i);
-	} else if(decref(s) != 0)
-		return;
+	}
 
 	assert(s->sema.prev == &s->sema);
 	assert(s->sema.next == &s->sema);
@@ -240,41 +235,33 @@ segpage(Segment *s, Page *p)
 }
 
 Image*
-attachimage(int type, Chan *c, uintptr base, ulong len)
+attachimage(Chan *c)
 {
 	Image *i, **l;
 
-	c->flag &= ~CCACHE;
-	cclunk(c);
-
+retry:
 	lock(&imagealloc);
 
 	/*
 	 * Search the image cache for remains of the text from a previous
 	 * or currently running incarnation
 	 */
-	for(i = ihash(c->qid.path); i; i = i->hash) {
-		if(c->qid.path == i->qid.path) {
-			lock(i);
-			if(eqchantdqid(c, i->type, i->dev, i->qid, 0) && c->qid.type == i->qid.type)
-				goto found;
-			unlock(i);
-		}
+	for(i = ihash(c->qid.path); i != nil; i = i->hash){
+		if(eqchantdqid(c, i->type, i->dev, i->qid, 0))
+			goto found;
 	}
 
 	/* dump pages of inactive images to free image structures */
-	while((i = imagealloc.free) == nil) {
+	if((i = imagealloc.free) == nil) {
 		unlock(&imagealloc);
 		if(imagereclaim(0) == 0 && imagealloc.free == nil){
 			freebroken();		/* can use the memory */
 			resrcwait("no image after reclaim");
 		}
-		lock(&imagealloc);
+		goto retry;
 	}
-
 	imagealloc.free = i->next;
 
-	lock(i);
 	i->type = c->type;
 	i->dev = c->dev;
 	i->qid = c->qid;
@@ -282,28 +269,67 @@ attachimage(int type, Chan *c, uintptr base, ulong len)
 	l = &ihash(c->qid.path);
 	i->hash = *l;
 	*l = i;
-
 found:
+	incref(i);
 	unlock(&imagealloc);
+
+	lock(i);
 	if(i->c == nil){
 		i->c = c;
 		incref(c);
 	}
 
-	if(i->s == nil) {
-		incref(i);
-		if(waserror()) {
-			putimage(i);
-			nexterror();
-		}
-		i->s = newseg(type, base, len);
-		i->s->image = i;
-		poperror();
-	}
-	else
-		incref(i->s);
-
 	return i;
+}
+
+/* putimage(): called with image locked and unlocks */
+void
+putimage(Image *i)
+{
+	Image *f, **l;
+	Chan *c;
+	long r;
+
+	r = decref(i);
+	if(i->notext){
+		unlock(i);
+		return;
+	}
+
+	/*
+	 * all remaining references to this image are from the
+	 * page cache, so close the chan.
+	 */
+	if(r == i->pgref){
+		c = i->c;
+		i->c = nil;
+	} else
+		c = nil;
+
+	if(r == 0){
+		assert(i->pgref == 0);
+		assert(i->c == nil);
+		assert(i->s == nil);
+
+		lock(&imagealloc);
+		if(i->ref == 0){
+			l = &ihash(i->qid.path);
+			for(f = *l; f != nil; f = f->hash) {
+				if(f == i) {
+					*l = i->hash;
+					break;
+				}
+				l = &f->hash;
+			}
+			i->next = imagealloc.free;
+			imagealloc.free = i;
+		}
+		unlock(&imagealloc);
+	}
+	unlock(i);
+
+	if(c != nil)
+		ccloseq(c);	/* does not block */
 }
 
 ulong
@@ -345,51 +371,6 @@ Done:
 	qunlock(&imagealloc.ireclaim);
 
 	return np;
-}
-
-/* putimage(): called with image locked and unlocks */
-void
-putimage(Image *i)
-{
-	Image *f, **l;
-	Chan *c;
-	long r;
-
-	r = decref(i);
-	if(i->notext){
-		unlock(i);
-		return;
-	}
-
-	c = nil;
-	if(r == i->pgref){
-		/*
-		 * all remaining references to this image are from the
-		 * page cache, so close the chan.
-		 */
-		c = i->c;
-		i->c = nil;
-	}
-	if(r == 0){
-		l = &ihash(i->qid.path);
-		mkqid(&i->qid, ~0, ~0, QTFILE);
-		unlock(i);
-
-		lock(&imagealloc);
-		for(f = *l; f != nil; f = f->hash) {
-			if(f == i) {
-				*l = i->hash;
-				break;
-			}
-			l = &f->hash;
-		}
-		i->next = imagealloc.free;
-		imagealloc.free = i;
-		unlock(&imagealloc);
-	} else
-		unlock(i);
-	if(c != nil)
-		ccloseq(c);	/* does not block */
 }
 
 uintptr

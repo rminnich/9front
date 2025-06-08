@@ -295,7 +295,7 @@ sysexec(va_list list)
 	int i, n, indir;
 	ulong magic, ssize, nargs, nbytes;
 	uintptr t, d, b, entry, text, data, bss, bssend, tstk, align;
-	Segment *s, *ts;
+	Segment *s;
 	Image *img;
 	Tos *tos;
 	Chan *tc;
@@ -538,23 +538,36 @@ sysexec(va_list list)
 
 	/* Text.  Shared. Attaches to cache image if possible */
 	/* attachimage returns a locked cache image */
-	img = attachimage(SG_TEXT | SG_RONLY, tc, UTZERO, (t-UTZERO)>>PGSHIFT);
-	ts = img->s;
-	up->seg[TSEG] = ts;
-	ts->flushme = 1;
-	ts->fstart = 0;
-	ts->flen = text;
-	unlock(img);
+	img = attachimage(tc);
+	if((s = img->s) != nil && s->flen == text){
+		assert(s->image == img);
+		incref(s);
+		putimage(img);
+	} else {
+		if(waserror()){
+			putimage(img);
+			nexterror();
+		}
+		s = newseg(SG_TEXT | SG_RONLY, UTZERO, (t-UTZERO)>>PGSHIFT);
+		s->flushme = 1;
+		s->image = img;
+		s->fstart = 0;
+		s->flen = text;
+		img->s = s;
+		unlock(img);
+		poperror();
+	}
+	up->seg[TSEG] = s;
 
 	/* Data. Shared. */
 	s = newseg(SG_DATA, t, (d-t)>>PGSHIFT);
-	up->seg[DSEG] = s;
 
 	/* Attached by hand */
 	incref(img);
 	s->image = img;
-	s->fstart = ts->fstart+ts->flen;
+	s->fstart = text;
 	s->flen = data;
+	up->seg[DSEG] = s;
 
 	/* BSS. Zero fill on demand */
 	up->seg[BSEG] = newseg(SG_BSS, d, (b-d)>>PGSHIFT);
@@ -580,6 +593,11 @@ sysexec(va_list list)
 	}
 
 	poperror();	/* tc */
+	if(tc == img->c){
+		/* avoid double caching */
+		tc->flag &= ~CCACHE;
+		cclunk(tc);
+	}
 	cclose(tc);
 	poperror();	/* file0 */
 	free(file0);

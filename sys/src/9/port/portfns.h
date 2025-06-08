@@ -9,7 +9,7 @@ void		alarmkproc(void*);
 Block*		allocb(int);
 int		anyhigher(void);
 int		anyready(void);
-Image*		attachimage(int, Chan*, uintptr, ulong);
+Image*		attachimage(Chan*);
 ulong		beswal(ulong);
 uvlong		beswav(uvlong);
 int		blocklen(Block*);
