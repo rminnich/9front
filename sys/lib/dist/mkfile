@@ -26,7 +26,10 @@ cd:V:	/tmp/9front.386.iso.gz
 	@{
 	objtype=amd64
 	kernel=/n/src9/$objtype/9pc64
-	echo 'bootfile='^`{basename $kernel} > /env/plan9.ini
+	> /env/plan9.ini {
+		echo 'bootfile='^`{basename $kernel}
+		echo 'console=0'
+	}
 	fatfiles=(/386/9bootfat /env/plan9.ini $kernel)
 	mb=3770
 	mk $target.$pid.disk
@@ -39,6 +42,7 @@ cd:V:	/tmp/9front.386.iso.gz
 	kernel=/n/src9/$objtype/9qemu.u
 	> /env/plan9.ini {
 		echo 'console=0'
+		echo 'vgasize=text'
 	}
 	fatfiles=(/n/src9/sys/src/boot/qemu/boot.scr /env/plan9.ini $kernel)
 	mb=3770
