@@ -90,7 +90,6 @@ static int getnrfont(FILE *fp)	/* read the nroff description file */
 		chtemp[i].num = chtemp[i].code = i;
 		chtemp[i].wid = 1;	/* default ascii widths */
 	}
-	skipline(fp);
 	nw = ALPHABET;
 	while (fgets(buf, sizeof buf, fp) != NULL) {
 		int ntok;
