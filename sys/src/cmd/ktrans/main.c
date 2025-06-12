@@ -726,7 +726,7 @@ dubeollkup(Str *line)
 static void
 keythread(void*)
 {
-	int lang;
+	int lang, litmode;
 	char m[Msgsize];
 	char *todict;
 	Map lkup;
@@ -737,6 +737,7 @@ keythread(void*)
 	Str line;
 
 	peek[0] = lang = deflang;
+	litmode = 0;
 	resetstr(&line, nil);
 	if(lang == LangJP || lang == LangZH)
 		emitutf(dictch, peek, 1);
@@ -758,11 +759,20 @@ keythread(void*)
 			while(compacting)
 				yield();
 			n = chartorune(&r, p);
+			if(litmode){
+				emitutf(output, p, 1);
+				litmode = 0;
+				continue;
+			}
 			if(checklang(&lang, r)){
 				emitutf(dictch, "", 1);
 				if(lang == LangJP || lang == LangZH)
 					emitutf(dictch, p, 1);
 				resetstr(&line, nil);
+				continue;
+			}
+			if(r == ''){ // ^'
+				litmode = 1;
 				continue;
 			}
 			if(lang == LangEN){
