@@ -133,6 +133,7 @@ setval(Blk *b, Kvp *kv)
 	b->valsz += 2 + kv->nk + 2 + kv->nv;
 	off = spc - b->valsz;
 
+	if(kv->k[0] == Kent) assert(kv->nv != 0);
 	assert(2*(b->nval+1) + b->valsz <= spc);
 	assert(2*(b->nval+1) <= off);
 
@@ -353,12 +354,14 @@ copyup(Blk *n, Path *pp, int *nbytes)
 static void
 statupdate(Kvp *kv, Msg *m)
 {
+	char *p, *e;
 	int op;
-	char *p;
 	Xdir d;
 
+	assert(m->nv >= 1);
 	p = m->v;
 	op = *p++;
+if(kv->nv < 61) fprint(2, "fucked: %K nv=%d\n", &kv->Key, kv->nv);
 	kv2dir(kv, &d);
 	/* bump version */
 	d.qid.vers++;
@@ -393,7 +396,8 @@ statupdate(Kvp *kv, Msg *m)
 	}
 	if(p != m->v + m->nv)
 		fatal("malformed stat: kv=%P, m=%M\n", kv, m);
-	if(packdval(kv->v, kv->nv, &d) == nil)
+	e = packdval(kv->v, kv->nv, &d);
+	if(e == nil || e - kv->v != kv->nv)
 		fatal("repacking dir failed\n");
 }
 
@@ -550,6 +554,7 @@ updateleaf(Tree *t, Path *up, Path *p)
 			while(j < up->hi){
 				if(pullmsg(up, j, &v, &m, &full, spc) != 0)
 					break;
+				assert(!full);
 				if(ok && v.nk > 0 && v.k[0] == Kdat)
 				if(m.op == Oclearb
 				|| m.op == Oinsert
@@ -583,7 +588,7 @@ static void
 updatepiv(Tree *t, Path *up, Path *p, Path *pp)
 {
 	char buf[Msgmax];
-	int i, j, sz, full, spc;
+	int i, j, r, sz, full, spc;
 	Blk *b, *n;
 	Msg m, u;
 
@@ -603,6 +608,13 @@ updatepiv(Tree *t, Path *up, Path *p, Path *pp)
 	j = up->lo;
 	sz = 0;
 	full = 0;
+	/*
+	 * Compute free space for pulling messages
+	 * from the parent node. The amount of space
+	 * is the space we currently have, plus the
+	 * amount we pulled down from this node in
+	 * our child.
+	 */
 	spc = Bufspc - buffill(b);
 	if(pp != nil)
 		spc += pp->pullsz;
@@ -612,7 +624,17 @@ updatepiv(Tree *t, Path *up, Path *p, Path *pp)
 		if(i == b->nbuf)
 			break;
 		getmsg(b, i, &m);
-		switch(pullmsg(up, j, &m, &u, &full, spc - sz)){
+		/*
+		 * a bit tricky: we're signalling full full not when we're done
+		 * copying, but when we're out of room for new messages. The
+		 * amount of consumed space here is coming from messages that
+		 * we pull down from the parent node. If not, we keep cloning
+		 * messages without pulling. We do not want to break out when
+		 * we report a full buffer here -- it's only too full for new
+		 * data when that happens.
+		 */
+		r = pullmsg(up, j, &m, &u, &full, spc - sz);
+		switch(r){
 		case -1:
 		case 0:
 			setmsg(n, &m);

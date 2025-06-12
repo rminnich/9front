@@ -117,6 +117,7 @@ kv2dir(Kvp *kv, Xdir *d)
 	memset(d, 0, sizeof(Xdir));
 	k = kv->k + 9;
 	ek = kv->k + kv->nk;
+	assert(k <= ek);
 	k = unpackstr(k, ek, &d->name);
 
 	v = kv->v;
