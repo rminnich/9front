@@ -103,7 +103,6 @@ main(int argc, char **argv)
 	Chachastate s;
 	uchar tag[16];
 	int n;
-	int chatty;
 
 	ARGBEGIN{
 	}ARGEND
