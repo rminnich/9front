@@ -3,6 +3,7 @@
 md4, md5, ripemd160,
 sha1, sha2_224, sha2_256, sha2_384, sha2_512,
 hmac_x, hmac_md5, hmac_sha1, hmac_sha2_224, hmac_sha2_256, hmac_sha2_384, hmac_sha2_512,
+blake2s_128, blake2s_256, mac_blake2s_128, mac_blake2s_256, hmac_blake2s_256,
 poly1305 \- cryptographically secure hashes
 .SH SYNOPSIS
 .nr Wd \w'\fLDS* \fP'u
@@ -43,6 +44,8 @@ DS*	sha2_384(uchar *data, ulong dlen, uchar *digest, DS *state)
 .Ti
 DS*	sha2_512(uchar *data, ulong dlen, uchar *digest, DS *state)
 .Ti
+DS*	blake2s_128(uchar *data, ulong dlen, uchar *digest, DS *state)
+.Ti
 DS*	blake2s_256(uchar *data, ulong dlen, uchar *digest, DS *state)
 .Ti
 DS*	hmac_x(uchar *p, ulong len, uchar *key, ulong klen, uchar *digest, DS *s, DS*(*x)(uchar*, ulong, uchar*, DS*), int xlen)
@@ -62,6 +65,10 @@ DS*	hmac_sha2_512(uchar *data, ulong dlen, uchar *key, ulong klen, uchar *digest
 DS*	hmac_blake2s_256(uchar *data, ulong dlen, uchar *key, ulong klen, uchar *digest, DS *state)
 .Ti
 DS*	poly1305(uchar *p, ulong len, uchar *key, ulong klen, uchar *digest, DS *state)
+.Ti
+DS*	mac_blake2s_128(uchar *p, ulong len, uchar *key, ulong klen, uchar *digest, DS *state)
+.Ti
+DS*	mac_blake2s_256(uchar *p, ulong len, uchar *key, ulong klen, uchar *digest, DS *state)
 .SH DESCRIPTION
 .DT
 The output of a hash is called a
@@ -82,6 +89,7 @@ The routines
 .IR sha2_256 ,
 .IR sha2_384 ,
 .IR sha2_512 ,
+.IR blake2s_128 ,
 .IR blake2s_256 ,
 differ only in the length of the resulting digest
 and in the security of the hash.
@@ -113,6 +121,7 @@ The constants
 .IR SHA2_256dlen ,
 .IR SHA2_384dlen ,
 .IR SHA2_512dlen ,
+.IR BLAKE2S_128dlen ,
 .I BLAKE2S_256dlen
 and
 .I Poly1305dlen
@@ -143,6 +152,13 @@ is not intended for general use.
 is a one-time authenticator designed by D. J. Bernstein is documented in
 .IR RFC8439 .
 It takes a 32-byte one-time key and a message and produces a 16-byte tag.
+.PP
+.I Mac_blake2s_128
+and
+.I mac_blake2s_256
+provide the keyed variants of their respective blake2s functions.
+Unlike their hmac variants, the key may only be specified on the first call.
+Subsequent calls are free to use the non keyed variants.
 .SH EXAMPLES
 To hash a single buffer using
 .IR md5 :

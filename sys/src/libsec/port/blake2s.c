@@ -4,6 +4,7 @@
 
 extern void _blake2sblock(u32int h[16], uchar *b, u32int blen, u64int offset, u32int f);
 static DigestState* blake2s_512(uchar *p, ulong len, uchar *digest, DigestState *s, int dlen);
+static DigestState* mac_blake2s_x(uchar *p, ulong len, uchar *key, ulong klen, uchar *digest, DigestState *s, int dlen);
 
 static void
 encode32(uchar *output, u32int *input, ulong len)
@@ -21,7 +22,38 @@ encode32(uchar *output, u32int *input, ulong len)
 }
 
 DigestState*
+blake2s_128(uchar *p, ulong len, uchar *digest, DigestState *s)
+{
+	return mac_blake2s_128(p, len, nil, 0, digest, s);
+}
+
+DigestState*
+mac_blake2s_128(uchar *p, ulong len, uchar *key, ulong klen, uchar *digest, DigestState *s)
+{
+	return mac_blake2s_x(p, len, key, klen, digest, s, BLAKE2S_128dlen);
+}
+
+DigestState*
 blake2s_256(uchar *p, ulong len, uchar *digest, DigestState *s)
+{
+	return mac_blake2s_256(p, len, nil, 0, digest, s);
+}
+
+DigestState*
+mac_blake2s_256(uchar *p, ulong len, uchar *key, ulong klen, uchar *digest, DigestState *s)
+{
+	return mac_blake2s_x(p, len, key, klen, digest, s, BLAKE2S_256dlen);
+}
+
+enum{
+	bb = 64,
+
+	fcont = 0,
+	flast = 0xFFFFFFFF,
+};
+
+static DigestState*
+mac_blake2s_x(uchar *p, ulong len, uchar *key, ulong klen, uchar *digest, DigestState *s, int dlen)
 {
 	if(s == nil) {
 		s = mallocz(sizeof(*s), 1);
@@ -39,18 +71,21 @@ blake2s_256(uchar *p, ulong len, uchar *digest, DigestState *s)
 		s->state[6] = 0x1F83D9ABUL;
 		s->state[7] = 0x5BE0CD19UL;
 
-		s->state[0] ^= 0x01010000 ^ BLAKE2S_256dlen;
+		s->state[0] ^= 0x01010000 ^ dlen;
+		if(klen > 0){
+			if(klen > bb){
+				werrstr("key is too large");
+				return nil;
+			}
+			s->state[0] ^= (klen << 8);
+			memcpy(s->buf, key, klen);
+			memset(s->buf+klen, 0, bb-klen);
+			s->blen = bb;
+		}
 		s->seeded = 1;
 	}
-	return blake2s_512(p, len, digest, s, BLAKE2S_256dlen);
+	return blake2s_512(p, len, digest, s, dlen);
 }
-
-enum{
-	bb = 64,
-
-	fcont = 0,
-	flast = 0xFFFFFFFF,
-};
 
 /* 64 byte input blocks */
 static DigestState*
