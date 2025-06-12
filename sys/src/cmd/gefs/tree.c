@@ -361,7 +361,6 @@ statupdate(Kvp *kv, Msg *m)
 	assert(m->nv >= 1);
 	p = m->v;
 	op = *p++;
-if(kv->nv < 61) fprint(2, "fucked: %K nv=%d\n", &kv->Key, kv->nv);
 	kv2dir(kv, &d);
 	/* bump version */
 	d.qid.vers++;
