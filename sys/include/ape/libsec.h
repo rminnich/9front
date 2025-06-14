@@ -589,6 +589,9 @@ mpint* dh_finish(DHstate *dh, mpint *y);
 /* Curve25519 elliptic curve, public key function */
 void curve25519(uchar mypublic[32], uchar secret[32], uchar basepoint[32]);
 
+/* x25519 used in Curve25519 diffie hellman */
+int x25519(uchar out[32], uchar s[32], uchar u[32]);
+
 /* Curve25519 diffie hellman */
 void curve25519_dh_new(uchar x[32], uchar y[32]);
 int curve25519_dh_finish(uchar x[32], uchar y[32], uchar z[32]);
