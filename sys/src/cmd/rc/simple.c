@@ -86,7 +86,7 @@ Xsimple(void)
 			(*f)();
 			return;
 		}
-		if(exitnext()){
+		if(exitnext() && trapexit()==0){
 			/* fork and wait is redundant */
 			pushword("exec");
 			execexec();

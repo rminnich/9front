@@ -386,22 +386,27 @@ Xeflag(void)
 	if(!truestatus()) Xexit();
 }
 
+static int trapped;
+
+var*
+trapexit(void)
+{
+	if(getpid()==mypid && !trapped){
+		var *trap = vlook("sigexit");
+		if(trap->fn)
+			return trap;
+	}
+	return (var*)0;
+}
+
 void
 Xexit(void)
 {
-	static int beenhere = 0;
-
-	if(getpid()==mypid && !beenhere){
-		var *trapreq = vlook("sigexit");
-		word *starval = vlook("*")->val;
-		if(trapreq->fn){
-			beenhere = 1;
-			--runq->pc;
-			startfunc(trapreq, copywords(starval, (word*)0), (var*)0, (redir*)0);
-			return;
-		}
-	}
-	Exit();
+	var *trap = trapexit();
+	if(trap==0) Exit();
+	if(runq) --runq->pc;
+	startfunc(trap, copywords(vlook("*")->val, (word*)0), (var*)0, (redir*)0);
+	trapped = 1;
 }
 
 void
@@ -591,7 +596,7 @@ Xreturn(void)
 		Xpopredir();
 	popthread();
 	if(runq==0)
-		Exit();
+		Xexit();
 }
 
 void

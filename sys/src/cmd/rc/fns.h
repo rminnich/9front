@@ -63,6 +63,7 @@ void	heredoc(tree*);
 void	setstatus(char*);
 void	skipnl(void);
 void	start(code*, int, var*, redir*);
+var*	trapexit(void);
 int	truestatus(void);
 void	usage(char*);
 int	wordchr(int);
