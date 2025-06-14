@@ -20,6 +20,8 @@ Cinfo uconsinfo[] = {
 	{ 0,		0,		0 },
 };
 
+static Serialops uconsops;
+
 int
 uconsprobe(Serial *ser)
 {
@@ -29,5 +31,10 @@ uconsprobe(Serial *ser)
 	if((ip = matchid(uconsinfo, ud->vid, ud->did)) == nil)
 		return -1;
 	ser->nifcs = ip->cid;
+	ser->Serialops = uconsops;
 	return 0;
 }
+
+static Serialops uconsops = {
+	.findeps = findendpoints,
+};

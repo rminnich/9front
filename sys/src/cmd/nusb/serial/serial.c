@@ -561,7 +561,7 @@ dwrite(Req *req)
 	qunlock(ser);
 }
 
-static int
+int
 openeps(Serialport *p, Ep *epin, Ep *epout, Ep *epintr)
 {
 	Serial *ser;
@@ -614,7 +614,7 @@ openeps(Serialport *p, Ep *epin, Ep *epout, Ep *epintr)
 	return 0;
 }
 
-static int
+int
 findendpoints(Serial *ser, int ifc)
 {
 	Ep **eps, *ep, *epin, *epout, *epintr;
@@ -708,6 +708,7 @@ extern int plprobe(Serial *ser);
 extern int slprobe(Serial *ser);
 extern int chprobe(Serial *ser);
 extern int uconsprobe(Serial *ser);
+extern int acmprobe(Serial *ser);
 
 void
 threadmain(int argc, char* argv[])
@@ -745,7 +746,8 @@ threadmain(int argc, char* argv[])
 	&& ftprobe(ser)
 	&& slprobe(ser)
 	&& plprobe(ser)
-	&& chprobe(ser))
+	&& chprobe(ser)
+	&& acmprobe(ser))
 		sysfatal("no serial devices found");
 
 	for(i = 0; i < ser->nifcs; i++){
@@ -755,7 +757,8 @@ threadmain(int argc, char* argv[])
 		p->s = ser;
 		if(i == ser->jtag)
 			p->isjtag++;
-		if(findendpoints(ser, i) < 0)
+		assert(ser->findeps != nil);
+		if(ser->findeps(ser, i) < 0)
 			sysfatal("no endpoints found for ifc %d", i);
 		p->w4data  = chancreate(sizeof(ulong), 0);
 		p->gotdata = chancreate(sizeof(ulong), 0);

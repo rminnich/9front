@@ -1568,6 +1568,7 @@ ftseteps(Serialport *p)
 static Serialops ftops = {
 	.init		= ftinit,
 	.seteps		= ftseteps,
+	.findeps	= findendpoints,
 	.setparam	= ftsetparam,
 	.clearpipes	= ftclearpipes,
 	.reset		= ftreset,

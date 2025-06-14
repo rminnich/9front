@@ -130,4 +130,5 @@ static Serialops slops = {
 	.getparam	= slgetparam,
 	.setparam	= slsetparam,
 	.wait4data	= wait4data,
+	.findeps	= findendpoints,
 };

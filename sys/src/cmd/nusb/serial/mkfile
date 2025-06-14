@@ -1,7 +1,7 @@
 </$objtype/mkfile
 
 TARG=serial
-OFILES=ftdi.$O serial.$O prolific.$O ucons.$O silabs.$O ch340.$O
+OFILES=ftdi.$O serial.$O prolific.$O ucons.$O silabs.$O ch340.$O acm.$O
 HFILES=\
 	../lib/usb.h\
 	serial.h\

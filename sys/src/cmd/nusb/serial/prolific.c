@@ -615,4 +615,5 @@ static Serialops plops = {
 	.modemctl	= plmodemctl,
 	.setbreak	= plsetbreak,
 	.seteps		= plseteps,
+	.findeps	= findendpoints,
 };

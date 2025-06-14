@@ -168,4 +168,5 @@ chsetparam(Serialport *p)
 static Serialops chops = {
 	.init		= chinit,
 	.setparam	= chsetparam,
+	.findeps	= findendpoints,
 };

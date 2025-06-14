@@ -4,6 +4,7 @@ typedef struct Serialport Serialport;
 
 struct Serialops {
 	int	(*seteps)(Serialport*);
+	int	(*findeps)(Serial*, int);
 	int	(*init)(Serialport*);
 	int	(*getparam)(Serialport*);
 	int	(*setparam)(Serialport*);
@@ -120,5 +121,7 @@ extern int serialdebug;
 
 int	serialrecover(Serial *ser, Serialport *p, Dev *ep, char *err);
 int	serialreset(Serial *ser);
+int	findendpoints(Serial *ser, int ifc);
+int	openeps(Serialport *p, Ep *epin, Ep *epout, Ep *epintr);
 char	*serdumpst(Serialport *p, char *buf, int bufsz);
 Cinfo	*matchid(Cinfo *tab, int vid, int did);
