@@ -443,15 +443,9 @@ sysexec(va_list list)
 	 */
 	qlock(&up->seglock);
 	if(waserror()){
-		s = up->seg[ESEG];
-		if(s != nil){
-			up->seg[ESEG] = nil;
-			putseg(s);
-		}
 		qunlock(&up->seglock);
 		nexterror();
 	}
-
 	s = up->seg[SSEG];
 	do {
 		tstk = s->base;
@@ -459,6 +453,17 @@ sysexec(va_list list)
 			error(Enovmem);
 	} while((s = isoverlap(tstk-USTKSIZE, USTKSIZE)) != nil);
 	up->seg[ESEG] = newseg(SG_STACK | SG_NOEXEC, tstk-USTKSIZE, USTKSIZE/BY2PG);
+	qunlock(&up->seglock);
+
+	if(waserror()){
+		qlock(&up->seglock);
+		s = up->seg[ESEG];
+		if(s != nil){
+			up->seg[ESEG] = nil;
+			putseg(s);
+		}
+		nexterror();
+	}
 
 	/*
 	 * Args: pass 2: assemble; the pages will be faulted in
@@ -520,6 +525,9 @@ sysexec(va_list list)
 	 * Free old memory.
 	 * Special segments are maintained across exec
 	 */
+	poperror();
+	qlock(&up->seglock);
+
 	for(i = SSEG; i <= BSEG; i++) {
 		s = up->seg[i];
 		if(s != nil) {
@@ -576,10 +584,14 @@ sysexec(va_list list)
 	 * Move the stack
 	 */
 	s = up->seg[ESEG];
+	if(s == nil)
+		error(Egreg);
 	up->seg[ESEG] = nil;
+	qlock(s);
 	s->base = USTKTOP-USTKSIZE;
 	s->top = USTKTOP;
 	relocateseg(s, USTKTOP-tstk);
+	qunlock(s);
 	up->seg[SSEG] = s;
 	qunlock(&up->seglock);
 	poperror();	/* seglock */
@@ -894,8 +906,8 @@ found:
 		qunlock(s);
 		error(Ebadarg);
 	}
-	up->seg[i] = nil;
 	qunlock(s);
+	up->seg[i] = nil;
 	putseg(s);
 	qunlock(&up->seglock);
 	poperror();
