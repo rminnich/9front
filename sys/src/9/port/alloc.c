@@ -193,7 +193,7 @@ smalloc(ulong size)
 
 	while((v = poolalloc(mainmem, size+Npadlong*sizeof(ulong))) == nil){
 		if(!waserror()){
-			resrcwait(nil);
+			resrcwait("no memory for smalloc");
 			poperror();
 		}
 	}
@@ -297,7 +297,7 @@ secalloc(ulong size)
 
 	while((v = poolalloc(secrmem, size+Npadlong*sizeof(ulong))) == nil){
 		if(!waserror()){
-			resrcwait(nil);
+			resrcwait("no memory for secalloc");
 			poperror();
 		}
 	}
