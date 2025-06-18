@@ -222,6 +222,7 @@ segpage(Segment *s, Page *p)
 	uintptr soff;
 	Page **pg;
 
+	qlock(s);
 	if(p->va < s->base || p->va >= s->top || s->mapsize == 0)
 		panic("segpage");
 
@@ -236,6 +237,7 @@ segpage(Segment *s, Page *p)
 		etp->first = pg;
 	if(pg > etp->last)
 		etp->last = pg;
+	qunlock(s);
 }
 
 Image*
