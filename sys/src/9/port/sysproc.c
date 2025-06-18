@@ -295,7 +295,7 @@ sysexec(va_list list)
 	int i, n, indir;
 	ulong magic, ssize, nargs, nbytes;
 	uintptr t, d, b, entry, text, data, bss, bssend, tstk, align;
-	Segment *s;
+	Segment *s, *ts;
 	Image *img;
 	Tos *tos;
 	Chan *tc;
@@ -520,6 +520,28 @@ sysexec(va_list list)
 		n = i+1;
 	}
 
+	/* Attach text segment */
+	/* attachimage returns a locked cache image */
+	img = attachimage(tc);
+	if((ts = img->s) != nil && ts->flen == text){
+		assert(ts->image == img);
+		incref(ts);
+		putimage(img);
+	} else {
+		if(waserror()){
+			putimage(img);
+			nexterror();
+		}
+		ts = newseg(SG_TEXT | SG_RONLY, UTZERO, (t-UTZERO)>>PGSHIFT);
+		ts->flushme = 1;
+		ts->image = img;
+		ts->fstart = 0;
+		ts->flen = text;
+		img->s = ts;
+		unlock(img);
+		poperror();
+	}
+
 	/*
 	 * Committed.
 	 * Free old memory.
@@ -544,28 +566,8 @@ sysexec(va_list list)
 		}
 	}
 
-	/* Text.  Shared. Attaches to cache image if possible */
-	/* attachimage returns a locked cache image */
-	img = attachimage(tc);
-	if((s = img->s) != nil && s->flen == text){
-		assert(s->image == img);
-		incref(s);
-		putimage(img);
-	} else {
-		if(waserror()){
-			putimage(img);
-			nexterror();
-		}
-		s = newseg(SG_TEXT | SG_RONLY, UTZERO, (t-UTZERO)>>PGSHIFT);
-		s->flushme = 1;
-		s->image = img;
-		s->fstart = 0;
-		s->flen = text;
-		img->s = s;
-		unlock(img);
-		poperror();
-	}
-	up->seg[TSEG] = s;
+	/* Text. Shared. */
+	up->seg[TSEG] = ts;
 
 	/* Data. Shared. */
 	s = newseg(SG_DATA, t, (d-t)>>PGSHIFT);
@@ -584,8 +586,6 @@ sysexec(va_list list)
 	 * Move the stack
 	 */
 	s = up->seg[ESEG];
-	if(s == nil)
-		error(Egreg);
 	up->seg[ESEG] = nil;
 	qlock(s);
 	s->base = USTKTOP-USTKSIZE;
@@ -596,6 +596,17 @@ sysexec(va_list list)
 	qunlock(&up->seglock);
 	poperror();	/* seglock */
 
+	if(tc == img->c){
+		/* avoid double caching */
+		tc->flag &= ~CCACHE;
+		cclunk(tc);
+	}
+	cclose(tc);
+	poperror();	/* tc */
+
+	free(file0);
+	poperror();	/* file0 */
+
 	/*
 	 * Close on exec
 	 */
@@ -603,16 +614,6 @@ sysexec(va_list list)
 		for(i=0; i<=f->maxfd; i++)
 			fdclose(i, CCEXEC);
 	}
-
-	poperror();	/* tc */
-	if(tc == img->c){
-		/* avoid double caching */
-		tc->flag &= ~CCACHE;
-		cclunk(tc);
-	}
-	cclose(tc);
-	poperror();	/* file0 */
-	free(file0);
 
 	qlock(&up->debug);
 	free(up->text);
