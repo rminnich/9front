@@ -366,13 +366,8 @@ segmentwrite(Chan *c, void *a, long n, vlong voff)
 				if(!iseve())
 					error(Eperm);
 				s = newseg(SG_STICKY, va, len/BY2PG);
-				if(waserror()){
-					putseg(s);
-					nexterror();
-				}
 				for(; va < s->top; va += BY2PG)
 					segpage(s, newpage(1, nil, va));
-				poperror();
 				g->s = s;
 			} else
 				g->s = newseg(SG_SHARED, va, len/BY2PG);
@@ -475,6 +470,7 @@ fixedseg(uintptr va, ulong len)
 		putseg(s);
 		nexterror();
 	}
+
 	lock(&palloc);
 	i = 0;
 	l = palloc.pages;
@@ -525,10 +521,12 @@ fixedseg(uintptr va, ulong len)
 			zeropage(p);
 			segpage(s, p);
 		} while(p != l);
+
 		poperror();
 		return s;
 	}
 	unlock(&palloc);
+
 	error(Enomem);
 }
 
