@@ -1395,6 +1395,7 @@ rcv(PPP *ppp, Pstate *p, Block *b)
 			newstate(ppp, p, Sreqsent);
 			break;
 		case Sopened:
+			p->timeout = Termtimeout;
 			newstate(ppp, p, Sclosing);
 			break;
 		}
@@ -1480,23 +1481,27 @@ ptimer(PPP *ppp, Pstate *p)
 	p->timeout--;
 	switch(p->state){
 	case Sclosing:
+		if(p->timeout <= 0){
+			newstate(ppp, p, Sclosed);
+			break;
+		}
 		sendtermreq(ppp, p);
 		break;
 	case Sreqsent:
 	case Sacksent:
-		if(p->timeout <= 0)
+		if(p->timeout <= 0){
 			newstate(ppp, p, Sclosed);
-		else {
-			config(ppp, p, 0);
+			break;
 		}
+		config(ppp, p, 0);
 		break;
 	case Sackrcvd:
-		if(p->timeout <= 0)
+		if(p->timeout <= 0){
 			newstate(ppp, p, Sclosed);
-		else {
-			config(ppp, p, 0);
-			newstate(ppp, p, Sreqsent);
+			break;
 		}
+		config(ppp, p, 0);
+		newstate(ppp, p, Sreqsent);
 		break;
 	}
 }
@@ -2620,7 +2625,6 @@ sendtermreq(PPP *ppp, Pstate *p)
 	hnputs(m->len, 4);
 	putframe(ppp, p->proto, b);
 	freeb(b);
-	newstate(ppp, p, Sclosing);
 }
 
 static void
