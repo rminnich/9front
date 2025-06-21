@@ -37,7 +37,6 @@ char	*filterflags;
 int	threadsort = 1;
 int	sender;
 
-int	plumbsendfd;
 int	plumbseemailfd;
 int	plumbshowmailfd;
 int	plumbsendmailfd;
@@ -1118,7 +1117,6 @@ threadmain(int argc, char **argv)
 	mbox.show = chancreate(sizeof(Plumbmsg*), 0);
 	mbox.send = chancreate(sizeof(Plumbmsg*), 0);
 
-	plumbsendfd = plumbopen("send", OWRITE|OCEXEC);
 	plumbseemailfd = plumbopen("seemail", OREAD|OCEXEC);
 	plumbshowmailfd = plumbopen("showmail", OREAD|OCEXEC);
 
