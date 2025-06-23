@@ -533,7 +533,7 @@ struct Gefs {
 	QLock	synclk;
 	Rendez	syncrz;
 
-	RWLock	mountlk;
+	QLock	mountlk;
 	Mount	*mounts;
 	Mount	*snapmnt;
 	Lock	connlk;

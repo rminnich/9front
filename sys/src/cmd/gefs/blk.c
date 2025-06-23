@@ -887,7 +887,7 @@ Again:
 }
 
 void
-epochclean(int sync)
+epochclean(void)
 {
 	ulong c, e, ge;
 	Limbo *p, *n;
@@ -902,7 +902,7 @@ epochclean(int sync)
 	for(i = 0; i < fs->nworker; i++){
 		e = agetl(&fs->lepoch[i]);
 		if((e & Eactive) && e != (ge | Eactive)){
-			if(!sync && c < fs->cmax/4)
+			if(c < fs->cmax/4)
 				return;
 			epochwait();
 		}

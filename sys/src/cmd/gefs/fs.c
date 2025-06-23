@@ -115,15 +115,8 @@ sync(void)
 	}
 	tracem("packb");
 
-	rlock(&fs->mountlk);
-	if(waserror()){
-		runlock(&fs->mountlk);
-		nexterror();
-	}
-	for(mnt = fs->mounts; mnt != nil; mnt = mnt->next)
+	for(mnt = agetp(&fs->mounts); mnt != nil; mnt = mnt->next)
 		updatesnap(&mnt->root, mnt->root, mnt->name, mnt->flag);
-	runlock(&fs->mountlk);
-	poperror();
 	/*
 	 * Now that we've updated the snaps, we can sync the
 	 * dlist; the snap tree will not change from here.
@@ -218,12 +211,7 @@ snapfs(Amsg *a, Tree **tp)
 	t = nil;
 	r = nil;
 	*tp = nil;
-	rlock(&fs->mountlk);
-	if(waserror()){
-		runlock(&fs->mountlk);
-		nexterror();
-	}
-	for(mnt = fs->mounts; mnt != nil; mnt = mnt->next){
+	for(mnt = agetp(&fs->mounts); mnt != nil; mnt = mnt->next){
 		if(strcmp(a->old, mnt->name) == 0){
 			updatesnap(&mnt->root, mnt->root, mnt->name, mnt->flag);
 			t = agetp(&mnt->root);
@@ -234,16 +222,12 @@ snapfs(Amsg *a, Tree **tp)
 	if(t == nil && (t = opensnap(a->old, nil)) == nil){
 		if(a->fd != -1)
 			fprint(a->fd, "snap: open '%s': does not exist\n", a->old);
-		runlock(&fs->mountlk);
-		poperror();
 		return;
 	}
 	if(a->delete){
 		if(mnt != nil) {
 			if(a->fd != -1)
 				fprint(a->fd, "snap: snap is mounted: '%s'\n", a->old);
-			runlock(&fs->mountlk);
-			poperror();
 			return;
 		}
 		if(t->nlbl == 1 && t->nref <= 1 && t->succ == -1){
@@ -256,15 +240,11 @@ snapfs(Amsg *a, Tree **tp)
 			if(a->fd != -1)
 				fprint(a->fd, "snap: already exists '%s'\n", a->new);
 			closesnap(s);
-			runlock(&fs->mountlk);
-			poperror();
 			return;
 		}
 		tagsnap(t, a->new, a->flag);
 	}
 	closesnap(t);
-	runlock(&fs->mountlk);
-	poperror();
 	*tp = r;
 	if(a->fd != -1){
 		if(a->delete)
@@ -335,7 +315,8 @@ chrecv(Chan *c)
 
 	v = agetl(&c->count);
 	if(v == 0 || !acasl(&c->count, v, v-1))
-		semacquire(&c->count, 1);
+		while(semacquire(&c->count, 1) == -1)
+			continue;
 	lock(&c->rl);
 	a = *c->rp;
 	if(++c->rp >= &c->args[c->size])
@@ -345,20 +326,32 @@ chrecv(Chan *c)
 	return a;
 }
 
-void
-chsend(Chan *c, void *m)
+int
+chsendnb(Chan *c, void *m, int block)
 {
 	long v;
+	int r;
 
 	v = agetl(&c->avail);
-	if(v == 0 || !acasl(&c->avail, v, v-1))
-		semacquire(&c->avail, 1);
+	if(v == 0 || !acasl(&c->avail, v, v-1)){
+		while((r = semacquire(&c->avail, block)) == -1)
+			continue;
+		if(r == 0)
+			return 0;
+	}
 	lock(&c->wl);
 	*c->wp = m;
 	if(++c->wp >= &c->args[c->size])
 		c->wp = c->args;
 	unlock(&c->wl);
 	semrelease(&c->count, 1);
+	return 1;
+}
+
+void
+chsend(Chan *c, void *m)
+{
+	chsendnb(c, m, 1);
 }
 
 static void
@@ -430,16 +423,8 @@ upsert(Mount *mnt, Msg *m, int nm)
 {
 	if(!(mnt->flag & Lmut))
 		error(Erdonly);
-	if(mnt->root->nlbl != 1 || mnt->root->nref != 0){
-		rlock(&fs->mountlk);
-		if(waserror()){
-			runlock(&fs->mountlk);
-			nexterror();
-		}
+	if(mnt->root->nlbl != 1 || mnt->root->nref != 0)
 		updatesnap(&mnt->root, mnt->root, mnt->name, mnt->flag);
-		poperror();
-		runlock(&fs->mountlk);
-	}
 	btupsert(mnt->root, m, nm);
 }
 
@@ -702,15 +687,15 @@ getmount(char *name)
 		return fs->snapmnt;
 	}
 
-	wlock(&fs->mountlk);
+	qlock(&fs->mountlk);
 	for(mnt = fs->mounts; mnt != nil; mnt = mnt->next){
 		if(strcmp(name, mnt->name) == 0){
 			ainc(&mnt->ref);
-			goto Out;
+			qunlock(&fs->mountlk);
+			return mnt;
 		}
 	}
 	if(waserror()){
-		wunlock(&fs->mountlk);
 		free(mnt);
 		nexterror();
 	}
@@ -723,11 +708,10 @@ getmount(char *name)
 	mnt->root = t;
 	mnt->next = fs->mounts;
 	loadautos(mnt);
-	fs->mounts = mnt;
-	poperror();
 
-Out:
-	wunlock(&fs->mountlk);
+	asetp(&fs->mounts, mnt);
+	qunlock(&fs->mountlk);
+	poperror();
 	return mnt;
 }
 
@@ -738,7 +722,7 @@ clunkmount(Mount *mnt)
 
 	if(mnt == nil)
 		return;
-	wlock(&fs->mountlk);
+	qlock(&fs->mountlk);
 	if(adec(&mnt->ref) == 0){
 		for(p = &fs->mounts; (me = *p) != nil; p = &me->next){
 			if(me == mnt)
@@ -748,7 +732,7 @@ clunkmount(Mount *mnt)
 		*p = me->next;
 		limbo(DFmnt, me);
 	}
-	wunlock(&fs->mountlk);
+	qunlock(&fs->mountlk);
 }
 
 static void
@@ -2633,7 +2617,7 @@ runmutate(int id, void *)
 		assert(estacksz() == 0);
 		epochend(id);
 		qunlock(&fs->mutlk);
-		epochclean(0);
+		epochclean();
 
 		if(a != nil)
 			chsend(fs->admchan, a);
@@ -2682,7 +2666,7 @@ freetree(Bptr rb, vlong pred)
 			freetree(bp, pred);	/* leak b on error() */
 			qlock(&fs->mutlk);
 			qunlock(&fs->mutlk);
-			epochclean(0);
+			epochclean();
 		}
 	}
 	if(rb.gen > pred)
@@ -2718,7 +2702,7 @@ sweeptree(Tree *t)
 			freebp(nil, bp);
 		qlock(&fs->mutlk);
 		qunlock(&fs->mutlk);
-		epochclean(0);
+		epochclean();
 	}
 	btexit(&s);
 	freetree(t->bp, t->pred);
@@ -2789,8 +2773,10 @@ runsweep(int id, void*)
 			if(!agetl(&fs->rdonly)){
 				ainc(&fs->rdonly);
 				/* cycle through all epochs to clear them.  */
-				for(i = 0; i < 3; i++)
-					epochclean(1);
+				for(i = 0; i < 4; i++){
+					epochwait();
+					epochclean();
+				}
 				sync();
 			}
 			postnote(PNGROUP, getpid(), "halted");
@@ -2829,7 +2815,7 @@ runsweep(int id, void*)
 					poperror();
 				}
 				qunlock(a);
-				epochclean(0);
+				epochclean();
 			}
 
 			sync();	/* oldhd blocks leaked on error() */
@@ -2850,7 +2836,7 @@ runsweep(int id, void*)
 					epochend(id);
 					qunlock(&fs->mutlk);
 					poperror();
-					epochclean(0);
+					epochclean();
 				}
 			}
 
@@ -2965,7 +2951,7 @@ runsweep(int id, void*)
 					epochend(id);
 					qunlock(&fs->mutlk);
 					poperror();
-					epochclean(0);
+					epochclean();
 					nm = 0;
 				}
 			}
@@ -2997,7 +2983,15 @@ snapmsg(char *old, char *new)
 		a->delete = 1;
 	else
 		strecpy(a->new, a->new+sizeof(a->new), new);
-	chsend(fs->admchan, a);
+	/*
+	 * We're within an epoch, which means we need to guarantee
+	 * forward progress; snapshots are non-critical enough that
+	 * skipping one is the best option.
+	 */
+	if(!chsendnb(fs->admchan, a, 0)){
+		fprint(2, "skipping snapshot %s => %s (file system too busy)\n", a->old, (a->new != nil) ? a->new : "(delete)");
+		free(a);
+	}
 }
 
 static void
@@ -3028,7 +3022,7 @@ cronsync(char *name, Cron *c, Tm *tm, vlong now)
 }
 
 void
-runtasks(int, void *)
+runtasks(int tid, void *)
 {
 	vlong now;
 	Mount *mnt;
@@ -3052,14 +3046,16 @@ runtasks(int, void *)
 
 		tmnow(&tm, nil);
 		now = tmnorm(&tm);
-		rlock(&fs->mountlk);
-		for(mnt = fs->mounts; mnt != nil; mnt = mnt->next){
+
+		epochstart(tid);
+		for(mnt = agetp(&fs->mounts); mnt != nil; mnt = mnt->next){
 			if(!(mnt->flag & Lmut))
 				continue;
 			for(i = 0; i < nelem(mnt->cron); i++)
 				cronsync(mnt->name, &mnt->cron[i], &tm, now);
 		}
-		runlock(&fs->mountlk);
+		epochend(tid);
+		epochclean();
 		poperror();
 	}
 }
