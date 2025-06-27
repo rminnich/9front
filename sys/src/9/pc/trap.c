@@ -534,16 +534,16 @@ noted(Ureg* ureg, int arg0)
 	ulong oureg, sp;
 
 	qlock(&up->debug);
-	if(arg0!=NRSTR && !up->notified) {
+	if(up->notified){
+		up->notified = 0;
+		splhi();
+		fpunoted(up);
+		spllo();
+	} else if(arg0!=NRSTR){
 		qunlock(&up->debug);
 		pprint("call to noted() when not notified\n");
 		pexit("Suicide", 0);
 	}
-	up->notified = 0;
-
-	splhi();
-	fpunoted(up);
-	spllo();
 
 	nureg = up->ureg;	/* pointer to user returned Ureg struct */
 

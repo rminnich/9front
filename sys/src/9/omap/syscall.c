@@ -28,16 +28,16 @@ noted(Ureg* cur, int arg0)
 	NFrame *nf;
 
 	qlock(&up->debug);
-	if(arg0 != NRSTR && !up->notified){
+	if(up->notified){
+		up->notified = 0;
+		splhi();
+		fpunoted();
+		spllo();
+	} else if(arg0!=NRSTR){
 		qunlock(&up->debug);
 		pprint("call to noted() when not notified\n");
 		pexit("Suicide", 0);
 	}
-	up->notified = 0;
-
-	splhi();
-	fpunoted();
-	spllo();
 
 	nf = up->ureg;
 
