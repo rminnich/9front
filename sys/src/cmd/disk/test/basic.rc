@@ -1,5 +1,8 @@
 #!/bin/rc
 
+# keep environment and namespace clean
+rfork en
+
 # read fresh disk
 ../$O.qcowfs -n 4294967296 /tmp/qcow
 dd -ibs 389120 -skip 1 -obs 8192 -count 1 < /mnt/qcow/data >/dev/null
