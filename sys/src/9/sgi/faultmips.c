@@ -185,27 +185,17 @@ void
 faultmips(Ureg *ur, int user, int code)
 {
 	int read;
-	ulong addr;
-	char *p, buf[ERRMAX];
-
-	addr = ur->badvaddr;
-	addr &= ~(BY2PG-1);
 
 	read = !(code==CTLBM || code==CTLBS);
 
 /*	print("fault: %s code %d va %#p pc %#p r31 %#lux tlbvirt %#lux\n",
 		up->text, code, ur->badvaddr, ur->pc, ur->r31, tlbvirt());/**/
 
-	if (Debug && ckfaultstuck(ur, read, code) || fault(addr, ur->pc, read) == 0)
+	if (Debug && ckfaultstuck(ur, read, code) || fault(ur->badvaddr, ur->pc, read) == 0)
 		return;
 
 	if(user) {
-		p = "store";
-		if(read)
-			p = "load";
-		snprint(buf, sizeof buf, "sys: trap: fault %s addr=%#lux r31=%#lux",
-			p, ur->badvaddr, ur->r31);
-		postnote(up, 1, buf, NDebug);
+		faultnote("fault", read? "read": "write", ur->badvaddr);
 		return;
 	}
 

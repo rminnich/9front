@@ -58,9 +58,10 @@ newseg(int type, uintptr base, ulong size)
 		error(Enomem);
 	s->ref = 1;
 	s->type = type;
+	s->size = size;
 	s->base = base;
 	s->top = base+(size*BY2PG);
-	s->size = size;
+	s->used = s->swapped = 0;
 	s->sema.prev = &s->sema;
 	s->sema.next = &s->sema;
 
@@ -113,10 +114,10 @@ putseg(Segment *s)
 
 	if(s->mapsize > 0){
 		emap = &s->map[s->mapsize];
-		for(pte = s->map; pte < emap; pte++)
+		for(pte = s->map; pte < emap; pte++){
 			if(*pte != nil)
 				freepte(s, *pte);
-
+		}
 		if(s->map != s->ssegmap)
 			free(s->map);
 	}
@@ -148,13 +149,11 @@ relocateseg(Segment *s, uintptr offset)
 Segment*
 dupseg(Segment **seg, int segno, int share)
 {
-	int i, size;
+	int i;
 	Pte *pte;
 	Segment *n, *s;
 
-	SET(n);
 	s = seg[segno];
-
 	qlock(s);
 	if(waserror()){
 		qunlock(s);
@@ -166,6 +165,7 @@ dupseg(Segment **seg, int segno, int share)
 	case SG_PHYSICAL:
 	case SG_FIXED:
 	case SG_STICKY:
+	default:
 		goto sameseg;
 
 	case SG_STACK:
@@ -185,22 +185,20 @@ dupseg(Segment **seg, int segno, int share)
 			poperror();
 			return n;
 		}
-
 		if(share)
 			goto sameseg;
 		n = newseg(s->type, s->base, s->size);
-
-		incref(s->image);
 		n->image = s->image;
 		n->fstart = s->fstart;
 		n->flen = s->flen;
+		incref(s->image);
 		break;
 	}
-	size = s->mapsize;
-	for(i = 0; i < size; i++)
+	for(i = 0; i < s->mapsize; i++)
 		if((pte = s->map[i]) != nil)
 			n->map[i] = ptecpy(pte);
-
+	n->used = s->used;
+	n->swapped = s->swapped;
 	n->flushme = s->flushme;
 	if(s->ref > 1)
 		procflushseg(s);
@@ -230,9 +228,10 @@ segpage(Segment *s, Page *p)
 	pte = &s->map[soff/PTEMAPMEM];
 	if((etp = *pte) == nil)
 		*pte = etp = ptealloc();
-
 	pg = &etp->pages[(soff&(PTEMAPMEM-1))/BY2PG];
+	assert(*pg == nil);
 	*pg = p;
+	s->used++;
 	if(pg < etp->first)
 		etp->first = pg;
 	if(pg > etp->last)
@@ -284,7 +283,6 @@ found:
 		i->c = c;
 		incref(c);
 	}
-
 	return i;
 }
 
@@ -461,29 +459,6 @@ ibrk(uintptr addr, int seg)
 }
 
 /*
- *  called with s locked
- */
-ulong
-mcountseg(Segment *s)
-{
-	Pte **pte, **emap;
-	Page **pg, **pe;
-	ulong pages;
-
-	pages = 0;
-	emap = &s->map[s->mapsize];
-	for(pte = s->map; pte < emap; pte++){
-		if(*pte == nil)
-			continue;
-		pe = (*pte)->last;
-		for(pg = (*pte)->first; pg <= pe; pg++)
-			if(!pagedout(*pg))
-				pages++;
-	}
-	return pages;
-}
-
-/*
  *  Must be called with s locked.
  *  This relies on s->ref > 1 indicating that
  *  the segment is shared with other processes
@@ -497,7 +472,7 @@ mfreeseg(Segment *s, uintptr start, ulong pages)
 {
 	uintptr off;
 	Pte **pte, **emap;
-	Page **pg, **pe;
+	Page **pg, **pe, *entry;
 
 	if(pages == 0)
 		return;
@@ -529,9 +504,14 @@ mfreeseg(Segment *s, uintptr start, ulong pages)
 		}
 		pg = &(*pte)->pages[off];
 		for(pe = &(*pte)->pages[PTEPERTAB]; pg < pe; pg++) {
-			if(*pg != nil){
-				putpage(*pg);
+			if((entry = *pg) != nil){
 				*pg = nil;
+				if(onswap(entry)){
+					putswap(entry);
+					s->swapped--;
+				} else
+					putpage(entry);
+				s->used--;
 			}
 			if(--pages == 0)
 				return;
@@ -605,6 +585,12 @@ segattach(int attr, char *name, uintptr va, uintptr len)
 	if(va != 0 && va >= USTKTOP)
 		error(Ebadarg);
 
+	qlock(&up->seglock);
+	if(waserror()){
+		qunlock(&up->seglock);
+		nexterror();
+	}
+		
 	for(sno = 0; sno < NSEG; sno++)
 		if(up->seg[sno] == nil && sno != ESEG)
 			break;
@@ -619,12 +605,14 @@ segattach(int attr, char *name, uintptr va, uintptr len)
 	if(_globalsegattach != nil){
 		s = (*_globalsegattach)(name);
 		if(s != nil){
-			if(isoverlap(s->base, s->top - s->base) != nil){
+			va = s->base;
+			len = s->top - va;
+			if(isoverlap(va, len) != nil){
 				putseg(s);
 				error(Esoverlap);
 			}
 			up->seg[sno] = s;
-			return s->base;
+			goto done;
 		}
 	}
 
@@ -675,6 +663,9 @@ segattach(int attr, char *name, uintptr va, uintptr len)
 	s = newseg(attr, va, len/BY2PG);
 	s->pseg = ps;
 	up->seg[sno] = s;
+done:
+	qunlock(&up->seglock);
+	poperror();
 
 	return va;
 }
@@ -747,7 +738,6 @@ segclock(uintptr pc)
 	s = up->seg[TSEG];
 	if(s == nil || s->profile == nil)
 		return;
-
 	s->profile[0] += TK2MS(1);
 	if(pc >= s->base && pc < s->top) {
 		pc -= s->base;
@@ -762,13 +752,10 @@ txt2data(Segment *s)
 
 	ps = newseg(SG_DATA, s->base, s->size);
 	ps->image = s->image;
-	incref(ps->image);
 	ps->fstart = s->fstart;
 	ps->flen = s->flen;
 	ps->flushme = 1;
-	qunlock(s);
-	putseg(s);
-	qlock(ps);
+	incref(s->image);
 	return ps;
 }
 
@@ -776,13 +763,30 @@ Segment*
 data2txt(Segment *s)
 {
 	Segment *ps;
+	Image *i;
 
+	i = s->image;
+	lock(i);
+	if((ps = i->s) != nil && ps->flen == s->flen){
+		assert(ps->image == i);
+		incref(ps);	
+		unlock(i);
+		return ps;
+	}
+	if(waserror()){
+		unlock(i);
+		nexterror();
+	}
 	ps = newseg(SG_TEXT | SG_RONLY, s->base, s->size);
-	ps->image = s->image;
-	incref(ps->image);
+	ps->image = i;
 	ps->fstart = s->fstart;
 	ps->flen = s->flen;
 	ps->flushme = 1;
+	if(i->s == nil)
+		i->s = ps;
+	incref(i);
+	unlock(i);
+	poperror();
 	return ps;
 }
 
@@ -832,15 +836,16 @@ segmentioproc(void *arg)
 	int done;
 	int sno;
 
+	qlock(&up->seglock);
 	for(sno = 0; sno < NSEG; sno++)
 		if(up->seg[sno] == nil && sno != ESEG)
 			break;
 	if(sno == NSEG)
 		panic("segmentkproc");
-
 	sio->p = up;
 	incref(sio->s);
 	up->seg[sno] = sio->s;
+	qunlock(&up->seglock);
 
 	while(waserror())
 		;
@@ -850,9 +855,13 @@ segmentioproc(void *arg)
 			sio->err = up->errstr;
 		else {
 			if(sio->s != nil && up->seg[sno] != sio->s){
-				putseg(up->seg[sno]);
+				Segment *tmp;
+				qlock(&up->seglock);
 				incref(sio->s);
+				tmp = up->seg[sno];
 				up->seg[sno] = sio->s;
+				putseg(tmp);
+				qunlock(&up->seglock);
 				flushmmu();
 			}
 			switch(sio->cmd){

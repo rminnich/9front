@@ -11,10 +11,13 @@
 static int	canflush(Proc*, Segment*);
 static void	executeio(void);
 static void	pageout(Proc*, Segment*);
-static void	pagepte(int, Page**);
+static void	pagepte(Segment*, Page**);
 static void	pager(void*);
 
 Image 	swapimage = {
+	{
+		.ref = 1
+	},
 	.notext = 1,
 };
 
@@ -193,11 +196,7 @@ pager(void*)
 		for(i = 0; i < NSEG; i++) {
 			if((s = p->seg[i]) != nil) {
 				switch(s->type&SG_TYPE) {
-				default:
-					break;
 				case SG_TEXT:
-					pageout(p, s);
-					break;
 				case SG_DATA:
 				case SG_BSS:
 				case SG_STACK:
@@ -219,7 +218,7 @@ pager(void*)
 static void
 pageout(Proc *p, Segment *s)
 {
-	int type, i, size;
+	int i;
 	short age;
 	Pte *l;
 	Page **pg, *entry;
@@ -235,9 +234,7 @@ pageout(Proc *p, Segment *s)
 	}
 
 	/* Pass through the pte tables looking for memory pages to swap out */
-	type = s->type&SG_TYPE;
-	size = s->mapsize;
-	for(i = 0; i < size; i++) {
+	for(i = 0; i < s->mapsize; i++) {
 		l = s->map[i];
 		if(l == nil)
 			continue;
@@ -253,11 +250,11 @@ pageout(Proc *p, Segment *s)
 			age = (short)(ageclock - entry->refage);
 			if(age < 16)
 				continue;
-			pagepte(type, pg);
+			pagepte(s, pg);
 		}
 	}
-	poperror();
 	qunlock(s);
+	poperror();
 	putseg(s);
 }
 
@@ -286,16 +283,17 @@ canflush(Proc *p, Segment *s)
 }
 
 static void
-pagepte(int type, Page **pg)
+pagepte(Segment *s, Page **pg)
 {
 	uintptr daddr;
 	Page *outp;
 
 	outp = *pg;
-	switch(type) {
+	switch(s->type & SG_TYPE) {
 	case SG_TEXT:				/* Revert to demand load */
-		putpage(outp);
 		*pg = nil;
+		s->used--;
+		putpage(outp);
 		break;
 
 	case SG_DATA:
@@ -327,6 +325,7 @@ pagepte(int type, Page **pg)
 		outp->daddr = daddr;
 		cachepage(outp, &swapimage);
 		*pg = (Page*)(daddr|PG_ONSWAP);
+		s->swapped++;
 
 		/* Add page to IO transaction list */
 		iolist[ioptr++] = outp;

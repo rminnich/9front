@@ -119,8 +119,6 @@ pagereclaim(Image *i)
 		unlock(i);
 		return 0;
 	}
-	incref(i);
-
 	np = 0;
 	fh = ft = nil;
 	for(h = i->pghash; h < &i->pghash[PGHSIZE]; h++){
@@ -147,15 +145,15 @@ pagereclaim(Image *i)
 		ft = p;
 		np++;
 
+		if(--i->pgref == 0){
+			putimage(i);
+			goto Done;
+		}
 		decref(i);
-		if(--i->pgref == 0)
-			break;
 	}
-	putimage(i);
-
-	if(np > 0)
-		freepages(fh, ft, np);
-
+	unlock(i);
+Done:
+	freepages(fh, ft, np);
 	return np;
 }
 
@@ -234,18 +232,27 @@ newpage(int clear, Segment **s, uintptr va)
 	return p;
 }
 
+/*
+ *  deadpage() decrements the page refcount
+ *  and returns the page when it becomes freeable.
+ */
+Page*
+deadpage(Page *p)
+{
+	if(p->image != nil){
+		decref(p);
+		return nil;
+	}
+	if(decref(p) != 0)
+		return nil;
+	return p;
+}
+
 void
 putpage(Page *p)
 {
-	if(onswap(p)) {
-		putswap(p);
-		return;
-	}
-	if(p->image != nil) {
-		decref(p);
-		return;
-	}
-	if(decref(p) == 0)
+	p = deadpage(p);
+	if(p != nil)
 		freepages(p, p, 1);
 }
 
@@ -355,19 +362,19 @@ Pte*
 ptecpy(Pte *old)
 {
 	Pte *new;
-	Page **src, **dst;
+	Page **src, **dst, *entry;
 
 	new = ptealloc();
 	dst = &new->pages[old->first-old->pages];
 	new->first = dst;
 	for(src = old->first; src <= old->last; src++, dst++)
-		if(*src != nil) {
-			if(onswap(*src))
-				dupswap(*src);
+		if((entry = *src) != nil) {
+			if(onswap(entry))
+				dupswap(entry);
 			else
-				incref(*src);
+				incref(entry);
 			new->last = dst;
-			*dst = *src;
+			*dst = entry;
 		}
 
 	return new;
@@ -387,15 +394,33 @@ ptealloc(void)
 void
 freepte(Segment*, Pte *p)
 {
-	Page **pg, **pe;
+	Page **pg, **pe, *entry;
+	Page *fh, *ft;
+	ulong np;
 
+	np = 0;
+	fh = ft = nil;
 	pg = p->first;
 	pe = p->last;
 	while(pg <= pe){
-		if(*pg != nil)
-			putpage(*pg);
+		if((entry = *pg) != nil){
+			if(onswap(entry))
+				putswap(entry);
+			else {
+				entry = deadpage(entry);
+				if(entry != nil){
+					if(fh != nil)
+						ft->next = entry;
+					else
+						fh = entry;
+					ft = entry;
+					np++;
+				}
+			}
+		}
 		pg++;
 	}
+	freepages(fh, ft, np);
 	free(p);
 }
 

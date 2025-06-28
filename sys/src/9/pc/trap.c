@@ -399,20 +399,16 @@ unexpected(Ureg* ureg, void*)
 	print("unexpected trap %lud; ignoring\n", ureg->trap);
 }
 
-extern void checkpages(void);
-extern void checkfault(ulong, ulong);
 static void
 fault386(Ureg* ureg, void*)
 {
 	ulong addr;
-	int read, user, n, insyscall;
-	char buf[ERRMAX];
+	int read;
 
 	addr = getcr2();
 	read = !(ureg->ecode & 2);
 
-	user = userureg(ureg);
-	if(!user){
+	if(!userureg(ureg)){
 		if(vmapsync(addr))
 			return;
 		{
@@ -424,27 +420,15 @@ fault386(Ureg* ureg, void*)
 		}
 		if(addr >= USTKTOP)
 			panic("kernel fault: bad address pc=0x%.8lux addr=0x%.8lux", ureg->pc, addr);
-		if(up == nil)
-			panic("kernel fault: no user process pc=0x%.8lux addr=0x%.8lux", ureg->pc, addr);
 	}
-	if(up == nil)
-		panic("user fault: up=0 pc=0x%.8lux addr=0x%.8lux", ureg->pc, addr);
 
-	insyscall = up->insyscall;
-	up->insyscall = 1;
-	n = fault(addr, ureg->pc, read);
-	if(n < 0){
-		if(!user){
+	if(fault(addr, ureg->pc, read) < 0){
+		if(!userureg(ureg)){
 			dumpregs(ureg);
-			panic("fault: 0x%lux", addr);
+			panic("kernel fault: %s addr=%#p", read? "read": "write", addr);
 		}
-		checkpages();
-		checkfault(addr, ureg->pc);
-		sprint(buf, "sys: trap: fault %s addr=0x%lux",
-			read ? "read" : "write", addr);
-		postnote(up, 1, buf, NDebug);
+		faultnote("fault", read? "read": "write", addr);
 	}
-	up->insyscall = insyscall;
 }
 
 /*

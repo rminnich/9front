@@ -308,22 +308,13 @@ trap(Ureg *ureg)
 void
 faultpower(Ureg *ureg, ulong addr, int read)
 {
-	int user, insyscall, n;
-	char buf[ERRMAX];
-
-	user = (ureg->srr1 & MSR_PR) != 0;
-	insyscall = up->insyscall;
-	up->insyscall = 1;
-	n = fault(addr, ureg->pc, read);
-	if(n < 0){
-		if(!user){
+	if(fault(addr, ureg->pc, read) < 0){
+		if(!userureg(ureg)){
 			dumpregs(ureg);
-			panic("fault: 0x%lux", addr);
+			panic("kernel fault: 0x%lux", addr);
 		}
-		sprint(buf, "sys: trap: fault %s addr=0x%lux", read? "read" : "write", addr);
-		postnote(up, 1, buf, NDebug);
+		faultnote("fault",  read? "read": "write", addr);
 	}
-	up->insyscall = insyscall;
 }
 
 void

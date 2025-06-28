@@ -23,6 +23,16 @@ faulterror(char *s, Chan *c)
 	pexit(s, 1);
 }
 
+void
+faultnote(char *type, char *access, uintptr addr)
+{
+	char buf[ERRMAX];
+
+	checkpages();
+	snprint(buf, sizeof(buf), "sys: trap: %s %s addr=%#p", type, access, addr);
+	postnote(up, 1, buf, NDebug);
+}
+
 static void
 pio(Segment *s, uintptr addr, uintptr soff, Page **p)
 {
@@ -33,18 +43,20 @@ pio(Segment *s, uintptr addr, uintptr soff, Page **p)
 	char *kaddr;
 	uintptr daddr;
 	Page *loadrec;
+	Image *image;
 
 retry:
 	loadrec = *p;
 	if(loadrec == nil) {	/* from a text/data image */
 		daddr = s->fstart+soff;
-		new = lookpage(s->image, daddr);
+		image = s->image;
+		new = lookpage(image, daddr);
 		if(new != nil) {
 			*p = new;
+			s->used++;
 			return;
 		}
 
-		c = s->image->c;
 		ask = BY2PG;
 		if(soff >= s->flen)
 			ask = 0;
@@ -53,21 +65,22 @@ retry:
 	}
 	else {			/* from a swap image */
 		daddr = swapaddr(loadrec);
-		new = lookpage(&swapimage, daddr);
+		image = &swapimage;
+		new = lookpage(image, daddr);
 		if(new != nil) {
-			putswap(loadrec);
 			*p = new;
+			s->swapped--;
+			putswap(loadrec);
 			return;
 		}
 
-		c = swapimage.c;
 		ask = BY2PG;
 	}
 	qunlock(s);
 
 	new = newpage(0, 0, addr);
 	k = kmap(new);
-	kaddr = (char*)VA(k);
+	c = image->c;
 	while(waserror()) {
 		if(strcmp(up->errstr, Eintr) == 0)
 			continue;
@@ -75,6 +88,7 @@ retry:
 		putpage(new);
 		faulterror(Eioload, c);
 	}
+	kaddr = (char*)VA(k);
 	n = devtab[c->type]->read(c, kaddr, ask, daddr);
 	if(n != ask)
 		error(Eshort);
@@ -84,58 +98,39 @@ retry:
 	kunmap(k);
 
 	qlock(s);
-	if(loadrec == nil) {	/* This is demand load */
-		/*
-		 *  race, another proc may have gotten here first while
-		 *  s was unlocked
-		 */
-		if(*p == nil) { 
-			/*
-			 *  check page cache again after i/o to reduce double caching
-			 */
-			*p = lookpage(s->image, daddr);
-			if(*p == nil) {
-				incref(new);
-				new->daddr = daddr;
-				cachepage(new, s->image);
-				*p = new;
-			}
-		}
-	}
-	else {			/* This is paged out */
-		/*
-		 *  race, another proc may have gotten here first
-		 *  (and the pager may have run on that page) while
-		 *  s was unlocked
-		 */
-		if(*p != loadrec) {
-			if(!pagedout(*p)) {
-				/* another process did it for me */
-				goto done;
-			} else if(*p != nil) {
-				/* another process and the pager got in */
-				putpage(new);
-				goto retry;
-			} else {
-				/* another process segfreed the page */
-				incref(new);
-				k = kmap(new);
-				memset((void*)VA(k), 0, ask);
-				kunmap(k);
-				*p = new;
-				goto done;
-			}
-		}
+	/*
+	 *  race, another proc may have gotten here first
+	 *  (and the pager may have run on that page) while
+	 *  s was unlocked
+	 */
+	if(*p != loadrec) {
+		putpage(new);
 
-		incref(new);
+		/* another process did it for me */
+		if(!pagedout(*p))
+			return;
+
+		/* another process or the pager got in */
+		goto retry;
+	}
+
+	/*
+	 *  check the cache again to avoid double caching.
+	 */
+	if((*p = lookpage(image, daddr)) != nil)
+		putpage(new);
+	else {
 		new->daddr = daddr;
-		cachepage(new, &swapimage);
+		settxtflush(new, s->flushme);
+		cachepage(new, image);
 		*p = new;
+	}
+	if(loadrec == nil)
+		s->used++;
+	else {
+		s->swapped--;
 		putswap(loadrec);
 	}
-done:
-	putpage(new);
-	settxtflush(*p, s->flushme);
 }
 
 static int
@@ -177,6 +172,7 @@ fixfault(Segment *s, uintptr addr, int read)
 			if(s == nil)
 				return -1;
 			*pg = new;
+			s->used++;
 		}
 		/* wet floor */
 	case SG_DATA:			/* Demand load/pagein/copy on write */
@@ -200,9 +196,10 @@ fixfault(Segment *s, uintptr addr, int read)
 			new = newpage(0, &s, addr);
 			if(s == nil)
 				return -1;
+			copypage(old, new);
 			settxtflush(new, s->flushme);
 			*pg = new;
-			copypage(old, *pg);
+			/* s->used count unchanged */
 			putpage(old);
 		}
 		/* wet floor */
@@ -272,10 +269,11 @@ fault(uintptr addr, uintptr pc, int read)
 {
 	Segment *s;
 	char *sps;
-	int pnd, attr;
+	int pnd, ins, attr;
 
 	if(up == nil)
-		panic("fault: nil up");
+		panic("fault: no user process pc=%#p addr=%#p", pc, addr);
+
 	if(up->nlocks){
 		Lock *l = up->lastlock;
 		print("fault: nlocks %d, proc %lud %s, addr %#p, lock %#p, lpc %#p\n", 
@@ -283,16 +281,20 @@ fault(uintptr addr, uintptr pc, int read)
 	}
 
 	pnd = up->notepending;
+	ins = up->insyscall;
+	up->insyscall = 1;
 	sps = up->psstate;
 	up->psstate = "Fault";
 
 	m->pfault++;
+
 	for(;;) {
 		spllo();
 
 		s = seg(up, addr, 1);		/* leaves s locked if seg != nil */
 		if(s == nil) {
 			up->psstate = sps;
+			up->insyscall = ins;
 			return -1;
 		}
 
@@ -305,6 +307,7 @@ fault(uintptr addr, uintptr pc, int read)
 			 (attr & SG_RONLY) != 0) {
 			qunlock(s);
 			up->psstate = sps;
+			up->insyscall = ins;
 			if(up->kp && up->nerrlab)	/* for segio */
 				error(Eio);
 			return -1;
@@ -322,11 +325,21 @@ fault(uintptr addr, uintptr pc, int read)
 		switch(up->procctl){
 		case Proc_exitme:
 		case Proc_exitbig:
+			if(up->nerrlab){
+				up->psstate = sps;
+				up->insyscall = ins;
+				up->notepending |= pnd;
+				error(up->procctl==Proc_exitbig?
+					"Killed: Insufficient physical memory":
+					"Killed");
+			}
 			procctl();
+			break;
 		}
 	}
 
 	up->psstate = sps;
+	up->insyscall = ins;
 	up->notepending |= pnd;
 
 	return 0;

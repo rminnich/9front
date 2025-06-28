@@ -51,7 +51,12 @@ struct Cache
 	Mntcache	*hash[NHASH];
 };
 
-Image fscache;
+Image fscache = {
+	{
+		.ref = 1,
+	},
+	.notext = 1,
+};
 
 static Cache cache;
 
@@ -77,8 +82,6 @@ cinit(void)
 	cache.tail = m;
 	cache.tail->next = nil;
 	cache.head->prev = nil;
-
-	fscache.notext = 1;
 }
 
 static uintptr

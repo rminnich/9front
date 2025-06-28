@@ -1250,7 +1250,6 @@ _Noreturn void
 pexit(char *exitstr, int freemem)
 {
 	Proc *p;
-	Segment **s;
 	ulong utime, stime;
 	Waitq *wq;
 	Fgrp *fgrp;
@@ -1259,6 +1258,8 @@ pexit(char *exitstr, int freemem)
 	Pgrp *pgrp;
 	Chan *dot;
 	void (*pt)(Proc*, int, vlong);
+	Segment *s;
+	int i;
 
 	up->alarm = 0;
 	timerdel(up);
@@ -1382,10 +1383,11 @@ pexit(char *exitstr, int freemem)
 	qunlock(&up->debug);
 
 	qlock(&up->seglock);
-	for(s = up->seg; s < &up->seg[NSEG]; s++) {
-		if(*s != nil) {
-			putseg(*s);
-			*s = nil;
+	for(i = 0; i < NSEG; i++){
+		s = up->seg[i];
+		if(s != nil){
+			up->seg[i] = nil;
+			putseg(s);
 		}
 	}
 	qunlock(&up->seglock);
@@ -1724,22 +1726,11 @@ procpagecount(Proc *p)
 	ulong pages;
 	int i;
 
-	eqlock(&p->seglock);
-	if(waserror()){
-		qunlock(&p->seglock);
-		nexterror();
-	}
 	pages = 0;
 	for(i=0; i<NSEG; i++){
-		if((s = p->seg[i]) != nil){
-			eqlock(s);
-			pages += mcountseg(s);
-			qunlock(s);
-		}
+		if((s = p->seg[i]) != nil)
+			pages += s->used;
 	}
-	qunlock(&p->seglock);
-	poperror();
-
 	return pages;
 }
 
@@ -1766,26 +1757,26 @@ killbig(void)
 	}
 	if(kp == nil)
 		return;
-	qlock(&kp->debug);
-	if(kp->pid == 0 || kp->procctl == Proc_exitbig){
+	if(!canqlock(&kp->debug))
+		return;
+	if(!canqlock(&kp->seglock)){
 		qunlock(&kp->debug);
 		return;
 	}
-	qlock(&kp->seglock);
 	s = kp->seg[BSEG];
+	if(kp->procctl != Proc_exitbig)
+		killproc(kp, Proc_exitbig);
+	qunlock(&kp->debug);
 	if(s != nil && s->ref > 1){
 		for(i = 0; (p = proctab(i)) != nil; i++) {
-			if(p == kp || p->state <= New || p->kp)
+			if(p == kp || !matchseg(p, s) || !canqlock(&p->debug))
 				continue;
-			qlock(&p->debug);
-			if(p->pid != 0 && matchseg(p, s))
+			if(p->procctl != Proc_exitbig)
 				killproc(p, Proc_exitbig);
 			qunlock(&p->debug);
 		}
 	}
 	qunlock(&kp->seglock);
-	killproc(kp, Proc_exitbig);
-	qunlock(&kp->debug);
 }
 
 /*

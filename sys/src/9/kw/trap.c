@@ -322,27 +322,13 @@ trapname(int psr)
 static void
 faultarm(Ureg *ureg, uintptr va, int user, int read)
 {
-	int n, insyscall;
-	char buf[ERRMAX];
-
-	if(up == nil) {
-		dumpregs(ureg);
-		panic("fault: nil up in faultarm, accessing %#p", va);
-	}
-	insyscall = up->insyscall;
-	up->insyscall = 1;
-	n = fault(va, ureg->pc, read);
-	if(n < 0){
+	if(fault(va, ureg->pc, read) < 0){
 		if(!user){
 			dumpregs(ureg);
-			panic("fault: kernel accessing %#p", va);
+			panic("kernel fault: %s addr=%#p", read? "read": "write", va);
 		}
-		/* don't dump registers; programs suicide all the time */
-		snprint(buf, sizeof buf, "sys: trap: fault %s va=%#p",
-			read? "read": "write", va);
-		postnote(up, 1, buf, NDebug);
+		faultnote("fault", read? "read": "write", va);
 	}
-	up->insyscall = insyscall;
 }
 
 /*

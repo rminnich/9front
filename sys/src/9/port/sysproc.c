@@ -567,16 +567,15 @@ sysexec(va_list list)
 	}
 
 	/* Text. Shared. */
+	assert(ts->ref > 0);
 	up->seg[TSEG] = ts;
 
 	/* Data. Shared. */
 	s = newseg(SG_DATA, t, (d-t)>>PGSHIFT);
-
-	/* Attached by hand */
-	incref(img);
 	s->image = img;
 	s->fstart = text;
 	s->flen = data;
+	incref(img);
 	up->seg[DSEG] = s;
 
 	/* BSS. Zero fill on demand */

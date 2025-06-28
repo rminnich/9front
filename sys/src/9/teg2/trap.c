@@ -597,32 +597,13 @@ irqdisable(uint irq, void (*f)(Ureg*, void*), void* a, char *name)
 static void
 faultarm(Ureg *ureg, uintptr va, int user, int read)
 {
-	int n, insyscall;
-
-	if(up == nil) {
-		dumpstackwithureg(ureg);
-		panic("faultarm: cpu%d: nil up, %sing %#p at %#p",
-			m->machno, (read? "read": "writ"), va, ureg->pc);
-	}
-	insyscall = up->insyscall;
-	up->insyscall = 1;
-
-	n = fault(va, ureg->pc, read);		/* goes spllo */
-	splhi();
-	if(n < 0){
-		char buf[ERRMAX];
-
+	if(fault(va, ureg->pc, read) < 0){
 		if(!user){
-			dumpstackwithureg(ureg);
-			panic("fault: cpu%d: kernel %sing %#p at %#p",
-				m->machno, read? "read": "writ", va, ureg->pc);
+			dumpregs(ureg);
+			panic("kernel fault: %s addr=%#p", read? "read": "write", va);
 		}
-		/* don't dump registers; programs suicide all the time */
-		snprint(buf, sizeof buf, "sys: trap: fault %s va=%#p",
-			read? "read": "write", va);
-		postnote(up, 1, buf, NDebug);
+		faultnote("fault", read? "read": "write", va);
 	}
-	up->insyscall = insyscall;
 }
 
 /*

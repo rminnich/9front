@@ -429,20 +429,25 @@ struct Segment
 	Ref;
 	QLock;
 	int	type;		/* segment type */
+	ulong	size;		/* size in pages */
+
 	uintptr	base;		/* virtual base */
 	uintptr	top;		/* virtual top */
-	ulong	size;		/* size in pages */
 	uintptr	fstart;		/* start address in file for demand load */
 	uintptr	flen;		/* length of segment in file */
+
 	int	flushme;	/* maintain icache for this segment */
 	Image	*image;		/* text in file attached to this segment */
 	Physseg *pseg;
-	ulong*	profile;	/* Tick profile area */
+	ulong	*profile;	/* Tick profile area */
 	Pte	**map;
 	int	mapsize;
 	Pte	*ssegmap[SSEGMAPSIZE];
+
+	ulong	used;		/* pages used (swapped or not) */
+	ulong	swapped;	/* pages swapped */
+
 	Sema	sema;
-	ulong	mark;		/* portcountrefs */
 };
 
 struct Segio

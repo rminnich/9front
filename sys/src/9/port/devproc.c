@@ -1644,9 +1644,6 @@ procctlmemio(Chan *c, Proc *p, uintptr offset, void *a, long n, int read)
 	Segment *s;
 	int i;
 
-	s = seg(p, offset, 0);
-	if(s == nil)
-		error(Ebadarg);
 	eqlock(&p->seglock);
 	if(waserror()) {
 		qunlock(&p->seglock);
@@ -1654,34 +1651,34 @@ procctlmemio(Chan *c, Proc *p, uintptr offset, void *a, long n, int read)
 	}
 	if(p->state <= New || p->pid != PID(c->qid))
 		error(Eprocdied);
-
+	s = seg(p, offset, 1);
+	if(s == nil)
+		error(Ebadarg);
+	if(waserror()){
+		qunlock(s);
+		nexterror();
+	}
 	for(i = 0; i < NSEG; i++) {
 		if(p->seg[i] == s)
 			break;
 	}
 	if(i == NSEG)
 		error(Egreg);	/* segment gone */
-
-	eqlock(s);
-	if(waserror()){
-		qunlock(s);
-		nexterror();
-	}
 	if(!read && (s->type&SG_TYPE) == SG_TEXT) {
-		s = txt2data(s);
-		p->seg[i] = s;
+		p->seg[i] = txt2data(s);
+		qunlock(s);
+		putseg(s);
+		s = p->seg[i];
+	} else {
+		qunlock(s);
 	}
-	offset -= s->base;
 	incref(s);		/* for us while we copy */
-	qunlock(s);
 	poperror();
-
 	sio = c->aux;
 	if(sio == nil){
 		sio = smalloc(sizeof(Segio));
 		c->aux = sio;
 	}
-
 	qunlock(&p->seglock);
 	poperror();
 
@@ -1689,6 +1686,7 @@ procctlmemio(Chan *c, Proc *p, uintptr offset, void *a, long n, int read)
 		putseg(s);
 		nexterror();
 	}
+	offset -= s->base;
 	n = segio(sio, s, a, n, offset, read);
 	putseg(s);
 	poperror();

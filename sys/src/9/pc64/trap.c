@@ -366,21 +366,6 @@ unexpected(Ureg* ureg, void*)
 }
 
 static void
-faultnote(Ureg *ureg, char *access, uintptr addr)
-{
-	extern void checkpages(void);
-	char buf[ERRMAX];
-
-	if(!userureg(ureg)){
-		dumpregs(ureg);
-		panic("fault: %s addr=%#p", access, addr);
-	}
-	checkpages();
-	snprint(buf, sizeof(buf), "sys: trap: fault %s addr=%#p", access, addr);
-	postnote(up, 1, buf, NDebug);
-}
-
-static void
 faultamd64(Ureg* ureg, void*)
 {
 	uintptr addr;
@@ -389,9 +374,7 @@ faultamd64(Ureg* ureg, void*)
 	addr = getcr2();
 	read = !(ureg->error & 2);
 	user = userureg(ureg);
-	if(user)
-		up->insyscall = 1;
-	else {
+	if(!user){
 		extern void _peekinst(void);
 
 		if((void(*)(void))ureg->pc == _peekinst){
@@ -415,12 +398,15 @@ faultamd64(Ureg* ureg, void*)
 		}
 	}
 
-	if(fault(addr, ureg->pc, read))
-		faultnote(ureg, read? "read": "write", addr);
+	if(fault(addr, ureg->pc, read) < 0){
+		if(!user){
+			dumpregs(ureg);
+			panic("kernel fault: %s addr=%#p", read? "read": "write", addr);
+		}
+		faultnote("fault", read? "read": "write", addr);
+	}
 
-	if(user)
-		up->insyscall = 0;
-	else
+	if(!user)
 		poperror();
 }
 

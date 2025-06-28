@@ -328,21 +328,6 @@ noted(Ureg *ureg, int arg0)
 	}
 }
 
-static void
-faultnote(Ureg *ureg, char *access, uintptr addr)
-{
-	extern void checkpages(void);
-	char buf[ERRMAX];
-
-	if(!userureg(ureg)){
-		dumpregs(ureg);
-		panic("fault: %s addr=%#p", access, addr);
-	}
-	checkpages();
-	snprint(buf, sizeof(buf), "sys: trap: fault %s addr=%#p", access, addr);
-	postnote(up, 1, buf, NDebug);
-}
-
 void
 faultarm64(Ureg *ureg)
 {
@@ -350,9 +335,7 @@ faultarm64(Ureg *ureg)
 	uintptr addr;
 
 	user = userureg(ureg);
-	if(user)
-		up->insyscall = 1;
-	else {
+	if(!user){
 		extern void _peekinst(void);
 
 		if(ureg->pc == (uintptr)_peekinst){
@@ -395,12 +378,14 @@ faultarm64(Ureg *ureg)
 	case 61:				// first level domain fault
 	case 62:				// second level domain fault
 	default:
-		faultnote(ureg, read? "read": "write", addr);
+		if(!user){
+			dumpregs(ureg);
+			panic("kernel fault: %s addr=%#p", read? "read": "write", addr);
+		}
+		faultnote("fault", read? "read": "write", addr);
 	}
 
-	if(user)
-		up->insyscall = 0;
-	else
+	if(!user)
 		poperror();
 }
 

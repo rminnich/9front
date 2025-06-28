@@ -146,7 +146,7 @@ kvce(Ureg *ur, int ecode)
 void
 trap(Ureg *ur)
 {
-	int ecode, user, cop, x, fpchk;
+	int ecode, user, cop, fpchk;
 	ulong fpfcr31;
 	char buf[2*ERRMAX], buf1[ERRMAX], *fpexcep;
 	static int dumps;
@@ -172,11 +172,8 @@ trap(Ureg *ur)
 			kfault(ur);
 			break;
 		}
-		x = up->insyscall;
-		up->insyscall = 1;
 		spllo();
 		faultmips(ur, user, ecode);
-		up->insyscall = x;
 		break;
 
 	case CVCEI:

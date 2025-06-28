@@ -70,25 +70,17 @@ faulterr[0x20] = {
 static void
 faultarm(Ureg *ureg, ulong fsr, uintptr addr)
 {
-	int user, insyscall, read;
-	static char buf[ERRMAX];
-	char *err;
+	char *type;
+	int read;
+
+	if(!userureg(ureg)){
+		if(addr >= USTKTOP){
+			dumpregs(ureg);
+			panic("kernel fault: bad address pc=%#.8lux addr=%#.8lux fsr=%#.8lux", ureg->pc, addr, fsr);
+		}
+	}
 
 	read = (fsr & (1<<11)) == 0;
-	user = userureg(ureg);
-	if(!user){
-		if(addr >= USTKTOP || up == nil)
-			_dumpstack(ureg);
-		if(addr >= USTKTOP)
-			panic("kernel fault: bad address pc=%#.8lux addr=%#.8lux fsr=%#.8lux", ureg->pc, addr, fsr);
-		if(up == nil)
-			panic("kernel fault: no user process pc=%#.8lux addr=%#.8lux fsr=%#.8lux", ureg->pc, addr, fsr);
-	}
-	if(up == nil)
-		panic("user fault: up=nil pc=%#.8lux addr=%#.8lux fsr=%#.8lux", ureg->pc, addr, fsr);
-
-	insyscall = up->insyscall;
-	up->insyscall = 1;
 	switch(fsr & 0x1F){
 	case 0x05:	/* translation fault L1 */
 	case 0x07:	/* translation fault L2 */
@@ -102,18 +94,15 @@ faultarm(Ureg *ureg, ulong fsr, uintptr addr)
 			break;
 		/* wet floor */
 	default:
-		err = faulterr[fsr & 0x1F];
-		if(err == nil)
-			err = "fault";
-		if(!user){
+		type = faulterr[fsr & 0x1F];
+		if(type == nil)
+			type = "fault";
+		if(!userureg(ureg)){
 			dumpregs(ureg);
-			_dumpstack(ureg);
-			panic("kernel %s: pc=%#.8lux addr=%#.8lux fsr=%#.8lux", err, ureg->pc, addr, fsr);
+			panic("kernel %s: pc=%#.8lux addr=%#.8lux fsr=%#.8lux", type, ureg->pc, addr, fsr);
 		}
-		sprint(buf, "sys: trap: %s %s addr=%#.8lux", err, read ? "read" : "write", addr);
-		postnote(up, 1, buf, NDebug);
+		faultnote(type, read? "read": "write", addr);
 	}
-	up->insyscall = insyscall;
 }
 
 static FPsave*

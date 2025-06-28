@@ -324,8 +324,7 @@ static void
 fault386(Ureg* ureg, void*)
 {
 	ulong addr;
-	int read, user, n, insyscall;
-	char buf[ERRMAX];
+	int read;
 
 	addr = HYPERVISOR_shared_info->vcpu_info[m->machno].arch.cr2;
 	if (faultpanic) {
@@ -334,27 +333,16 @@ fault386(Ureg* ureg, void*)
 		dumpstack();
 		panic("fault386");
 	}
-	
-	user = (ureg->cs & 0xFFFF) == UESEL;
-	if(!user && mmukmapsync(addr))
+	if(!userureg(ureg) && mmukmapsync(addr))
 		return;
 	read = !(ureg->ecode & 2);
-	if(up == nil)
-		panic("fault but up is zero; pc 0x%8.8lux addr 0x%8.8lux\n", ureg->pc, addr);
-	insyscall = up->insyscall;
-	up->insyscall = 1;
-	n = fault(addr, ureg->pc, read);
-	if(n < 0){
-		if(!user){
+	if(fault(addr, ureg->pc, read) < 0){
+		if(!userureg(ureg)){
 			dumpregs(ureg);
-			panic("fault: 0x%lux\n", addr);
+			panic("kernel fault: %s addr=%#p", read? "read": "write", addr);
 		}
-		sprint(buf, "sys: trap: fault %s addr=0x%lux",
-			read? "read" : "write", addr);
-		dprint("Posting %s to %lud\n", buf, up->pid);
-		postnote(up, 1, buf, NDebug);
+		faultnote("fault", read? "read": "write", addr);
 	}
-	up->insyscall = insyscall;
 	FAULTLOG(dprint("fault386: all done\n");)
 }
 
