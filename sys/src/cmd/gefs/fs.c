@@ -696,6 +696,7 @@ getmount(char *name)
 		}
 	}
 	if(waserror()){
+		qunlock(&fs->mountlk);
 		free(mnt);
 		nexterror();
 	}
