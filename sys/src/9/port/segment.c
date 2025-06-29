@@ -94,20 +94,32 @@ putseg(Segment *s)
 	Pte **pte, **emap;
 	Image *i;
 
-	if(s == nil || decref(s) != 0)
+	if(s == nil)
 		return;
 
 	i = s->image;
 	if(i != nil) {
+		/*
+		 *  We must hold image lock here during
+		 *  decref() to prevent someone from taking
+		 *  a reference to our segment from the cache.
+		 *  Just letting decref(s) drop to zero *before*
+		 *  and then checking s->ref again under image
+		 *  lock is not sufficient, as someone can grab
+		 *  a reference and then call putseg() again;
+		 *  freeing segment. By the time we hold image lock,
+		 *  the segment would be freed from under us.
+		 */
 		lock(i);
-		if(s->ref != 0){
+		if(decref(s) != 0){
 			unlock(i);
 			return;
 		}
 		if(i->s == s)
 			i->s = nil;
 		putimage(i);
-	}
+	} else if(decref(s) != 0)
+		return;
 
 	assert(s->sema.prev == &s->sema);
 	assert(s->sema.next == &s->sema);
