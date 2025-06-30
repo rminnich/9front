@@ -9,6 +9,9 @@ hget, hpost, webpaste, urlencode \- retrieve, post to a web page corresponding t
 .B -o
 .I file
 ] [
+.B -e
+.I file
+] [
 .B -p
 .I body
 |
@@ -117,6 +120,14 @@ file, it is copied into the file.  If the file is up to date
 but incomplete,
 .I hget
 will fetch the missing bytes.
+.PP
+By default,
+.I hget
+ignores the servers error response body.
+With the
+.B -e
+option, the error response can be written to
+.IR file .
 .PP
 Option
 .B -r
