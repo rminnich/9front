@@ -88,6 +88,8 @@ sync(void)
 	Dlist dl;
 	int i;
 
+	if(agetl(&fs->rdonly))
+		error(Erdonly);
 	qlock(&fs->synclk);
 	if(waserror()){
 		fprint(2, "failed to sync: %s\n", errmsg());
@@ -110,6 +112,7 @@ sync(void)
          */
 	qlock(&fs->mutlk);
 	if(waserror()){
+		aincl(&fs->rdonly, 1);
 		qunlock(&fs->mutlk);
 		nexterror();
 	}

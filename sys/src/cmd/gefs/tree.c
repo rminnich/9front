@@ -3,6 +3,7 @@
 #include <fcall.h>
 #include <avl.h>
 
+#include "atomic.h"
 #include "dat.h"
 #include "fns.h"
 
@@ -1126,14 +1127,14 @@ Out:
 }
 
 static void
-freepath(Tree *t, Path *path, int npath)
+freepath(Tree *t, Path *path, int npath, int ok)
 {
 	Path *p;
 
 	for(p = path; p != path + npath; p++){
-		if(p->b != nil)
+		if(ok && p->b != nil)
 			freeblk(t, p->b);
-		if(p->m != nil)
+		if(ok && p->m != nil)
 			freeblk(t, p->b);
 		dropblk(p->b);
 		dropblk(p->nl);
@@ -1254,6 +1255,8 @@ btupsert(Tree *t, Msg *msg, int nmsg)
 	Bptr bp;
 
 	assert(!canqlock(&fs->mutlk));
+	if(agetl(&fs->rdonly))
+		error(Erdonly);
 	sz = 0;
 	stablesort(msg, nmsg);
 	for(i = 0; i < nmsg; i++)
@@ -1262,6 +1265,7 @@ btupsert(Tree *t, Msg *msg, int nmsg)
 Again:
 	b = getroot(t, &height);
 	if(waserror()){
+		aincl(&fs->rdonly, 1);
 		dropblk(b);
 		nexterror();
 	}
@@ -1279,7 +1283,7 @@ Again:
 		error(Enomem);
 	poperror();
 	if(waserror()){
-		freepath(t, path, height+2);	/* npath not volatile */
+		freepath(t, path, height+2, 0);	/* npath not volatile */
 		nexterror();
 	}
 	npath = 0;
@@ -1334,7 +1338,7 @@ Again:
 	unlock(&t->lk);
 
 	npull += rp->npull;
-	freepath(t, path, npath);
+	freepath(t, path, npath, 1);
 	poperror();
 
 	if(npull != nmsg){
