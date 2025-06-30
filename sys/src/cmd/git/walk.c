@@ -425,6 +425,7 @@ main(int argc, char **argv)
 		}
 		break;
 	case 'b':
+		isindexed = 0;
 		base = EARGF(usage());
 		if(resolveref(&h, base) == -1)
 			sysfatal("no such ref '%s'", base);
@@ -613,7 +614,8 @@ Stale:
 		nulldir(&rn);
 		rn.name = "INDEX9";
 		if(remove(".git/INDEX9") == -1)
-			goto Nope;
+			if(access(".git/INDEX9", AEXIST) == 0)
+				goto Nope;
 		if(dirwstat(".git/INDEX9.new", &rn) == -1)
 			sysfatal("rename: %r");
 	}

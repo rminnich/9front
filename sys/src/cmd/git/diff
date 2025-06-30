@@ -7,9 +7,11 @@ gitup
 flagfmt='c:commit branch, s:summarize, u:uncommitted'; args='[file ...]'
 eval `''{aux/getflags $*} || exec aux/usage
 
+bparam=(-b $commit)
 if(~ $#commit 0){
 	commit=HEAD
 	cparam=()
+	bparam=()
 }
 
 files=()
@@ -21,7 +23,7 @@ if(! ~ $#* 0)
 
 branch=`{git/query -p $commit}
 if(~ $summarize 1 || ~ $uncommitted 1){
-	git/walk -r$gitrel -f$filt $cparam $files
+	git/walk $bparam -r$gitrel -f$filt $cparam $files
 	exit
 }
 
@@ -29,9 +31,6 @@ showed=()
 mntgen /mnt/scratch
 bind $branch/tree/ /mnt/scratch/a
 bind . /mnt/scratch/b
-bparam=()
-if(~ $#commit 1)
-	bparam=(-b $commit)
 for(f in `$nl{git/walk $bparam -c -f$filt $cparam $files}){
 	if(~ $#showed 0){
 		echo diff `{git/query $commit} uncommitted
