@@ -205,6 +205,10 @@ urlget(Url *url, int body)
 	n = strlen(buf);
 	snprint(buf+n, sizeof(buf)-n, "/body");
 	body = open(buf, OREAD);
+	if(body < 0){
+		snprint(buf+n, sizeof(buf)-n, "/errorbody");
+		body = open(buf, OREAD);
+	}
 	close(fd);
 	fd = body;
 	if(fd < 0)
