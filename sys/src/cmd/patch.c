@@ -52,6 +52,9 @@ struct Fchg {
 	char	*new;
 };
 
+int	finish(int);
+void	fail(char*, ...);
+
 int	strip;
 int	reverse;
 int	rejfd = -1;
@@ -79,7 +82,7 @@ emalloc(ulong n)
 	
 	v = mallocz(n, 1);
 	if(v == nil)
-		sysfatal("malloc: %r");
+		fail("malloc: %r");
 	setmalloctag(v, getcallerpc(&n));
 	return v;
 }
@@ -91,9 +94,23 @@ erealloc(void *v, ulong n)
 		n++;
 	v = realloc(v, n);
 	if(v == nil)
-		sysfatal("malloc: %r");
+		fail("malloc: %r");
 	setmalloctag(v, getcallerpc(&n));
 	return v;
+}
+
+void
+fail(char *fmt, ...)
+{
+	char msg[ERRMAX];
+	va_list ap;
+
+	finish(0);
+	va_start(ap, fmt);
+	vsnprint(msg, sizeof(msg), fmt, ap);
+	va_end(ap);
+	fprint(2, "%s\n", msg);
+	exits(msg);
 }
 
 int
@@ -125,7 +142,7 @@ fileheader(char *s, char *pfx, char **name)
 		while(*s == '/')
 			s++;
 		if(*s == '\0')
-			sysfatal("too many components stripped");
+			fail("too many components stripped");
 	}
 	len = (e - s) + 1;
 	*name = emalloc(len);
@@ -188,7 +205,7 @@ hunkheader(Hunk *h, char *s, char *oldpath, char *newpath, int lnum)
 	if(h->newln > 0)
 		h->newln--;
 	if(h->oldln < 0 || h->newln < 0 || h->oldcnt < 0 || h->newcnt < 0)
-		sysfatal("malformed hunk %s", s);
+		fail("malformed hunk %s", s);
 	return 0;
 }
 
@@ -323,7 +340,7 @@ comment:
 		free(ln);
 	}
 	if(p->nhunk == 0)
-		sysfatal("%s: could not find start of patch", name);
+		fail("%s: could not find start of patch", name);
 	goto out;
 
 patch:
@@ -349,9 +366,9 @@ hunk:
 	while(1){
 		if((ln = readline(f, &lnum)) == nil){
 			if(oldcnt != h.oldcnt)
-				sysfatal("%s:%d: malformed hunk: mismatched -hunk size %d != %d", name, lnum, oldcnt, h.oldcnt);
+				fail("%s:%d: malformed hunk: mismatched -hunk size %d != %d", name, lnum, oldcnt, h.oldcnt);
 			if(newcnt != h.newcnt)
-				sysfatal("%s:%d: malformed hunk: mismatched +hunk size %d != %d", name, lnum, newcnt, h.newcnt);
+				fail("%s:%d: malformed hunk: mismatched +hunk size %d != %d", name, lnum, newcnt, h.newcnt);
 			addhunk(p, &h);
 			break;
 		}
@@ -359,7 +376,7 @@ hunk:
 		addorig(&h, ln);
 		switch(ln[0]){
 		default:
-			sysfatal("%s:%d: malformed hunk: leading junk", name, lnum);
+			fail("%s:%d: malformed hunk: leading junk", name, lnum);
 		case '\\':
 			if(strncmp(ln, "\\ No newline", nelem("\\ No newline")-1) == 0)
 				trimhunk(c, &h);
@@ -388,7 +405,7 @@ hunk:
 		}
 		free(ln);
 		if(oldcnt > h.oldcnt || newcnt > h.newcnt)
-			sysfatal("%s:%d: malformed hunk: oversized hunk", name, lnum);
+			fail("%s:%d: malformed hunk: oversized hunk", name, lnum);
 		if(oldcnt < h.oldcnt || newcnt < h.newcnt)
 			continue;
 
@@ -467,51 +484,57 @@ blat(char *old, char *new, char *o, usize len, int mode)
 	int fd;
 
 	tmp = nil;
-	if(strcmp(new, "/dev/null") == 0){
-		if(len != 0)
-			sysfatal("diff modifies removed file");
-	}else if(!dryrun){
+	if(strcmp(new, "/dev/null") != 0 && !dryrun){
 		if(mkpath(new) == -1)
-			sysfatal("mkpath %s: %r", new);
+			fail("mkpath %s: %r", new);
 		if((tmp = smprint("%s.tmp%d", new, getpid())) == nil)
-			sysfatal("smprint: %r");
+			fail("smprint: %r");
 		if((fd = create(tmp, OWRITE, mode|0200)) == -1)
-			sysfatal("open %s: %r", tmp);
+			fail("open %s: %r", tmp);
 		if(write(fd, o, len) != len)
-			sysfatal("write %s: %r", tmp);
+			fail("write %s: %r", tmp);
 		close(fd);
 	}
 	if((changed = realloc(changed, (nchanged+1)*sizeof(Fchg))) == nil)
-		sysfatal("realloc: %r");
+		fail("realloc: %r");
 	if((changed[nchanged].new = strdup(new)) == nil)
-		sysfatal("strdup: %r");
+		fail("strdup: %r");
 	if((changed[nchanged].old = strdup(old)) == nil)
-		sysfatal("strdup: %r");
+		fail("strdup: %r");
 	changed[nchanged].tmp = tmp;
 	nchanged++;
 }
 
-void
+int
 finish(int ok)
 {
 	Fchg *c;
-	int i, fd;
+	int i, fd, r;
 
+	r = 1;
 	for(i = 0; i < nchanged; i++){
 		c = &changed[i];
 		if(!ok){
-			if(c->tmp != nil && remove(c->tmp) == -1)
+			if(c->tmp != nil && remove(c->tmp) == -1){
+				r = 0;
 				fprint(2, "remove %s: %r\n", c->tmp);
+			}
 			goto Free;
 		}
 		if(!dryrun){
 			if(strcmp(c->new, "/dev/null") == 0){
-				if(remove(c->old) == -1)
-					sysfatal("remove %s: %r", c->old);
+				if(remove(c->old) == -1){
+					r = 0;
+					fprint(2, "remove %s: %r\n", c->old);
+					goto Free;
+				}
 				goto Print;
 			}
-			if((fd = open(c->tmp, ORDWR)) == -1)
-				sysfatal("open %s: %r", c->tmp);
+			if((fd = open(c->tmp, ORDWR)) == -1){
+				r = 0;
+				fprint(2, "open %s: %r\n", c->tmp);
+				goto Free;
+			}
 			if(strcmp(c->old, c->new) == 0 && remove(c->old) == -1)
 				sysfatal("remove %s: %r", c->old);
 			if(rename(fd, c->new) == -1)
@@ -530,9 +553,10 @@ Free:
 		free(c->new);
 	}
 	free(changed);
+	return r;
 }
 
-void
+int
 slurp(Fbuf *f, char *path)
 {
 	int n, i, fd, sz, len, nlines, linesz;
@@ -540,10 +564,12 @@ slurp(Fbuf *f, char *path)
 	int *lines;
 	Dir *d;
 
-	if((fd = open(path, OREAD)) == -1)
-		sysfatal("open %s: %r", path);
+	if((fd = open(path, OREAD)) == -1){
+		fprint(2, "open %s: %r", path);
+		return -1;
+	}
 	if((d = dirfstat(fd)) == nil)
-		sysfatal("stat %s: %r", path);
+		fail("stat %s: %r", path);
 	sz = 8192;
 	len = 0;
 	buf = emalloc(sz);
@@ -556,7 +582,7 @@ slurp(Fbuf *f, char *path)
 		if(n == 0)
 			break;
 		if(n == -1)
-			sysfatal("read %s: %r", path);
+			fail("read %s: %r", path);
 		len += n;
 	}
 
@@ -583,6 +609,7 @@ slurp(Fbuf *f, char *path)
 	f->mode = d->mode;
 	free(d);
 	close(fd);
+	return 0;
 }
 
 char*
@@ -680,7 +707,10 @@ apply(Patch *p, char *fname)
 				osz = 0;
 			}
 			if(!dryrun){
-				slurp(&f, h->oldpath);
+				if(slurp(&f, h->oldpath) == -1){
+					rejected(h, fname);
+					goto Next;
+				}
 				n = f.buf;
 			}
 			curfile = nextfile;
@@ -691,7 +721,7 @@ apply(Patch *p, char *fname)
 			e = search(&f, h);
 			if(e == nil){
 				if(rejfd == -1)
-					sysfatal("%s:%d: unable to find hunk offset near %s:%d", fname, h->lnum, h->oldpath, h->oldln);
+					fail("%s:%d: unable to find hunk offset near %s:%d", fname, h->lnum, h->oldpath, h->oldln);
 				else{
 					rejected(h, fname);
 					goto Next;
@@ -770,38 +800,38 @@ main(int argc, char **argv)
 	if(rejfile != nil){
 		rejfd = create(rejfile, OWRITE, 0644);
 		if(rejfd == -1)
-			sysfatal("open %s: %r", rejfile);
+			fail("open %s: %r", rejfile);
 	}
 	if(argc == 0){
 		if((f = Bfdopen(0, OREAD)) == nil)
-			sysfatal("open stdin: %r");
+			fail("open stdin: %r");
 		if((p = parse(f, "stdin")) == nil)
-			sysfatal("parse patch: %r");
+			fail("parse patch: %r");
 		if(workdir != nil && chdir(workdir) == -1)
-			sysfatal("chdir %s: %r", workdir);
+			fail("chdir %s: %r", workdir);
 		if(apply(p, "stdin") == -1){
 			fprint(2, "apply stdin: %r\n");
 			ok = 0;
 		}
 		freepatch(p);
 		Bterm(f);
-		finish(ok);
+		ok = finish(ok);
 	}else{
 		for(i = 0; ok && i < argc; i++){
 			if((f = Bopen(argv[i], OREAD)) == nil)
-				sysfatal("open %s: %r", argv[i]);
+				fail("open %s: %r", argv[i]);
 			if((p = parse(f, argv[i])) == nil)
-				sysfatal("parse patch: %r");
+				fail("parse patch: %r");
 			if(workdir != nil && chdir(workdir) == -1)
-				sysfatal("chdir %s: %r", workdir);
+				fail("chdir %s: %r", workdir);
 			if(apply(p, argv[i]) == -1){
 				fprint(2, "apply %s: %r\n", argv[i]);
 				ok = 0;
 			}
 			freepatch(p);
 			Bterm(f);
-			finish(ok);
+			ok = finish(ok);
 		}
 	}
-	exits(nil);
+	exits(ok ? nil : "failed");
 }
