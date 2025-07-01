@@ -10,6 +10,10 @@ patch \- apply patches
 .I rdir
 ]
 [
+.B -r
+.I rejfile
+]
+[
 .B -p
 .I nstrip
 ]
@@ -46,6 +50,10 @@ Print the files that would be modified by this patch, but do not apply it.
 Remove the prefix containing
 .I nstrip
 leading slashes from each file path in the diff file.
+.TP
+.BI -r \ rejfile
+Apply as much of the patch as possible,
+saving any hunks that could not be applied to a rejection file.
 .SH INPUT FORMAT
 A patch begins with a patch header, and is followed by a sequence of one or more hunks.
 All lines before a patch header or after the last hunk of a patch are comments,
