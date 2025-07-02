@@ -190,6 +190,7 @@ checkfree(int fd)
 			}
 			r = n;
 		}
+fprint(2, "check arena %d\n", i);
 		if(!checklog(fd, a->loghd))
 			fprint(fd, "arena %d: broken freelist\n", i);
 		qunlock(a);
@@ -260,8 +261,8 @@ checkfs(int fd)
 	Blk *b;
 
 	ok = 1;
-	ainc(&fs->rdonly);
 	epochwait();
+	qlock(&fs->mutlk);
 	if(waserror()){
 		fprint(fd, "error checking %s\n", errmsg());
 		return 0;
@@ -317,7 +318,7 @@ checkfs(int fd)
 		poperror();
 	}
 	btexit(&s);
-	adec(&fs->rdonly);
+	qunlock(&fs->mutlk);
 	poperror();
 	return ok;
 }
