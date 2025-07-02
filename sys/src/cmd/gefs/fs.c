@@ -2914,7 +2914,7 @@ runsweep(int id, void*)
 			/* fallthrough */
 		case AOclear:
 			if(agetl(&fs->rdonly)){
-				fprint(2, "clear on read only fs");
+				fprint(2, "clear on read only fs\n");
 				goto Next;
 			}
 			tracem("bgclear");
