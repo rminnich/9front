@@ -190,7 +190,6 @@ checkfree(int fd)
 			}
 			r = n;
 		}
-fprint(2, "check arena %d\n", i);
 		if(!checklog(fd, a->loghd))
 			fprint(fd, "arena %d: broken freelist\n", i);
 		qunlock(a);
