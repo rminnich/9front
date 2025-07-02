@@ -1672,13 +1672,13 @@ procctlmemio(Chan *c, Proc *p, uintptr offset, void *a, long n, int read)
 	} else {
 		qunlock(s);
 	}
-	incref(s);		/* for us while we copy */
 	poperror();
 	sio = c->aux;
 	if(sio == nil){
 		sio = smalloc(sizeof(Segio));
 		c->aux = sio;
 	}
+	incref(s);		/* for us while we copy */
 	qunlock(&p->seglock);
 	poperror();
 
