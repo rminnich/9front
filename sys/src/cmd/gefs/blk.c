@@ -465,6 +465,8 @@ compresslog(Arena *a)
 		PACK64(p+8, r->len);
 		b->logsz += 16;
 	}
+	finalize(b);
+	syncblk(b);
 
 	/*
 	 * now we have a valid freelist, and we can start
