@@ -119,7 +119,8 @@ main(int argc, char *argv[])
 
 	fd = tlsServer(0, conn);
 	if(fd < 0){
-		reporter("failed: %r");
+		if(debug)
+			reporter("failed: %r");
 		exits(0);
 	}
 	if(debug)
