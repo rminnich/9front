@@ -89,10 +89,11 @@ sync(void)
 	int i;
 
 	if(agetl(&fs->rdonly))
-		error(Erdonly);
+		return;
 	qlock(&fs->synclk);
 	if(waserror()){
 		fprint(2, "failed to sync: %s\n", errmsg());
+		aincl(&fs->rdonly, 1);
 		qunlock(&fs->synclk);
 		nexterror();
 	}
