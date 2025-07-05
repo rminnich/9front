@@ -27,6 +27,8 @@ proc0(void*)
 	Page *p;
 
 	spllo();
+	if(waserror())
+		panic("proc0: %s", up->errstr);
 
 	up->pgrp = newpgrp();
 	up->egrp = smalloc(sizeof(Egrp));
@@ -48,13 +50,12 @@ proc0(void*)
 	 */
 	up->seg[SSEG] = newseg(SG_STACK | SG_NOEXEC, USTKTOP-USTKSIZE, USTKSIZE / BY2PG);
 	up->seg[TSEG] = newseg(SG_TEXT | SG_RONLY, UTZERO, 1);
-	p = newpage(1, 0, UTZERO);
+	up->seg[TSEG]->flushme = 1;
+	p = newpage(1, nil, UTZERO);
 	k = kmap(p);
 	memmove((void*)VA(k), initcode, sizeof(initcode));
 	kunmap(k);
-	settxtflush(p, 1);
 	segpage(up->seg[TSEG], p);
-	up->seg[TSEG]->flushme = 1;
 
 	/*
 	 * Become a user process.
@@ -66,6 +67,8 @@ proc0(void*)
 	procsetup(up);
 
 	flushmmu();
+
+	poperror();
 
 	/*
 	 * init0():

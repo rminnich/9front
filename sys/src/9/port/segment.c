@@ -91,7 +91,6 @@ newseg(int type, uintptr base, ulong size)
 void
 putseg(Segment *s)
 {
-	Pte **pte, **emap;
 	Image *i;
 
 	if(s == nil)
@@ -125,11 +124,44 @@ putseg(Segment *s)
 	assert(s->sema.next == &s->sema);
 
 	if(s->mapsize > 0){
+		Pte **pte, **emap;
+		Page *fh, *ft;
+		ulong np;
+
+		np = 0;
+		fh = ft = nil;
+
 		emap = &s->map[s->mapsize];
 		for(pte = s->map; pte < emap; pte++){
-			if(*pte != nil)
-				freepte(s, *pte);
+			Page **pg, **pe, *entry;
+
+			if(*pte == nil)
+				continue;
+			pg = (*pte)->first;
+			pe = (*pte)->last;
+			while(pg <= pe){
+				entry = *pg++;
+				if(entry == nil)
+					continue;
+				if(onswap(entry)){
+					putswap(entry);
+					continue;
+				}
+				entry = deadpage(entry);
+				if(entry == nil)
+					continue;
+				if(fh != nil)
+					ft->next = entry;
+				else
+					fh = entry;
+				ft = entry;
+				np++;
+			}
+			free(*pte);
 		}
+
+		freepages(fh, ft, np);
+
 		if(s->map != s->ssegmap)
 			free(s->map);
 	}
@@ -140,22 +172,37 @@ putseg(Segment *s)
 	free(s);
 }
 
-void
-relocateseg(Segment *s, uintptr offset)
+Pte*
+ptealloc(void)
 {
-	Pte **pte, **emap;
-	Page **pg, **pe;
+	Pte *new;
 
-	emap = &s->map[s->mapsize];
-	for(pte = s->map; pte < emap; pte++) {
-		if(*pte == nil)
-			continue;
-		pe = (*pte)->last;
-		for(pg = (*pte)->first; pg <= pe; pg++) {
-			if(!pagedout(*pg))
-				(*pg)->va += offset;
-		}
+	new = malloc(sizeof(Pte));
+	if(new != nil){
+		new->first = &new->pages[PTEPERTAB];
+		new->last = new->pages;
 	}
+	return new;
+}
+
+static Pte*
+ptecpy(Pte *new, Pte *old)
+{
+	Page **src, **dst, *entry;
+
+	dst = &new->pages[old->first-old->pages];
+	new->first = dst;
+	for(src = old->first; src <= old->last; src++, dst++){
+		if((entry = *src) == nil)
+			continue;
+		if(onswap(entry))
+			dupswap(entry);
+		else
+			incref(entry);
+		new->last = dst;
+		*dst = entry;
+	}
+	return new;
 }
 
 Segment*
@@ -206,9 +253,18 @@ dupseg(Segment **seg, int segno, int share)
 		incref(s->image);
 		break;
 	}
-	for(i = 0; i < s->mapsize; i++)
-		if((pte = s->map[i]) != nil)
-			n->map[i] = ptecpy(pte);
+	for(i = 0; i < s->mapsize; i++){
+		if(s->map[i] != nil){
+			pte = ptealloc();
+			if(pte == nil){
+				qunlock(s);
+				poperror();
+				putseg(n);
+				error(Enomem);
+			}
+			n->map[i] = ptecpy(pte, s->map[i]);
+		}
+	}
 	n->used = s->used;
 	n->swapped = s->swapped;
 	n->flushme = s->flushme;
@@ -225,6 +281,10 @@ sameseg:
 	return s;
 }
 
+/*
+ *  segpage inserts Page p into Segmnet s.
+ *  on error, calls putpage() on p.
+ */
 void
 segpage(Segment *s, Page *p)
 {
@@ -235,13 +295,20 @@ segpage(Segment *s, Page *p)
 	qlock(s);
 	if(p->va < s->base || p->va >= s->top || s->mapsize == 0)
 		panic("segpage");
-
 	soff = p->va - s->base;
 	pte = &s->map[soff/PTEMAPMEM];
-	if((etp = *pte) == nil)
-		*pte = etp = ptealloc();
+	if((etp = *pte) == nil){
+		etp = ptealloc();
+		if(etp == nil){
+			qunlock(s);
+			putpage(p);
+			error(Enomem);
+		}
+		*pte = etp;
+	}
 	pg = &etp->pages[(soff&(PTEMAPMEM-1))/BY2PG];
 	assert(*pg == nil);
+	settxtflush(p, s->flushme);
 	*pg = p;
 	s->used++;
 	if(pg < etp->first)
@@ -250,6 +317,25 @@ segpage(Segment *s, Page *p)
 		etp->last = pg;
 	qunlock(s);
 }
+
+void
+relocateseg(Segment *s, uintptr offset)
+{
+	Pte **pte, **emap;
+	Page **pg, **pe;
+
+	emap = &s->map[s->mapsize];
+	for(pte = s->map; pte < emap; pte++) {
+		if(*pte == nil)
+			continue;
+		pe = (*pte)->last;
+		for(pg = (*pte)->first; pg <= pe; pg++) {
+			if(!pagedout(*pg))
+				(*pg)->va += offset;
+		}
+	}
+}
+
 
 Image*
 attachimage(Chan *c)
@@ -801,7 +887,6 @@ data2txt(Segment *s)
 	poperror();
 	return ps;
 }
-
 
 enum {
 	/* commands to segmentioproc */

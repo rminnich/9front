@@ -78,7 +78,7 @@ retry:
 	}
 	qunlock(s);
 
-	new = newpage(0, 0, addr);
+	new = newpage(0, nil, addr);
 	k = kmap(new);
 	c = image->c;
 	while(waserror()) {
@@ -143,8 +143,18 @@ fixfault(Segment *s, uintptr addr, int read)
 	addr &= ~(BY2PG-1);
 	soff = addr-s->base;
 	pte = &s->map[soff/PTEMAPMEM];
-	if((etp = *pte) == nil)
-		*pte = etp = ptealloc();
+	if((etp = *pte) == nil){
+		etp = ptealloc();
+		if(etp == nil){
+			qunlock(s);
+			if(!waserror()){
+				resrcwait("no memory for ptealloc");
+				poperror();
+			}
+			return -1;
+		}
+		*pte = etp;
+	}
 
 	pg = &etp->pages[(soff&(PTEMAPMEM-1))/BY2PG];
 	if(pg < etp->first)
