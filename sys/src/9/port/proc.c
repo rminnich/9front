@@ -792,7 +792,6 @@ procinit0(void)		/* bad planning - clashes with devproc.c */
 		xsummary();
 		panic("cannot allocate proctab for %lud procs", conf.nproc);
 	}
-	memset(procalloc.tab, 0, (conf.nproc+1)*sizeof(Proc*));
 	pidinit();
 }
 
