@@ -20,7 +20,7 @@ fpudevprocio(Proc* proc, void* a, long n, uintptr offset, int write)
 }
 
 void
-fpunotify(void)
+fpunotify(Proc*)
 {
 	/*
 	 * Called when a note is about to be delivered to a
@@ -32,7 +32,7 @@ fpunotify(void)
 }
 
 void
-fpunoted(void)
+fpunoted(Proc*)
 {
 	/*
 	 * Called from sysnoted() via the machine-dependent

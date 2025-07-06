@@ -172,8 +172,6 @@ int irqtooearly = 1;
 static ulong shadena[32];	/* copy of enable bits, saved by intcmaskall */
 static Lock distlock, nintrlock;
 
-extern int notify(Ureg*);
-
 static void dumpstackwithureg(Ureg *ureg);
 
 void
@@ -863,7 +861,7 @@ trap(Ureg *ureg)
 
 	if(user){
 		if(up->procctl || up->nnote)
-			notify(ureg);
+			donotify(ureg);
 		kexit(ureg);
 	}
 }

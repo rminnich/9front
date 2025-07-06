@@ -243,7 +243,7 @@ trap(Ureg *ur)
 	splhi();
 
 	if(user){
-		notify(ur);
+		donotify(ur);
 		/* replicate fpstate to ureg status */
 	//	if(up->fpstate != FPactive)
 	//		ur->status &= ~CU1;

@@ -36,7 +36,6 @@ static char *trapnames[PsrMask+1] = {
 };
 
 extern int irq(Ureg*);
-extern int notify(Ureg*);
 
 /*
  *  set up for exceptions
@@ -259,7 +258,7 @@ trap(Ureg *ureg)
 
 	if(user){
 		if(up->procctl || up->nnote)
-			notify(ureg);
+			donotify(ureg);
 		kexit(ureg);
 	}
 }

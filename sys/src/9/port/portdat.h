@@ -789,7 +789,7 @@ struct Proc
 	uintptr	qpc;		/* pc calling last blocking qlock */
 	QLock	*eql;		/* interruptable eqlock */
 
-	void	*ureg;		/* User registers for notes */
+	void	*noteureg;	/* User registers for notes */
 	void	*dbgreg;	/* User registers for devproc */
 
 	PFPU;			/* machine specific fpu state */

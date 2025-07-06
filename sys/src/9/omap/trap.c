@@ -17,8 +17,6 @@ enum {
 	Bi2long = BI2BY * sizeof(long),
 };
 
-extern int notify(Ureg*);
-
 extern int ldrexvalid;
 
 /* omap35x intc (aka mpu_intc) */
@@ -587,7 +585,7 @@ trap(Ureg *ureg)
 	splhi();
 	if(user){
 		if(up->procctl || up->nnote)
-			notify(ureg);
+			donotify(ureg);
 		kexit(ureg);
 	}
 }

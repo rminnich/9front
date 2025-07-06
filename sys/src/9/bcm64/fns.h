@@ -94,8 +94,6 @@ extern void fpuprocsave(Proc*);
 extern void fpuprocrestore(Proc*);
 extern void fpukenter(Ureg*);
 extern void fpukexit(Ureg*);
-extern void fpunotify(Proc*);
-extern void fpunoted(Proc*);
 extern void mathtrap(Ureg*);
 
 /* trap */

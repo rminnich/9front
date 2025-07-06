@@ -17,8 +17,6 @@ enum {
 	Nvecs = 256,
 };
 
-extern int notify(Ureg*);
-
 extern int ldrexvalid;
 
 typedef struct Vctl Vctl;
@@ -468,7 +466,7 @@ trap(Ureg *ureg)
 
 	if(user){
 		if(up->procctl || up->nnote)
-			notify(ureg);
+			donotify(ureg);
 		kexit(ureg);
 	}
 }

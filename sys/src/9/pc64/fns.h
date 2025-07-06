@@ -41,8 +41,6 @@ void	fpuprocfork(Proc*);
 void	fpuprocrestore(Proc*);
 void	fpuprocsave(Proc*);
 void	fpuprocsetup(Proc*);
-void	fpunotify(Proc*);
-void	fpunoted(Proc*);
 u64int	getcr0(void);
 u64int	getcr2(void);
 u64int	getcr3(void);

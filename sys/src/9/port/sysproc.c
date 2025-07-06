@@ -4,6 +4,7 @@
 #include	"mem.h"
 #include	"dat.h"
 #include	"fns.h"
+#include	"ureg.h"
 #include	"../port/error.h"
 #include	"edf.h"
 
@@ -665,7 +666,7 @@ sysexec(va_list list)
 	up->lastnote = nil;
 	up->notify = nil;
 	up->notified = 0;
-	up->ureg = nil;
+	up->noteureg = nil;
 	up->privatemem = 0;
 	up->noswap = 0;
 	up->pcycles = -up->kentry;
@@ -847,15 +848,94 @@ sysnotify(va_list list)
 	return 0;
 }
 
+int
+donotify(Ureg *ureg)
+{
+	Ureg *nureg;
+	char *msg;
+
+	if(up->procctl)
+		procctl();
+	if(up->nnote == 0)
+		return 0;
+
+	spllo();
+	qlock(&up->debug);
+	msg = popnote(ureg);
+	if(msg == nil){
+		qunlock(&up->debug);
+		splhi();
+		return 0;
+	}
+	splhi();
+	fpunotify(up);
+	spllo();
+	qunlock(&up->debug);
+
+	if(up->notify == nil
+	|| (nureg = notify(ureg, msg)) == nil){
+		if(up->lastnote->flag == NDebug)
+			pprint("suicide: %s\n", msg);
+		pexit(msg, up->lastnote->flag!=NDebug);
+	}
+
+	/* word under Ureg is old ureg */
+	*(Ureg**)((uintptr)nureg-BY2WD) = up->noteureg;
+	up->noteureg = nureg;
+
+	splhi();
+	return 1;
+}
+
 uintptr
 sysnoted(va_list list)
 {
+	Ureg *nureg;
 	int arg;
 
 	arg = va_arg(list, int);
-	if(arg != NRSTR && !up->notified)
-		error(Egreg);
-	noted(up->dbgreg, arg);
+
+	qlock(&up->debug);
+	if(up->notified){
+		splhi();
+		fpunoted(up);
+		spllo();
+	} else if(arg!=NRSTR){
+		qunlock(&up->debug);
+		error(Ebadarg);
+	}
+	qunlock(&up->debug);
+
+	nureg = up->noteureg;
+	if(!okaddr((uintptr)nureg-BY2WD, BY2WD+sizeof(Ureg), 0)){
+		pprint("suicide: bad ureg in noted or call to noted when not notified\n");
+		pexit("Suicide", 0);
+	}
+
+	switch(arg){
+	case NCONT:
+	case NRSTR:
+		/* word under Ureg is old ureg */
+		up->noteureg = *(Ureg**)((uintptr)nureg-BY2WD);
+		/* wet floor */
+	case NSAVE:
+		if(noted(up->dbgreg, nureg, arg)){
+			pprint("suicide: trap in noted\n");
+			pexit("Suicide", 0);
+		}
+		break;
+	default:
+		up->lastnote->flag = NDebug;
+		/* fall through */
+	case NDFLT:
+		if(up->lastnote->flag == NDebug)
+			pprint("suicide: %s\n", up->lastnote->msg);
+		pexit(up->lastnote->msg, up->lastnote->flag!=NDebug);
+	}
+
+	/* allow next note */
+	up->notified = 0;
+
 	return 0;
 }
 

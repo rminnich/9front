@@ -715,7 +715,7 @@ newproc(void)
 	p->kfpstate = FPinit;
 #endif
 	p->procctl = 0;
-	p->ureg = nil;
+	p->noteureg = nil;
 	p->dbgreg = nil;
 	p->nerrlab = 0;
 	p->errstr = p->errbuf0;
@@ -1362,7 +1362,7 @@ pexit(char *exitstr, int freemem)
 	freenote(up->lastnote);
 	up->lastnote = nil;
 	up->notified = 0;
-	up->ureg = nil;
+	up->noteureg = nil;
 	up->dbgreg = nil;
 
 	/* release debuggers */

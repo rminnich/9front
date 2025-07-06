@@ -85,6 +85,7 @@ sdram.$O:	../port/sd.h
 sdvirtio10.$O:	../port/sd.h ../port/pci.h /$objtype/include/ureg.h
 trap.$O:	/$objtype/include/ureg.h
 proc.$O:	/$objtype/include/ureg.h
+sysproc.$O:	/$objtype/include/ureg.h
 devproc.$O:	/$objtype/include/ureg.h
 portclock.$O:	/$objtype/include/ureg.h
 userinit.$O:	initcode.i

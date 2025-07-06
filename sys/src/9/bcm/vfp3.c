@@ -236,13 +236,13 @@ fpalloc(void)
  * checked in the Device Not Available handler.
  */
 void
-fpunotify(void)
+fpunotify(Proc *p)
 {
-	if(up->fpstate == FPactive){
-		fpsave(up->fpsave);
-		up->fpstate = up->fpsave->fpstate = FPinactive;
+	if(p->fpstate == FPactive){
+		fpsave(p->fpsave);
+		p->fpstate = p->fpsave->fpstate = FPinactive;
 	}
-	up->fpstate |= FPnotify;
+	p->fpstate |= FPnotify;
 }
 
 /*
@@ -251,22 +251,22 @@ fpunotify(void)
  * Clear the flag set above in fpunotify().
  */
 void
-fpunoted(void)
+fpunoted(Proc *p)
 {
-	if(up->fpstate & FPnotify){
-		up->fpstate &= ~FPnotify;
+	if(p->fpstate & FPnotify){
+		p->fpstate &= ~FPnotify;
 	} else {
 		FPalloc *o;
 
-		if(up->fpstate == FPactive)
+		if(p->fpstate == FPactive)
 			fpoff();
-		if((o = up->ofpsave) != nil) {
-			up->ofpsave = nil;
-			free(up->fpsave);
-			up->fpsave = o;
-			up->fpstate = o->fpstate;
+		if((o = p->ofpsave) != nil) {
+			p->ofpsave = nil;
+			free(p->fpsave);
+			p->fpsave = o;
+			p->fpstate = o->fpstate;
 		} else {
-			up->fpstate = FPinit;
+			p->fpstate = FPinit;
 		}
 	}
 }

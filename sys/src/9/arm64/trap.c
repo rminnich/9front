@@ -176,7 +176,7 @@ trap(Ureg *ureg)
 	splhi();
 	if(user){
 		if(up->procctl || up->nnote)
-			notify(ureg);
+			donotify(ureg);
 		kexit(ureg);
 	}
 	if(type != 0x07 && type != 0x2C)
@@ -197,7 +197,7 @@ syscall(Ureg *ureg)
 		returnto(noteret);
 
 	if(up->procctl || up->nnote)
-		notify(ureg);
+		donotify(ureg);
 
 	if(up->delaysched)
 		sched();
@@ -206,126 +206,68 @@ syscall(Ureg *ureg)
 	fpukexit(ureg);
 }
 
-int
-notify(Ureg *ureg)
+Ureg*
+notify(Ureg *ureg, char *msg)
 {
+	Ureg *nureg;
 	uintptr sp;
-	char *msg;
-
-	if(up->procctl)
-		procctl();
-	if(up->nnote == 0)
-		return 0;
-
-	spllo();
-	qlock(&up->debug);
-	msg = popnote(ureg);
-	if(msg == nil){
-		qunlock(&up->debug);
-		splhi();
-		return 0;
-	}
 
 	sp = ureg->sp;
 	sp -= 256;	/* debugging: preserve context causing problem */
 	sp -= sizeof(Ureg);
 	sp = STACKALIGN(sp);
 
-	if(!okaddr((uintptr)up->notify, 1, 0)
-	|| !okaddr(sp-ERRMAX-4*BY2WD, sizeof(Ureg)+ERRMAX+4*BY2WD, 1)
+	if(!okaddr(sp-ERRMAX-4*BY2WD, sizeof(Ureg)+ERRMAX+4*BY2WD, 1)
 	|| ((uintptr) up->notify & 3) != 0
-	|| (sp & 7) != 0){
-		qunlock(&up->debug);
-		pprint("suicide: bad address in notify: handler=%#p sp=%#p\n",
-			up->notify, sp);
-		pexit("Suicide", 0);
-	}
+	|| (sp & 7) != 0)
+		return nil;
 
-	memmove((Ureg*)sp, ureg, sizeof(Ureg));
-	*(Ureg**)(sp-BY2WD) = up->ureg;	/* word under Ureg is old up->ureg */
-	up->ureg = (void*)sp;
+	nureg = (Ureg*)sp;
+	memmove(nureg, ureg, sizeof(Ureg));
 	sp -= BY2WD+ERRMAX;
 	memmove((char*)sp, msg, ERRMAX);
 	sp -= 3*BY2WD;
 	*(uintptr*)(sp+2*BY2WD) = sp+3*BY2WD;
-	*(uintptr*)(sp+1*BY2WD) = (uintptr)up->ureg;
-	ureg->r0 = (uintptr) up->ureg;
+	*(uintptr*)(sp+1*BY2WD) = (uintptr)nureg;
+	ureg->r0 = (uintptr)nureg;
 	ureg->sp = sp;
-	ureg->pc = (uintptr) up->notify;
+	ureg->pc = (uintptr)up->notify;
 	ureg->link = 0;
 
-	splhi();
-	fpunotify(up);
-	qunlock(&up->debug);
-
-	return 1;
+	return nureg;
 }
 
-void
-noted(Ureg *ureg, int arg0)
+int
+noted(Ureg *ureg, Ureg *nureg, int arg0)
 {
-	Ureg *nureg;
 	uintptr oureg, sp;
 
-	qlock(&up->debug);
-	if(up->notified){
-		up->notified = 0;
-		splhi();
-		fpunoted(up);
-		spllo();
-	} else if(arg0!=NRSTR){
-		qunlock(&up->debug);
-		pprint("call to noted() when not notified\n");
-		pexit("Suicide", 0);
-	}
-
-	nureg = up->ureg;
-	
 	oureg = (uintptr) nureg;
-	if(!okaddr(oureg - BY2WD, BY2WD + sizeof(Ureg), 0) || (oureg & 7) != 0){
-		qunlock(&up->debug);
-		pprint("bad ureg in noted or call to noted when not notified\n");
-		pexit("Suicide", 0);
-	}
+	if((oureg & 7) != 0)
+		return -1;
 
 	setregisters(ureg, (char*)ureg, (char*)nureg, sizeof(Ureg));
 	
 	switch(arg0){
 	case NCONT: case NRSTR:
-		if(!okaddr(ureg->pc, BY2WD, 0) || !okaddr(ureg->sp, BY2WD, 0) ||
-				(ureg->pc & 3) != 0 || (ureg->sp & 7) != 0){
-			qunlock(&up->debug);
-			pprint("suicide: trap in noted\n");
-			pexit("Suicide", 0);
-		}
-		up->ureg = (Ureg *) (*(uintptr*) (oureg - BY2WD));
-		qunlock(&up->debug);
+		if(!okaddr(ureg->pc, BY2WD, 0)
+		|| !okaddr(ureg->sp, BY2WD, 0)
+		|| (ureg->pc & 3) != 0 || (ureg->sp & 7) != 0)
+			return -1;
 		break;
-	
 	case NSAVE:
 		sp = oureg - 4 * BY2WD - ERRMAX;
-		if(!okaddr(ureg->pc, BY2WD, 0) || !okaddr(sp, 4 * BY2WD, 1) ||
-				(nureg->pc & 3) != 0 || (sp & 7) != 0){
-			qunlock(&up->debug);
-			pprint("suicide: trap in noted\n");
-			pexit("Suicide", 0);
-		}
-		qunlock(&up->debug);
+		if(!okaddr(ureg->pc, BY2WD, 0)
+		|| !okaddr(sp, 4 * BY2WD, 1)
+		|| (nureg->pc & 3) != 0 || (sp & 7) != 0)
+			return -1;
 		ureg->sp = sp;
 		ureg->r0 = (uintptr) oureg;
 		((uintptr *) sp)[1] = oureg;
 		((uintptr *) sp)[0] = 0;
 		break;
-	
-	default:
-		up->lastnote->flag = NDebug;
-	
-	case NDFLT:
-		qunlock(&up->debug);
-		if(up->lastnote->flag == NDebug)
-			pprint("suicide: %s\n", up->lastnote->msg);
-		pexit(up->lastnote->msg, up->lastnote->flag != NDebug);
 	}
+	return 0;
 }
 
 void

@@ -105,8 +105,6 @@ extern void trapinit(void);
 extern int fpiarm(Ureg*);
 extern int fpudevprocio(Proc*, void*, long, uintptr, int);
 extern void fpuinit(void);
-extern void fpunoted(void);
-extern void fpunotify(void);
 extern void fpuprocrestore(Proc*);
 extern void fpuprocsave(Proc*);
 extern void fpusysprocsetup(Proc*);
