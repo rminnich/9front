@@ -231,7 +231,10 @@ fpalloc(FPalloc *link)
 
 	while((a = mallocalign(sizeof(FPalloc), FPalign, 0, 0)) == nil){
 		int x = spllo();
-		resrcwait("no memory for FPalloc");
+		if(!waserror()){
+			resrcwait("no memory for FPalloc");
+			poperror();
+		}
 		splx(x);
 	}
 	a->link = link;

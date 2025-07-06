@@ -112,7 +112,10 @@ fpalloc(void)
 
 	while((f = mallocalign(sizeof(FPsave), FPalign, 0, 0)) == nil){
 		int x = spllo();
-		resrcwait("no memory for FPsave");
+		if(!waserror()){
+			resrcwait("no memory for FPsave");
+			poperror();
+		}
 		splx(x);
 	}
 	return f;

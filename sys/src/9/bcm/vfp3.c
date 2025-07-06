@@ -219,7 +219,10 @@ fpalloc(void)
 	FPalloc *f;
 	while((f = mallocalign(sizeof(FPalloc), 16, 0, 0)) == nil){
 		int x = spllo();
-		resrcwait("no memory for FPalloc");
+		if(!waserror()){
+			resrcwait("no memory for FPalloc");
+			poperror();
+		}
 		splx(x);
 	}
 	return f;
