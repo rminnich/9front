@@ -27,7 +27,9 @@ newpgrp(void)
 {
 	Pgrp *p;
 
-	p = smalloc(sizeof(Pgrp));
+	p = malloc(sizeof(Pgrp));
+	if(p == nil)
+		error(Enomem);
 	p->ref = 1;
 	return p;
 }
@@ -37,7 +39,9 @@ newrgrp(void)
 {
 	Rgrp *r;
 
-	r = smalloc(sizeof(Rgrp));
+	r = malloc(sizeof(Rgrp));
+	if(r == nil)
+		error(Enomem);
 	r->ref = 1;
 	return r;
 }
@@ -102,17 +106,28 @@ pgrpcpy(Pgrp *to, Pgrp *from)
 
 	wlock(&to->ns);
 	rlock(&from->ns);
+	if(waserror()){
+		runlock(&from->ns);
+		wunlock(&to->ns);
+		nexterror();
+	}
 	order = nil;
 	for(i = 0; i < MNTHASH; i++) {
 		l = &to->mnthash[i];
 		for(f = from->mnthash[i]; f != nil; f = f->hash) {
 			rlock(&f->lock);
+			if(waserror()){
+				runlock(&f->lock);
+				nexterror();
+			}
 			mh = newmhead(f->from);
 			*l = mh;
 			l = &mh->hash;
 			link = &mh->mount;
 			for(m = f->mount; m != nil; m = m->next) {
-				n = smalloc(sizeof(Mount));
+				n = malloc(sizeof(Mount));
+				if(n == nil)
+					error(Enomem);
 				n->mountid = m->mountid;
 				n->mflag = m->mflag;
 				n->to = m->to;
@@ -124,6 +139,7 @@ pgrpcpy(Pgrp *to, Pgrp *from)
 				link = &n->next;
 			}
 			runlock(&f->lock);
+			poperror();
 		}
 	}
 	/*
@@ -133,6 +149,7 @@ pgrpcpy(Pgrp *to, Pgrp *from)
 		m->mountid = nextmount();
 	runlock(&from->ns);
 	wunlock(&to->ns);
+	poperror();
 }
 
 Fgrp*
@@ -142,12 +159,20 @@ dupfgrp(Fgrp *f)
 	Chan *c;
 	int i;
 
-	new = smalloc(sizeof(Fgrp));
+	new = malloc(sizeof(Fgrp));
+	if(new == nil)
+		error(Enomem);
+	new->ref = 1;
 	if(f == nil){
-		new->flag = smalloc(DELTAFD*sizeof(new->flag[0]));
-		new->fd = smalloc(DELTAFD*sizeof(new->fd[0]));
 		new->nfd = DELTAFD;
-		new->ref = 1;
+		new->fd = malloc(DELTAFD*sizeof(new->fd[0]));
+		new->flag = malloc(DELTAFD*sizeof(new->flag[0]));
+		if(new->fd == nil || new->flag == nil){
+			free(new->flag);
+			free(new->fd);
+			free(new);
+			error(Enomem);
+		}
 		return new;
 	}
 
@@ -158,26 +183,20 @@ dupfgrp(Fgrp *f)
 	if(i != 0)
 		new->nfd += DELTAFD - i;
 	new->fd = malloc(new->nfd*sizeof(new->fd[0]));
-	if(new->fd == nil){
-		unlock(f);
-		free(new);
-		error("no memory for fgrp");
-	}
 	new->flag = malloc(new->nfd*sizeof(new->flag[0]));
-	if(new->flag == nil){
+	if(new->fd == nil || new->flag == nil){
 		unlock(f);
+		free(new->flag);
 		free(new->fd);
 		free(new);
-		error("no memory for fgrp");
+		error(Enomem);
 	}
-	new->ref = 1;
-
 	new->maxfd = f->maxfd;
 	for(i = 0; i <= f->maxfd; i++) {
 		if((c = f->fd[i]) != nil){
-			incref(c);
 			new->fd[i] = c;
 			new->flag[i] = f->flag[i];
+			incref(c);
 		}
 	}
 	unlock(f);
@@ -206,8 +225,8 @@ closefgrp(Fgrp *f)
 		}
 	up->closingfgrp = nil;
 
-	free(f->fd);
 	free(f->flag);
+	free(f->fd);
 	free(f);
 }
 
@@ -247,7 +266,9 @@ newmount(Chan *to, int flag, char *spec)
 {
 	Mount *m;
 
-	m = smalloc(sizeof(Mount));
+	m = malloc(sizeof(Mount));
+	if(m == nil)
+		error(Enomem);
 	m->to = to;
 	incref(to);
 	m->mountid = nextmount();

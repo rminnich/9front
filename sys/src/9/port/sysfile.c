@@ -45,14 +45,13 @@ growfd(Fgrp *f, int fd)	/* fd is always >= 0 */
 	oldfd = f->fd;
 	oldflag = f->flag;
 	newfd = malloc((nfd+DELTAFD)*sizeof(newfd[0]));
-	if(newfd == nil)
-		goto Exhausted;
-	memmove(newfd, oldfd, nfd*sizeof(newfd[0]));
 	newflag = malloc((nfd+DELTAFD)*sizeof(newflag[0]));
-	if(newflag == nil){
+	if(newfd == nil || newflag == nil){
+		free(newflag);
 		free(newfd);
 		goto Exhausted;
 	}
+	memmove(newfd, oldfd, nfd*sizeof(newfd[0]));
 	memmove(newflag, oldflag, nfd*sizeof(newflag[0]));
 	f->fd = newfd;
 	f->flag = newflag;

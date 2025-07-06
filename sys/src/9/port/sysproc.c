@@ -26,14 +26,15 @@ abortion(void)
 uintptr
 sysrfork(va_list list)
 {
-	Proc *p;
-	int n, i;
-	Fgrp *ofg;
-	Pgrp *opg;
-	Rgrp *org;
-	Egrp *oeg;
+	/*
+	 * Code using RFNOMNT expects to block all but
+	 * the following devices.
+	 */
+	static char nomntdevs[] = "|decp";
+
 	ulong pid, flag;
-	char *devs;
+	int n, i;
+	Proc *p;
 
 	flag = va_arg(list, ulong);
 	/* Check flags before we commit */
@@ -44,46 +45,82 @@ sysrfork(va_list list)
 	if((flag & (RFENVG|RFCENVG)) == (RFENVG|RFCENVG))
 		error(Ebadarg);
 
-	/*
-	 * Code using RFNOMNT expects to block all but
-	 * the following devices.
-	 */
-	devs = "|decp";
 	if((flag&RFPROC) == 0) {
+		Fgrp *ofg;
+		Pgrp *opg;
+		Rgrp *org;
+		Egrp *oeg;
+
 		if(flag & (RFMEM|RFNOWAIT))
 			error(Ebadarg);
+
+		ofg = up->fgrp;
+		opg = up->pgrp;
+		org = up->rgrp;
+		oeg = up->egrp;
+
+		if(waserror()){
+			if(up->fgrp != ofg){
+				closefgrp(up->fgrp);
+				up->fgrp = ofg;
+			}
+			if(up->pgrp != opg){
+				closepgrp(up->pgrp);
+				up->pgrp = opg;
+			}
+			if(up->rgrp != org){
+				closergrp(up->rgrp);
+				up->rgrp = org;
+			}
+			if(up->egrp != oeg){
+				closeegrp(up->egrp);
+				up->egrp = oeg;
+			}
+			nexterror();
+		}
+
+		/* File descriptors */
 		if(flag & (RFFDG|RFCFDG)) {
-			ofg = up->fgrp;
 			if(flag & RFFDG)
 				up->fgrp = dupfgrp(ofg);
 			else
 				up->fgrp = dupfgrp(nil);
-			closefgrp(ofg);
 		}
+
+		/* Process group */
 		if(flag & (RFNAMEG|RFCNAMEG)) {
-			opg = up->pgrp;
 			up->pgrp = newpgrp();
 			if(flag & RFNAMEG)
 				pgrpcpy(up->pgrp, opg);
 			/* inherit notallowed */
 			memmove(up->pgrp->notallowed, opg->notallowed, sizeof up->pgrp->notallowed);
-			closepgrp(opg);
 		}
-		if(flag & RFNOMNT)
-			devmask(up->pgrp, 1, devs);
-		if(flag & RFREND) {
-			org = up->rgrp;
+
+		/* Rendezvous group */
+		if(flag & RFREND)
 			up->rgrp = newrgrp();
-			closergrp(org);
-		}
+
+		/* Environment group */
 		if(flag & (RFENVG|RFCENVG)) {
-			oeg = up->egrp;
-			up->egrp = smalloc(sizeof(Egrp));
-			up->egrp->ref = 1;
+			up->egrp = newegrp();
 			if(flag & RFENVG)
 				envcpy(up->egrp, oeg);
-			closeegrp(oeg);
 		}
+
+		if(ofg != up->fgrp)
+			closefgrp(ofg);
+		if(opg != up->pgrp)
+			closepgrp(opg);
+		if(org != up->rgrp)
+			closergrp(org);
+		if(oeg != up->egrp)
+			closeegrp(oeg);
+
+		poperror();
+
+		if(flag & RFNOMNT)
+			devmask(up->pgrp, 1, nomntdevs);
+
 		if(flag & RFNOTEG){
 			qlock(&up->debug);
 			setnoteid(up, 0);	/* can't error() with 0 argument */
@@ -174,7 +211,7 @@ sysrfork(va_list list)
 	}
 	else {
 		p->fgrp = up->fgrp;
-		incref(p->fgrp);
+		incref(up->fgrp);
 	}
 
 	/* Process groups */
@@ -187,33 +224,34 @@ sysrfork(va_list list)
 	}
 	else {
 		p->pgrp = up->pgrp;
-		incref(p->pgrp);
+		incref(up->pgrp);
 	}
-	if(flag & RFNOMNT)
-		devmask(p->pgrp, 1, devs);
 
+	/* Rendezvous group */
 	if(flag & RFREND)
 		p->rgrp = newrgrp();
 	else {
-		incref(up->rgrp);
 		p->rgrp = up->rgrp;
+		incref(up->rgrp);
 	}
 
 	/* Environment group */
 	if(flag & (RFENVG|RFCENVG)) {
-		p->egrp = smalloc(sizeof(Egrp));
-		p->egrp->ref = 1;
+		p->egrp = newegrp();
 		if(flag & RFENVG)
 			envcpy(p->egrp, up->egrp);
 	}
 	else {
 		p->egrp = up->egrp;
-		incref(p->egrp);
+		incref(up->egrp);
 	}
 
 	procfork(p);
 
 	poperror();	/* abortion */
+
+	if(flag & RFNOMNT)
+		devmask(p->pgrp, 1, nomntdevs);
 
 	if((flag&RFNOWAIT) == 0){
 		p->parent = up;

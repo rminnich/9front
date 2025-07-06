@@ -609,7 +609,9 @@ newmhead(Chan *from)
 {
 	Mhead *mh;
 
-	mh = smalloc(sizeof(Mhead));
+	mh = malloc(sizeof(Mhead));
+	if(mh == nil)
+		error(Enomem);
 	mh->ref = 1;
 	mh->from = from;
 	incref(from);
@@ -714,6 +716,11 @@ cmount(Chan *new, Chan *old, int flag, char *spec)
 
 	pg = up->pgrp;
 	wlock(&pg->ns);
+	if(waserror()){
+		wunlock(&pg->ns);
+		mountfree(nm);
+		nexterror();
+	}
 	l = &MOUNTH(pg, old->qid);
 	for(m = *l; m != nil; m = m->hash){
 		if(eqchan(m->from, old, 1))
@@ -730,8 +737,14 @@ cmount(Chan *new, Chan *old, int flag, char *spec)
 		 *  if this is a union mount, add the old
 		 *  node to the mount chain.
 		 */
-		if(order != MREPL)
+		if(order != MREPL){
+			if(waserror()){
+				putmhead(m);
+				nexterror();
+			}
 			m->mount = newmount(old, 0, nil);
+			poperror();
+		}
 		*l = m;
 	}
 	wlock(&m->lock);
@@ -752,6 +765,7 @@ cmount(Chan *new, Chan *old, int flag, char *spec)
 	}
 	wunlock(&m->lock);
 	wunlock(&pg->ns);
+	poperror();
 
 	mountfree(um);
 

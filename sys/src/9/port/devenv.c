@@ -395,6 +395,18 @@ Dev envdevtab = {
 	devwstat,
 };
 
+Egrp*
+newegrp(void)
+{
+	Egrp *eg;
+
+	eg = malloc(sizeof(Egrp));
+	if(eg == nil)
+		error(Enomem);
+	eg->ref = 1;
+	return eg;
+}
+
 void
 envcpy(Egrp *to, Egrp *from)
 {

@@ -214,6 +214,7 @@ Chan*		namec(char*, int, int, ulong);
 _Noreturn void	namelenerror(char*, int, char*);
 int		needpages(void*);
 Chan*		newchan(void);
+Egrp*		newegrp(void);
 int		newfd(Chan*, int);
 Mhead*		newmhead(Chan*);
 Mount*		newmount(Chan*, int, char*);
