@@ -125,15 +125,14 @@ pgrpcpy(Pgrp *to, Pgrp *from)
 			l = &mh->hash;
 			link = &mh->mount;
 			for(m = f->mount; m != nil; m = m->next) {
-				n = malloc(sizeof(Mount));
+				n = malloc(sizeof(Mount)+strlen(m->spec)+1);
 				if(n == nil)
 					error(Enomem);
 				n->mountid = m->mountid;
 				n->mflag = m->mflag;
 				n->to = m->to;
 				incref(n->to);
-				if(m->spec != nil)
-					kstrdup(&n->spec, m->spec);
+				strcpy(n->spec, m->spec);
 				pgrpinsert(&order, n);
 				*link = n;
 				link = &n->next;
@@ -266,15 +265,16 @@ newmount(Chan *to, int flag, char *spec)
 {
 	Mount *m;
 
-	m = malloc(sizeof(Mount));
+	if(spec == nil)
+		spec = "";
+	m = malloc(sizeof(Mount)+strlen(spec)+1);
 	if(m == nil)
 		error(Enomem);
 	m->to = to;
 	incref(to);
 	m->mountid = nextmount();
 	m->mflag = flag;
-	if(spec != nil)
-		kstrdup(&m->spec, spec);
+	strcpy(m->spec, spec);
 	setmalloctag(m, getcallerpc(&to));
 	return m;
 }
@@ -287,7 +287,6 @@ mountfree(Mount *m)
 	while((f = m) != nil) {
 		m = m->next;
 		cclose(f->to);
-		free(f->spec);
 		free(f);
 	}
 }

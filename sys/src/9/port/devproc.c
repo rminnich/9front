@@ -686,7 +686,7 @@ readns1(Chan *c, Proc *p, char *buf, int nbuf)
 			srv = cm->to->mchan->srvname;
 			if(srv == nil)
 				srv = cm->to->mchan->path->s;
-			i = snprint(buf, nbuf, (cm->spec && *cm->spec)?
+			i = snprint(buf, nbuf, *cm->spec?
 				"mount %s %q %q %q\n": "mount %s %q %q\n", flag,
 				srv, mh->from->path->s, cm->spec);
 		}else{

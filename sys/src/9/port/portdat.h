@@ -263,7 +263,7 @@ struct Mount
 	Mount*	next;
 	Mount*	order;
 	Chan*	to;			/* channel replacing channel */
-	char*	spec;
+	char	spec[];
 };
 
 struct Mhead
