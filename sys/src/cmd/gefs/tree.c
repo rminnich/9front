@@ -545,6 +545,8 @@ updateleaf(Tree *t, Path *up, Path *p)
 			cpkvp(&v, &m, buf, sizeof(buf));
 			ok = 0;
 			if(m.op != Oclearb && m.op != Oclobber){
+				/* New keys need to start off with Oinsert */
+				assert(m.op == Oinsert);
 				spc -= valsz(&m);
 				p->pullsz += msgsz(&m);
 				ok = 1;
@@ -749,6 +751,8 @@ splitleaf(Tree *t, Path *up, Path *p, Kvp *mid)
 			copied += valsz(&v);
 			ok = 0;
 			if(m.op != Oclearb && m.op != Oclobber){
+				/* New keys need to start off with Oinsert */
+				assert(m.op == Oinsert);
 				spc -= valsz(&m);
 				p->pullsz += msgsz(&m);
 				ok = 1;
