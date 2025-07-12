@@ -365,7 +365,7 @@ bye(char *fmt, ...)
 	va_list arg;
 
 	va_start(arg, fmt);
-	Bprint(&bout, "* bye ");
+	Bprint(&bout, "* BYE ");
 	Bvprint(&bout, fmt, arg);
 	Bprint(&bout, "\r\n");
 	Bflush(&bout);
@@ -993,8 +993,9 @@ logoutcmd(char *tg, char *cmd)
 		closebox(selected, 1);
 		selected = nil;
 	}
-	Bprint(&bout, "* bye\r\n");
+	Bprint(&bout, "* BYE \r\n");
 	Bprint(&bout, "%s OK %s completed\r\n", tg, cmd);
+	Bflush(&bout);
 	exits(0);
 }
 
