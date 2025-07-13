@@ -113,6 +113,7 @@ pagereclaim(Image *i)
 	Page **h, **l, **x, *p;
 	Page *fh, *ft;
 	ulong np;
+	int c;
 
 	lock(i);
 	if(i->pgref == 0){
@@ -124,9 +125,15 @@ pagereclaim(Image *i)
 	for(h = i->pghash; h < &i->pghash[PGHSIZE]; h++){
 		l = h;
 		x = nil;
+		c = 1;
 		for(p = *l; p != nil; p = p->next){
-			if(p->ref == 0)
+			if(p->ref == 0){
 				x = l;
+				/* too many collisions, take what we have */
+				if(c >= 64)
+					break;
+			}
+			c++;
 			l = &p->next;
 		}
 		if(x == nil)
