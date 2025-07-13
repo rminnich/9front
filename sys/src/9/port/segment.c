@@ -450,20 +450,38 @@ imagecached(void)
 ulong
 imagereclaim(int active)
 {
-	static Image *i, *ie;
-	int j;
+	static int x, y;
 	ulong np;
+	Image *i;
+	int j;
+
+	np = 0;
 
 	eqlock(&imagealloc.ireclaim);
-	if(i == nil){
-		i = imagealloc.list;
-		ie = &imagealloc.list[conf.nimage];
+
+	/* try reclaim idle images */
+	for(j = 0; j < conf.nimage; j++, x++) {
+		if(x >= conf.nimage)
+			x = 0;
+		i = &imagealloc.list[x];
+		if(i->ref == 0)
+			continue;
+		if(i->s != nil || i->ref != i->pgref)
+			continue;
+		np += pagereclaim(i);
+		if(np >= 1000)
+			goto Done;
 	}
-	np = 0;
-	for(j = 0; j < conf.nimage; j++, i++){
-		if(i >= ie)
-			i = imagealloc.list;
-		if(i->ref == 0 || (i->ref != i->pgref) == !active)
+
+	if(!active)
+		goto Done;
+
+	/* try reclaim active images */
+	for(j = 0; j < conf.nimage; j++, y++) {
+		if(y >= conf.nimage)
+			y = 0;
+		i = &imagealloc.list[y];
+		if(i->ref == 0)
 			continue;
 		np += pagereclaim(i);
 		if(np >= 1000)
