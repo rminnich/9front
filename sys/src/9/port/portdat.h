@@ -473,7 +473,7 @@ enum
 	MNTLOG	=	5,
 	MNTHASH =	1<<MNTLOG,	/* Hash to walk mount table */
 	NFD =		100,		/* per process file descriptors */
-	PGHLOG  =	9,
+	PGHLOG  =	10,
 	PGHSIZE	=	1<<PGHLOG,	/* Page hash for image lookup */
 	ENVLOG =	5,
 	ENVHASH =	1<<ENVLOG,	/* Egrp hash for variable lookup */
