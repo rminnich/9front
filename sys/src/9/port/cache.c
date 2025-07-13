@@ -9,10 +9,12 @@ enum
 {
 	NHASH		= 128,
 	NFILE		= 4093,		/* should be prime */
-	MAXCACHE	= 8*1024*1024,
-
+	MAXCACHE	= 8*MB,		/* per file */
 	MAPBITS		= 8*sizeof(ulong),
 	NBITMAP		= (PGROUND(MAXCACHE)/BY2PG + MAPBITS-1) / MAPBITS,
+
+	/* maximum number pages in fscache image */
+	TOTALPAGES	= (256*MB)/BY2PG,
 };
 
 /* devmnt.c: parallel read ahread implementation */
@@ -425,6 +427,8 @@ cachedata(Mntcache *m, uchar *buf, int len, vlong off)
 				invalidate(m, offset + pn*BY2PG, len);
 				break;
 			}
+			if(fscache.pgref > TOTALPAGES)
+				pagereclaim(&fscache);
 			p = newpage(0, nil, pn*BY2PG);
 			p->daddr = cacheaddr(m, pn);
 			cachedel(&fscache, p->daddr);
