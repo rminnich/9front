@@ -555,7 +555,7 @@ poolnewarena(Pool *p, ulong asize)
 	Alloc *b;
 
 	LOG(p, "newarena %lud\n", asize);
-	if(p->cursize+asize > p->maxsize) {
+	if(asize > p->maxsize || p->cursize > p->maxsize - asize) {
 		if(poolcompactl(p) == 0){
 			LOG(p, "pool too big: %llud+%lud > %llud\n",
 				(uvlong)p->cursize, asize, (uvlong)p->maxsize);
