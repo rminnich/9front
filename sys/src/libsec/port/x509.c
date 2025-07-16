@@ -1943,8 +1943,6 @@ decode_cert(uchar *buf, int len)
 
 	/* resume CertificateInfo */
  	c->subject = parse_name(esubj);
-	if(c->subject == nil)
-		goto errret;
 
 	/* SubjectPublicKeyInfo */
 	if(!is_seq(epubkey, &elpubkey))
@@ -3089,8 +3087,6 @@ X509reqtoRSApub(uchar *req, int nreq, char *name, int nname)
 		goto errret;
  	el = el->tl;
 	subject = parse_name(&el->hd);
-	if(subject == nil)
-		goto errret;
 	copysubject(name, nname, subject);
 	free(subject);
 	el = el->tl;
