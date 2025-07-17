@@ -135,13 +135,19 @@ mkoutpath(char *path)
 }
 
 int
+prefixed(char *s, char *pfx)
+{
+	return strncmp(s, pfx, strlen(pfx)) == 0;
+}
+
+int
 branchmatch(char *br, char *pat)
 {
 	char name[128];
 
-	if(strstr(pat, "refs/heads") == pat)
+	if(prefixed(pat, "refs/heads"))
 		snprint(name, sizeof(name), "%s", pat);
-	else if(strstr(pat, "heads"))
+	else if(prefixed(pat, "heads/"))
 		snprint(name, sizeof(name), "refs/%s", pat);
 	else
 		snprint(name, sizeof(name), "refs/heads/%s", pat);
@@ -264,6 +270,8 @@ fetchpack(Conn *c)
 		if(!okrefname(sp[1]))
 			sysfatal("remote side sent invalid ref: %s", sp[1]);
 		if(fetchbranch && !branchmatch(sp[1], fetchbranch))
+			continue;
+		else if(!prefixed(sp[1], "refs/heads/") && !prefixed(sp[1], "refs/tags/"))
 			continue;
 		if(refsz == nref + 1){
 			refsz *= 2;
