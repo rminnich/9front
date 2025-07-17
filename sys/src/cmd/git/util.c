@@ -524,14 +524,16 @@ parseqid(char *s)
 int
 okref(char *ref)
 {
-	int slashed;
+	int n, slashed;
 	char *p;
+	Rune r;
 
 	slashed = 0;
 	if(*ref == '/' || *ref == '.')
 		return 0;
-	for(p = ref; *p != 0; p++) {
-		switch(*p){
+	for(p = ref; *p != 0; p += n) {
+		n = chartorune(&r, p);
+		switch(r){
 		case '.':
 			if(p[1]== 0 || p[1] == '.')
 				return 0;
@@ -555,10 +557,11 @@ okref(char *ref)
 		case '*':
 		case '[':
 		case '\\':
+		case Runeerror:
 		case 0x7f: /* DEL */
 			return 0;
 		default:
-			if(*p < 0x20)
+			if(r < 0x20 || isspacerune(r))
 				return 0;
 		}
 	}
