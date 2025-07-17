@@ -31,8 +31,8 @@ gethead(Hash *h, char *ref, int nref)
 		return nil;
 	if((n = readn(fd, ref, nref-1)) == -1)
 		return nil;
-	while(n > 0 && ref[n-1] == '\n' || ref[n-1] == '\t' || ref[n-1] == ' ')
-		n--;
+	ref[n] = 0;
+	strip(ref);
 	if(strncmp(ref, "ref: ", 5) != 0)
 		return nil;
 	s = ref+5;
