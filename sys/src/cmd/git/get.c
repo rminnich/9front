@@ -271,7 +271,9 @@ fetchpack(Conn *c)
 			sysfatal("remote side sent invalid ref: %s", sp[1]);
 		if(fetchbranch && !branchmatch(sp[1], fetchbranch))
 			continue;
-		else if(!prefixed(sp[1], "refs/heads/") && !prefixed(sp[1], "refs/tags/"))
+		else if(strcmp(sp[1], "HEAD") != 0
+		&& !prefixed(sp[1], "refs/heads/")
+		&& !prefixed(sp[1], "refs/tags/"))
 			continue;
 		if(refsz == nref + 1){
 			refsz *= 2;
