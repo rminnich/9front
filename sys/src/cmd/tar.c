@@ -752,6 +752,8 @@ parsepax(int ar, Blk *bp, Hdr *hdr, int paxtype)
 					sysfatal("invalid delimiter in pax header: %c (%s)", *p, p);
 				*lp++ = '\0';
 				len = atoi(lenbuf) - strlen(lenbuf) - 1;
+				if(len <= 0)
+					sysfatal("invalid attribute length in pax header (%s)", lenbuf);
 			}
 	
 			if (kvp == nil && (kvp = malloc(len)) == nil)
@@ -873,62 +875,88 @@ freehdr(Hdr *hdr)
 }
 
 /*
- * if name is longer than Namsiz bytes, try to split it at a slash and fit the
- * pieces into bp->prefix and bp->name.
+ * In theory we could split names to fit them into a prefix/name pair,
+ * header,but we just take the simpler option and put it into a pax 
+ * header if the name won't fit.
  */
 static int
 putfullname(Blk *bp, char *name)
 {
-	int namlen, pfxlen;
-	char *sl, *osl;
-	String *slname = nil;
+	int n, dir;
 
-	if (isdir(bp, name)) {
-		slname = s_new();
-		s_append(slname, name);
-		s_append(slname, "/");		/* posix requires this */
-		name = s_to_c(slname);
-	}
-
-	namlen = strlen(name);
-	if (namlen <= Namsiz) {
-		strncpy(bp->name, name, Namsiz);
-		bp->prefix[0] = '\0';		/* ustar paranoia */
-		return 0;
-	}
-
-	if (!posix || namlen > Maxname) {
-		fprint(2, "%s: name too long for tar header: %s\n",
-			argv0, name);
+	n = strlen(name);
+	dir = isdir(bp, name);
+	if(dir)
+		n++;
+	if(n > Namsiz){
+		fprint(2, "%s: name too long for tar header: %s\n", argv0, name);
 		return -1;
 	}
+	strncpy(bp->name, name, Namsiz);
+	if(dir)
+		bp->name[n-1] = '/'; /* posix requires this */
+	memset(bp->prefix, 0, sizeof(bp->prefix)); /* ustar paranoia */
+	return 0;
+}
+
+static int
+mkpaxhdr(int ar, Dir *dir, char *file)
+{
+	char *p, buf[Maxlongname + 512];
+	int n, nn, nf;
+	Blk *bp;
+
+	nf = strlen(file);
+	if(!posix)
+		return -1;
+	if(nf > Maxlongname){
+		fprint(2, "%s: name too long for pax header: %s\n", argv0, file);
+		return -1;
+	}
+
 	/*
-	 * try various splits until one results in pieces that fit into the
-	 * appropriate fields of the header.  look for slashes from right
-	 * to left, in the hopes of putting the largest part of the name into
-	 * bp->prefix, which is larger than bp->name.
+	 * PAX headers require a length which includes
+	 * the length of the length. We're not allowed
+	 * to pad it. We need to find some n such that:
+	 *
+	 *   n == strlen(n) + strlen(kvp)
+	 *
+	 * So, icky -- loop until it converges. We can
+	 * only be off by 1 after our first guess, so
+	 * this should be fast.
 	 */
-	sl = strrchr(name, '/');
-	while (sl != nil) {
-		pfxlen = sl - name;
-		if (pfxlen <= sizeof bp->prefix && namlen-1 - pfxlen <= Namsiz)
-			break;
-		osl = sl;
-		*osl = '\0';
-		sl = strrchr(name, '/');
-		*osl = '/';
+	n = 0;
+	nn = nf+1;
+	while(n != nn){
+		n = nn;
+		nn = snprint(buf, sizeof(buf), "%d path=%s\n", n, file);
 	}
-	if (sl == nil) {
-		fprint(2, "%s: name can't be split to fit tar header: %s\n",
-			argv0, name);
-		return -1;
+
+	bp = getblkz(ar);
+	bp->linkflag = LF_PAXHDR;
+	snprint(bp->name, sizeof(bp->name), "pax/romana");
+	snprint(bp->mode, sizeof(bp->mode), "%6lo ", dir->mode & 0777);
+	snprint(bp->uid, sizeof(bp->uid), "%6o ", aruid);
+	snprint(bp->gid, sizeof(bp->gid), "%6o ", argid);
+	snprint(bp->size, sizeof(bp->size), "%11uo ", n);
+
+	strncpy(bp->magic, "ustar", sizeof bp->magic);
+	strncpy(bp->version, "00", sizeof bp->version);
+	strncpy(bp->uname, dir->uid, sizeof bp->uname);
+	strncpy(bp->gname, dir->gid, sizeof bp->gname);
+
+	snprint(bp->chksum, sizeof(bp->chksum), "%6luo", chksum(bp));
+	putblk(ar);
+
+	p = buf;
+	while(n > 0){
+		nn = (n < Tblock) ? n : Tblock;
+		bp = getblkz(ar);
+		memcpy(bp->data, p, nn);
+		p += nn;
+		n -= nn;
+		putblk(ar);
 	}
-	*sl = '\0';
-	strncpy(bp->prefix, name, sizeof bp->prefix);
-	*sl++ = '/';
-	strncpy(bp->name, sl, sizeof bp->name);
-	if (slname)
-		s_free(slname);
 	return 0;
 }
 
@@ -960,7 +988,7 @@ mkhdr(Blk *bp, Dir *dir, char *file)
 	sprint(bp->mtime, "%11luo ", dir->mtime);
 	bp->linkflag = (dir->mode&DMDIR? LF_DIR: LF_PLAIN1);
 	r = putfullname(bp, file);
-	if (posix) {
+	if(posix){
 		strncpy(bp->magic, "ustar", sizeof bp->magic);
 		strncpy(bp->version, "00", sizeof bp->version);
 		strncpy(bp->uname, dir->uid, sizeof bp->uname);
@@ -1019,6 +1047,7 @@ addtoar(int ar, char *file, char *shortf)
 	int n, fd, isdir;
 	long bytes, blksread;
 	ulong blksleft;
+	char *hpath;
 	Blk *hbp;
 	Dir *dir;
 	String *name = nil;
@@ -1043,16 +1072,16 @@ addtoar(int ar, char *file, char *shortf)
 	if (dir == nil)
 		sysfatal("can't fstat %s: %r", file);
 
+	hpath = file;
+	if(strlen(file) > Namsiz){
+		if(mkpaxhdr(ar, dir, file) < 0)
+			goto Badhdr;
+		hpath = "PAXED";
+	}
 	hbp = getblkz(ar);
 	isdir = (dir->qid.type & QTDIR) != 0;
-	if (mkhdr(hbp, dir, file) < 0) {
-		putbackblk(ar);
-		free(dir);
-		close(fd);
-		if (name)
-			s_free(name);
-		return;
-	}
+	if (mkhdr(hbp, dir, hpath) < 0)
+		goto Badhdr;
 	putblk(ar);
 
 	blksleft = BYTES2TBLKS(dir->length);
@@ -1060,7 +1089,7 @@ addtoar(int ar, char *file, char *shortf)
 
 	if (isdir)
 		addtreetoar(ar, file, shortf, fd);
-	else {
+	else{
 		for (; blksleft > 0; blksleft -= blksread) {
 			hbp = getblke(ar);
 			blksread = gothowmany(blksleft);
@@ -1080,6 +1109,13 @@ addtoar(int ar, char *file, char *shortf)
 		if (verbose)
 			fprint(2, "%s\n", file);
 	}
+	if (name)
+		s_free(name);
+	return;
+Badhdr:
+	putbackblk(ar);
+	free(dir);
+	close(fd);
 	if (name)
 		s_free(name);
 }
