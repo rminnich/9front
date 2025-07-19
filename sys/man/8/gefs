@@ -343,7 +343,7 @@ gefs# ^\\
 % mount -c /srv/gefs /n/o %other
 % mkdir -p /n/o/usr/$newuser/tmp
 % chgrp $newuser /n/o/usr/$newuser^('' /tmp)
-% chmod 700 $newuser /n/o/usr/$newuser^('' /tmp)
+% chmod 700 /n/o/usr/$newuser^('' /tmp)
 .EE
 .SH BUGS
 .PP
