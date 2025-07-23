@@ -1,5 +1,7 @@
 </$objtype/mkfile
 
+path=/bin # git/rm confuses the mk rules
+
 BIN=/$objtype/bin/git
 TARG=\
 	conf\
