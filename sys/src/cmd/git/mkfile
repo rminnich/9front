@@ -1,6 +1,9 @@
 </$objtype/mkfile
 
-path=/bin # git/rm confuses the mk rules
+# it seems like a bad idea to include '.'
+# in the path with executables like 'rm'
+# in this directory.
+path=/bin
 
 BIN=/$objtype/bin/git
 TARG=\
