@@ -99,8 +99,14 @@ $p%.gz:D:	$p%
 
 install:V:	$p$CONF
 	cp $p$CONF /$objtype/
-	for(i in $EXTRACOPIES)
-		import $i / /n/$i && cp $p$CONF $p$CONF.gz /n/$i/$objtype/
+
+install.%:V:	$p$CONF
+	@{
+	rfork n
+	9fs $stem
+	test -e /n/$stem/$p$CONF && cp /n/$stem/$p$CONF /n/$stem/$p$CONF.o
+	cp $p$CONF /n/$stem/$p$CONF
+	}
 
 <../boot/bootmkfile
 <../port/portmkfile
