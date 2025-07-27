@@ -9,7 +9,19 @@ fn update{
 	dflag=()
 	if(! ~ $#debug 0)
 		dflag='-d'
-	{git/get $dflag -u $upstream $url >[2=3] || die $status} | awk '
+	heads=`$nl{
+		# safe to split in awk, branch names may not
+		# have spaces or newlines.
+		git/query `$nl{
+			cd .git/refs && \
+			walk -f -emp heads remotes | \
+			sort -rn | \
+			awk '{print $2}'
+		}
+	}
+	if(! ~ $#heads 0)
+		heads='-h'^$heads
+	{git/get $dflag -u $upstream $heads $url >[2=3] || die $status} | awk '
 	/^remote refs\/(heads|tags)\//{
 		ref=$2
 		hash=$3
