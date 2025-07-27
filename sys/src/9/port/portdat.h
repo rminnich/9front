@@ -473,31 +473,38 @@ enum
 	MNTLOG	=	5,
 	MNTHASH =	1<<MNTLOG,	/* Hash to walk mount table */
 	NFD =		100,		/* per process file descriptors */
-	PGHLOG  =	10,
-	PGHSIZE	=	1<<PGHLOG,	/* Page hash for image lookup */
 	ENVLOG =	5,
 	ENVHASH =	1<<ENVLOG,	/* Egrp hash for variable lookup */
 };
 #define REND(p,s)	((p)->rendhash[(s)&((1<<RENDLOG)-1)])
 #define MOUNTH(p,qid)	((p)->mnthash[(qid).path&((1<<MNTLOG)-1)])
-#define PGHASH(i,daddr)	((i)->pghash[((daddr)>>PGSHIFT)&(PGHSIZE-1)])
+#define PGHASH(i,daddr)	((i)->pghash[((daddr)>>PGSHIFT)&((i)->pghsize-1)])
 
 struct Image
 {
 	Ref;
 	Lock;
+
+	long	pgref;			/* number of cached pages (pgref <= ref) */
+
+	ulong	nattach;		/* usage frequency */
+
+	Image	**link;			/* idle list */
+	Image	*next;			/* idle list */
+
+	Image	*hash;			/* Qid hash chains */
+
+	Segment *s;			/* TEXT segment for image if running */
+
 	Chan	*c;			/* channel to text file, nil when not used */
 	Qid 	qid;			/* Qid for page cache coherence */
 	ulong	dev;			/* Device id of owning channel */
 	ushort	type;			/* Device type of owning channel */
 	char	notext;			/* no file associated */
-	Segment *s;			/* TEXT segment for image if running */
-	Image	*hash;			/* Qid hash chains */
-	Image	*next;			/* Free list */
-	long	pgref;			/* number of cached pages (pgref <= ref) */
-	Page	*pghash[PGHSIZE];	/* page cache */
-};
 
+	ulong	pghsize;
+	Page	*pghash[];		/* page cache */
+};
 
 struct Pgrp
 {
@@ -823,8 +830,8 @@ extern	Palloc	palloc;
 extern	int	panicking;
 extern	Queue*	serialoq;
 extern	char*	statename[];
-extern	Image	swapimage;
-extern	Image	fscache;
+extern	Image*	swapimage;
+extern	Image*	fscache;
 extern	char*	sysname;
 extern	uint	qiomaxatomic;
 extern	char*	sysctab[];

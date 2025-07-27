@@ -53,14 +53,9 @@ struct Cache
 	Mntcache	*hash[NHASH];
 };
 
-Image fscache = {
-	{
-		.ref = 1,
-	},
-	.notext = 1,
-};
-
 static Cache cache;
+
+Image *fscache;
 
 void
 cinit(void)
@@ -69,8 +64,10 @@ cinit(void)
 	Mntcache *m;
 
 	m = xalloc(sizeof(Mntcache)*NFILE);
-	if (m == nil)
+	if(m == nil || (fscache = newimage(TOTALPAGES)) == nil)
 		panic("cinit: no memory");
+
+	fscache->notext = 1;
 
 	cache.alloc = m;
 	cache.head = m;
@@ -276,7 +273,7 @@ cpage(Mntcache *m, ulong pn, ulong *po, ulong *pe)
 	b = 1 << (pn%MAPBITS);
 	if((m->bitmap[pn/MAPBITS] & b) == 0)
 		return nil;
-	p = lookpage(&fscache, cacheaddr(m, pn));
+	p = lookpage(fscache, cacheaddr(m, pn));
 	if(p == nil){
 		m->bitmap[pn/MAPBITS] &= ~b;
 		return nil;
@@ -427,12 +424,12 @@ cachedata(Mntcache *m, uchar *buf, int len, vlong off)
 				invalidate(m, offset + pn*BY2PG, len);
 				break;
 			}
-			if(fscache.pgref > TOTALPAGES)
-				pagereclaim(&fscache);
+			if(fscache->pgref > TOTALPAGES)
+				pagereclaim(fscache);
 			p = newpage(0, nil, pn*BY2PG);
 			p->daddr = cacheaddr(m, pn);
-			cachedel(&fscache, p->daddr);
-			cachepage(p, &fscache);
+			cachedel(fscache, p->daddr);
+			cachepage(p, fscache);
 			m->bitmap[pn/MAPBITS] |= 1 << (pn%MAPBITS);
 
 			po = offset;

@@ -110,30 +110,28 @@ freepages(Page *head, Page *tail, ulong np)
 ulong
 pagereclaim(Image *i)
 {
-	Page **h, **l, **x, *p;
+	Page **h, **e, **l, **x, *p;
 	Page *fh, *ft;
-	ulong np;
-	int c;
+	ulong mp, np;
+
+	if(i == nil)
+		return 0;
 
 	lock(i);
-	if(i->pgref == 0){
+	mp = i->pgref;
+	if(mp == 0){
 		unlock(i);
 		return 0;
 	}
 	np = 0;
 	fh = ft = nil;
-	for(h = i->pghash; h < &i->pghash[PGHSIZE]; h++){
+	e = &i->pghash[i->pghsize];
+	for(h = i->pghash; h < e; h++){
 		l = h;
 		x = nil;
-		c = 1;
 		for(p = *l; p != nil; p = p->next){
-			if(p->ref == 0){
+			if(p->ref == 0)
 				x = l;
-				/* too many collisions, take what we have */
-				if(c >= 64)
-					break;
-			}
-			c++;
 			l = &p->next;
 		}
 		if(x == nil)
@@ -288,15 +286,23 @@ zeropage(Page *p)
 void
 cachepage(Page *p, Image *i)
 {
-	Page **h;
+	Page *x, **h;
+	uintptr daddr;
 
+	daddr = p->daddr;
+	h = &PGHASH(i, daddr);
 	lock(i);
+	for(x = *h; x != nil; x = x->next)
+		if(x->daddr == daddr)
+			goto done;
+	if(p->image != nil)
+		goto done;
 	p->image = i;
-	h = &PGHASH(i, p->daddr);
 	p->next = *h;
 	*h = p;
 	incref(i);
 	i->pgref++;
+done:
 	unlock(i);
 }
 
@@ -309,13 +315,10 @@ uncachepage(Page *p)
 	i = p->image;
 	if(i == nil)
 		return;
-
-	lock(i);
-	if(p->image != i){
-		unlock(i);
-		return;
-	}
 	l = &PGHASH(i, p->daddr);
+	lock(i);
+	if(p->image != i)
+		goto done;
 	for(x = *l; x != nil; x = x->next) {
 		if(x == p){
 			*l = p->next;
@@ -328,6 +331,7 @@ uncachepage(Page *p)
 		}
 		l = &x->next;
 	}
+done:
 	unlock(i);
 }
 
@@ -336,8 +340,8 @@ lookpage(Image *i, uintptr daddr)
 {
 	Page *p, **h, **l;
 
-	lock(i);
 	l = h = &PGHASH(i, daddr);
+	lock(i);
 	for(p = *l; p != nil; p = p->next){
 		if(p->daddr == daddr){
 			*l = p->next;
@@ -359,7 +363,7 @@ cachedel(Image *i, uintptr daddr)
 {
 	Page *p;
 
-	while((p = lookpage(i, daddr)) != nil){
+	if((p = lookpage(i, daddr)) != nil){
 		uncachepage(p);
 		putpage(p);
 	}

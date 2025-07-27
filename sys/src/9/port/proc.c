@@ -192,7 +192,6 @@ sched(void)
 		if(up->state == Running)
 		if(up->delaysched < 20
 		|| palloc.Lock.p == up
-		|| fscache.Lock.p == up
 		|| procalloc.Lock.p == up){
 			up->delaysched++;
  			delayedscheds++;

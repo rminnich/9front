@@ -14,12 +14,7 @@ static void	pageout(Proc*, Segment*);
 static void	pagepte(Segment*, Page**);
 static void	pager(void*);
 
-Image 	swapimage = {
-	{
-		.ref = 1
-	},
-	.notext = 1,
-};
+Image 		*swapimage;
 
 static Chan	*swapchan;
 static uchar	*swapbuf;
@@ -137,16 +132,17 @@ kickpager(void)
 static int
 reclaim(void)
 {
+	enum {
+		Target = 4*MB/BY2PG,
+	};
 	ulong np;
 
 	for(;;){
-		if((np = pagereclaim(&fscache) + imagereclaim(0)) > 0){
-			if(0) print("reclaim: %lud fscache + inactive image\n", np);
-		} else if((np = pagereclaim(&swapimage)) > 0) {
-			if(0) print("reclaim: %lud swap\n", np);
-		} else if((np = imagereclaim(1)) > 0) {
-			if(0) print("reclaim: %lud active image\n", np);
-		}
+		np = pagereclaim(fscache);
+		if(np < Target)
+			np += imagereclaim(Target-np);
+		if(np < Target)
+			np += pagereclaim(swapimage);
 		if(!needpages(nil))
 			return 1;	/* have pages, done */
 		if(np == 0)
@@ -176,7 +172,7 @@ pager(void*)
 			continue;
 		}
 
-		if(swapimage.c == nil || swapalloc.free == 0){
+		if(swapimage == nil || swapimage->c == nil || swapalloc.free == 0){
 		Killbig:
 			if(!freebroken())
 				killbig();
@@ -197,6 +193,12 @@ pager(void*)
 			if((s = p->seg[i]) != nil) {
 				switch(s->type&SG_TYPE) {
 				case SG_TEXT:
+					/*
+					 *  imagereclaim() does not reclaim active images anymore,
+					 *  so here is no point in paging out text. it wont
+					 *  recover any pages.
+					 */
+					continue;
 				case SG_DATA:
 				case SG_BSS:
 				case SG_STACK:
@@ -240,7 +242,7 @@ pageout(Proc *p, Segment *s)
 			continue;
 		for(pg = l->first; pg <= l->last; pg++) {
 			entry = *pg;
-			if(pagedout(entry) || entry->modref & PG_PRIV)
+			if(pagedout(entry) || entry->modref & PG_PRIV || entry->image != nil)
 				continue;
 			if(entry->modref & PG_REF) {
 				entry->modref &= ~PG_REF;
@@ -288,49 +290,37 @@ pagepte(Segment *s, Page **pg)
 	uintptr daddr;
 	Page *outp;
 
+	if(ioptr >= conf.nswppo)
+		return;
+
+	/*
+	 *  get a new swap address with swapcount 2, one for the pte
+	 *  and one extra ref for us while we write the page to disk
+	 */
+	daddr = newswap();
+	if(daddr == ~0)
+		return;
+
+	/* clear any pages referring to it from the cache */
+	cachedel(swapimage, daddr);
+
 	outp = *pg;
-	switch(s->type & SG_TYPE) {
-	case SG_TEXT:				/* Revert to demand load */
-		*pg = nil;
-		s->used--;
-		putpage(outp);
-		break;
 
-	case SG_DATA:
-	case SG_BSS:
-	case SG_STACK:
-	case SG_SHARED:
-		if(ioptr >= conf.nswppo)
-			break;
+	/* forget anything that it used to cache */
+	uncachepage(outp);
 
-		/*
-		 *  get a new swap address with swapcount 2, one for the pte
-		 *  and one extra ref for us while we write the page to disk
-		 */
-		daddr = newswap();
-		if(daddr == ~0)
-			break;
+	/*
+	 *  enter it into the cache so that a fault happening
+	 *  during the write will grab the page from the cache
+	 *  rather than one partially written to the disk
+	 */
+	outp->daddr = daddr;
+	cachepage(outp, swapimage);
+	*pg = (Page*)(daddr|PG_ONSWAP);
+	s->swapped++;
 
-		/* clear any pages referring to it from the cache */
-		cachedel(&swapimage, daddr);
-
-		/* forget anything that it used to cache */
-		uncachepage(outp);
-
-		/*
-		 *  enter it into the cache so that a fault happening
-		 *  during the write will grab the page from the cache
-		 *  rather than one partially written to the disk
-		 */
-		outp->daddr = daddr;
-		cachepage(outp, &swapimage);
-		*pg = (Page*)(daddr|PG_ONSWAP);
-		s->swapped++;
-
-		/* Add page to IO transaction list */
-		iolist[ioptr++] = outp;
-		break;
-	}
+	/* Add page to IO transaction list */
+	iolist[ioptr++] = outp;
 }
 
 static void
@@ -343,12 +333,12 @@ executeio(void)
 		outp = iolist[i];
 
 		assert(outp->ref > 0);
-		assert(outp->image == &swapimage);
+		assert(outp->image == swapimage);
 		assert(outp->daddr != ~0);
 
 		/* only write when swap address still in use */
 		if(swapcount(outp->daddr) > 1){
-			Chan *c = swapimage.c;
+			Chan *c = swapimage->c;
 			KMap *k = kmap(outp);
 			if(waserror()){
 				kunmap(k);
@@ -405,12 +395,17 @@ setswapchan(Chan *c)
 	if(s < conf.nswppo)
 		error("swap device too small");
 
-	if(swapimage.c != nil) {
+	if(swapimage != nil) {
 		if(swapalloc.free != conf.nswap)
 			error(Einuse);
-		cclose(swapimage.c);
-		swapimage.c = nil;
+		if(swapimage->c != nil)
+			cclose(swapimage->c);
+		free(swapimage);
 	}
+	swapimage = newimage(s);
+	if(swapimage == nil)
+		error(Enomem);
+	swapimage->notext = 1;
 
 	if(s < conf.nswap){
 		conf.nswap = s;
@@ -423,7 +418,7 @@ setswapchan(Chan *c)
 	poperror();
 
 	swapchan = c;
-	swapimage.c = namec("#¶/swapfile", Aopen, ORDWR, 0);
+	swapimage->c = namec("#¶/swapfile", Aopen, ORDWR, 0);
 }
 
 enum {
@@ -465,10 +460,10 @@ swapopen(Chan *c, int omode)
 	case Qswapfile:
 		if(!iseve() || omode != ORDWR)
 			error(Eperm);
-		if(swapimage.c != nil)
-			error(Einuse);
-		if(swapchan == nil)
+		if(swapchan == nil || swapimage == nil)
 			error(Egreg);
+		if(swapimage->c != nil)
+			error(Einuse);
 
 		c->mode = openmode(omode);
 		c->flag |= COPEN;
@@ -517,7 +512,11 @@ swapread(Chan *c, void *va, long n, vlong off)
 	case Qdir:
 		return devdirread(c, va, n, swapdir, nelem(swapdir), devgen);
 	case Qswap:
-		reclaim = imagecached() + fscache.pgref + swapimage.pgref;
+		reclaim = imagecached();
+		if(fscache != nil)
+			reclaim += fscache->pgref;
+		if(swapimage != nil)
+			reclaim += swapimage->pgref;
 		snprint(tmp, sizeof tmp,
 			"%llud memory\n"
 			"%llud pagesize\n"

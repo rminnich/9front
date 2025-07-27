@@ -36,14 +36,13 @@ faultnote(char *type, char *access, uintptr addr)
 static void
 pio(Segment *s, uintptr addr, uintptr soff, Page **p)
 {
-	Page *new;
 	KMap *k;
 	Chan *c;
 	int n, ask;
-	char *kaddr;
-	uintptr daddr;
-	Page *loadrec;
+	uintptr o, daddr, paddr;
+	Page *loadrec, *new;
 	Image *image;
+	Block *b;
 
 retry:
 	loadrec = *p;
@@ -57,15 +56,22 @@ retry:
 			return;
 		}
 
-		ask = BY2PG;
-		if(soff >= s->flen)
+		ask = image->c->iounit;
+		if(ask == 0) ask = qiomaxatomic;
+		ask &= -BY2PG;
+		if(ask == 0) ask = BY2PG;
+
+		daddr = soff & -ask;
+		if(daddr >= s->flen)
 			ask = 0;
-		else if((soff+ask) > s->flen)
-			ask = s->flen-soff;
+		else if((daddr+ask) > s->flen)
+			ask = s->flen-daddr;
+		paddr = s->base + daddr;
+		daddr += s->fstart;
 	}
 	else {			/* from a swap image */
 		daddr = swapaddr(loadrec);
-		image = &swapimage;
+		image = swapimage;
 		new = lookpage(image, daddr);
 		if(new != nil) {
 			*p = new;
@@ -73,29 +79,49 @@ retry:
 			putswap(loadrec);
 			return;
 		}
-
+		paddr = addr;
 		ask = BY2PG;
 	}
 	qunlock(s);
 
-	new = newpage(0, nil, addr);
-	k = kmap(new);
 	c = image->c;
 	while(waserror()) {
 		if(strcmp(up->errstr, Eintr) == 0)
 			continue;
-		kunmap(k);
-		putpage(new);
 		faulterror(Eioload, c);
 	}
-	kaddr = (char*)VA(k);
-	n = devtab[c->type]->read(c, kaddr, ask, daddr);
-	if(n != ask)
-		error(Eshort);
-	if(ask < BY2PG)
-		memset(kaddr+ask, 0, BY2PG-ask);
+	b = devtab[c->type]->bread(c, ask, daddr);
+	if(waserror()){
+		freeblist(b);
+		nexterror();
+	}
+	for(o = 0; o < ask; o += BY2PG){
+		new = lookpage(image, daddr + o);
+		if(new != nil){
+			putpage(new);
+			continue;
+		}
+		new = newpage(0, nil, paddr + o);
+		new->daddr = daddr + o;
+		k = kmap(new);
+		n = ask - o;
+		if(n > BY2PG)
+			n = BY2PG;
+		else if(n < BY2PG)
+			memset((uchar*)VA(k)+n, 0, BY2PG-n);
+		if(readblist(b, (uchar*)VA(k), n, o) != n){
+			kunmap(k);
+			putpage(new);
+			error(Eshort);
+		}
+		kunmap(k);
+		settxtflush(new, s->flushme);
+		cachepage(new, image);
+		putpage(new);
+	}
+	freeblist(b);
 	poperror();
-	kunmap(k);
+	poperror();
 
 	qlock(s);
 	/*
@@ -103,34 +129,9 @@ retry:
 	 *  (and the pager may have run on that page) while
 	 *  s was unlocked
 	 */
-	if(*p != loadrec) {
-		putpage(new);
-
-		/* another process did it for me */
-		if(!pagedout(*p))
-			return;
-
-		/* another process or the pager got in */
-		goto retry;
-	}
-
-	/*
-	 *  check the cache again to avoid double caching.
-	 */
-	if((*p = lookpage(image, daddr)) != nil)
-		putpage(new);
-	else {
-		new->daddr = daddr;
-		settxtflush(new, s->flushme);
-		cachepage(new, image);
-		*p = new;
-	}
-	if(loadrec == nil)
-		s->used++;
-	else {
-		s->swapped--;
-		putswap(loadrec);
-	}
+	if(*p != loadrec && !pagedout(*p))
+		return;
+	goto retry;
 }
 
 static int
@@ -200,7 +201,7 @@ fixfault(Segment *s, uintptr addr, int read)
 		}
 
 		old = *pg;
-		if(old->image == &swapimage && (old->ref + swapcount(old->daddr)) == 1)
+		if(swapimage != nil && old->image == swapimage && (old->ref + swapcount(old->daddr)) == 1)
 			uncachepage(old);
 		if(old->ref > 1 || old->image != nil) {
 			new = newpage(0, &s, addr);

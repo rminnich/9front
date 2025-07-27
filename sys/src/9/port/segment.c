@@ -21,27 +21,50 @@ static Lock physseglock;
 static struct Imagealloc
 {
 	Lock;
-	Image	*list;
-	Image	*free;
+
+	QLock	ireclaim;	/* mutex on reclaiming idle images */
+
+	ulong	pgidle;		/* pages in idle list (reclaimable) */
+
+	ulong	nidle;
+	Image	*idle;
 	Image	*hash[IHASHSIZE];
-	QLock	ireclaim;	/* mutex on reclaiming free images */
+
 }imagealloc;
 
 Segment* (*_globalsegattach)(char*);
 
+Image*
+newimage(ulong pages)
+{
+	ulong pghsize;
+	Image *i;
+
+	/* make power of two */
+	pghsize = pages-1;
+	pghsize |= pghsize >> 16;
+	pghsize |= pghsize >> 8;
+	pghsize |= pghsize >> 4;
+	pghsize |= pghsize >> 2;
+	pghsize |= pghsize >> 1;
+	pghsize++;
+
+	if(pghsize > 1024)
+		pghsize >>= 4;
+
+	i = malloc(sizeof(Image) + pghsize * sizeof(Page*));
+	if(i == nil)
+		return nil;
+
+	i->ref = 1;
+	i->pghsize = pghsize;
+
+	return i;
+}
+
 void
 initseg(void)
 {
-	Image *i, *ie;
-
-	imagealloc.list = xalloc(conf.nimage*sizeof(Image));
-	if(imagealloc.list == nil)
-		panic("initseg: no memory for Image");
-	ie = &imagealloc.list[conf.nimage-1];
-	for(i = imagealloc.list; i < ie; i++)
-		i->next = i+1;
-	i->next = nil;
-	imagealloc.free = imagealloc.list;
 }
 
 Segment *
@@ -338,7 +361,7 @@ relocateseg(Segment *s, uintptr offset)
 
 
 Image*
-attachimage(Chan *c)
+attachimage(Chan *c, ulong pages)
 {
 	Image *i, **l;
 
@@ -350,32 +373,29 @@ retry:
 	 * or currently running incarnation
 	 */
 	for(i = ihash(c->qid.path); i != nil; i = i->hash){
-		if(eqchantdqid(c, i->type, i->dev, i->qid, 0))
+		if(eqchantdqid(c, i->type, i->dev, i->qid, 0)){
+			incref(i);
 			goto found;
-	}
-
-	/* dump pages of inactive images to free image structures */
-	if((i = imagealloc.free) == nil) {
-		unlock(&imagealloc);
-		if(imagereclaim(0) == 0 && imagealloc.free == nil){
-			freebroken();		/* can use the memory */
-			resrcwait("no image after reclaim");
 		}
+	}
+	if(imagealloc.nidle > conf.nimage
+	|| (i = newimage(pages)) == nil) {
+		unlock(&imagealloc);
+		if(imagealloc.nidle == 0)
+			error(Enomem);
+		if(imagereclaim(0) == 0)
+			freebroken();		/* can use the memory */
 		goto retry;
 	}
-	imagealloc.free = i->next;
-
 	i->type = c->type;
 	i->dev = c->dev;
 	i->qid = c->qid;
-
 	l = &ihash(c->qid.path);
 	i->hash = *l;
 	*l = i;
 found:
-	incref(i);
+	i->nattach++;
 	unlock(&imagealloc);
-
 	lock(i);
 	if(i->c == nil){
 		i->c = c;
@@ -384,11 +404,59 @@ found:
 	return i;
 }
 
+/* remove from idle list */
+static void
+busyimage(Image *i)
+{
+	/* not on idle list? */
+	if(i->link == nil)
+		return;
+
+	lock(&imagealloc);
+	if((*i->link = i->next) != nil)
+		i->next->link  = i->link;
+	i->link = nil;
+	i->next = nil;
+	imagealloc.pgidle -= i->pgref;
+	imagealloc.nidle--;
+	unlock(&imagealloc);
+}
+
+/* insert into idle list */
+static void
+idleimage(Image *i)
+{
+	Image **l, *j;
+
+	/* already on idle list? */
+	if(i->link != nil)
+		return;
+
+	lock(&imagealloc);
+	l = &imagealloc.idle;
+	j = imagealloc.idle;
+	/* sort by least frequenty and most pages used first */
+	for(; j != nil; l = &j->next, j = j->next){
+		long c = j->nattach - i->nattach;
+		if(c < 0)
+			continue;
+		if(c > 0)
+			break;
+		if(j->pgref < i->pgref)
+			break;
+	}
+	if((i->next = j) != nil)
+		j->link = &i->next;
+	*(i->link = l) = i;
+	imagealloc.pgidle += i->pgref;
+	imagealloc.nidle++;
+	unlock(&imagealloc);
+}
+
 /* putimage(): called with image locked and unlocks */
 void
 putimage(Image *i)
 {
-	Image *f, **l;
 	Chan *c;
 	long r;
 
@@ -397,24 +465,17 @@ putimage(Image *i)
 		unlock(i);
 		return;
 	}
-
-	/*
-	 * all remaining references to this image are from the
-	 * page cache, so close the chan.
-	 */
-	if(r == i->pgref){
-		c = i->c;
-		i->c = nil;
-	} else
-		c = nil;
-
 	if(r == 0){
 		assert(i->pgref == 0);
-		assert(i->c == nil);
 		assert(i->s == nil);
-
+		c = i->c;
+		i->c = nil;
+		busyimage(i);
 		lock(&imagealloc);
-		if(i->ref == 0){
+		r = i->ref;
+		if(r == 0){
+			Image *f, **l;
+
 			l = &ihash(i->qid.path);
 			for(f = *l; f != nil; f = f->hash) {
 				if(f == i) {
@@ -423,12 +484,22 @@ putimage(Image *i)
 				}
 				l = &f->hash;
 			}
-			i->next = imagealloc.free;
-			imagealloc.free = i;
 		}
 		unlock(&imagealloc);
+	} else if(r == i->pgref) {
+		assert(i->pgref > 0);
+		assert(i->s == nil);
+		c = i->c;
+		i->c = nil;
+		idleimage(i);
+	} else {
+		c = nil;
+		busyimage(i);
 	}
 	unlock(i);
+
+	if(r == 0)
+		free(i);
 
 	if(c != nil)
 		ccloseq(c);	/* does not block */
@@ -437,57 +508,37 @@ putimage(Image *i)
 ulong
 imagecached(void)
 {
-	Image *i, *ie;
-	ulong np;
-
-	np = 0;
-	ie = &imagealloc.list[conf.nimage];
-	for(i = imagealloc.list; i < ie; i++)
-		np += i->pgref;
-	return np;
+	return imagealloc.pgidle;
 }
 
 ulong
-imagereclaim(int active)
+imagereclaim(ulong pages)
 {
-	static int x, y;
 	ulong np;
 	Image *i;
-	int j;
-
-	np = 0;
 
 	eqlock(&imagealloc.ireclaim);
+	
+	lock(&imagealloc);
+	np = 0;
+	while(np < pages || imagealloc.nidle > conf.nimage) {
+		i = imagealloc.idle;
+		if(i == nil)
+			break;
+		incref(i);
+		unlock(&imagealloc);
 
-	/* try reclaim idle images */
-	for(j = 0; j < conf.nimage; j++, x++) {
-		if(x >= conf.nimage)
-			x = 0;
-		i = &imagealloc.list[x];
-		if(i->ref == 0)
-			continue;
-		if(i->s != nil || i->ref != i->pgref)
-			continue;
 		np += pagereclaim(i);
-		if(np >= 1000)
-			goto Done;
-	}
 
-	if(!active)
-		goto Done;
+		lock(i);
+		busyimage(i);	/* force re-insert into idle list */
+		putimage(i);
 
-	/* try reclaim active images */
-	for(j = 0; j < conf.nimage; j++, y++) {
-		if(y >= conf.nimage)
-			y = 0;
-		i = &imagealloc.list[y];
-		if(i->ref == 0)
-			continue;
-		np += pagereclaim(i);
-		if(np >= 1000)
-			goto Done;
+		lock(&imagealloc);
 	}
-Done:
+	imagealloc.pgidle -= np;
+	unlock(&imagealloc);
+
 	qunlock(&imagealloc.ireclaim);
 
 	return np;

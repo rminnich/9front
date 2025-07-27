@@ -561,7 +561,7 @@ sysexec(va_list list)
 
 	/* Attach text segment */
 	/* attachimage returns a locked cache image */
-	img = attachimage(tc);
+	img = attachimage(tc, (b-t)>>PGSHIFT);
 	if((ts = img->s) != nil && ts->flen == text){
 		assert(ts->image == img);
 		incref(ts);
