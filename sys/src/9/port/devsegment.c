@@ -481,7 +481,8 @@ fixedseg(uintptr va, ulong len)
 	l = palloc.pages;
 	color = getpgcolor(va);
 	for(n = palloc.user; n >= len; n--, l++){
-		if(l->ref != 0 || i != 0 && (l[-1].pa+BY2PG) != l->pa || i == 0 && l->color != color){
+		if(l->ref != 0 || l->image != nil
+		|| i != 0 ? (l[-1].pa+BY2PG) != l->pa : l->color != color){
 		Retry:
 			i = 0;
 			continue;
