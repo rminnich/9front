@@ -281,6 +281,12 @@ static Opcode opcodes[] =
 	"00011110ZZ1mmmmm000110nnnnnddddd",	"FDIV%Z",	"F%m,F%n,F%d",
 	"00011110ZZ1mmmmm001010nnnnnddddd",	"FADD%Z",	"F%m,F%n,F%d",
 	"00011110ZZ1mmmmm001110nnnnnddddd",	"FSUB%Z",	"F%m,F%n,F%d",
+	"WW00100011011111111111nnnnnddddd",	"LDAR%W",	"(R%n),R%d",
+	"WW00100001011111111111nnnnnddddd",	"LDAXR%W",	"(R%n),R%d",
+	"WW00100001011111011111nnnnnddddd",	"LDXR%W",	"(R%n),R%d",
+	"WW00100010011111111111nnnnnddddd",	"STLR%W",	"R%n,(R%d)",
+	"WW001000000mmmmm111111nnnnnddddd",	"STLXR%W",	"R%n,(R%d),R%m",
+	"WW001000000mmmmm011111nnnnnddddd",	"STXR%W",	"R%n,(R%d),R%m",
 	"xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",	"WORD",		"$%x",
 };
 
