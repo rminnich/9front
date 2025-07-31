@@ -7,7 +7,7 @@
 void
 identity(Matrix m)
 {
-	memset(m, 0, sizeof m);
+	memset(m, 0, sizeof(Matrix));
 	m[0][0] = m[1][1] = m[2][2] = 1;
 }
 
@@ -154,7 +154,7 @@ xform(Point2 p, Matrix m)
 void
 identity3(Matrix3 m)
 {
-	memset(m, 0, sizeof m);
+	memset(m, 0, sizeof(Matrix3));
 	m[0][0] = m[1][1] = m[2][2] = m[3][3] = 1;
 }
 
