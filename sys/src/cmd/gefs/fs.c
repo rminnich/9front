@@ -319,8 +319,7 @@ chrecv(Chan *c)
 
 	v = agetl(&c->count);
 	if(v == 0 || !acasl(&c->count, v, v-1))
-		while(semacquire(&c->count, 1) == -1)
-			continue;
+		semacquire(&c->count, 1);
 	lock(&c->rl);
 	a = *c->rp;
 	if(++c->rp >= &c->args[c->size])
@@ -1659,6 +1658,12 @@ fswstat(Fmsg *m, int id, Amsg **ao)
 			p += 4;
 		}
 	}
+	if(op == 0 && rename == 0){
+		*ao = emalloc(sizeof(Amsg), 1);
+		(*ao)->op = AOsync;
+		(*ao)->m = m;
+		goto Noupdate;
+	}
 	op |= Owmuid;
 	n.muid = f->uid;
 	PACK32(p, n.muid);
@@ -1722,15 +1727,17 @@ fswstat(Fmsg *m, int id, Amsg **ao)
 	if(rename)
 		cpkey(de, &k, de->buf, sizeof(de->buf));
 
+	r.type = Rwstat;
+	respond(m, &r);
+
 	if(*ao != nil)
 		poperror();
+Noupdate:
 	wunlock(de);
 	poperror();
 	putfid(f);
 	poperror();
 
-	r.type = Rwstat;
-	respond(m, &r);
 }
 
 /* fsclunk: must not raise error() */
@@ -2756,6 +2763,7 @@ runsweep(int id, void*)
 	char buf[Kvmax];
 	Msg mb[Kvmax/Offksz];
 	Bptr bp, nb, *oldhd;
+	Fcall r;
 	int i, nm;
 	vlong off;
 	Tree *t;
@@ -2844,7 +2852,11 @@ runsweep(int id, void*)
 					epochclean();
 				}
 			}
-
+			if(am->m != nil){
+				assert(am->m->type == Twstat);
+				r.type = am->m->type + 1;
+				respond(am->m, &r);
+			}
 			poperror();
 			break;
 

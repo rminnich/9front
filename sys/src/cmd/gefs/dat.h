@@ -412,6 +412,7 @@ struct Amsg {
 			char	new[128];
 			int	flag;
 			char	delete;
+			Fmsg	*m;
 		};
 		struct { /* AOsetcfg AOclrcfg */
 			char	snap[128];
@@ -586,7 +587,6 @@ struct Gefs {
 	Bfree	*bfree;
 
 	RWLock	flushq[Nflushtab];
-	int	flushop[Nflushtab];
 
 	Trace	*trace;
 	long	traceidx;
