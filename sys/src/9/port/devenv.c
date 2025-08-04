@@ -529,8 +529,11 @@ getconfenv(void)
 		q += n;
 		memmove(q, e->value, e->len);
 		q[e->len] = 0;
-		/* move up to the first null */
-		q += strlen(q) + 1;
+		for(n=0; n<e->len; n++){
+			if(q[n] == '\0')
+				q[n] = ' ';
+		}
+		q += n+1;
 	}
 	*q = '\0';
 	runlock(eg);
