@@ -211,7 +211,6 @@ enum {
 enum {
 	/* interrupts */
 	Ilink   = 1<<2,  /* interrupt link */
-	Iassert = 1<<31, /* interrupt asserted */
 
 	/* interrupts (extended) */
 	Irx0 = 1<<0, /* rx queue 0 */
@@ -614,8 +613,8 @@ i225intr(Ureg *, void *a)
 	 * the correct process.
 	 */
 	ilock(c);
-	im = csr32r(c, Rintrmask); csr32w(c, Rintrmask, 0);
-	ime = csr32r(c, Rintremask); csr32w(c, Rintremask, 0); csr32f(c);
+	im = csr32r(c, Rintrmask); csr32w(c, Rintrmaskclr, ~0);
+	ime = csr32r(c, Rintremask); csr32w(c, Rintremaskclr, ~0); csr32f(c);
 	i = csr32r(c, Rintrcauseclr);
 	ie = csr32r(c, Rintrecauseclr); csr32f(c);
 
@@ -1121,10 +1120,8 @@ i225attach(Ether *e)
 	snprint(n, sizeof(n), "#l%ds", e->ctlrno); kproc(n, i225procstat, c);
 
 	/* unmask interrupts */
-	csr32w(c, Rintrmask, Iassert|Ilink);
-	csr32w(c, Rintrmaskauto, 0);
+	csr32w(c, Rintrmask, Ilink);
 	csr32w(c, Rintremask, Itx0|Irx0);
-	csr32w(c, Rintremaskauto, 0);
 	csr32f(c);
 
 	/* configure interrupt vector allocation for all four queues */
@@ -1260,13 +1257,13 @@ i225init(Ether *e)
 	}
 
 	/* mask interrupts */
-	csr32w(c, Rintrmask, 0);
+	csr32w(c, Rintrmaskclr, ~0);
 	csr32w(c, Rintrmaskauto, 0);
 	csr32w(c, Rintrcauseclr, ~0);
 	csr32w(c, Rintrrate, 488);
 
 	/* mask extended interrupts */
-	csr32w(c, Rintremask, 0);
+	csr32w(c, Rintremaskclr, ~0);
 	csr32w(c, Rintremaskauto, 0);
 	csr32w(c, Rintrecauseclr, ~0);
 	csr32w(c, Rintrerate, 200);
@@ -1306,13 +1303,13 @@ i225shutdown(Ether *e)
 	}
 
 	/* mask interrupts */
-	csr32w(c, Rintrmask, 0);
+	csr32w(c, Rintrmaskclr, ~0);
 	csr32w(c, Rintrmaskauto, 0);
 	csr32w(c, Rintrcauseclr, ~0);
 	csr32w(c, Rintrrate, 488);
 
 	/* mask extended interrupts */
-	csr32w(c, Rintremask, 0);
+	csr32w(c, Rintremaskclr, ~0);
 	csr32w(c, Rintremaskauto, 0);
 	csr32w(c, Rintrecauseclr, ~0);
 	csr32w(c, Rintrerate, 200);
