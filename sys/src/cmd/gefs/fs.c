@@ -2797,14 +2797,15 @@ runsweep(int id, void*)
 			break;
 		case AOsync:
 			tracem("syncreq");
-			if(!fs->snap.dirty || agetl(&fs->rdonly))
-				goto Next;
 			if(waserror()){
 				fprint(2, "sync error: %s\n", errmsg());
+				if(am->m != nil)
+					rerror(am->m, Eio);
 				ainc(&fs->rdonly);
 				break;
 			}
-
+			if(!fs->snap.dirty || agetl(&fs->rdonly))
+				goto Syncout;
 			for(i = 0; i < fs->narena; i++){
 				a = &fs->arenas[i];
 				oldhd[i].addr = -1;
@@ -2852,9 +2853,10 @@ runsweep(int id, void*)
 					epochclean();
 				}
 			}
+Syncout:
 			if(am->m != nil){
 				assert(am->m->type == Twstat);
-				r.type = am->m->type + 1;
+				r.type = Rwstat;
 				respond(am->m, &r);
 			}
 			poperror();
