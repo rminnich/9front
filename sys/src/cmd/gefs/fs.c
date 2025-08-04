@@ -1513,7 +1513,7 @@ fswstat(Fmsg *m, int id, Amsg **ao)
 {
 	char rnbuf[Kvmax], opbuf[Kvmax], upbuf[Upksz];
 	char *p, *e, strs[65535];
-	int op, nm, rename;
+	int op, nm, rename, nulldir;
 	vlong oldlen;
 	Qid old;
 	Fcall r;
@@ -1552,16 +1552,19 @@ fswstat(Fmsg *m, int id, Amsg **ao)
 	n = de->Xdir;
 	n.qid.vers++;
 	p = opbuf+1;
+	nulldir = 1;
 	op = 0;
 
 	/* check validity of updated fields and construct Owstat message */
 	if(d.qid.path != ~0 || d.qid.vers != ~0){
+		nulldir = 0;
 		if(d.qid.path != de->qid.path)
 			error(Ewstatp);
 		if(d.qid.vers != de->qid.vers)
 			error(Ewstatv);
 	}
 	if(*d.name != '\0'){
+		nulldir = 0;
 		if(strlen(d.name) > Maxname)
 			error(Elength);
 		if(strcmp(d.name, de->name) != 0){
@@ -1574,6 +1577,7 @@ fswstat(Fmsg *m, int id, Amsg **ao)
 		}
 	}
 	if(d.length != ~0){
+		nulldir = 0;
 		if(d.length < 0)
 			error(Ewstatl);
 		if(d.length != de->length){
@@ -1604,6 +1608,7 @@ fswstat(Fmsg *m, int id, Amsg **ao)
 		}
 	}
 	if(d.mode != ~0){
+		nulldir = 0;
 		if((d.mode^de->mode) & DMDIR)
 			error(Ewstatd);
 		if(d.mode & ~(DMDIR|DMAPPEND|DMEXCL|DMTMP|0777))
@@ -1617,6 +1622,7 @@ fswstat(Fmsg *m, int id, Amsg **ao)
 		}
 	}
 	if(d.mtime != ~0){
+		nulldir = 0;
 		n.mtime = d.mtime*Nsec;
 		if(n.mtime != de->mtime){
 			op |= Owmtime;
@@ -1625,6 +1631,7 @@ fswstat(Fmsg *m, int id, Amsg **ao)
 		}
 	}
 	if(*d.uid != '\0'){
+		nulldir = 0;
 		if(strlen(d.uid) > Maxuname)
 			error(Elength);
 		rlock(&fs->userlk);
@@ -1642,6 +1649,7 @@ fswstat(Fmsg *m, int id, Amsg **ao)
 		}
 	}
 	if(*d.gid != '\0'){
+		nulldir = 0;
 		if(strlen(d.gid) > Maxuname)
 			error(Elength);
 		rlock(&fs->userlk);
@@ -1658,7 +1666,7 @@ fswstat(Fmsg *m, int id, Amsg **ao)
 			p += 4;
 		}
 	}
-	if(op == 0 && rename == 0){
+	if(nulldir && rename == 0){
 		*ao = emalloc(sizeof(Amsg), 1);
 		(*ao)->op = AOsync;
 		(*ao)->m = m;
