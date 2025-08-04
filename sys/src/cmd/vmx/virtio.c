@@ -697,11 +697,11 @@ mkvionet(char *net)
 			return -1;
 		}
 		if((d->net.mac[0] & 1) != 0){
-			werrstr("invalid mac addr: must be unicast", d->net.mac[0]);
+			werrstr("invalid mac addr %s: must be unicast", ea);
 			return -1;
 		}
 		if((d->net.mac[0] & 2) == 0){
-			fprint(2, "invalid mac addr: must not be local", d->net.mac[0]);
+			fprint(2, "invalid mac addr %s: must not be local", ea);
 			return -1;
 		}
 	}
