@@ -188,7 +188,7 @@ The uart number is picked up from
 .B console=
 but the parameters are ignored as BIOS allows
 only a maximum baud-rate of 9600 so the setting
-.B "b9660 l8 s1"
+.B "b9600 l8 s1"
 is assumed.
 Some BIOS emulate/redirect keyboard input
 and CGA output to the serial console,
@@ -198,6 +198,11 @@ This can be avoided using
 and
 .B *nocga=
 parameters.
+Also,
+in some of these emulations the BIOS uart functions
+can produce some problems that can be avoided using the
+.B *nouartbios=
+parameter.
 Serial console is not supported by EFI.
 .PP
 .B 9bootfat

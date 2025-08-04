@@ -297,7 +297,9 @@ Loop:
 			nocga = 1;
 		if(memcmp("*nokbd", line, 6) == 0)
 			nokbd = 1;
-		if(memcmp("console", line, 8) == 0)
+		if (memcmp("*nouartbios", line, 11) == 0)
+			uart = -2;
+		if(memcmp("console", line, 8) == 0 && uart != -2)
 			uartconf(p);
 
 		s = confend;
@@ -504,7 +506,7 @@ uartconf(char *s)
 {
 	if(*s >= '0' && *s <= '3'){
 		uart = *s - '0';
-		uartinit(uart, (7<<5) | 3);	/* b9660 l8 s1 */
+		uartinit(uart, (7<<5) | 3);	/* b9600 l8 s1 */
 	} else
 		uart = -1;
 }
