@@ -69,7 +69,6 @@ struct Machine
 	int		swapfd;
 	int		etherfd[10];
 	int		batteryfd;
-	int		bitsybatfd;
 	int		tempfd;
 	int		disable;
 
@@ -221,7 +220,7 @@ double	scale = 1.0;
 int	logscale = 0;
 int	ylabels = 0;
 int	sleeptime = 1000;
-int	batteryperiod = 1000;
+int	batteryperiod = 10000;
 int	tempperiod = 1000;
 
 char	*procnames[NPROC] = {"main", "input"};
@@ -672,6 +671,11 @@ initmach(Machine *m, char *name)
 	uvlong a[MAXNUM];
 	char *p, mpt[256], buf[256];
 	Dir *d;
+	static char *archplaces[] = {
+		"/dev",
+		"/mnt/pm",
+		"/mnt/apm",	/* battery only */
+	};
 
 	p = strchr(name, '!');
 	if(p)
@@ -744,33 +748,25 @@ initmach(Machine *m, char *name)
 	while(n < nelem(m->etherfd))
 		m->etherfd[n++] = -1;
 
-	snprint(buf, sizeof buf, "%s/mnt/apm/battery", mpt);
-	m->batteryfd = open(buf, OREAD);
-	if(m->batteryfd < 0){
-		snprint(buf, sizeof buf, "%s/mnt/pm/battery", mpt);
+	for(i=0; i < nelem(archplaces); i++){
+		snprint(buf, sizeof buf, "%s/%s/battery", mpt, archplaces[i]);
 		m->batteryfd = open(buf, OREAD);
-	}
-	m->bitsybatfd = -1;
-	if(m->batteryfd >= 0){
-		batteryperiod = 10000;
+		if(m->batteryfd < 0)
+			continue;
 		if(loadbuf(m, &m->batteryfd) && readnums(m, nelem(m->batterystats), a, 0))
 			memmove(m->batterystats, a, sizeof(m->batterystats));
-	}else{
-		snprint(buf, sizeof buf, "%s/dev/battery", mpt);
-		m->bitsybatfd = open(buf, OREAD);
-		if(loadbuf(m, &m->bitsybatfd) && readnums(m, 1, a, 0))
-			memmove(m->batterystats, a, sizeof(m->batterystats));
+		break;
 	}
-	snprint(buf, sizeof buf, "%s/dev/cputemp", mpt);
-	m->tempfd = open(buf, OREAD);
-	if(m->tempfd < 0){
-		tempperiod = 5000;
-		snprint(buf, sizeof buf, "%s/mnt/pm/cputemp", mpt);
+	for(i=0; i < nelem(archplaces); i++){
+		snprint(buf, sizeof buf, "%s/%s/cputemp", mpt, archplaces[i]);
 		m->tempfd = open(buf, OREAD);
+		if(m->tempfd < 0)
+			continue;
+		if(loadbuf(m, &m->tempfd))
+			for(n=0; n < nelem(m->temp) && readnums(m, 2, a, 0); n++)
+				m->temp[n] = a[0];
+		break;
 	}
-	if(loadbuf(m, &m->tempfd))
-		for(n=0; n < nelem(m->temp) && readnums(m, 2, a, 0); n++)
-			 m->temp[n] = a[0];
 	return 1;
 }
 
@@ -885,8 +881,6 @@ readmach(Machine *m, int init)
 	}
 	if(needbattery(init)){
 		if(loadbuf(m, &m->batteryfd) && readnums(m, nelem(m->batterystats), a, 0))
-			memmove(m->batterystats, a, sizeof(m->batterystats));
-		else if(loadbuf(m, &m->bitsybatfd) && readnums(m, 1, a, 0))
 			memmove(m->batterystats, a, sizeof(m->batterystats));
 	}
 	if(needtemp(init) && loadbuf(m, &m->tempfd))
@@ -1070,10 +1064,7 @@ void
 batteryval(Machine *m, uvlong *v, uvlong *vmax, int)
 {
 	*v = m->batterystats[0];
-	if(m->bitsybatfd >= 0)
-		*vmax = 184;		// at least on my bitsy...
-	else
-		*vmax = 100;
+	*vmax = 100;
 }
 
 void

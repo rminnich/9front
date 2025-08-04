@@ -114,6 +114,12 @@ which goes from 0 to 10..
 If the value of the parameter is too large for the visible range, its value is shown
 in decimal in the upper left corner of the graph.
 .PP
+On some hardware,
+remaining battery life and current temperature are retrieved through ACPI.
+This may be computationally expensive.
+To avoid excessive battery drain on laptops,
+the current battery levels are only updated every 10 seconds.
+.PP
 Upper-case options control details of the display.
 All graphs are affected; there is no mechanism to
 affect only one graph.
@@ -164,5 +170,7 @@ maxima.
 .B #c/sysstat
 .SH SOURCE
 .B /sys/src/cmd/stats.c
+.SH SEE ALSO
+.IR acpi (8)
 .SH BUGS
 Some machines do not have TLB hardware.
