@@ -4,7 +4,7 @@ gefs \- file server
 .SH SYNOPSIS
 .B gefs
 [
-.B -ASsc
+.B -ASRsc
 ]
 [
 .B -r
@@ -89,6 +89,10 @@ Use
 as the name of the service.
 If unspecified, the default service name is
 .IR gefs .
+.TP
+.B -R
+Mounts file system read-only.
+No modifications will be made to the disk.
 .TP
 .BI "-r " user
 Ream the file system, erasing all of the old data.

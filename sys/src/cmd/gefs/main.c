@@ -136,7 +136,7 @@ emalloc(usize sz, int zero)
 }
 
 static void
-initfs(vlong cachesz)
+initfs(vlong cachesz, int rdonly)
 {
 	Bfree *f, *g;
 	Blk *b;
@@ -148,6 +148,7 @@ initfs(vlong cachesz)
 		fs->trace = emalloc(tracesz, 1);
 		fs->ntrace = tracesz/sizeof(Trace);
 	}
+	fs->rdonly = rdonly;
 	fs->lrurz.l = &fs->lrulk;
 	fs->syncrz.l = &fs->synclk;
 	fs->bfreerz.l = &fs->bfreelk;
@@ -279,19 +280,20 @@ runannounce(int, void *arg)
 static void
 usage(void)
 {
-	fprint(2, "usage: %s [-SA] [-r user] [-m mem] [-n srv] [-a net]... -f dev\n", argv0);
+	fprint(2, "usage: %s [-SARsc] [-r user] [-m mem] [-n srv] [-a net]... -f dev\n", argv0);
 	exits("usage");
 }
 
 void
 main(int argc, char **argv)
 {
-	int i, srvfd, ctlfd, nann;
+	int i, srvfd, rdonly, ctlfd, nann;
 	char *s, *e, *ann[16];
 	vlong v, memsz;
 	Conn *c;
 
 	nann = 0;
+	rdonly = 0;
 	memsz = memsize();
 	cachesz = 25*memsz/100;
 	ARGBEGIN{
@@ -348,6 +350,9 @@ main(int argc, char **argv)
 	case 'f':
 		dev = EARGF(usage());
 		break;
+	case 'R':
+		rdonly = 1;
+		break;
 	default:
 		usage();
 		break;
@@ -363,7 +368,7 @@ main(int argc, char **argv)
 	assert(2*Msgmax < Bufspc);
 	assert(Treesz < Inlmax);
 
-	initfs(cachesz);
+	initfs(cachesz, rdonly);
 	initshow();
 	errctx = privalloc();
 	if((*errctx = mallocz(sizeof(Errctx), 1)) == nil)
