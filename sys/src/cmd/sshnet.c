@@ -696,6 +696,7 @@ struct Cs
 {
 	char *resp;
 	int isnew;
+	int fd;		/* real /net/cs file-descriptor */
 };
 
 static int
@@ -725,7 +726,7 @@ ndbfindport(char *p)
 	free(port);
 
 	return n;
-}	
+}
 
 static void
 csread(Req *r)
@@ -733,6 +734,17 @@ csread(Req *r)
 	Cs *cs;
 
 	cs = r->fid->aux;
+	if(cs->fd >= 0){
+		int n;
+
+		if((n = read(cs->fd, r->ofcall.data, r->ifcall.count)) < 0)
+			responderror(r);
+		else {
+			r->ofcall.count = n;
+			respond(r, nil);
+		}
+		return;
+	}
 	if(cs->resp==nil){
 		respond(r, "cs read without write");
 		return;
@@ -757,6 +769,24 @@ cswrite(Req *r)
 	Cs *cs;
 
 	cs = r->fid->aux;
+
+	if(r->ifcall.count > 0 && ((char*)r->ifcall.data)[0] == '!'){
+		int n;
+
+		s = smprint("%s/cs", mtpt);
+		if(cs->fd >= 0)
+			close(cs->fd);
+		cs->fd = open(s, ORDWR);
+		if(cs->fd < 0 || (n = write(cs->fd, r->ifcall.data, r->ifcall.count)) < 0)
+			responderror(r);
+		else {
+			r->ofcall.count = n;
+			respond(r, nil);
+		}
+		free(s);
+		return;
+	}
+
 	s = emalloc9p(r->ifcall.count+1);
 	memmove(s, r->ifcall.data, r->ifcall.count);
 	s[r->ifcall.count] = '\0';
@@ -1049,6 +1079,7 @@ fsopen(Req *r)
 	switch(TYPE(path)){
 	case Qcs:
 		cs = emalloc9p(sizeof(Cs));
+		cs->fd = -1;
 		r->fid->aux = cs;
 		respond(r, nil);
 		break;
@@ -1257,6 +1288,8 @@ fsnetproc(void*)
 			case Qcs:
 				cs = fid->aux;
 				if(cs){
+					if(cs->fd >= 0)
+						close(cs->fd);
 					free(cs->resp);
 					free(cs);
 				}

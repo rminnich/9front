@@ -32,6 +32,19 @@ descriptor for the new file system as
 All other arguments are passed to
 .IR ssh (1)
 as is.
+.PP
+For
+.IR dial (2)
+operations, name resolution happens on the remote side as
+.I sshnet
+serves a
+.IR mtpt /cs
+file that passes the hostname to the
+.B connect
+dial string.
+Other query operations are passed verbatim to the
+original connection service at
+.IR mtpt /cs.
 .SH SOURCE
 .B /sys/src/cmd/sshnet.c
 .SH "SEE ALSO"
