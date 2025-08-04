@@ -688,9 +688,22 @@ mkvionet(char *net)
 	mkvioqueue(d, 1024, viowakeup);
 	mkvioqueue(d, 1024, viowakeup);
 	mkvioqueue(d, 32, vionetcmd);
-	if(ea == nil || parseether(d->net.mac, ea)){
+	if(ea == nil){
 		genrandom(d->net.mac, 6);
 		d->net.mac[0] = d->net.mac[0] & ~1 | 2;
+	}else{
+		if(parseether(d->net.mac, ea) != 0){
+			fprint(2, "unparsable mac addr: %s\n", ea);
+			return -1;
+		}
+		if((d->net.mac[0] & 1) != 0){
+			werrstr("invalid mac addr: must be unicast", d->net.mac[0]);
+			return -1;
+		}
+		if((d->net.mac[0] & 2) == 0){
+			fprint(2, "invalid mac addr: must not be local", d->net.mac[0]);
+			return -1;
+		}
 	}
 	d->net.flags = flags;
 	d->devfeat = 1<<5|1<<16|1<<17|1<<18|1<<20;
