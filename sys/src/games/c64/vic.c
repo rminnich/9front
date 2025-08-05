@@ -100,7 +100,7 @@ pixeldraw(u64int p, int n)
 	u8int c;
 	u32int *q;
 
-	q = (u32int *)pic + picidx * scale;
+	q = (u32int *)pic + picidx;
 	for(i = 0; i < n; i++){
 		c = p >> 56;
 		p <<= 8;
@@ -108,24 +108,7 @@ pixeldraw(u64int p, int n)
 		u.c[1] = cg[c];
 		u.c[2] = cr[c];
 		u.c[3] = 0;
-		switch(scale){
-		case 16: *q++ = u.l;
-		case 15: *q++ = u.l;
-		case 14: *q++ = u.l;
-		case 13: *q++ = u.l;
-		case 12: *q++ = u.l;
-		case 11: *q++ = u.l;
-		case 10: *q++ = u.l;
-		case 9: *q++ = u.l;
-		case 8: *q++ = u.l;
-		case 7: *q++ = u.l;
-		case 6: *q++ = u.l;
-		case 5: *q++ = u.l;
-		case 4: *q++ = u.l;
-		case 3: *q++ = u.l;
-		case 2: *q++ = u.l;
-		default: *q++ = u.l;
-		}
+		*q++ = u.l;
 	}
 	picidx += n;
 }

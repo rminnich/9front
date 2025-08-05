@@ -40,32 +40,13 @@ darken(u16int v)
 static void
 pixeldraw(int x, int y, u16int v, int s)
 {
-	u16int *p;
 	union { u16int w; u8int b[2]; } u;
 
 	if(bright != 0xf && s >= 0)
 		v = darken(v);
-	p = (u16int *)pic + (x + y * 256) * scale;
 	u.b[0] = v;
 	u.b[1] = v >> 8;
-	switch(scale){
-	case 16: *p++ = u.w;
-	case 15: *p++ = u.w;
-	case 14: *p++ = u.w;
-	case 13: *p++ = u.w;
-	case 12: *p++ = u.w;
-	case 11: *p++ = u.w;
-	case 10: *p++ = u.w;
-	case 9: *p++ = u.w;
-	case 8: *p++ = u.w;
-	case 7: *p++ = u.w;
-	case 6: *p++ = u.w;
-	case 5: *p++ = u.w;
-	case 4: *p++ = u.w;
-	case 3: *p++ = u.w;
-	case 2: if(s < 1) *p++ = u.w;
-	default: *p = u.w;
-	}
+	*((u16int *)pic + (x + y * 256)) = u.w;
 }
 
 static int

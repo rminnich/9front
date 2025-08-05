@@ -51,25 +51,8 @@ pixeldraw(u8int v)
 	u.c[1] = c >> 8;
 	u.c[2] = c >> 16;
 	u.c[3] = 0xff;
-	p = (u32int *)pic + ppuy * PICW * scale + ppux * 2 * scale;
-	switch(scale){
-	case 16: *p++ = u.l; *p++ = u.l;
-	case 15: *p++ = u.l; *p++ = u.l;
-	case 14: *p++ = u.l; *p++ = u.l;
-	case 13: *p++ = u.l; *p++ = u.l;
-	case 12: *p++ = u.l; *p++ = u.l;
-	case 11: *p++ = u.l; *p++ = u.l;
-	case 10: *p++ = u.l; *p++ = u.l;
-	case 9: *p++ = u.l; *p++ = u.l;
-	case 8: *p++ = u.l; *p++ = u.l;
-	case 7: *p++ = u.l; *p++ = u.l;
-	case 6: *p++ = u.l; *p++ = u.l;
-	case 5: *p++ = u.l; *p++ = u.l;
-	case 4: *p++ = u.l; *p++ = u.l;
-	case 3: *p++ = u.l; *p++ = u.l;
-	case 2: *p++ = u.l; *p++ = u.l;
-	default: *p++ = u.l; *p = u.l;
-	}
+	p = (u32int *)pic + ppuy * PICW + ppux * 2;
+	p[0] = p[1] = u.l;
 }
 
 static void

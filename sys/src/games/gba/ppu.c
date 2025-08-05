@@ -699,31 +699,14 @@ linecopy(u32int *p, int y)
 	union { u16int w; u8int b[2]; } u;
 	int n;
 
-	q = pic + y * 240 * 2 * scale;
+	q = pic + y * 240 * 2;
 	r = (u16int*)q;
 	n = 240;
 	while(n--){
 		v = *p++;
 		u.b[0] = v;
 		u.b[1] = v >> 8;
-		switch(scale){
-		case 16: *r++ = u.w;
-		case 15: *r++ = u.w;
-		case 14: *r++ = u.w;
-		case 13: *r++ = u.w;
-		case 12: *r++ = u.w;
-		case 11: *r++ = u.w;
-		case 10: *r++ = u.w;
-		case 9: *r++ = u.w;
-		case 8: *r++ = u.w;
-		case 7: *r++ = u.w;
-		case 6: *r++ = u.w;
-		case 5: *r++ = u.w;
-		case 4: *r++ = u.w;
-		case 3: *r++ = u.w;
-		case 2: *r++ = u.w;
-		default: *r++ = u.w;
-		}
+		*r++ = u.w;
 	}
 }
 

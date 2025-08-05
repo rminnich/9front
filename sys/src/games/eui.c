@@ -23,7 +23,7 @@ static int vwdx, vwdy, vwbpp;
 static ulong vwchan;
 static Image *fb;
 static Channel *conv, *sync[2];
-static uchar *screenconv[2];
+static uchar *screenconv[2], *backfb;
 static int screenconvi;
 
 struct Kfn{
@@ -46,6 +46,16 @@ emalloc(ulong sz)
 		sysfatal("malloc: %r");
 	setmalloctag(v, getcallerpc(&sz));
 	return v;
+}
+
+Image *
+eallocimage(Rectangle r, ulong chan, int repl, ulong col)
+{
+	Image *i;
+
+	if((i = allocimage(display, r, chan, repl, col)) == nil)
+		sysfatal("allocimage: %r");
+	return i;
 }
 
 static void
@@ -206,14 +216,13 @@ screeninit(void)
 	picr = Rpt(subpt(p, Pt(scale * vwdx/2, scale * vwdy/2)),
 		addpt(p, Pt(scale * vwdx/2, scale * vwdy/2)));
 	freeimage(fb);
-	fb = allocimage(display, Rect(0, 0, scale * vwdx, scale > 1 ? 1 : scale * vwdy),
+	fb = eallocimage(Rect(0, 0, scale * vwdx, scale > 1 ? 1 : vwdy),
 		vwchan, scale > 1, 0);
-	free(pic);
-	pic = emalloc(vwdx * vwdy * vwbpp * scale);
-	free(screenconv[0]);
-	free(screenconv[1]);
-	screenconv[0] = emalloc(vwdx * vwdy * vwbpp * scale);
-	screenconv[1] = emalloc(vwdx * vwdy * vwbpp * scale);
+	free(backfb);
+	if(scale > 1)
+		backfb = emalloc(vwdx * vwbpp * scale);
+	else
+		backfb = nil;
 	draw(screen, screen->r, bg, nil, ZP);
 	recv(sync[1], nil);
 }
@@ -254,15 +263,44 @@ screenproc(void*)
 			draw(screen, picr, fb, nil, ZP);
 		} else {
 			Rectangle r;
-			uchar *s;
-			int w;
-	
-			s = p;
+			int w, x;
+
 			r = picr;
 			w = vwdx * vwbpp * scale;
 			while(r.min.y < picr.max.y){
-				loadimage(fb, fb->r, s, w);
-				s += w;
+				switch(vwbpp){
+				case 4: {
+					u32int *d = (u32int *)backfb, *e, s;
+					for(x=0; x<vwdx; x++){
+						s = *(u32int *)p;
+						p += vwbpp;
+						e = d + scale;
+						while(d < e)
+							*d++ = s;
+					}
+					break;
+				} case 2: {
+					u16int *d = (u16int *)backfb, *e, s;
+					for(x=0; x<vwdx; x++){
+						s = *(u16int *)p;
+						p += vwbpp;
+						e = d + scale;
+						while(d < e)
+							*d++ = s;
+					}
+					break;
+				} case 1: {
+					u8int *d = (u8int *)backfb, *e, s;
+					for(x=0; x<vwdx; x++){
+						s = *(u8int *)p;
+						p += vwbpp;
+						e = d + scale;
+						while(d < e)
+							*d++ = s;
+					}
+					break;
+				}}
+				loadimage(fb, fb->r, backfb, w);
 				r.max.y = r.min.y+scale;
 				draw(screen, r, fb, nil, ZP);
 				r.min.y = r.max.y;
@@ -286,7 +324,7 @@ screenproc(void*)
 void
 flushscreen(void)
 {
-	memmove(screenconv[screenconvi], pic, vwdx * vwdy * vwbpp * scale);
+	memmove(screenconv[screenconvi], pic, vwdx * vwdy * vwbpp);
 	if(sendp(conv, screenconv[screenconvi]) > 0)
 		screenconvi = (screenconvi + 1) % 2;
 	if(profile)
@@ -365,11 +403,14 @@ initemu(int dx, int dy, int bpp, ulong chan, int dokey, void(*kproc)(void*))
 		proccreate(kproc != nil ? kproc : keyproc, nil, mainstacksize);
 	if(kproc == nil)
 		proccreate(joyproc, nil, mainstacksize);
-	bg = allocimage(display, Rect(0, 0, 1, 1), screen->chan, 1, 0xCCCCCCFF);
+	bg = eallocimage(Rect(0, 0, 1, 1), screen->chan, 1, 0xCCCCCCFF);
 	scale = fixscale;
 	conv = chancreate(sizeof(uchar*), 0);
 	sync[0] = chancreate(1, 0);
 	sync[1] = chancreate(1, 0);
 	proccreate(screenproc, nil, mainstacksize);
+	pic = emalloc(vwdx * vwdy * vwbpp);
+	screenconv[0] = emalloc(vwdx * vwdy * vwbpp);
+	screenconv[1] = emalloc(vwdx * vwdy * vwbpp);
 	screeninit();
 }

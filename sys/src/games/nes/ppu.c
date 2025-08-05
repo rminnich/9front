@@ -13,7 +13,6 @@ static void
 pixel(int x, int y, int val, int back)
 {
 	union { u8int c[4]; u32int l; } u;
-	u32int *p;
 	static u8int palred[64] = {
 		0x7C, 0x00, 0x00, 0x44, 0x94, 0xA8, 0xA8, 0x88, 
 		0x50, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 
@@ -49,31 +48,13 @@ pixel(int x, int y, int val, int back)
 	u.c[1] = palgreen[val];
 	u.c[2] = palred[val];
 	u.c[3] = back ? 0 : 0xFF;
-	p = (u32int *)pic + y * 256 * scale + x * scale;
-	switch(scale){
-	case 16: *p++ = u.l;
-	case 15: *p++ = u.l;
-	case 14: *p++ = u.l;
-	case 13: *p++ = u.l;
-	case 12: *p++ = u.l;
-	case 11: *p++ = u.l;
-	case 10: *p++ = u.l;
-	case 9: *p++ = u.l;
-	case 8: *p++ = u.l;
-	case 7: *p++ = u.l;
-	case 6: *p++ = u.l;
-	case 5: *p++ = u.l;
-	case 4: *p++ = u.l;
-	case 3: *p++ = u.l;
-	case 2: *p++ = u.l;
-	default: *p = u.l;
-	}
+	*((u32int *)pic + y * 256 + x) = u.l;
 }
 
 static int
 iscolor(int x, int y)
 {
-	return pic[(scale * 4) * (y * 256 + x) + 3] != 0;
+	return pic[4 * (y * 256 + x) + 3] != 0;
 }
 
 static int

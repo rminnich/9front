@@ -32,29 +32,11 @@ pixeldraw(int x, int y, int v)
 	u32int *p;
 	union { u32int l; u8int b[4]; } u;
 
-	p = (u32int *)pic + (x + y * 320) * scale;
 	u.b[0] = v >> 16;
 	u.b[1] = v >> 8;
 	u.b[2] = v;
 	u.b[3] = 0;
-	switch(scale){
-	case 16: *p++ = u.l;
-	case 15: *p++ = u.l;
-	case 14: *p++ = u.l;
-	case 13: *p++ = u.l;
-	case 12: *p++ = u.l;
-	case 11: *p++ = u.l;
-	case 10: *p++ = u.l;
-	case 9: *p++ = u.l;
-	case 8: *p++ = u.l;
-	case 7: *p++ = u.l;
-	case 6: *p++ = u.l;
-	case 5: *p++ = u.l;
-	case 4: *p++ = u.l;
-	case 3: *p++ = u.l;
-	case 2: *p++ = u.l;	/* intla ignored */
-	default: *p = u.l;
-	}
+	*((u32int *)pic + (x + y * 320)) = u.l;
 }
 
 static u32int

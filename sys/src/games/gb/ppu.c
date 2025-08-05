@@ -63,7 +63,7 @@ ppurender(void)
 			}
 		ppux = 0;
 		ppux0 = 0;
-		picp = (u32int*)pic + ppuy * PICW * scale;
+		picp = (u32int*)pic + ppuy * PICW;
 		y = ppuy + reg[SCY] << 1 & 14;
 		ta = 0x1800 | reg[LCDC] << 7 & 0x400 | ppuy + reg[SCY] << 2 & 0x3e0 | reg[SCX] >> 3;
 		x = -(reg[SCX] & 7);
@@ -197,7 +197,7 @@ sprites(void)
 	int x, x1;
 	u16int chr;
 	
-	picp = (u32int*)pic + ppuy * PICW * scale;
+	picp = (u32int*)pic + ppuy * PICW;
 	for(q = spr; q < sprm; q++){
 		if(q->x <= ppux0 || q->x >= ppux + 8)
 			continue;
@@ -249,38 +249,6 @@ linelen(void)
 		else
 			t += 6;
 	return t*2;
-}
-
-static void
-lineexpand(void)
-{
-	u32int *picp, *p, *q, l;
-	int i;
-
-	picp = (u32int*)pic + ppuy * PICW * scale;
-	p = picp + PICW;
-	q = picp + PICW * scale;
-	for(i = PICW; --i >= 0; ){
-		l = *--p;
-		switch(scale){
-		case 16: *--q = l;
-		case 15: *--q = l;
-		case 14: *--q = l;
-		case 13: *--q = l;
-		case 12: *--q = l;
-		case 11: *--q = l;
-		case 10: *--q = l;
-		case 9: *--q = l;
-		case 8: *--q = l;
-		case 7: *--q = l;
-		case 6: *--q = l;
-		case 5: *--q = l;
-		case 4: *--q = l;
-		case 3: *--q = l;
-		case 2: *--q = l;
-		case 1: *--q = l;
-		}
-	}
 }
 
 void
@@ -336,8 +304,6 @@ hblanktick(void *)
 		ppusync();
 		if(!done) print("not done?!\n");
 		done = 0;
-		if(scale > 1)
-			lineexpand();
 		ppustate = 0;
 		if((reg[STAT] & IRQM0) != 0)
 			reg[IF] |= IRQLCDS;
