@@ -327,7 +327,7 @@ main(int argc, char *argv[])
 	mfd[1] = p[0];
 
 	notify(notifyf);
-	strcpy(user, getuser());
+	strecpy(user, user+sizeof(user), getuser());
 	if(mntpt == nil){
 		snprint(maildir, sizeof(maildir), "/mail/fs");
 		mntpt = maildir;
