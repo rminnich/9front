@@ -4,6 +4,10 @@ rfork ne
 . /sys/lib/git/common.rc
 gitup
 
+flagfmt='n:num count'; args='files...'
+eval `''{aux/getflags $*} || exec aux/usage
+if(~ $#* 0) exec aux/usage
+
 fn dodiff {
 	while(t=`{read}){
 		h=$t(1)
@@ -23,12 +27,14 @@ fn dodiff {
 				prev=/dev/null
 			diff -u $prev $curr
 		}
+		echo --' '
+		echo ⑨
 		echo
 	}
 }
 
-if(~ $#* 0)
-	die usage: $0 files...
-
-files=`{cleanname $gitrel/$*}
-git/log -s $files | dodiff
+files=`{cleanname $*}
+args=(-s $files)
+if(! ~ $#num 0)
+	args=(-n $num $args)
+git/log $args | dodiff

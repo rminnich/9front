@@ -2,7 +2,7 @@
 .SH NAME
 git, git/conf, git/query, git/walk, git/clone, git/branch,
 git/commit, git/diff, git/init, git/log, git/merge, git/push,
-git/pull, git/rm, git/serve \- manage git repositories
+git/pull, git/rm, git/serve, git/hist \- manage git repositories
 .SH SYNOPSIS
 .B git/add
 [
@@ -186,6 +186,13 @@ git/pull, git/rm, git/serve \- manage git repositories
 [
 .I file ...
 ]
+.PP
+.B git/hist
+[
+.B -n
+.I count
+]
+.I files...
 .SH DESCRIPTION
 Git is a distributed version control system.
 This means that each repository contains a full copy of the history.
@@ -561,6 +568,16 @@ This compatibility stub provides enough of the Unix
 commands to run tools like
 .I go get
 but not much more.
+.PP
+.I Git/hist
+provides the diffs of specific
+.I files
+in reverse chronological order.
+The
+.B -n
+flag may be used to limit the output to the last
+.I count
+commits.
 .SH REF SYNTAX
 Refs are specified with a simple query syntax.
 A bare hash always evaluates to itself.
