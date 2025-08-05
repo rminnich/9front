@@ -72,8 +72,8 @@ joyproc(void *)
 		n = read(0, buf, sizeof(buf) - 1);
 		if(n <= 0)
 			sysfatal("read: %r");
-		buf[n] = 0;
-		n = getfields(buf, down, nelem(down), 1, " ");
+		buf[n-1] = 0;
+		n = getfields(buf, down, nelem(down), 0, " ");
 		k = 0;
 		for(n--; n >= 0; n--){
 			s = down[n];
