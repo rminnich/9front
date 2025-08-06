@@ -61,15 +61,14 @@ eallocimage(Rectangle r, ulong chan, int repl, ulong col)
 static void
 joyproc(void *)
 {
-	char *s, *down[9];
-	static char buf[64];
+	char buf[64], *s, *down[9];
 	int n, k, j;
 	Kfn *kp;
 
 	j = 1;
 
 	for(;;){
-		n = read(0, buf, sizeof(buf) - 1);
+		n = read(0, buf, sizeof(buf));
 		if(n <= 0)
 			sysfatal("read: %r");
 		buf[n-1] = 0;
