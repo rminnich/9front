@@ -33,7 +33,7 @@ enum
 	Up		= 1,
 	Down	= 0,
 	Mag		= 4,
-	Maxmag	= 10,
+	Maxmag	= 40,
 };
 
 enum
