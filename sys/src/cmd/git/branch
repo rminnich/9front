@@ -30,23 +30,30 @@ if not if(~ $branch heads/*)
 if not
 	new=refs/heads/$branch
 
+# where are we now?
 orig=`{git/query HEAD}
 origbranch=refs/`{awk '$1=="branch"{print $2}' < $gitfs/ctl}
-if (~ $#baseref 1)
-	base=`{git/query $baseref} || exit 'bad base'
-if not if(~ $#newbr 0)
-	base=`{git/query $new}
-if not
-	base=`{git/query HEAD}
 
+# if we're switching branches to a branch that doesn't exist,
+# but we have a remote branch that exists upstream, create a
+# new head to mirror it.
 if(~ $#newbr 0){
 	if(! ~ $#baseref 0)
 		die update would clobber $branch with $baseref
 	baseref=`$nl{echo -n $new | sed s@refs/heads/@refs/remotes/origin/@}
 	if(! test -e .git/$new)
 		if(! base=`{git/query $baseref})
-			die could not find branch $branch
+			exit 'bad ref'
 }
+
+# figure out where we want the new branch to point to
+if (~ $#baseref 1)
+	base=`{git/query $baseref} || exit 'bad ref'
+if not if(~ $#newbr 0)
+	base=`{git/query $new} || exit 'bad ref'
+if not
+	base=`{git/query HEAD} || exit 'bad ref'
+
 modified=`$nl{git/query -c HEAD $base | grep '^[^-]' | subst '^..'}
 deleted=`$nl{git/query -c HEAD $base | grep '^-' | subst '^..'}
 
