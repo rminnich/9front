@@ -62,9 +62,7 @@ retry:
 		if(ask == 0) ask = BY2PG;
 
 		daddr = soff & -ask;
-		if(daddr >= s->flen)
-			ask = 0;
-		else if((daddr+ask) > s->flen)
+		if(daddr+ask > s->flen)
 			ask = s->flen-daddr;
 		paddr = s->base + daddr;
 		daddr += s->fstart;

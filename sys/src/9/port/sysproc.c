@@ -333,7 +333,7 @@ sysexec(va_list list)
 	char *a, *e, *charp, *file;
 	int i, n, indir;
 	ulong magic, ssize, nargs, nbytes;
-	uintptr t, d, b, entry, text, data, bss, bssend, tstk, align;
+	uintptr entry, text, data, bss, adata, abss, tstk, align;
 	Segment *s, *ts;
 	Image *img;
 	Tos *tos;
@@ -427,15 +427,13 @@ sysexec(va_list list)
 		cclose(tc);
 	}
 
-	t = (text+align) & ~align;
+	adata = (text+align) & ~align;
 	text -= UTZERO;
 	data = beswal(u.ehdr.data);
 	bss = beswal(u.ehdr.bss);
 	align = BY2PG-1;
-	d = (t + data + align) & ~align;
-	bssend = t + data + bss;
-	b = (bssend + align) & ~align;
-	if(t >= (USTKTOP-USTKSIZE) || d >= (USTKTOP-USTKSIZE) || b >= (USTKTOP-USTKSIZE))
+	abss = (adata + data + align) & ~align;
+	if(adata >= (USTKTOP-USTKSIZE) || abss >= (USTKTOP-USTKSIZE) || (abss+PGROUND(bss)) >= (USTKTOP-USTKSIZE))
 		error(Ebadexec);
 
 	/*
@@ -561,7 +559,7 @@ sysexec(va_list list)
 
 	/* Attach text segment */
 	/* attachimage returns a locked cache image */
-	img = attachimage(tc, (b-t)>>PGSHIFT);
+	img = attachimage(tc, (PGROUND(text)+PGROUND(data))>>PGSHIFT);
 	if((ts = img->s) != nil && ts->flen == text){
 		assert(ts->image == img);
 		incref(ts);
@@ -571,7 +569,7 @@ sysexec(va_list list)
 			putimage(img);
 			nexterror();
 		}
-		ts = newseg(SG_TEXT | SG_RONLY, UTZERO, (t-UTZERO)>>PGSHIFT);
+		ts = newseg(SG_TEXT | SG_RONLY, UTZERO, PGROUND(text)>>PGSHIFT);
 		ts->flushme = 1;
 		ts->image = img;
 		ts->fstart = 0;
@@ -610,7 +608,7 @@ sysexec(va_list list)
 	up->seg[TSEG] = ts;
 
 	/* Data. Shared. */
-	s = newseg(SG_DATA, t, (d-t)>>PGSHIFT);
+	s = newseg(SG_DATA, adata, PGROUND(data)>>PGSHIFT);
 	s->image = img;
 	s->fstart = text;
 	s->flen = data;
@@ -618,7 +616,7 @@ sysexec(va_list list)
 	up->seg[DSEG] = s;
 
 	/* BSS. Zero fill on demand */
-	up->seg[BSEG] = newseg(SG_BSS, d, (b-d)>>PGSHIFT);
+	up->seg[BSEG] = newseg(SG_BSS, abss, PGROUND(bss)>>PGSHIFT);
 
 	/*
 	 * Move the stack
