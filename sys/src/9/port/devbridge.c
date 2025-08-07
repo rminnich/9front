@@ -101,7 +101,7 @@ struct Centry
 
 struct Bridge
 {
-	RWlock;
+	RWLock;
 
 	ulong	dev;		/* bridgetab[dev] */
 

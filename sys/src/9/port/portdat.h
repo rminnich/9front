@@ -39,7 +39,7 @@ typedef struct Ref	Ref;
 typedef struct Rendez	Rendez;
 typedef struct Rendezq	Rendezq;
 typedef struct Rgrp	Rgrp;
-typedef struct RWlock	RWlock;
+typedef struct RWLock	RWLock;
 typedef struct Sargs	Sargs;
 typedef struct Schedq	Schedq;
 typedef struct Segment	Segment;
@@ -89,7 +89,7 @@ struct Rendezq
 	Rendez;
 };
 
-struct RWlock
+struct RWLock
 {
 	Lock	use;
 	Proc	*head;		/* list of waiting processes */
@@ -269,7 +269,7 @@ struct Mount
 struct Mhead
 {
 	Ref;
-	RWlock	lock;
+	RWLock	lock;
 	Chan*	from;			/* channel mounted upon */
 	Mount*	mount;			/* what's mounted upon it */
 	Mhead*	hash;			/* Hash chain */
@@ -509,7 +509,7 @@ struct Image
 struct Pgrp
 {
 	Ref;
-	RWlock	ns;			/* Namespace n read/one write lock */
+	RWLock	ns;			/* Namespace n read/one write lock */
 	u64int	notallowed[4];		/* Room for 256 devices */
 	Mhead	*mnthash[MNTHASH];
 };
@@ -534,7 +534,7 @@ struct Evalue
 struct Egrp
 {
 	Ref;
-	RWlock;
+	RWLock;
 	Evalue	**ent;
 	int	nent;			/* numer of slots in ent[] */
 	int	low;			/* lowest free index in ent[] */

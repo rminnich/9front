@@ -35,7 +35,7 @@ char *arpstate[] =
  */
 struct Arp
 {
-	RWlock;
+	RWLock;
 	Fs	*f;
 	Arpent	*hash[NHASH];
 	Arpent	cache[NCACHE];

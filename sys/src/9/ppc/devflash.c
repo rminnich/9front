@@ -71,7 +71,7 @@ struct FlashRegion
 struct Flash
 {
 	ISAConf;					/* contains size */
-	RWlock;
+	RWLock;
 	Fword		*p;
 	ushort		algid;		/* access algorithm */
 	FlashAlg		*alg;

@@ -227,7 +227,7 @@ static struct {
 } events;
 
 static struct {
-	RWlock;
+	RWLock;
 	int	nd;
 	Aoedev	*d;
 } devs;

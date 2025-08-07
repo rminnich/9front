@@ -109,7 +109,7 @@ struct Key {
 
 extern Dev fsdevtab;		/* forward */
 
-static RWlock lck;		/* r: use devices; w: change config  */
+static RWLock lck;		/* r: use devices; w: change config  */
 static Tree fstree;		/* The main "fs" tree. Never goes away */
 static Tree *trees[Ntrees];	/* internal representation of config */
 static int ntrees;		/* max number of trees */

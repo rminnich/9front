@@ -14,7 +14,7 @@ static void	calcd(Route*);
 /* these are used for all instances of IP */
 static Route*	v4freelist;
 static Route*	v6freelist;
-static RWlock	routelock;
+static RWLock	routelock;
 static ulong	v4routegeneration, v6routegeneration;
 
 static void

@@ -375,7 +375,7 @@ struct Hostparams {
 
 struct Ipifc
 {
-	RWlock;
+	RWLock;
 
 	Conv	*conv;		/* link to its conversation structure */
 	char	dev[64];	/* device we're attached to */
@@ -473,7 +473,7 @@ struct Ndb
  */
 struct Fs
 {
-	RWlock;
+	RWLock;
 	int	dev;
 
 	int	np;

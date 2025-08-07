@@ -132,7 +132,7 @@ qunlock(QLock *q)
 }
 
 void
-rlock(RWlock *q)
+rlock(RWLock *q)
 {
 	Proc *p;
 
@@ -163,7 +163,7 @@ rlock(RWlock *q)
 }
 
 void
-runlock(RWlock *q)
+runlock(RWLock *q)
 {
 	Proc *p;
 
@@ -187,7 +187,7 @@ runlock(RWlock *q)
 }
 
 void
-wlock(RWlock *q)
+wlock(RWLock *q)
 {
 	Proc *p;
 	uintptr pc;
@@ -225,7 +225,7 @@ wlock(RWlock *q)
 }
 
 void
-wunlock(RWlock *q)
+wunlock(RWLock *q)
 {
 	Proc *p;
 
@@ -265,7 +265,7 @@ wunlock(RWlock *q)
 
 /* same as rlock but punts if there are any writers waiting */
 int
-canrlock(RWlock *q)
+canrlock(RWLock *q)
 {
 	lock(&q->use);
 	if(q->writer == 0 && q->head == nil){

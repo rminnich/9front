@@ -52,7 +52,7 @@ enum{
 
 static char clone[] = "clone";
 
-static RWlock srvlk;
+static RWLock srvlk;
 static ulong srvpath;
 static Board srvroot;
 

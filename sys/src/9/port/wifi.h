@@ -65,7 +65,7 @@ struct Wifi
 
 	int	debug;
 
-	RWlock	crypt;
+	RWLock	crypt;
 	Queue	*iq;
 	ulong	watchdog;
 	ulong	lastauth;
