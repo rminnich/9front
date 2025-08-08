@@ -492,7 +492,7 @@ fsrpcio(Req *r)
 
 	fss = r->fid->aux;
 	srv = r->srv;
-	if(srv->sref.ref == 1 && srv->rref.ref > 16){
+	if(srv->sref.ref == 1 && srv->rref.ref > 256){
 		respond(r, "too much activity");
 		return;
 	}
