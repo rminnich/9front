@@ -24,6 +24,7 @@ memellipse,
 memfillpoly,
 memimageline,
 memimagedraw,
+memaffinewarp,
 drawclip,
 drawclipnorepl,
 memlinebbox,
@@ -133,6 +134,8 @@ void	memimageline(Memimage *dst, Point p0, Point p1, int end0,
 	   int end1, int radius, Memimage *src, Point sp, Drawop op)
 void	memimagedraw(Memimage *dst, Rectangle r, Memimage *src,
 	   Point sp, Memimage *mask, Point mp, Drawop op)
+int	memaffinewarp(Memimage *dst, Rectangle r, Memimage *src,
+	   Point sp, uchar *m)
 .PP
 .ft L
 .nf
@@ -377,6 +380,23 @@ only on
 .BR Memsubfont s
 rather than
 .BR Font s.
+.PP
+.I Memaffinewarp
+applies an affine transformation defined by
+.B m
+to the
+.BR src ,
+where
+.B m
+is a 2×3 row-major matrix of
+.BR double s
+(usually a
+.IR geometry (2)
+Matrix), and stores the result in the
+.BR dst .
+Both
+.BR Memimage s
+must have the same channel description and use 8-bit channels.
 .PP
 .I Drawclip
 takes the images involved in a draw operation,

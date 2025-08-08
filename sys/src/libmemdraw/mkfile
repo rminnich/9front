@@ -21,6 +21,7 @@ OFILES=\
 	subfont.$O\
 	unload.$O\
 	write.$O\
+	warp.$O\
 
 </sys/src/cmd/mksyslib
 
