@@ -629,5 +629,6 @@ Nope:
 	for(i = 0; (1 << i) != Tflg; i++)
 		if(dirty & (1 << i))
 			p = seprint(p, e, "%c", "RMAUT"[i]);
+	*p = '\0';
 	exits(xbuf);
 }
