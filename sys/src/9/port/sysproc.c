@@ -333,7 +333,7 @@ sysexec(va_list list)
 	char *a, *e, *charp, *file;
 	int i, n, indir;
 	ulong magic, ssize, nargs, nbytes;
-	uintptr entry, text, data, bss, adata, abss, tstk, align;
+	uintptr entry, text, data, bss, adata, abss, ebss, tstk, align;
 	Segment *s, *ts;
 	Image *img;
 	Tos *tos;
@@ -432,8 +432,10 @@ sysexec(va_list list)
 	data = beswal(u.ehdr.data);
 	bss = beswal(u.ehdr.bss);
 	align = BY2PG-1;
+	
 	abss = (adata + data + align) & ~align;
-	if(adata >= (USTKTOP-USTKSIZE) || abss >= (USTKTOP-USTKSIZE) || (abss+PGROUND(bss)) >= (USTKTOP-USTKSIZE))
+	ebss = (adata + data + bss + align) & ~align;
+	if(adata >= (USTKTOP-USTKSIZE) || abss >= (USTKTOP-USTKSIZE) || ebss >= (USTKTOP-USTKSIZE))
 		error(Ebadexec);
 
 	/*
@@ -616,7 +618,7 @@ sysexec(va_list list)
 	up->seg[DSEG] = s;
 
 	/* BSS. Zero fill on demand */
-	up->seg[BSEG] = newseg(SG_BSS, abss, PGROUND(bss)>>PGSHIFT);
+	up->seg[BSEG] = newseg(SG_BSS, abss, (ebss - abss)>>PGSHIFT);
 
 	/*
 	 * Move the stack
