@@ -40,10 +40,11 @@ origbranch=refs/`{awk '$1=="branch"{print $2}' < $gitfs/ctl}
 if(~ $#newbr 0){
 	if(! ~ $#baseref 0)
 		die update would clobber $branch with $baseref
-	baseref=`$nl{echo -n $new | sed s@refs/heads/@refs/remotes/origin/@}
-	if(! test -e .git/$new)
+	if(! test -e .git/$new){
+		baseref=`$nl{echo -n $new | sed s@refs/heads/@refs/remotes/origin/@}
 		if(! base=`{git/query $baseref})
 			exit 'bad ref'
+	}
 }
 
 # figure out where we want the new branch to point to
