@@ -28,6 +28,8 @@ case 9fat esp pidos dos
 		unmount /n/9 >/dev/null >[2]/dev/null
 		mount -c /srv/dos /n/9 $part
 	}
+	if not
+		status=()
 case dump other
 	mount -C /srv/boot /n/$1 $1
 case sources
