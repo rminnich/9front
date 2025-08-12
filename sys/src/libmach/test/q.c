@@ -1262,7 +1262,7 @@ fakeread(int, void *buf, long n, vlong off)
 		return 4;
 	}
 	off -= nelem(instab)*4;
-	switch(off%8){
+	switch((uint)off%8){
 	case 0:
 		o = parsefmt(&instab2[off/8].pfx);
 		PUT4(((uchar*)buf), o);
