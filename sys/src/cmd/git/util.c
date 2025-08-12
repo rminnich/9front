@@ -452,24 +452,13 @@ murmurhash2(void *pp, usize n)
 	u32int m = 0x5bd1e995;
 	u32int r = 24;
 	u32int h, k;
-	u32int *w, *e;
-	uchar *p;
+	uchar *w, *e;
 	
 	h = Seed ^ n;
 	e = pp;
-	e += (n / 4);
-	for (w = pp; w != e; w++) {
-		/*
-		 * NB: this is endian dependent.
-		 * This is fine for use in git, since the
-		 * hashes computed here are only ever used
-		 * for in memory data structures.
-		 *
-		 * Pack files will differ when packed on
-		 * machines with different endianness,
-		 * but the results will still be correct.
-		 */
-		k = *w;
+	e += n & -4;
+	for (w = pp; w != e; w += 4) {
+		k = (u32int)w[0] | (u32int)w[1] << 8 | (u32int)w[2] << 16 | (u32int)w[3] << 24;
 		k *= m;
 		k ^= k >> r;
 		k *= m;
@@ -478,11 +467,10 @@ murmurhash2(void *pp, usize n)
 		h ^= k;
 	}
 
-	p = (uchar*)w;
 	switch (n & 0x3) {
-	case 3:	h ^= p[2] << 16;
-	case 2:	h ^= p[1] << 8;
-	case 1:	h ^= p[0] << 0;
+	case 3:	h ^= w[2] << 16;
+	case 2:	h ^= w[1] << 8;
+	case 1:	h ^= w[0] << 0;
 		h *= m;
 	}
 
