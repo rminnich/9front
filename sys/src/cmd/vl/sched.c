@@ -601,6 +601,15 @@ depend(Sch *sa, Sch *sb)
 		if(regoff(&sa->p.from) == regoff(&sb->p.from))
 			return 1;
 
+	/*
+	 * special case
+	 * atomic instructions cannot pass.
+	 */
+	if(sa->p.as == ALL || sb->p.as == ALL)
+		return 1;
+	if(sa->p.as == ASC || sb->p.as == ASC)
+		return 1;
+
 	x = (sa->set.cc & (sb->set.cc|sb->used.cc)) |
 		(sb->set.cc & sa->used.cc);
 	if(x) {
