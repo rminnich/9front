@@ -7,6 +7,7 @@ typedef struct	Memsubfont Memsubfont;
 typedef struct	Memlayer Memlayer;
 typedef struct	Memcmap Memcmap;
 typedef struct	Memdrawparam	Memdrawparam;
+typedef long	Warp[3][3];
 
 #pragma incomplete Memlayer
 
@@ -150,7 +151,8 @@ extern void	memellipse(Memimage*, Point, int, int, int, Memimage*, Point, int);
 extern void	memarc(Memimage*, Point, int, int, int, Memimage*, Point, int, int, int);
 extern Rectangle	memlinebbox(Point, Point, int, int, int);
 extern int	memlineendsize(int);
-extern int	memaffinewarp(Memimage*, Rectangle, Memimage*, Point, uchar*);
+extern int	memaffinewarp(Memimage*, Rectangle, Memimage*, Point, Warp);
+extern void	mkwarp(Warp, double[3][3]);
 extern void	_memmkcmap(void);
 extern int	memimageinit(void);
 

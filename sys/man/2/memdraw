@@ -25,6 +25,7 @@ memfillpoly,
 memimageline,
 memimagedraw,
 memaffinewarp,
+mkwarp,
 drawclip,
 drawclipnorepl,
 memlinebbox,
@@ -89,6 +90,8 @@ typedef struct Memdrawparam
 	\fI...\fP
 } Memdrawparam;
 
+typedef long	Warp[3][3];
+
 .ta \w'\fLMemsubfont* 'u
 int	drawdebug;
 .ft
@@ -135,7 +138,8 @@ void	memimageline(Memimage *dst, Point p0, Point p1, int end0,
 void	memimagedraw(Memimage *dst, Rectangle r, Memimage *src,
 	   Point sp, Memimage *mask, Point mp, Drawop op)
 int	memaffinewarp(Memimage *dst, Rectangle r, Memimage *src,
-	   Point sp, uchar *m)
+	   Point sp, Warp w)
+void	mkwarp(Warp w, double m[3][3])
 .PP
 .ft L
 .nf
@@ -383,17 +387,24 @@ rather than
 .PP
 .I Memaffinewarp
 applies an affine transformation defined by
-.B m
+.B w
 to the
 .BR src ,
-where
-.B m
-is a 2×3 row-major matrix of
+and stores the result in the
+.BR dst .
+.I Mkwarp
+converts a 3×3 row-major matrix of
 .BR double s
 (usually a
 .IR geometry (2)
-Matrix), and stores the result in the
-.BR dst .
+.BR Matrix )
+into the fixed-point representation required by
+.I memaffinewarp
+in
+.BR w ,
+ignoring the last row which is always set to
+.B "[0 0 1]"
+for affine transformations.
 Both
 .BR Memimage s
 must have the same channel description and use 8-bit channels.

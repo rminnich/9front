@@ -79,6 +79,7 @@ void
 main(int argc, char *argv[])
 {
 	Memimage *dst, *src;
+	Warp w;
 	Rectangle dr;
 	double sx, sy, tx, ty, θ, c, s;
 
@@ -130,9 +131,11 @@ main(int argc, char *argv[])
 	dr = src->r;
 	dst = allocmemimage(dr, src->chan);
 
+	mkwarp(w, T);
 
 	profbegin();
-	memaffinewarp(dst, dst->r, src, src->r.min, (uchar*)T);
+	if(memaffinewarp(dst, dst->r, src, src->r.min, w) < 0)
+		sysfatal("memaffinewarp: %r");
 	profend();
 	writememimage(1, dst);
 
