@@ -6,13 +6,10 @@
 /* 25.7 fixed-point number operations */
 
 #define FMASK		((1<<7) - 1)
-#define flt2fix(n)	((long)((n)*(1<<7) + ((n) < 0? -0.5: 0.5)))
 #define int2fix(n)	((vlong)(n)<<7)
 #define fix2int(n)	((n)>>7)
 #define fixmul(a,b)	((vlong)(a)*(vlong)(b) >> 7)
-#define fixdiv(a,b)	(((vlong)(a) << 7)/(vlong)(b))
 #define fixfrac(n)	((n)&FMASK)
-
 #define lerp(a,b,t)	((a) + ((((b) - (a))*(t))>>7))
 
 typedef struct Foint Foint;
@@ -32,55 +29,6 @@ struct Sampler
 	int cmask;
 };
 
-static void
-fix_smulm(Warp m, long s)
-{
-	m[0][0] = fixmul(m[0][0], s); m[0][1] = fixmul(m[0][1], s); m[0][2] = fixmul(m[0][2], s);
-	m[1][0] = fixmul(m[1][0], s); m[1][1] = fixmul(m[1][1], s); m[1][2] = fixmul(m[1][2], s);
-	m[2][0] = fixmul(m[2][0], s); m[2][1] = fixmul(m[2][1], s); m[2][2] = fixmul(m[2][2], s);
-}
-
-static long
-fix_detm(Warp m)
-{
-	return fixmul(m[0][0], (fixmul(m[1][1], m[2][2]) - fixmul(m[1][2], m[2][1])))+
-	       fixmul(m[0][1], (fixmul(m[1][2], m[2][0]) - fixmul(m[1][0], m[2][2])))+
-	       fixmul(m[0][2], (fixmul(m[1][0], m[2][1]) - fixmul(m[1][1], m[2][0])));
-}
-
-static void
-fix_adjm(Warp m)
-{
-	Warp tmp;
-
-	tmp[0][0] =  fixmul(m[1][1], m[2][2]) - fixmul(m[1][2], m[2][1]);
-	tmp[0][1] = -fixmul(m[0][1], m[2][2]) + fixmul(m[0][2], m[2][1]);
-	tmp[0][2] =  fixmul(m[0][1], m[1][2]) - fixmul(m[0][2], m[1][1]);
-
-	tmp[1][0] = -fixmul(m[1][0], m[2][2]) + fixmul(m[1][2], m[2][0]);
-	tmp[1][1] =  fixmul(m[0][0], m[2][2]) - fixmul(m[0][2], m[2][0]);
-	tmp[1][2] = -fixmul(m[0][0], m[1][2]) + fixmul(m[0][2], m[1][0]);
-
-	tmp[2][0] =  fixmul(m[1][0], m[2][1]) - fixmul(m[1][1], m[2][0]);
-	tmp[2][1] = -fixmul(m[0][0], m[2][1]) + fixmul(m[0][1], m[2][0]);
-	tmp[2][2] =  fixmul(m[0][0], m[1][1]) - fixmul(m[0][1], m[1][0]);
-
-	memmove(m, tmp, sizeof tmp);
-}
-
-/* Cramer's */
-static void
-fix_invm(Warp m)
-{
-	long det;
-
-	det = fix_detm(m);
-	if(det == 0)
-		return; /* singular matrices are not invertible */
-	fix_adjm(m);
-	fix_smulm(m, fixdiv(1<<7, det));
-}
-
 static Foint
 fix_xform(Foint p, Warp m)
 {
@@ -89,14 +37,6 @@ fix_xform(Foint p, Warp m)
 		fixmul(p.x, m[1][0]) + fixmul(p.y, m[1][1]) + fixmul(p.w, m[1][2]),
 		fixmul(p.x, m[2][0]) + fixmul(p.y, m[2][1]) + fixmul(p.w, m[2][2])
 	};
-}
-
-void
-mkwarp(Warp w, double m[3][3])
-{
-	w[0][0] = flt2fix(m[0][0]); w[0][1] = flt2fix(m[0][1]); w[0][2] = flt2fix(m[0][2]);
-	w[1][0] = flt2fix(m[1][0]); w[1][1] = flt2fix(m[1][1]); w[1][2] = flt2fix(m[1][2]);
-	w[2][0] = 0; w[2][1] = 0; w[2][2] = 1<<7;
 }
 
 static ulong
@@ -120,10 +60,9 @@ sample(Sampler *s, Point p)
 }
 
 int
-memaffinewarp(Memimage *d, Rectangle r, Memimage *s, Point sp0, Warp ma)
+memaffinewarp(Memimage *d, Rectangle r, Memimage *s, Point sp0, Warp m)
 {
 	Sampler samp;
-	Warp m;
 	Point sp, dp;
 	Foint p2;
 	long Δx, Δy;
@@ -153,12 +92,11 @@ memaffinewarp(Memimage *d, Rectangle r, Memimage *s, Point sp0, Warp ma)
 	bpp = d->depth >> 3;
 	bploff = sizeof(ulong)*d->width - Dx(d->r)*bpp;
 
-	memmove(m, ma, sizeof(Warp));
-	fix_invm(m);
+	r = rectsubpt(r, r.min);
 
-	for(dp.y = r.min.y; dp.y < r.max.y; dp.y++, a += bploff)
-	for(dp.x = r.min.x; dp.x < r.max.x; dp.x++, a += bpp){
-		p2 = fix_xform((Foint){int2fix(dp.x - r.min.x), int2fix(dp.y - r.min.y), 1<<7}, m);
+	for(dp.y = 0; dp.y < r.max.y; dp.y++, a += bploff)
+	for(dp.x = 0; dp.x < r.max.x; dp.x++, a += bpp){
+		p2 = fix_xform((Foint){int2fix(dp.x), int2fix(dp.y), 1<<7}, m);
 
 		Δx = fixfrac(p2.x);
 		Δy = fixfrac(p2.y);

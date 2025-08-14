@@ -22,6 +22,7 @@ OFILES=\
 	unload.$O\
 	write.$O\
 	warp.$O\
+	mkwarp.$O\
 
 </sys/src/cmd/mksyslib
 
