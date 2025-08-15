@@ -24,6 +24,7 @@ struct Sampler
 {
 	Memimage *i;
 	uchar *a;
+	Rectangle r;
 	int bpp;
 	int bpl;
 	int cmask;
@@ -40,23 +41,22 @@ fix_xform(Foint p, Warp m)
 }
 
 static ulong
-edgehandler(Sampler*, Point*)
-{
-	return 0;	/* constant */
-}
-
-static ulong
 sample(Sampler *s, Point p)
 {
 	ulong c;
 
-	if(p.x >= s->i->r.min.x && p.x < s->i->r.max.x
-	&& p.y >= s->i->r.min.y && p.y < s->i->r.max.y){
+	if(p.x >= s->r.min.x && p.x < s->r.max.x
+	&& p.y >= s->r.min.y && p.y < s->r.max.y){
+inside:
 		c = *(ulong*)(s->a + p.y*s->bpl + p.x*s->bpp);
 		c &= s->cmask;
-	}else
-		c = edgehandler(s, &p);
-	return c;
+		return c;
+	}else if(s->i->flags & Frepl){
+		p = drawrepl(s->r, p);
+		goto inside;
+	}
+	/* edge handler: constant */
+	return 0;
 }
 
 int
@@ -65,22 +65,30 @@ memaffinewarp(Memimage *d, Rectangle r, Memimage *s, Point sp0, Warp m)
 	Sampler samp;
 	Point sp, dp;
 	Foint p2;
+	Rectangle dr;
 	long Δx, Δy;
 	ulong c00, c01, c10, c11;
-	uchar c0, c1, c, *a;
-	int bpp, bploff;
+	uchar c0, c1, c, *a0, *a;
+	int bpp, bpl;
 
-	if(s->depth < 8 || (s->depth & 3) != 0){
-		werrstr("unsupported image format");
-		return -1;
-	}
+	for(c00 = s->chan; c00; c00 >>= 8)
+		if(NBITS(c00) != 8){
+			werrstr("unsupported image format");
+			return -1;
+		}
 
 	if(d->chan != s->chan){
 		werrstr("image formats differ");
 		return -1;
 	}
 
-	if(rectclip(&r, d->r) == 0)
+	dr = d->clipr;
+	rectclip(&dr, d->r);
+	if(rectclip(&r, dr) == 0)
+		return 0;
+
+	samp.r = s->clipr;
+	if(rectclip(&samp.r, s->r) == 0)
 		return 0;
 
 	samp.i = s;
@@ -88,15 +96,14 @@ memaffinewarp(Memimage *d, Rectangle r, Memimage *s, Point sp0, Warp m)
 	samp.bpp = s->depth >> 3;
 	samp.bpl = sizeof(ulong)*s->width;
 	samp.cmask = (1ULL << s->depth) - 1;
-	a = d->data->bdata + d->zero;
+	a0 = d->data->bdata + d->zero;
 	bpp = d->depth >> 3;
-	bploff = sizeof(ulong)*d->width - Dx(d->r)*bpp;
+	bpl = sizeof(ulong)*d->width;
 
-	r = rectsubpt(r, r.min);
-
-	for(dp.y = 0; dp.y < r.max.y; dp.y++, a += bploff)
-	for(dp.x = 0; dp.x < r.max.x; dp.x++, a += bpp){
-		p2 = fix_xform((Foint){int2fix(dp.x), int2fix(dp.y), 1<<7}, m);
+	for(dp.y = r.min.y; dp.y < r.max.y; dp.y++)
+	for(dp.x = r.min.x; dp.x < r.max.x; dp.x++){
+		a = a0 + dp.y*bpl + dp.x*bpp;
+		p2 = fix_xform((Foint){int2fix(dp.x - dr.min.x), int2fix(dp.y - dr.min.y), 1<<7}, m);
 
 		Δx = fixfrac(p2.x);
 		Δy = fixfrac(p2.y);
@@ -118,22 +125,22 @@ memaffinewarp(Memimage *d, Rectangle r, Memimage *s, Point sp0, Warp m)
 			c0 = c00 >> 8*3 & 0xFF; c0 = lerp(c0, c01 >> 8*3 & 0xFF, Δx);
 			c1 = c10 >> 8*3 & 0xFF; c1 = lerp(c1, c11 >> 8*3 & 0xFF, Δx);
 			c  = lerp(c0, c1, Δy);
-			*(a + 3) = c;
+			a[3] = c;
 		case 3:
 			c0 = c00 >> 8*2 & 0xFF; c0 = lerp(c0, c01 >> 8*2 & 0xFF, Δx);
 			c1 = c10 >> 8*2 & 0xFF; c1 = lerp(c1, c11 >> 8*2 & 0xFF, Δx);
 			c  = lerp(c0, c1, Δy);
-			*(a + 2) = c;
+			a[2] = c;
 		case 2:
 			c0 = c00 >> 8*1 & 0xFF; c0 = lerp(c0, c01 >> 8*1 & 0xFF, Δx);
 			c1 = c10 >> 8*1 & 0xFF; c1 = lerp(c1, c11 >> 8*1 & 0xFF, Δx);
 			c  = lerp(c0, c1, Δy);
-			*(a + 1) = c;
+			a[1] = c;
 		case 1:
 			c0 = c00 >> 8*0 & 0xFF; c0 = lerp(c0, c01 >> 8*0 & 0xFF, Δx);
 			c1 = c10 >> 8*0 & 0xFF; c1 = lerp(c1, c11 >> 8*0 & 0xFF, Δx);
 			c  = lerp(c0, c1, Δy);
-			*(a + 0) = c;
+			a[0] = c;
 		}
 	}
 

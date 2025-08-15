@@ -130,11 +130,25 @@ main(int argc, char *argv[])
 //	dr = getbbox(&src->r, T);
 	dr = src->r;
 	dst = allocmemimage(dr, src->chan);
+	memfillcolor(dst, DTransparent);
 
 	mkwarp(w, T);
 
 	profbegin();
-	if(memaffinewarp(dst, dst->r, src, src->r.min, w) < 0)
+	dr = rectaddpt(Rect(0,0,Dx(dst->r)/2,Dy(dst->r)/2), dst->r.min);
+	dst->clipr = dr;
+	if(memaffinewarp(dst, dr, src, src->r.min, w) < 0)
+		sysfatal("memaffinewarp: %r");
+	dr = rectaddpt(Rect(Dx(dst->r)/2+1,0,Dx(dst->r),Dy(dst->r)/2), dst->r.min);
+	dst->clipr = dst->r;
+	if(memaffinewarp(dst, dr, src, src->r.min, w) < 0)
+		sysfatal("memaffinewarp: %r");
+	dr = rectaddpt(Rect(0,Dy(dst->r)/2+1,Dx(dst->r)/2,Dy(dst->r)), dst->r.min);
+	if(memaffinewarp(dst, dr, src, src->r.min, w) < 0)
+		sysfatal("memaffinewarp: %r");
+	dr = rectaddpt(Rect(Dx(dst->r)/2+1,Dy(dst->r)/2+1,Dx(dst->r),Dy(dst->r)), dst->r.min);
+	dst->clipr = dr;
+	if(memaffinewarp(dst, dr, src, src->r.min, w) < 0)
 		sysfatal("memaffinewarp: %r");
 	profend();
 	writememimage(1, dst);
