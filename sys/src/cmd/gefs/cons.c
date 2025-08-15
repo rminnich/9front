@@ -137,7 +137,7 @@ refreshusers(int fd, char **, int)
 		clunkmount(mnt);
 		return;
 	}
-	loadusers(fd, mnt->root);
+	loadusers(fd, agetp(&mnt->root));
 	fprint(fd, "refreshed users\n");
 	clunkmount(mnt);
 }
@@ -147,18 +147,20 @@ showbstate(int fd, char**, int)
 {
 	char *p, fbuf[8];
 	Blk *b;
+	int f;
 
 	for(b = blkbuf; b != blkbuf+fs->cmax; b++){
 		p = fbuf;
-		if(b->flag & Bdirty)	*p++ = 'd';
-		if(b->flag & Bfinal)	*p++ = 'f';
-		if(b->flag & Bfreed)	*p++ = 'F';
-		if(b->flag & Bcached)	*p++ = 'c';
-		if(b->flag & Bqueued)	*p++ = 'q';
-		if(b->flag & Blimbo)	*p++ = 'L';
+		f = agetl(&b->flag);
+		if(f & Bdirty)	*p++ = 'd';
+		if(f & Bfinal)	*p++ = 'f';
+		if(f & Bfreed)	*p++ = 'F';
+		if(f & Bcached)	*p++ = 'c';
+		if(f & Bqueued)	*p++ = 'q';
+		if(f & Blimbo)	*p++ = 'L';
 		*p = 0;
 		fprint(fd, "blk %#p type %d flag %s bp %B ref %ld alloc %#p queued %#p, hold %#p drop %#p cached %#p\n",
-			b, b->type, fbuf, b->bp, b->ref, b->alloced, b->queued, b->lasthold, b->lastdrop, b->cached);
+			b, b->type, fbuf, b->bp, agetl(&b->ref), b->alloced, b->queued, b->lasthold, b->lastdrop, b->cached);
 	}
 }
 
@@ -295,6 +297,7 @@ savetrace(int fd, char **ap, int na)
 {
 	Biobuf *bfd;
 	Trace *t;
+	long ti;
 	int i;
 
 	if(na == 0)
@@ -306,7 +309,8 @@ savetrace(int fd, char **ap, int na)
 		return;
 	}
 	for(i = 0; i < fs->ntrace; i++){
-		t = &fs->trace[(fs->traceidx + i) % fs->ntrace];
+		ti = agetl(&fs->traceidx);
+		t = &fs->trace[(ti+ i) % fs->ntrace];
 		if(t->msg[0] == 0)
 			continue;
 		Bprint(bfd, "[%d@%d] %s", t->tid, t->qgen, t->msg);

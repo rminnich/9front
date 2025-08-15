@@ -229,6 +229,7 @@ reamfs(char *dev)
 	vlong sz, asz, off;
 	Mount *mnt, *adm;
 	Arena *a;
+	Tree *r;
 	char *utab;
 	Dir *d;
 	int i;
@@ -246,9 +247,9 @@ reamfs(char *dev)
 	if(sz < 128*MiB+Blksz)
 		sysfatal("ream: disk too small");
 	mnt = emalloc(sizeof(Mount), 1);
-	mnt->root = mallocz(sizeof(Tree), 1);
+	aswapp(&mnt->root, mallocz(sizeof(Tree), 1));
 	adm = mallocz(sizeof(Mount), 1);
-	adm->root = mallocz(sizeof(Tree), 1);
+	aswapp(&adm->root, mallocz(sizeof(Tree), 1));
 
 	sz = sz - sz%Blksz - 2*Blksz;
 	fs->narena = (sz + 4096ULL*GiB - 1) / (4096ULL*GiB);
@@ -284,19 +285,21 @@ reamfs(char *dev)
 		loadlog(a, a->loghd);
 	}
 
-	if((mb = newblk(mnt->root, Tleaf)) == nil)
+	if((mb = newblk(agetp(&mnt->root), Tleaf)) == nil)
 		sysfatal("ream: allocate root: %r");
 	holdblk(mb);
 	initroot(mb);
 	finalize(mb);
 	syncblk(mb);
 
-	mnt->root->ht = 1;
-	mnt->root->bp = mb->bp;
+	r = agetp(&mnt->root);
+	r->ht = 1;
+	r->bp = mb->bp;
 
-	if((ab = newblk(adm->root, Tleaf)) == nil)
+	r = agetp(&adm->root);
+	if((ab = newblk(r, Tleaf)) == nil)
 		sysfatal("ream: allocate root: %r");
-	if((ub = newdblk(adm->root, 0, 1)) == nil)
+	if((ub = newdblk(r, 0, 1)) == nil)
 		sysfatal("ream: allocate root: %r");
 	holdblk(ab);
 	holdblk(ub);
@@ -312,15 +315,15 @@ reamfs(char *dev)
 	finalize(ab);
 	syncblk(ab);
 
-	adm->root->ht = 1;
-	adm->root->bp = ab->bp;
+	r->ht = 1;
+	r->bp = ab->bp;
 
 	/*
 	 * Now that we have a completely empty fs, give it
 	 * a single snap block that the tree will insert
 	 * into, and take a snapshot as the initial state.
 	 */
-	if((tb = newblk(mnt->root, Tleaf)) == nil)
+	if((tb = newblk(agetp(&mnt->root), Tleaf)) == nil)
 		sysfatal("ream: allocate snaps: %r");
 	holdblk(tb);
 	initsnap(tb, mb, ab);
@@ -333,7 +336,6 @@ reamfs(char *dev)
 	fs->snapdl.hd.hash = -1;
 	fs->snapdl.tl.addr = -1;
 	fs->snapdl.tl.hash = -1;
-	fs->nextqid = Nreamqid;
 
 	dropblk(mb);
 	dropblk(ab);

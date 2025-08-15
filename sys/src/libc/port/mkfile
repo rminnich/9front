@@ -12,6 +12,7 @@ CFILES=\
 	atof.c\
 	atol.c\
 	atoll.c\
+	atomic64.c\
 	calloc.c\
 	cistrcmp.c\
 	cistrncmp.c\

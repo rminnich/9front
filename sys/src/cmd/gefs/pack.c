@@ -436,6 +436,7 @@ unpackarena(Arena *a, char *p, int sz)
 char*
 packsb(char *p0, int sz, Gefs *fi)
 {
+	vlong nextqid, nextgen, qgen;
 	uvlong h;
 	char *p;
 	int i;
@@ -443,6 +444,9 @@ packsb(char *p0, int sz, Gefs *fi)
 	assert(sz == Blksz);
 	assert(fi->narena < 512);
 	p = p0;
+	nextqid = fi->nextqid;
+	nextgen = fi->nextgen;
+	qgen = agetv(&fi->qgen);
 	memcpy(p, "gefs9.00", 8);	p += 8;
 	PACK32(p, Blksz);		p += 4;
 	PACK32(p, Bufspc);		p += 4;
@@ -455,9 +459,9 @@ packsb(char *p0, int sz, Gefs *fi)
 	PACK64(p, fi->snapdl.tl.addr);	p += 8;
 	PACK64(p, fi->snapdl.tl.hash);	p += 8;
 	PACK64(p, fi->flag);		p += 8;
-	PACK64(p, fi->nextqid);		p += 8;
-	PACK64(p, fi->nextgen);		p += 8;
-	PACK64(p, fi->qgen);		p += 8;
+	PACK64(p, nextqid);		p += 8;
+	PACK64(p, nextgen);		p += 8;
+	PACK64(p, qgen);		p += 8;
 	for(i = 0; i < fi->narena; i++){
 		PACK64(p, fi->arenabp[i].addr);	p += 8;
 		PACK64(p, fi->arenabp[i].hash);	p += 8;
@@ -470,6 +474,7 @@ packsb(char *p0, int sz, Gefs *fi)
 char*
 unpacksb(Gefs *fi, char *p0, int sz)
 {
+	vlong qgen;
 	uvlong dh, xh;
 	char *p;
 	int i;
@@ -497,7 +502,8 @@ unpacksb(Gefs *fi, char *p0, int sz)
 	fi->flag = UNPACK64(p);			p += 8;
 	fi->nextqid = UNPACK64(p);		p += 8;
 	fi->nextgen = UNPACK64(p);		p += 8;
-	fi->qgen = UNPACK64(p);	p += 8;
+	qgen = UNPACK64(p);			p += 8;
+	aswapv(&fs->qgen, qgen);
 	fi->arenabp = emalloc(fi->narena * sizeof(Bptr), 0);
 	for(i = 0; i < fi->narena; i++){
 		fi->arenabp[i].addr = UNPACK64(p);	p += 8;

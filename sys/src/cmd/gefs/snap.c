@@ -3,7 +3,6 @@
 #include <fcall.h>
 #include <avl.h>
 
-#include "atomic.h"
 #include "dat.h"
 #include "fns.h"
 
@@ -319,6 +318,7 @@ delsnap(Tree *t, vlong succ, char *name)
 	char *p, buf[4][Kvmax];
 	int nm, deltree;
 	Mount *mnt;
+	Tree *r;
 	Msg m[4];
 
 	nm = 0;
@@ -363,10 +363,11 @@ delsnap(Tree *t, vlong succ, char *name)
 	if(deltree){
 		reclaimblocks(t->gen, succ, t->pred);
 		for(mnt = agetp(&fs->mounts); mnt != nil; mnt = mnt->next){
-			if(mnt->root->gen == t->succ)
-				mnt->root->pred = t->pred;
-			if(mnt->root->gen == t->pred)
-				mnt->root->succ = t->succ;
+			r = agetp(&mnt->root);
+			if(r->gen == t->succ)
+				r->pred = t->pred;
+			if(r->gen == t->pred)
+				r->succ = t->succ;
 		}
 	}
 }
@@ -406,8 +407,8 @@ tagsnap(Tree *t, char *name, int flg)
 		n->succ = -1;
 		n->pred = t->gen;
 		n->base = t->gen;
-		n->gen = aincv(&fs->nextgen, 1);
-		n->memgen = aincv(&fs->nextgen, 1);
+		n->gen = fs->nextgen++;
+		n->memgen = fs->nextgen++;
 
 		t->nref++;
 		m[i].op = Orelink;
@@ -443,8 +444,8 @@ tagsnap(Tree *t, char *name, int flg)
  * list; once it's observable by a derived snapshot it must be
  * immutable.
  */
-void
-updatesnap(Tree **r, Tree *o, char *lbl, int flg)
+Tree*
+updatesnap(Tree *o, char *lbl, int flg)
 {
 	char buf[4][Kvmax];
 	Msg m[4];
@@ -452,9 +453,9 @@ updatesnap(Tree **r, Tree *o, char *lbl, int flg)
 	int i;
 
 	if(!o->dirty)
-		return;
+		return o;
 
-	traceb("updatesnap", o->bp);
+	tracex("updatesnap", o->bp, o->memgen, getcallerpc(&o));
 	/* update the old kvp */
 	o->nlbl--;
 	o->nref++;
@@ -476,7 +477,7 @@ updatesnap(Tree **r, Tree *o, char *lbl, int flg)
 	t->succ = -1;
 	t->base = o->base;
 	t->gen = o->memgen;
-	t->memgen = aincv(&fs->nextgen, 1);
+	t->memgen = fs->nextgen++;
 
 	i = 0;
 	m[i].op = Orelink;
@@ -504,8 +505,8 @@ updatesnap(Tree **r, Tree *o, char *lbl, int flg)
 	if(o->nlbl == 0 && o->nref == 1)
 		delsnap(o, t->gen, nil);
 	closesnap(o);
-	asetp(r, t);
 	poperror();
+	return t;
 }
 
 /*
@@ -544,7 +545,7 @@ opensnap(char *label, int *flg)
 		broke(Efs);
 	unpacktree(t, kv.v, kv.nv);
 	t->memref = 1;
-	t->memgen = aincv(&fs->nextgen, 1);
+	t->memgen = fs->nextgen++;
 	poperror();
 	return t;
 }

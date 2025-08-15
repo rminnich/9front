@@ -1,6 +1,7 @@
 </$objtype/mkfile
 
 TEST=\
+	atomic\
 	date\
 	pow\
 	runebreak\

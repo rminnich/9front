@@ -5,6 +5,8 @@ LIB=/$objtype/lib/libc.a
 SFILES=\
 	argv0.s\
 	atom.s\
+	atomic.s\
+	atomic64.s\
 	cycles.s\
 	getfcr.s\
 	main9.s\

@@ -1,0 +1,95 @@
+.TH atomic 2
+.SH NAME
+agetl,
+agetv,
+agetp,
+asetl,
+asetv,
+asetp,
+aincl,
+aincv,
+acasl,
+acasv,
+acasp,
+coherence
+\- atomic operations
+.SH SYNOPSIS
+.ta 0.7i +0.7i +0.7i +0.7i +0.7i +0.7i +0.7i
+.EX
+#include <u.h>
+#include <libc.h>
+
+typedef struct Along Along;
+typedef struct Avlong Avlong;
+typedef struct Aptr Aptr;
+
+long	agetl(Along *);
+vlong	agetv(Avlong *);
+void*	agetp(Aptr *);
+
+long	aswapl(Along *, long new);
+vlong	aswapv(Avlong *, vlong new);
+void*	aswapp(Aptr *, void* new);
+
+long	aincl(Along *, long);
+vlong	aincv(Avlong *, vlong);
+
+int	acasl(Along *, long old, long new);
+int	acasv(Avlong *, vlong old, vlong new);
+int	acasp(Aptr *, void* old, void* new);
+
+void	coherence(void);
+.EE
+
+.SH DESCRIPTION
+.P
+These routines provide atomic operations that can be used to synchronize processes.
+They are sequentially consistent, that is, operations in a multi-process program are executed in some sequential order; operations in each process are executed in program order. No non-atomic operations will be re-orded to be observable before or after an atomic operation.
+.P
+.IR Agetl ,
+.IR agetv ,
+and
+.I agetp
+perform an atomic read.
+.IR Asetl ,
+.IR asetv ,
+and
+.I asetp
+perform an atomic swap, replacing the value with
+.B new
+then returning the previous value.
+.I Aincl
+and
+.I aincv
+perform an atomic add, replacing the value with the sum of it and
+.BR new ,
+then returning the result.
+
+.P
+.IR Acasl ,
+.IR acasv ,
+and
+.I acasp
+perform an atomic compare and swap.
+If the value is equal to
+.B old
+then it is replaced by
+.B new
+and the function returns 1.
+If not, the function returns 0.
+
+.P
+.I Coherence
+provides only the re-ordering barrier.
+
+.SH SOURCE
+.B /sys/src/libc/port/atomic.c
+.br
+.B /sys/src/libc/port/atomic64.c
+.br
+.B /sys/src/libc/$objtype/atomic.s
+.br
+.B /sys/src/libc/$objtype/atomic64.s
+
+.SH BUGS
+The vlong operations may be emulated in software and therefore must not be called from a note handler.

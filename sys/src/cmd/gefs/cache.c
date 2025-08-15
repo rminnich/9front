@@ -33,7 +33,7 @@ lrutop(Blk *b)
 	 */
 	assert(b->magic == Magic);
 	assert(checkflag(b, 0, Bstatic));
-	if(b->ref != 0){
+	if(agetl(&b->ref) != 0){
 		qunlock(&fs->lrulk);
 		return;
 	}
@@ -60,7 +60,7 @@ lrubot(Blk *b)
 	 */
 	assert(b->magic == Magic);
 	assert(checkflag(b, 0, Bstatic));
-	if(b->ref != 0){
+	if(agetl(&b->ref) != 0){
 		qunlock(&fs->lrulk);
 		return;
 	}
@@ -172,14 +172,14 @@ cachepluck(void)
 
 	b = fs->ctail;
 	assert(b->magic == Magic);
-	assert(b->ref == 0);
+	assert(agetl(&b->ref) == 0);
 	if(checkflag(b, Bcached, 0))
 		cachedel_lk(b->bp.addr);
 	if(checkflag(b, Bcached, 0))
 		fprint(2, "%B cached %#p freed %#p\n", b->bp, b->cached, b->freed);
 	assert(checkflag(b, 0, Bcached));
 	lrudel(b);
-	b->flag = 0;
+	aswapl(&b->flag, 0);
 	b->lasthold = 0;
 	b->lastdrop = 0;
 	b->freed = 0;

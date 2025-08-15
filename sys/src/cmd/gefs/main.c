@@ -6,7 +6,6 @@
 
 #include "dat.h"
 #include "fns.h"
-#include "atomic.h"
 
 Gefs *fs;
 
@@ -100,7 +99,7 @@ broke(char *fmt, ...)
 {
 	va_list ap;
 
-	ainc(&fs->rdonly);
+	aincl(&fs->rdonly, 1);
 	va_start(ap, fmt);
 	errorv(fmt, ap, 1);
 }
@@ -148,7 +147,8 @@ initfs(vlong cachesz, int rdonly)
 		fs->trace = emalloc(tracesz, 1);
 		fs->ntrace = tracesz/sizeof(Trace);
 	}
-	fs->rdonly = rdonly;
+
+	aswapl(&fs->rdonly, rdonly);
 	fs->lrurz.l = &fs->lrulk;
 	fs->syncrz.l = &fs->synclk;
 	fs->bfreerz.l = &fs->bfreelk;

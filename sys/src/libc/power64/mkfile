@@ -4,11 +4,13 @@ objtype=power64
 LIB=/$objtype/lib/libc.a
 SFILES=\
 	argv0.s\
+	atom.s\
+	atomic.s\
+	atomic64.s\
 	cycles.s\
 	getcallerpc.s\
 	getfcr.s\
 	main9.s\
-	atom.s\
 	main9p.s\
 	setjmp.s\
 	tas.s\

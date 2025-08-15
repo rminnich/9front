@@ -514,9 +514,9 @@ struct Gefs {
 	Dlist	snapdl;
 	int	narena;
 	vlong	flag;
-	vlong	nextqid;
-	vlong	nextgen;
-	vlong	qgen;
+	vlong	nextqid;	/* protected by mutlk */
+	vlong	nextgen;	/* protected by mutlk */
+	Avlong	qgen;
 	Bptr	*arenabp;
 
 	/* superblocks */
@@ -529,13 +529,13 @@ struct Gefs {
 	long	syncing;
 	long	nsyncers;
 	long	nreaders;
-	long	nprocs;
+	Along	nprocs;
 
 	QLock	synclk;
 	Rendez	syncrz;
 
 	QLock	mountlk;
-	Mount	*mounts;
+	Aptr	mounts;	/* Mount* */
 	Mount	*snapmnt;
 	Lock	connlk;
 	Conn	*conns;
@@ -545,16 +545,16 @@ struct Gefs {
 	Chan	**rdchan;
 
 	QLock	mutlk;
-	long	nworker;
-	long	epoch;
-	long	lepoch[32];
-	Limbo	*limbo[3];
-	long	nlimbo;
+	Along	nworker;
+	Along	epoch;
+	Along	lepoch[32];
+	Aptr	limbo[3]; /* Limbo* */
+	Along	nlimbo;
 
 	Syncq	syncq[32];
 
 	int	fd;
-	long	rdonly;
+	Along	rdonly;
 	int	noauth;
 
 	/* user list */
@@ -589,7 +589,7 @@ struct Gefs {
 	RWLock	flushq[Nflushtab];
 
 	Trace	*trace;
-	long	traceidx;
+	Along	traceidx;
 	long	ntrace;
 };
 
@@ -662,7 +662,7 @@ struct Mount {
 	long	ref;
 	vlong	gen;
 	char	name[64];
-	Tree	*root;	/* EBR protected */
+	Aptr	root;	/* Tree*, EBR protected */
 	int	flag;
 
 	/* open directory entries */
@@ -785,8 +785,8 @@ struct Blk {
 	uintptr	freed;
 
 	Bptr	bp;
-	long	ref;
-	long	flag;
+	Along	ref;
+	Along	flag;
 	char	*data;
 	char	buf[Blksz];
 	vlong	magic;
@@ -794,8 +794,8 @@ struct Blk {
 
 struct Chan {
 	int	size;	/* size of queue */
-	long	count;	/* how many in queue (semaphore) */
-	long	avail;	/* how many available to send (semaphore) */
+	Along	count;	/* how many in queue (semaphore) */
+	Along	avail;	/* how many available to send (semaphore) */
 	Lock	rl, wl;	/* circular pointers */
 	void	**rp;
 	void	**wp;

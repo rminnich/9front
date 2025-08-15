@@ -83,7 +83,7 @@ loadfs(char *dev)
 	snprint(dump->name, sizeof(dump->name), "dump");
 	dump->ref = 1;
 	dump->gen = -1;
-	dump->root = &fs->snap;
+	aswapp(&dump->root, &fs->snap);
 
 	fs->snapmnt = dump;
 	fs->narena = 1;
@@ -136,7 +136,7 @@ loadfs(char *dev)
 	fprint(2, "\tnarenas:\t%d\n", fs->narena);
 	fprint(2, "\tfeatures:\t%lld\n", fs->flag);
 	fprint(2, "\tnextqid:\t%lld\n", fs->nextqid);
-	fprint(2, "\tlastqgen:\t%lld\n", fs->qgen);
+	fprint(2, "\tlastqgen:\t%lld\n", agetv(&fs->qgen));
 	fprint(2, "\tnextgen:\t%lld\n", fs->nextgen);
 	fprint(2, "\tblocksize:\t%lld\n", Blksz);
 	fprint(2, "\tcachesz:\t%lld MiB\n", fs->cmax*Blksz/MiB);

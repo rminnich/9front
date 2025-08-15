@@ -3,7 +3,6 @@
 #include <fcall.h>
 #include <avl.h>
 
-#include "atomic.h"
 #include "dat.h"
 #include "fns.h"
 

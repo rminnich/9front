@@ -6,6 +6,8 @@ LIB=/$objtype/lib/libc.a
 SFILES=\
 	argv0.s\
 	atom.s\
+	atomic.s\
+	atomic64.s\
 	cycles.s\
 	fabs.s\
 	floor.s\

@@ -5,7 +5,6 @@
 
 #include "dat.h"
 #include "fns.h"
-#include "atomic.h"
 
 static vlong	blkalloc_lk(Arena*, int);
 static vlong	blkalloc(int, uint, int);
@@ -239,8 +238,8 @@ mklogblk(Arena *a, vlong o)
 	lb = a->logbuf[0];
 	if(lb == a->logtl)
 		lb = a->logbuf[1];
-	assert(lb->ref == 1);
-	lb->flag = Bstatic;
+	assert(agetl(&lb->ref) == 1);
+	aswapl(&lb->flag, Bstatic);
 	initblk(lb, o, -1, Tlog);
 	traceb("logblk" , lb->bp);
 	lb->lasthold0 = lb->lasthold;
@@ -271,7 +270,7 @@ logappend(Arena *a, vlong off, vlong len, int op)
 		assert(off < end);
 	}
 	lb = a->logtl;
-	assert(lb->ref > 0);
+	assert(agetl(&lb->ref) > 0);
 	assert(lb->type == Tlog);
 	assert(lb->logsz >= 0);
 	dprint("logop %d: %llx+%llx@%x\n", op, off, len, lb->logsz);
@@ -351,7 +350,7 @@ loadlog(Arena *a, Bptr bp)
 			case LogSync:
 				gen = ent >> 8;
 				dprint("\tlog@%x: sync %lld\n", i, gen);
-				if(gen >= fs->qgen){
+				if(gen >= agetv(&fs->qgen)){
 					if(a->logtl == nil){
 						b->logsz = i;
 						a->logtl = b;
@@ -752,7 +751,7 @@ getblk(Bptr bp, int flg)
 Blk*
 holdblk(Blk *b)
 {
-	ainc(&b->ref);
+	aincl(&b->ref, 1);
 	b->lasthold = getcallerpc(&b);
 	return b;
 }
@@ -763,7 +762,7 @@ dropblk(Blk *b)
 	if(b == nil)
 		return;
 	b->lastdrop = getcallerpc(&b);
-	if(adec(&b->ref) != 0)
+	if(aincl(&b->ref, -1) != 0)
 		return;
 	/*
 	 * freed blocks go to the LRU bottom
@@ -801,7 +800,7 @@ limbo(int op, Limbo *l)
 		p = agetp(&fs->limbo[ge]);
 		l->next = p;
 		if(acasp(&fs->limbo[ge], p, l)){
-			ainc(&fs->nlimbo);
+			aincl(&fs->nlimbo, 1);
 			break;
 		}
 	}
@@ -819,7 +818,7 @@ freeblk(Tree *t, Blk *b)
 	tracex("freeb", b->bp, getcallerpc(&t), -1);
 	setflag(b, Blimbo, 0);
 	holdblk(b);
-	assert(b->ref > 1);
+	assert(agetl(&b->ref) > 1);
 	limbo(DFblk, b);
 }
 
@@ -853,7 +852,7 @@ epochstart(int tid)
 
 	assert(tid >= 0);
 	ge = agetl(&fs->epoch);
-	asetl(&fs->lepoch[tid], ge | Eactive);
+	aswapl(&fs->lepoch[tid], ge | Eactive);
 }
 
 void
@@ -863,7 +862,7 @@ epochend(int tid)
 
 	assert(tid >= 0);
 	le = agetl(&fs->lepoch[tid]);
-	asetl(&fs->lepoch[tid], le &~ Eactive);
+	aswapl(&fs->lepoch[tid], le &~ Eactive);
 }
 
 void
@@ -875,7 +874,7 @@ epochwait(void)
 	delay = 0;
 Again:
 	ge = agetl(&fs->epoch);
-	for(i = 0; i < fs->nworker; i++){
+	for(i = 0; i < agetl(&fs->nworker); i++){
 		e = agetl(&fs->lepoch[i]);
 		if((e & Eactive) && e != (ge | Eactive)){
 			if(delay < 1000)
@@ -901,7 +900,7 @@ epochclean(void)
 
 	c = agetl(&fs->nlimbo);
 	ge = agetl(&fs->epoch);
-	for(i = 0; i < fs->nworker; i++){
+	for(i = 0; i < agetl(&fs->nworker); i++){
 		e = agetl(&fs->lepoch[i]);
 		if((e & Eactive) && e != (ge | Eactive)){
 			if(c < fs->cmax/4)
@@ -910,8 +909,8 @@ epochclean(void)
 		}
 	}
 	epochwait();
-	p = asetp(&fs->limbo[(ge+1)%3], nil);
-	asetl(&fs->epoch, (ge+1)%3);
+	p = aswapp(&fs->limbo[(ge+1)%3], nil);
+	aswapl(&fs->epoch, (ge+1)%3);
 
 	for(; p != nil; p = n){
 		n = p->next;
@@ -952,7 +951,7 @@ epochclean(void)
 		default:
 			abort();
 		}
-		adec(&fs->nlimbo);
+		aincl(&fs->nlimbo, -1);
 	}
 }
 
@@ -1014,7 +1013,7 @@ qput(Syncq *q, Qent qe)
 	else
 		abort();
 	if(qe.b != nil)
-		assert(qe.b->ref > 0);
+		assert(agetl(&qe.b->ref) > 0);
 	qlock(&q->lk);
 	qe.qgen = agetv(&fs->qgen);
 	while(q->nheap == q->heapsz)
@@ -1079,7 +1078,7 @@ runsync(int, void *p)
 
 	q = p;
 	if(waserror()){
-		ainc(&fs->rdonly);
+		aincl(&fs->rdonly, 1);
 		fprint(2, "error syncing: %s\n", errmsg());
 		return;
 	}

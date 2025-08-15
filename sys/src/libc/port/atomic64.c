@@ -1,8 +1,6 @@
 #include <u.h>
 #include <libc.h>
 
-#include "atomic.h"
-
 static Lock locktab[128];
 
 static u32int
@@ -17,57 +15,57 @@ ihash(void *p)
 	return x & (nelem(locktab)-1);
 }
 
-#define GET(T, n) \
-	T n(T *p)			\
+#define GET(A, T, n) \
+	T n(A *p)			\
 	{				\
 		uintptr h;		\
 		T r;			\
 					\
 		h = ihash(p);		\
 		lock(&locktab[h]);	\
-		r = *p;			\
+		r = p->v;		\
 		unlock(&locktab[h]);	\
 		return r;		\
 	}
 
-#define SET(T, n) \
-	T n(T *p, T v)			\
+#define SET(A, T, n) \
+	T n(A *p, T v)			\
 	{				\
 		uintptr h;		\
 		T r;			\
 					\
 		h = ihash(p);		\
 		lock(&locktab[h]);	\
-		r = *p;			\
-		*p = v;			\
+		r = p->v;		\
+		p->v = v;		\
 		unlock(&locktab[h]);	\
 		return r;		\
 	}
 
-#define INC(T, n) \
-	T n(T *p, T dv)			\
+#define INC(A, T, n) \
+	T n(A *p, T dv)			\
 	{				\
 		uintptr h;		\
 		T r;			\
 					\
 		h = ihash(p);		\
 		lock(&locktab[h]);	\
-		*p += dv;		\
-		r = *p;			\
+		p->v += dv;		\
+		r = p->v;		\
 		unlock(&locktab[h]);	\
 		return r;		\
 	}
 
-#define CAS(T, n) \
-	int n(T *p, T ov, T nv)		\
+#define CAS(A, T, n) \
+	int n(A *p, T ov, T nv)		\
 	{				\
 		uintptr h;		\
 		int r;			\
 					\
 		h = ihash(p);		\
 		lock(&locktab[h]);	\
-		if(*p == ov){		\
-			*p = nv;	\
+		if(p->v == ov){		\
+			p->v = nv;	\
 			r = 1;		\
 		}else			\
 			r = 0;		\
@@ -75,21 +73,10 @@ ihash(void *p)
 		return r;		\
 	}
 
-GET(int, ageti)
-GET(long, agetl)
-GET(vlong, agetv)
-GET(void*, agetp)
+GET(Avlong, vlong, agetv)
 
-SET(int, aseti)
-SET(long, asetl)
-SET(vlong, asetv)
-SET(void*, asetp)
+SET(Avlong, vlong, aswapv)
 
-INC(int, ainci)
-INC(long, aincl)
-INC(vlong, aincv)
+INC(Avlong, vlong, aincv)
 
-CAS(int, acasi)
-CAS(long, acasl)
-CAS(vlong, acasv)
-CAS(void*, acasp)
+CAS(Avlong, vlong, acasv)
