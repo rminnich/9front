@@ -192,7 +192,7 @@ armclass(long w)
 		op = (48) + ((w >> 21) & 0xf);
 		break;
 	case 2:	/* load/store byte/word i(r) */
-		if ((w & 0xffffff8f) == 0xf57ff00f) {	/* barriers, clrex */
+		if ((w & 0xffffff80) == 0xf57ff000) {	/* barriers, clrex */
 			done = 1;
 			switch ((w >> 4) & 7) {
 			case 1:
@@ -589,6 +589,13 @@ armco(Opcode *o, Instr *i)		/* coprocessor instructions */
 	format(o->o, i, buf);
 }
 
+static void
+armdmb(Opcode *o, Instr *i)
+{
+	i->imm = (i->w & 0xf);
+	format(o->o, i, o->a);
+}
+
 static int
 armcondpass(Map *map, Rgetter rget, uchar cond)
 {
@@ -973,9 +980,9 @@ static Opcode opcodes[] =
 	"CLREX",	armunk, 0,	"",
 
 /* 96 */
-	"DSB",		armunk, 0,	"",
-	"DMB",		armunk, 0,	"",
-	"ISB",		armunk, 0,	"",
+	"DSB",		armdmb, 0,	"$%i",
+	"DMB",		armdmb, 0,	"$%i",
+	"ISB",		armdmb, 0,	"$%i",
 
 /* 99 */
 	"RFEV7%P%a",	armbdt, 0,	"(R%n)",
