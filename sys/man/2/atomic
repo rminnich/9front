@@ -3,9 +3,9 @@
 agetl,
 agetv,
 agetp,
-asetl,
-asetv,
-asetp,
+aswapl,
+aswapv,
+aswapp,
 aincl,
 aincv,
 acasl,
@@ -44,7 +44,8 @@ void	coherence(void);
 .SH DESCRIPTION
 .P
 These routines provide atomic operations that can be used to synchronize processes.
-They are sequentially consistent, that is, operations in a multi-process program are executed in some sequential order; operations in each process are executed in program order. No non-atomic operations will be re-orded to be observable before or after an atomic operation.
+They are sequentially consistent, that is, operations in a multi-process program are executed in some sequential order; operations in each process are executed in program order.
+No non-atomic operations will be re-orded to be observable before or after an atomic operation.
 .P
 .IR Agetl ,
 .IR agetv ,
