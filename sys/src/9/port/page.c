@@ -232,7 +232,7 @@ newpage(int clear, Segment **s, uintptr va)
 	inittxtflush(p);
 
 	if(clear)
-		zeropage(p);
+		fillpage(p, 0);
 
 	return p;
 }
@@ -273,14 +273,17 @@ copypage(Page *f, Page *t)
 	kunmap(kd);
 }
 
-void
-zeropage(Page *p)
+Page*
+fillpage(Page *p, int c)
 {
 	KMap *k;
 
-	k = kmap(p);
-	memset((void*)VA(k), 0, BY2PG);
-	kunmap(k);
+	if(p != nil){
+		k = kmap(p);
+		memset((void*)VA(k), c, BY2PG);
+		kunmap(k);
+	}
+	return p;
 }
 
 void
@@ -388,7 +391,7 @@ zeroprivatepages(void)
 	for(p = palloc.pages; p != pe; p++) {
 		if(p->modref & PG_PRIV){
 			incref(p);
-			zeropage(p);
+			fillpage(p, 0);
 			decref(p);
 		}
 	}

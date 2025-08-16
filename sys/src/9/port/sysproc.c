@@ -541,6 +541,7 @@ sysexec(va_list list)
 		memmove(charp, a, n);
 		charp += n;
 	}
+	*argv = nil;
 
 	/* copy args; easiest from new process's stack */
 	a = (char*)(tstk - nbytes);

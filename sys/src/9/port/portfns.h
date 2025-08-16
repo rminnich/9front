@@ -416,7 +416,7 @@ int		xmerge(void*, void*);
 void*		xspanalloc(ulong, int, ulong);
 void		xsummary(void);
 void		yield(void);
-void		zeropage(Page*);
+Page*		fillpage(Page*, int);
 void		zeroprivatepages(void);
 Segment*	data2txt(Segment*);
 Segment*	dupseg(Segment**, int, int);

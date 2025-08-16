@@ -522,7 +522,7 @@ fixedseg(uintptr va, ulong len)
 			p->va = va;
 			va += BY2PG;
 			p->modref = 0;
-			zeropage(p);
+			fillpage(p, 0);
 			if(waserror()){
 				while(++p <= l)
 					freepages(p, p, 1);

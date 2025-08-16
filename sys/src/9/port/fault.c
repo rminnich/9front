@@ -174,12 +174,13 @@ fixfault(Segment *s, uintptr addr, int read)
 		break;
 
 	case SG_BSS:
-	case SG_SHARED:			/* Zero fill on demand */
+	case SG_SHARED:			/* fill on demand */
 	case SG_STACK:
 		if(*pg == nil) {
-			new = newpage(1, &s, addr);
+			new = newpage(0, &s, addr);
 			if(s == nil)
 				return -1;
+			fillpage(new, (s->type&SG_TYPE)==SG_STACK? 0xfe: 0);
 			*pg = new;
 			s->used++;
 		}
