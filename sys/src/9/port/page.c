@@ -169,7 +169,7 @@ ispages(void*)
 }
 
 Page*
-newpage(int clear, Segment **s, uintptr va)
+newpage(uintptr va, QLock *locked)
 {
 	Page *p, **l;
 	int color;
@@ -177,8 +177,8 @@ newpage(int clear, Segment **s, uintptr va)
 	lock(&palloc);
 	while(!ispages(nil)){
 		unlock(&palloc);
-		if(s != nil)
-			qunlock(*s);
+		if(locked)
+			qunlock(locked);
 
 		if(!waserror()){
 			Rendezq *q;
@@ -195,15 +195,14 @@ newpage(int clear, Segment **s, uintptr va)
 		}
 
 		/*
-		 * If called from fault and we lost the segment from
+		 * If called from fault and we lost the lock from
 		 * underneath don't waste time allocating and freeing
 		 * a page. Fault will call newpage again when it has
-		 * reacquired the segment locks
+		 * reacquired the locks
 		 */
-		if(s != nil){
-			*s = nil;
+		if(locked)
 			return nil;
-		}
+
 		lock(&palloc);
 	}
 
@@ -230,9 +229,6 @@ newpage(int clear, Segment **s, uintptr va)
 	p->va = va;
 	p->modref = 0;
 	inittxtflush(p);
-
-	if(clear)
-		fillpage(p, 0);
 
 	return p;
 }

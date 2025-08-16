@@ -99,7 +99,7 @@ retry:
 			putpage(new);
 			continue;
 		}
-		new = newpage(0, nil, paddr + o);
+		new = newpage(paddr + o, nil);
 		new->daddr = daddr + o;
 		k = kmap(new);
 		n = ask - o;
@@ -177,11 +177,10 @@ fixfault(Segment *s, uintptr addr, int read)
 	case SG_SHARED:			/* fill on demand */
 	case SG_STACK:
 		if(*pg == nil) {
-			new = newpage(0, &s, addr);
-			if(s == nil)
+			new = newpage(addr, s);
+			if(new == nil)
 				return -1;
-			fillpage(new, (s->type&SG_TYPE)==SG_STACK? 0xfe: 0);
-			*pg = new;
+			*pg = fillpage(new, (s->type&SG_TYPE)==SG_STACK? 0xfe: 0);
 			s->used++;
 		}
 		/* wet floor */
@@ -203,8 +202,8 @@ fixfault(Segment *s, uintptr addr, int read)
 		if(swapimage != nil && old->image == swapimage && (old->ref + swapcount(old->daddr)) == 1)
 			uncachepage(old);
 		if(old->ref > 1 || old->image != nil) {
-			new = newpage(0, &s, addr);
-			if(s == nil)
+			new = newpage(addr, s);
+			if(new == nil)
 				return -1;
 			copypage(old, new);
 			settxtflush(new, s->flushme);

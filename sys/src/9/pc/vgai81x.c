@@ -192,7 +192,7 @@ i81xcurenable(VGAscr* scr)
 
 	if(scr->storage == 0){
 		CursorI81x *hwcurs;
-		Page *pg = newpage(0, nil, 0);
+		Page *pg = newpage(0, nil);
 		scr->storage = (uintptr)vmap(pg->pa, BY2PG);
 		if(scr->storage == 0){
 			putpage(pg);

@@ -222,7 +222,7 @@ int		newfd(Chan*, int);
 Mhead*		newmhead(Chan*);
 Mount*		newmount(Chan*, int, char*);
 Image*		newimage(ulong);
-Page*		newpage(int, Segment **, uintptr);
+Page*		newpage(uintptr, QLock*);
 Path*		newpath(char*);
 Pgrp*		newpgrp(void);
 Rgrp*		newrgrp(void);

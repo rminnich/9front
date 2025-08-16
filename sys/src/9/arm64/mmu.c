@@ -283,7 +283,7 @@ putmmu(uintptr va, uintptr pa, Page *pg)
 	s = splhi();
 	while((pte = mmuwalk(va, 0)) == nil){
 		spllo();
-		up->mmufree = newpage(0, nil, 0);
+		up->mmufree = newpage(0, nil);
 		splhi();
 	}
 	old = *pte;

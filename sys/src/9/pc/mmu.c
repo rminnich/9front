@@ -206,7 +206,7 @@ mmupdballoc(void)
 	m->pdballoc++;
 	if(m->pdbpool == 0){
 		spllo();
-		page = newpage(0, 0, 0);
+		page = newpage(0, nil);
 		page->va = (ulong)vpd;
 		splhi();
 		pdb = tmpmap(page);
@@ -432,7 +432,7 @@ putmmu(uintptr va, uintptr pa, Page*)
 	if(!(vpd[PDX(va)]&PTEVALID)){
 		if(up->mmufree == 0){
 			spllo();
-			page = newpage(0, 0, 0);
+			page = newpage(0, nil);
 			splhi();
 		}
 		else{
@@ -808,7 +808,7 @@ kmap(Page *page)
 		if(up->kmaptable != nil)
 			panic("kmaptable");
 		spllo();
-		up->kmaptable = newpage(0, 0, 0);
+		up->kmaptable = newpage(0, nil);
 		splhi();
 		vpd[PDX(KMAP)] = up->kmaptable->pa|PTEWRITE|PTEVALID;
 		flushpg((ulong)kpt);

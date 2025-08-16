@@ -59,7 +59,6 @@ void mmuflushtlb(Page*);
 void	mmuinit(void);
 ulong	mmukmap(ulong, ulong, int);
 int	mmukmapsync(ulong);
-#define	mmunewpage(x)
 ulong*	mmuwalk(ulong*, ulong, int, int);
 char*	mtrr(uvlong, uvlong, char *);
 int	mtrrprint(char *, long);

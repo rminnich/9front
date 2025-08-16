@@ -287,14 +287,15 @@ putmmu(uintptr va, uintptr pa, Page* page)
 		/* wasteful - l2 pages only have 256 entries - fix */
 		if(up->mmul2cache == nil){
 			/* auxpg since we don't need much? memset if so */
-			pg = newpage(1, 0, 0);
+			pg = newpage(0, nil);
 			pg->va = VA(kmap(pg));
 		}
 		else{
 			pg = up->mmul2cache;
 			up->mmul2cache = pg->next;
-			memset((void*)pg->va, 0, BY2PG);
 		}
+		memset((void*)pg->va, 0, BY2PG);
+
 		pg->daddr = x;
 		pg->next = up->mmul2;
 		up->mmul2 = pg;

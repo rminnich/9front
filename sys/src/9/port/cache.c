@@ -426,7 +426,7 @@ cachedata(Mntcache *m, uchar *buf, int len, vlong off)
 			}
 			if(fscache->pgref > TOTALPAGES)
 				pagereclaim(fscache);
-			p = newpage(0, nil, pn*BY2PG);
+			p = newpage(pn*BY2PG, nil);
 			p->daddr = cacheaddr(m, pn);
 			cachedel(fscache, p->daddr);
 			cachepage(p, fscache);

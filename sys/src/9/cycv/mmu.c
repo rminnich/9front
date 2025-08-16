@@ -145,7 +145,7 @@ putmmu(uintptr va, uintptr pa, Page *pg)
 		if(p != nil)
 			up->mmufree = p->next;
 		else
-			p = newpage(0, 0, 0);
+			p = newpage(0, nil);
 		p->daddr = L1RX(va);
 		p->next = up->mmuused;
 		up->mmuused = p;
@@ -272,7 +272,7 @@ kmap(Page *page)
 	if((*e & 3) == 0){
 		if(up->kmaptable != nil)
 			panic("kmaptable != nil");
-		up->kmaptable = newpage(0, 0, 0);
+		up->kmaptable = newpage(0, nil);
 		s = splhi();
 		v = tmpmap(up->kmaptable->pa);
 		memset(v, 0, BY2PG);

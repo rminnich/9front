@@ -371,7 +371,7 @@ segmentwrite(Chan *c, void *a, long n, vlong voff)
 					nexterror();
 				}
 				for(; va < s->top; va += BY2PG)
-					segpage(s, newpage(1, nil, va));
+					segpage(s, fillpage(newpage(va, nil), 0));
 				poperror();
 				g->s = s;
 			} else
@@ -522,13 +522,12 @@ fixedseg(uintptr va, ulong len)
 			p->va = va;
 			va += BY2PG;
 			p->modref = 0;
-			fillpage(p, 0);
 			if(waserror()){
 				while(++p <= l)
 					freepages(p, p, 1);
 				nexterror();
 			}
-			segpage(s, p);
+			segpage(s, fillpage(p, 0));
 			poperror();
 		} while(p != l);
 

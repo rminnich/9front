@@ -206,11 +206,12 @@ putmmu(uintptr va, uintptr pa, Page* page)
 		/* l2 pages only have 256 entries - wastes 3K per 1M of address space */
 		if(up->mmul2cache == nil){
 			spllo();
-			pg = newpage(1, 0, 0);
+			pg = newpage(0, nil);
 			splhi();
 			/* if newpage slept, we might be on a different cpu */
 			l1 = &m->mmul1[x];
 			pg->va = VA(kmap(pg));
+			memset((void*)pg->va, 0, BY2PG);
 		}else{
 			pg = up->mmul2cache;
 			up->mmul2cache = pg->next;

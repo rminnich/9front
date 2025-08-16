@@ -303,7 +303,7 @@ mmupdballoc(ulong va, void *mpdb)
 		spllo();
 		badpages = 0;
 		for (;;) {
-			page = newpage(0, 0, 0);
+			page = newpage(0, nil);
 			page->va = VA(kmap(page));
 			if(mpdb)
 				memmove((void*)page->va, mpdb, BY2PG);
@@ -406,7 +406,7 @@ putmmu(ulong va, ulong pa, Page*)
 		if(up->mmufree == 0){
 			badpages = 0;
 			for (;;) {
-				page = newpage(1, 0, 0);
+				page = newpage(0, nil);
 				page->va = VA(kmap(page));
 				if (xenptpin(page->va))
 					break;
@@ -423,10 +423,10 @@ putmmu(ulong va, ulong pa, Page*)
 		else {
 			page = up->mmufree;
 			up->mmufree = page->next;
-			memset((void*)page->va, 0, BY2PG);
 			if (!xenptpin(page->va))
 				panic("xenptpin");
 		}
+		memset((void*)page->va, 0, BY2PG);
 
 		xenupdate(&pdb[pdbx], page->pa|PTEVALID|PTEUSER|PTEWRITE);
 
