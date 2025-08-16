@@ -148,7 +148,7 @@ install:V:
 		}} > $i.s
 		$AS $i.s
 	}
-	ar vu /$objtype/lib/libc.a *.$O
+	ar vr /$objtype/lib/libc.a *.$O
 	rm -f *.$O *.s
 
 nuke clean:V:

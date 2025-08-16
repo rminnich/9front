@@ -37,7 +37,7 @@ install:V:	$LIB
 	date
 
 $LIB:	$LIBOBJ
-	ar vu $LIB $OFILES
+	ar vr $LIB $OFILES
 
 mac.$O: macbody
 

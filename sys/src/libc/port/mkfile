@@ -163,6 +163,6 @@ $GEN:	$UCD
 $EXTRA:		$GEN
 
 extra:V:	$EXTRA
-	ar vu $LIB $prereq
+	ar vr $LIB $prereq
 
 regen:V:	$GEN
