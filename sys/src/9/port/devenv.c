@@ -504,7 +504,7 @@ getconfenv(void)
 	Egrp *eg = &confegrp;
 	Evalue *e;
 	char *p, *q;
-	int i, n;
+	int i, n, m;
 
 	rlock(eg);
 	n = 1;
@@ -528,12 +528,16 @@ getconfenv(void)
 		memmove(q, e->name, n);
 		q += n;
 		memmove(q, e->value, e->len);
-		q[e->len] = 0;
-		for(n=0; n<e->len; n++){
+		for(m = e->len; m > 0; m--){
+			if(q[m-1] != '\0')
+				break;
+		}
+		for(n = 0; n < m; n++){
 			if(q[n] == '\0')
 				q[n] = ' ';
 		}
-		q += n+1;
+		q[m] = 0;
+		q += m+1;
 	}
 	*q = '\0';
 	runlock(eg);
