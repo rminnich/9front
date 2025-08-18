@@ -399,9 +399,6 @@ regarding the use of
 and the
 .B repl
 bit, but applied to the affine mappings.
-Both
-.BR Memimage s
-must have the same channel description and use 8-bit channels.
 .PP
 .I Mkwarp
 converts a 3×3 row-major matrix of
