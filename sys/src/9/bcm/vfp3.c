@@ -544,6 +544,7 @@ fpuemu(Ureg* ureg)
 {
 	int s, nfp, cop, op;
 	uintptr pc;
+	ulong inst;
 
 	if(waserror()){
 		postnote(up, 1, up->errstr, NDebug);
@@ -553,8 +554,9 @@ fpuemu(Ureg* ureg)
 	nfp = 0;
 	pc = ureg->pc;
 	validaddr(pc, 4, 0);
-	op  = (*(ulong *)pc >> 24) & MASK(4);
-	cop = (*(ulong *)pc >>  8) & MASK(4);
+	inst = *(ulong*)pc;
+	op  = (inst >> 24) & MASK(4);
+	cop = (inst >>  8) & MASK(4);
 	if(m->fpon)
 		fpstuck(pc);		/* debugging; could move down 1 line */
 	if (ISFPAOP(cop, op)) {		/* old arm 7500 fpa opcode? */
@@ -570,6 +572,10 @@ fpuemu(Ureg* ureg)
 		poperror();
 	} else if (ISVFPOP(cop, op)) {	/* if vfp, fpu off or unsupported instruction */
 		mathemu(ureg);		/* enable fpu & retry */
+		nfp = 1;
+	} else if ((inst & 0xffffff80) == 0xf57ff000){
+		/* barriers, clrex */
+		ureg->pc += 4;
 		nfp = 1;
 	}
 
