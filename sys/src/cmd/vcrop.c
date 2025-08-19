@@ -64,8 +64,14 @@ crop(void)
 	o = addpt(n->r.min, o);
 	o = subpt(o, addpt(n->r.min, pos));
 	/* clamp rect to image bounds */
-	if(o.x < n->r.min.x) o.x = n->r.min.x;
-	if(o.y < n->r.min.y) o.y = n->r.min.y;
+	if(o.x < n->r.min.x){
+		r.max.x -= n->r.min.x - o.x;
+		o.x = n->r.min.x;
+	}
+	if(o.y < n->r.min.y){
+		r.max.y -= n->r.min.y - o.y;
+		o.y = n->r.min.y;
+	}
 	if((o.x + Dx(r)) > n->r.max.x) r.max.x = r.min.x + n->r.max.x - o.x;
 	if((o.y + Dy(r)) > n->r.max.y) r.max.y = r.min.y + n->r.max.y - o.y;
 	i = allocimage(display, r, n->chan, 0, DTransparent);
