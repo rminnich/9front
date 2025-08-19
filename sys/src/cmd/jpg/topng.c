@@ -21,7 +21,7 @@ main(int argc, char *argv[])
 	Memimage *i;
 	int fd;
 	char *err, *filename;
-	ImageInfo II;
+	ImageInfo II = {0};
 
 	ARGBEGIN{
 	case 'c':
