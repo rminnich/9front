@@ -1,16 +1,15 @@
 </$objtype/mkfile
 
 PORTDIRS=9sys 9syscall fmt port
-DIRS=$PORTDIRS $CPUS
+DIRS=$PORTDIRS $CPUS ucd
 OLDCPUS=68000 68020 sparc
 
 all install:V:
-	for(i in $PORTDIRS $objtype)@{
+	for(i in $PORTDIRS $objtype ucd)@{
 		echo $i
 		cd $i
 		mk $MKFLAGS install
 	}
-	@{ cd port && mk extra }
 
 clean:V:
 	for(i in $DIRS $OLDCPUS test)@{
@@ -20,7 +19,7 @@ clean:V:
 	}
 
 nuke:V:
-	for(i in $PORTDIRS $objtype)@{
+	for(i in $PORTDIRS $objtype ucd)@{
 		echo $i
 		cd $i
 		mk $MKFLAGS nuke

@@ -1,0 +1,42 @@
+</$objtype/mkfile
+
+LIB=/$objtype/lib/libc.a
+
+OFILES=\
+	runenorm.$O\
+	runetotype.$O\
+	runeistype.$O\
+	runebreak.$O\
+
+CLEANFILES=$OFILES
+
+HFILES=/sys/include/libc.h
+
+</sys/src/cmd/mksyslib
+
+DATA=\
+	runenormdata\
+	runetotypedata\
+	runeistypedata\
+	runebreakdata\
+
+$OFILES: $DATA
+
+UCD=\
+	/lib/ucd/CompositionExclusions.txt\
+	/lib/ucd/DerivedNormalizationProps.txt\
+	/lib/ucd/GraphemeBreakProperty.txt\
+	/lib/ucd/UnicodeData.txt\
+	/lib/ucd/WordBreakProperty.txt\
+	/lib/ucd/emoji-data.txt\
+
+$DATA:	$UCD
+	@{
+		eval `{grep '^[A-Z]' /$cputype/mkfile}
+		$CC $CFLAGS -o mkrunetype.$O mkrunetype.c
+		$LD $LDFLAGS -o $O.mkrunetype mkrunetype.$O
+		./$O.mkrunetype
+	}
+
+nuke:V:
+	rm -f $DATA *.mkrunetype
