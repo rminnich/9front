@@ -3,10 +3,10 @@ AFLAGS=
 all:V:	$LIB
 
 $LIB:V:	$OFILES			# force archive even when not needed
-	ar vr $LIB $newprereq
+	ar vu $LIB $newprereq
 
 &:n:	&.$O
-	ar vr $LIB $stem.$O
+	ar vu $LIB $stem.$O
 
 %.$O:	$HFILES			# don't combine with following %.$O rules
 
