@@ -729,7 +729,7 @@ tcomo(Node *n, int f)
 	t = n->type;
 	if(t == T)
 		goto bad;
-	if(t->width < 0) {
+	if(t->width < 0 && !(f & ADDROP)) {
 		snap(t);
 		if(t->width < 0) {
 			if(typesu[t->etype] && t->tag)
