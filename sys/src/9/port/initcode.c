@@ -30,8 +30,8 @@ startboot(char*, char **argv)
 
 	bind(c, dev, MAFTER);
 	bind(d, fd, MREPL);
+	bind(e, env, MREPL|MCREATE);
 	bind(ec, env, MAFTER);
-	bind(e, env, MCREATE|MAFTER);
 	bind(p, proc, MREPL);
 	bind(s, srv, MREPL|MCREATE);
 	bind(σ, shr, MREPL);
