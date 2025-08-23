@@ -17,6 +17,7 @@ faulterror(char *s, Chan *c)
 	if(up->nerrlab) {
 		if(up->kp == 0)
 			postnote(up, 1, buf, NDebug);
+		up->psstate = nil;
 		error(s);
 	}
 	pprint("suicide: %s\n", buf);
@@ -33,16 +34,15 @@ faultnote(char *type, char *access, uintptr addr)
 	postnote(up, 1, buf, NDebug);
 }
 
-static void
+static int
 pio(Segment *s, uintptr addr, uintptr soff, Page **p)
 {
 	KMap *k;
 	Chan *c;
 	int n, ask;
-	uintptr o, daddr, paddr;
+	uintptr daddr, vaddr;
 	Page *loadrec, *new;
 	Image *image;
-	Block *b;
 
 retry:
 	loadrec = *p;
@@ -53,7 +53,7 @@ retry:
 		if(new != nil) {
 			*p = new;
 			s->used++;
-			return;
+			return 0;
 		}
 
 		ask = image->c->iounit;
@@ -64,10 +64,9 @@ retry:
 		daddr = soff & -ask;
 		if(daddr+ask > s->flen)
 			ask = s->flen-daddr;
-		paddr = s->base + daddr;
+		vaddr = s->base + daddr;
 		daddr += s->fstart;
-	}
-	else {			/* from a swap image */
+	} else {		/* from a swap image */
 		daddr = swapaddr(loadrec);
 		image = swapimage;
 		new = lookpage(image, daddr);
@@ -75,50 +74,74 @@ retry:
 			*p = new;
 			s->swapped--;
 			putswap(loadrec);
-			return;
+			return 0;
 		}
-		paddr = addr;
+		vaddr = addr;
 		ask = BY2PG;
 	}
 	qunlock(s);
 
 	c = image->c;
-	while(waserror()) {
+	if(waserror()) {
 		if(strcmp(up->errstr, Eintr) == 0)
-			continue;
+			return -1;
 		faulterror(Eioload, c);
 	}
-	b = devtab[c->type]->bread(c, ask, daddr);
-	if(waserror()){
-		freeblist(b);
-		nexterror();
-	}
-	for(o = 0; o < ask; o += BY2PG){
-		new = lookpage(image, daddr + o);
-		if(new != nil){
-			putpage(new);
-			continue;
-		}
-		new = newpage(paddr + o, nil);
-		new->daddr = daddr + o;
+	if(ask <= BY2PG) {
+		new = newpage(vaddr, nil);
+		new->daddr = daddr;
 		k = kmap(new);
-		n = ask - o;
-		if(n > BY2PG)
-			n = BY2PG;
-		else if(n < BY2PG)
-			memset((uchar*)VA(k)+n, 0, BY2PG-n);
-		if(readblist(b, (uchar*)VA(k), n, o) != n){
+		if(waserror()){
 			kunmap(k);
 			putpage(new);
-			error(Eshort);
+			nexterror();
 		}
+		n = devtab[c->type]->read(c, (uchar*)VA(k), ask, daddr);
+		if(n != ask)
+			error(Eshort);
+		if(n < BY2PG)
+			memset((uchar*)VA(k)+n, 0, BY2PG-n);
 		kunmap(k);
 		settxtflush(new, s->flushme);
 		cachepage(new, image);
 		putpage(new);
+		poperror();
+	} else {
+		uintptr o;
+		Block *b;
+
+		b = devtab[c->type]->bread(c, ask, daddr);
+		if(waserror()){
+			freeblist(b);
+			nexterror();
+		}
+		for(o = 0; o < ask; o += BY2PG){
+			new = lookpage(image, daddr + o);
+			if(new != nil){
+				putpage(new);
+				continue;
+			}
+			new = newpage(vaddr + o, nil);
+			new->daddr = daddr + o;
+			k = kmap(new);
+			n = ask - o;
+			if(n > BY2PG)
+				n = BY2PG;
+			else if(n < BY2PG)
+				memset((uchar*)VA(k)+n, 0, BY2PG-n);
+			if(readblist(b, (uchar*)VA(k), n, o) != n){
+				kunmap(k);
+				putpage(new);
+				error(Eshort);
+			}
+			kunmap(k);
+			settxtflush(new, s->flushme);
+			cachepage(new, image);
+			putpage(new);
+		}
+		freeblist(b);
+		poperror();
 	}
-	freeblist(b);
-	poperror();
 	poperror();
 
 	qlock(s);
@@ -128,7 +151,7 @@ retry:
 	 *  s was unlocked
 	 */
 	if(*p != loadrec && !pagedout(*p))
-		return;
+		return 0;
 	goto retry;
 }
 
@@ -166,9 +189,10 @@ fixfault(Segment *s, uintptr addr, int read)
 		panic("fault");
 
 	case SG_TEXT: 			/* Demand load */
-		if(pagedout(*pg))
-			pio(s, addr, soff, pg);
-
+		if(pagedout(*pg)){
+			if(pio(s, addr, soff, pg) < 0)
+				return -1;
+		}
 		mmuphys = PPN((*pg)->pa) | PTERONLY | PTECACHED | PTEVALID;
 		(*pg)->modref = PG_REF;
 		break;
@@ -185,9 +209,10 @@ fixfault(Segment *s, uintptr addr, int read)
 		}
 		/* wet floor */
 	case SG_DATA:			/* Demand load/pagein/copy on write */
-		if(pagedout(*pg))
-			pio(s, addr, soff, pg);
-
+		if(pagedout(*pg)){
+			if(pio(s, addr, soff, pg) < 0)
+				return -1;
+		}
 		/*
 		 *  It's only possible to copy on write if
 		 *  we're the only user of the segment.
