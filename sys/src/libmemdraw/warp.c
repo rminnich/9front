@@ -26,6 +26,7 @@ struct Sampler
 	int bpl;
 	int cmask;
 	long Δx, Δy;
+	ulong (*getpixel)(Sampler*, Point);
 };
 
 struct Blitter
@@ -34,6 +35,7 @@ struct Blitter
 	uchar *a;
 	int bpl;
 	int cmask;
+	void (*putpixel)(Blitter*, Point, ulong);
 };
 
 static Point
@@ -43,6 +45,192 @@ fix_xform(Point p, Warp m)
 		fixmul(p.x, m[0][0]) + fixmul(p.y, m[0][1]) + m[0][2],
 		fixmul(p.x, m[1][0]) + fixmul(p.y, m[1][1]) + m[1][2]
 	};
+}
+
+static ulong
+getpixel_k1(Sampler *s, Point pt)
+{
+	uchar *p;
+	ulong off, npack, v;
+
+	p = s->a + pt.y*s->bpl + (pt.x >> 3);
+	npack = 8;
+	off = pt.x % npack;
+	v = p[0] >> (npack-1-off) & 0x1;
+	v *= 0xFFFFFFFF;
+	return v|0xFF;
+}
+
+static ulong
+getpixel_k2(Sampler *s, Point pt)
+{
+	uchar *p, v;
+	ulong off, npack;
+
+	p = s->a + pt.y*s->bpl + (pt.x*2 >> 3);
+	npack = 8/2;
+	off = pt.x % npack;
+	v = p[0] >> 2*(npack-1-off) & 0x3;
+	v |= v<<2;
+	v |= v<<4;
+	return (v<<24)|(v<<16)|(v<<8)|0xFF;
+}
+
+static ulong
+getpixel_k4(Sampler *s, Point pt)
+{
+	uchar *p, v;
+	ulong off, npack;
+
+	p = s->a + pt.y*s->bpl + (pt.x*4 >> 3);
+	npack = 8/4;
+	off = pt.x % npack;
+	v = p[0] >> 4*(npack-1-off) & 0xF;
+	v |= v<<4;
+	return (v<<24)|(v<<16)|(v<<8)|0xFF;
+}
+
+static ulong
+getpixel_k8(Sampler *s, Point pt)
+{
+	uchar *p, v;
+
+	p = s->a + pt.y*s->bpl + pt.x;
+	v = p[0];
+	return (v<<24)|(v<<16)|(v<<8)|0xFF;
+}
+
+static ulong
+getpixel_m8(Sampler *s, Point pt)
+{
+	uchar *p, m, r, g, b;
+
+	p = s->a + pt.y*s->bpl + pt.x;
+	m = p[0];
+	p = s->i->cmap->cmap2rgb+3*m;
+	r = p[0];
+	g = p[1];
+	b = p[2];
+	return (r<<24)|(g<<16)|(b<<8)|0xFF;
+}
+
+static ulong
+getpixel_x1r5g5b5(Sampler *s, Point pt)
+{
+	uchar *p, r, g, b;
+	ulong val;
+
+	p = s->a + pt.y*s->bpl + pt.x*2;
+	val = p[0]|(p[1]<<8);
+	b = val&0x1F; b = (b<<3)|(b>>2);
+	val >>= 5;
+	g = val&0x1F; g = (g<<3)|(g>>2);
+	val >>= 5;
+	r = val&0x1F; r = (r<<3)|(r>>2);
+	return (r<<24)|(g<<16)|(b<<8)|0xFF;
+}
+
+static ulong
+getpixel_r5g6b5(Sampler *s, Point pt)
+{
+	uchar *p, r, g, b;
+	ulong val;
+
+	p = s->a + pt.y*s->bpl + pt.x*2;
+	val = p[0]|(p[1]<<8);
+	b = val&0x1F; b = (b<<3)|(b>>2);
+	val >>= 5;
+	g = val&0x3F; g = (g<<2)|(g>>4);
+	val >>= 6;
+	r = val&0x1F; r = (r<<3)|(r>>2);
+	return (r<<24)|(g<<16)|(b<<8)|0xFF;
+}
+
+static ulong
+getpixel_r8g8b8(Sampler *s, Point pt)
+{
+	uchar *p, r, g, b;
+
+	p = s->a + pt.y*s->bpl + pt.x*3;
+	b = p[0];
+	g = p[1];
+	r = p[2];
+	return (r<<24)|(g<<16)|(b<<8)|0xFF;
+}
+
+static ulong
+getpixel_r8g8b8a8(Sampler *s, Point pt)
+{
+	uchar *p, r, g, b, a;
+
+	p = s->a + pt.y*s->bpl + pt.x*4;
+	a = p[0];
+	b = p[1];
+	g = p[2];
+	r = p[3];
+	return (r<<24)|(g<<16)|(b<<8)|a;
+}
+
+static ulong
+getpixel_a8r8g8b8(Sampler *s, Point pt)
+{
+	uchar *p, r, g, b, a;
+
+	p = s->a + pt.y*s->bpl + pt.x*4;
+	b = p[0];
+	g = p[1];
+	r = p[2];
+	a = p[3];
+	return (r<<24)|(g<<16)|(b<<8)|a;
+}
+
+static ulong
+getpixel_x8r8g8b8(Sampler *s, Point pt)
+{
+	uchar *p, r, g, b;
+
+	p = s->a + pt.y*s->bpl + pt.x*4;
+	b = p[0];
+	g = p[1];
+	r = p[2];
+	return (r<<24)|(g<<16)|(b<<8)|0xFF;
+}
+
+static ulong
+getpixel_b8g8r8(Sampler *s, Point pt)
+{
+	uchar *p, r, g, b;
+
+	p = s->a + pt.y*s->bpl + pt.x*3;
+	r = p[0];
+	g = p[1];
+	b = p[2];
+	return (r<<24)|(g<<16)|(b<<8)|0xFF;
+}
+
+static ulong
+getpixel_a8b8g8r8(Sampler *s, Point pt)
+{
+	uchar *p, r, g, b, a;
+
+	p = s->a + pt.y*s->bpl + pt.x*4;
+	r = p[0];
+	g = p[1];
+	b = p[2];
+	a = p[3];
+	return (r<<24)|(g<<16)|(b<<8)|a;
+}
+
+static ulong
+getpixel_x8b8g8r8(Sampler *s, Point pt)
+{
+	uchar *p, r, g, b;
+
+	p = s->a + pt.y*s->bpl + pt.x*4;
+	r = p[0];
+	g = p[1];
+	b = p[2];
+	return (r<<24)|(g<<16)|(b<<8)|0xFF;
 }
 
 static ulong
@@ -58,7 +246,7 @@ getpixel(Sampler *s, Point pt)
 	p = s->a + pt.y*s->bpl + (pt.x*s->i->depth >> 3);
 
 	/* pixelbits() */
-	switch(bpp=s->i->depth){
+	switch(bpp = s->i->depth){
 	case 1:
 	case 2:
 	case 4:
@@ -81,28 +269,17 @@ getpixel(Sampler *s, Point pt)
 		break;
 	}
 
-	/* fast path for true color images */
-	switch(s->i->chan){
-	case RGBA32:
-		return val;
-	case XRGB32:
-	case RGB24:
-		return val<<8|0xFF;
-	case ABGR32:
-		return p[3]|(p[2]<<8)|(p[1]<<16)|(p[0]<<24);
-	case XBGR32:
-	case BGR24:
-		return p[2]<<8|(p[1]<<16)|(p[0]<<24)|0xFF;
-	}
-
-	while(bpp<32){
+	while(bpp < 32){
 		val |= val<<bpp;
 		bpp *= 2;
 	}
 
 	/* imgtorgba() */
-	for(chan=s->i->chan; chan; chan>>=8){
-		ctype = TYPE(chan);
+	for(chan = s->i->chan; chan; chan >>= 8){
+		if((ctype = TYPE(chan)) == CIgnore){
+			val >>= s->i->nbits[ctype];
+			continue;
+		}
 		nb = s->i->nbits[ctype];
 		ov = v = val & s->i->mask[ctype];
 		val >>= nb;
@@ -111,7 +288,7 @@ getpixel(Sampler *s, Point pt)
 			v |= v<<nb;
 			nb *= 2;
 		}
-		v >>= (nb-8);
+		v >>= nb-8;
 
 		switch(ctype){
 		case CRed:
@@ -141,42 +318,224 @@ getpixel(Sampler *s, Point pt)
 }
 
 static void
+putpixel_k1(Blitter *blt, Point dp, ulong rgba)
+{
+	uchar *p, r, g, b, m;
+	int off, npack, sh, mask;
+
+	p = blt->a + dp.y*blt->bpl + (dp.x >> 3);
+
+	r = rgba>>24;
+	g = rgba>>16;
+	b = rgba>>8;
+	m = RGB2K(r,g,b);
+	m >>= 8-1;
+
+	mask = 0x1;
+	npack = 8;
+	off = dp.x%npack;
+	sh = npack-1-off;
+	mask <<= sh;
+	m <<= sh;
+	p[0] = (p[0] ^ m) & mask ^ p[0];
+}
+
+static void
+putpixel_k2(Blitter *blt, Point dp, ulong rgba)
+{
+	uchar *p, r, g, b, m;
+	int off, npack, sh, mask;
+
+	p = blt->a + dp.y*blt->bpl + (dp.x*2 >> 3);
+
+	r = rgba>>24;
+	g = rgba>>16;
+	b = rgba>>8;
+	m = RGB2K(r,g,b);
+	m >>= 8-2;
+
+	mask = 0x3;
+	npack = 8/2;
+	off = dp.x%npack;
+	sh = 2*(npack-1-off);
+	mask <<= sh;
+	m <<= sh;
+	p[0] = (p[0] ^ m) & mask ^ p[0];
+}
+
+static void
+putpixel_k4(Blitter *blt, Point dp, ulong rgba)
+{
+	uchar *p, r, g, b, m;
+	int off, npack, sh, mask;
+
+	p = blt->a + dp.y*blt->bpl + (dp.x*4 >> 3);
+
+	r = rgba>>24;
+	g = rgba>>16;
+	b = rgba>>8;
+	m = RGB2K(r,g,b);
+	m >>= 8-4;
+
+	mask = 0xF;
+	npack = 8/4;
+	off = dp.x%npack;
+	sh = 4*(npack-1-off);
+	mask <<= sh;
+	m <<= sh;
+	p[0] = (p[0] ^ m) & mask ^ p[0];
+}
+
+static void
+putpixel_k8(Blitter *blt, Point dp, ulong rgba)
+{
+	uchar *p, r, g, b, m;
+
+	p = blt->a + dp.y*blt->bpl + dp.x;
+
+	r = rgba>>24;
+	g = rgba>>16;
+	b = rgba>>8;
+	m = RGB2K(r,g,b);
+	p[0] = m;
+}
+
+static void
+putpixel_m8(Blitter *blt, Point dp, ulong rgba)
+{
+	uchar *p, r, g, b, m;
+
+	p = blt->a + dp.y*blt->bpl + dp.x;
+
+	r = rgba>>24;
+	g = rgba>>16;
+	b = rgba>>8;
+	m = blt->i->cmap->rgb2cmap[(r>>4)*256+(g>>4)*16+(b>>4)];
+	p[0] = m;
+}
+
+static void
+putpixel_x1r5g5b5(Blitter *blt, Point dp, ulong rgba)
+{
+	uchar *p, r, g, b;
+	ushort v;
+
+	p = blt->a + dp.y*blt->bpl + dp.x*2;
+	r = rgba>>24;
+	g = rgba>>16;
+	b = rgba>>8;
+	v = r>>(8-5);
+	v = (v<<5)|(g>>(8-5));
+	v = (v<<5)|(b>>(8-5));
+	p[0] = v;
+	p[1] = v>>8;
+}
+
+static void
+putpixel_r5g6b5(Blitter *blt, Point dp, ulong rgba)
+{
+	uchar *p, r, g, b;
+	ushort v;
+
+	p = blt->a + dp.y*blt->bpl + dp.x*2;
+	r = rgba>>24;
+	g = rgba>>16;
+	b = rgba>>8;
+	v = r>>(8-5);
+	v = (v<<6)|(g>>(8-6));
+	v = (v<<5)|(b>>(8-5));
+	p[0] = v;
+	p[1] = v>>8;
+}
+
+static void
+putpixel_r8g8b8(Blitter *blt, Point dp, ulong rgba)
+{
+	uchar *p;
+
+	p = blt->a + dp.y*blt->bpl + dp.x*3;
+	p[0] = rgba>>8;
+	p[1] = rgba>>16;
+	p[2] = rgba>>24;
+}
+
+static void
+putpixel_r8g8b8a8(Blitter *blt, Point dp, ulong rgba)
+{
+	uchar *p;
+
+	p = blt->a + dp.y*blt->bpl + dp.x*4;
+	p[0] = rgba;
+	p[1] = rgba>>8;
+	p[2] = rgba>>16;
+	p[3] = rgba>>24;
+}
+
+static void
+putpixel_a8r8g8b8(Blitter *blt, Point dp, ulong rgba)
+{
+	uchar *p;
+
+	p = blt->a + dp.y*blt->bpl + dp.x*4;
+	p[0] = rgba>>8;
+	p[1] = rgba>>16;
+	p[2] = rgba>>24;
+	p[3] = rgba;
+}
+
+static void
+putpixel_x8r8g8b8(Blitter *blt, Point dp, ulong rgba)
+{
+	uchar *p;
+
+	p = blt->a + dp.y*blt->bpl + dp.x*4;
+	p[0] = rgba>>8;
+	p[1] = rgba>>16;
+	p[2] = rgba>>24;
+}
+
+static void
+putpixel_b8g8r8(Blitter *blt, Point dp, ulong rgba)
+{
+	uchar *p;
+
+	p = blt->a + dp.y*blt->bpl + dp.x*3;
+	p[0] = rgba>>24;
+	p[1] = rgba>>16;
+	p[2] = rgba>>8;
+}
+
+static void
+putpixel_a8b8g8r8(Blitter *blt, Point dp, ulong rgba)
+{
+	uchar *p;
+
+	p = blt->a + dp.y*blt->bpl + dp.x*4;
+	p[0] = rgba>>24;
+	p[1] = rgba>>16;
+	p[2] = rgba>>8;
+	p[3] = rgba;
+}
+
+static void
+putpixel_x8b8g8r8(Blitter *blt, Point dp, ulong rgba)
+{
+	uchar *p;
+
+	p = blt->a + dp.y*blt->bpl + dp.x*4;
+	p[0] = rgba>>24;
+	p[1] = rgba>>16;
+	p[2] = rgba>>8;
+}
+
+static void
 putpixel(Blitter *blt, Point dp, ulong rgba)
 {
 	uchar *p, r, g, b, a, m;
-	ulong chan, ctype, ov, v;
-	int nb, off, bpp, npack, sh, mask;
+	ulong chan, ov, v;
+	int off, npack, sh, mask;
 
-	bpp = blt->i->depth;
-	p = blt->a + dp.y*blt->bpl + (dp.x*bpp >> 3);
-
-	/* fast path for true color images */
-	switch(blt->i->chan){
-	case RGBA32:
-		p[0] = rgba;
-		p[1] = rgba>>8;
-		p[2] = rgba>>16;
-		p[3] = rgba>>24;
-		return;
-	case XRGB32:
-	case RGB24:
-		p[0] = rgba>>8;
-		p[1] = rgba>>16;
-		p[2] = rgba>>24;
-		return;
-	case ABGR32:
-		p[0] = rgba>>24;
-		p[1] = rgba>>16;
-		p[2] = rgba>>8;
-		p[3] = rgba;
-		return;
-	case XBGR32:
-	case BGR24:
-		p[0] = rgba>>24;
-		p[1] = rgba>>16;
-		p[2] = rgba>>8;
-		return;
-	}
+	p = blt->a + dp.y*blt->bpl + (dp.x*blt->i->depth >> 3);
 
 	/* rgbatoimg() */
 	v = 0;
@@ -185,28 +544,28 @@ putpixel(Blitter *blt, Point dp, ulong rgba)
 	b = rgba>>8;
 	a = rgba;
 	for(chan=blt->i->chan; chan; chan>>=8){
-		ctype = TYPE(chan);
-		nb = blt->i->nbits[ctype];
-		switch(ctype){
+		switch(TYPE(chan)){
+		case CIgnore:
+			continue;
 		case CRed:
-			v |= (r>>(8-nb)) << blt->i->shift[CRed];
+			v |= (r>>(8-blt->i->nbits[CRed])) << blt->i->shift[CRed];
 			break;
 		case CGreen:
-			v |= (g>>(8-nb)) << blt->i->shift[CGreen];
+			v |= (g>>(8-blt->i->nbits[CGreen])) << blt->i->shift[CGreen];
 			break;
 		case CBlue:
-			v |= (b>>(8-nb)) << blt->i->shift[CBlue];
+			v |= (b>>(8-blt->i->nbits[CBlue])) << blt->i->shift[CBlue];
 			break;
 		case CAlpha:
-			v |= (a>>(8-nb)) << blt->i->shift[CAlpha];
+			v |= (a>>(8-blt->i->nbits[CAlpha])) << blt->i->shift[CAlpha];
 			break;
 		case CMap:
 			m = blt->i->cmap->rgb2cmap[(r>>4)*256+(g>>4)*16+(b>>4)];
-			v |= (m>>(8-nb)) << blt->i->shift[CMap];
+			v |= (m>>(8-blt->i->nbits[CMap])) << blt->i->shift[CMap];
 			break;
 		case CGrey:
 			m = RGB2K(r,g,b);
-			v |= (m>>(8-nb)) << blt->i->shift[CGrey];
+			v |= (m>>(8-blt->i->nbits[CGrey])) << blt->i->shift[CGrey];
 			break;
 		}
 	}
@@ -216,17 +575,61 @@ putpixel(Blitter *blt, Point dp, ulong rgba)
 
 	mask = blt->cmask;
 	if(blt->i->depth < 8){
-		npack = 8/bpp;
+		npack = 8/blt->i->depth;
 		off = dp.x%npack;
-		sh = bpp*(npack-1-off);
+		sh = blt->i->depth*(npack-1-off);
 		mask <<= sh;
 		v <<= sh;
 	}
-	v = (ov &~ mask) | (v & mask);
+	v = (ov ^ v) & mask ^ ov;	/* ≡ (ov &~ mask) | (v & mask) */
 	p[0] = v;
 	p[1] = v>>8;
 	p[2] = v>>16;
 	p[3] = v>>24;
+}
+
+static void *
+initsampfn(ulong chan)
+{
+	switch(chan){
+	case GREY1: return getpixel_k1;
+	case GREY2: return getpixel_k2;
+	case GREY4: return getpixel_k4;
+	case GREY8: return getpixel_k8;
+	case CMAP8: return getpixel_m8;
+	case RGB15: return getpixel_x1r5g5b5;
+	case RGB16: return getpixel_r5g6b5;
+	case RGB24: return getpixel_r8g8b8;
+	case RGBA32: return getpixel_r8g8b8a8;
+	case ARGB32: return getpixel_a8r8g8b8;
+	case XRGB32: return getpixel_x8r8g8b8;
+	case BGR24: return getpixel_b8g8r8;
+	case ABGR32: return getpixel_a8b8g8r8;
+	case XBGR32: return getpixel_x8b8g8r8;
+	}
+	return getpixel;
+}
+
+static void *
+initblitfn(ulong chan)
+{
+	switch(chan){
+	case GREY1: return putpixel_k1;
+	case GREY2: return putpixel_k2;
+	case GREY4: return putpixel_k4;
+	case GREY8: return putpixel_k8;
+	case CMAP8: return putpixel_m8;
+	case RGB15: return putpixel_x1r5g5b5;
+	case RGB16: return putpixel_r5g6b5;
+	case RGB24: return putpixel_r8g8b8;
+	case RGBA32: return putpixel_r8g8b8a8;
+	case ARGB32: return putpixel_a8r8g8b8;
+	case XRGB32: return putpixel_x8r8g8b8;
+	case BGR24: return putpixel_b8g8r8;
+	case ABGR32: return putpixel_a8b8g8r8;
+	case XBGR32: return putpixel_x8b8g8r8;
+	}
+	return putpixel;
 }
 
 static ulong
@@ -234,10 +637,10 @@ sample1(Sampler *s, Point p)
 {
 	if(p.x >= s->r.min.x && p.x < s->r.max.x
 	&& p.y >= s->r.min.y && p.y < s->r.max.y)
-		return getpixel(s, p);
+		return s->getpixel(s, p);
 	else if(s->i->flags & Frepl){
 		p = drawrepl(s->r, p);
-		return getpixel(s, p);
+		return s->getpixel(s, p);
 	}
 	/* edge handler: constant */
 	return 0;
@@ -246,9 +649,8 @@ sample1(Sampler *s, Point p)
 static ulong
 bilinear(Sampler *s, Point p)
 {
-	ulong c00, c01, c10, c11, o;
-	uchar c0, c1, c;
-	int i;
+	ulong c00, c01, c10, c11;
+	uchar c0₀, c0₁, c0₂, c0₃, c1₀, c1₁, c1₂, c1₃;
 
 	c00 = sample1(s, p);
 	p.x++;
@@ -258,16 +660,26 @@ bilinear(Sampler *s, Point p)
 	p.x++;
 	c11 = sample1(s, p);
 
-	/* avoid processing alpha if possible */
-	i = s->i->flags & Falpha? 0: 8;
-	o = s->i->flags & Falpha? 0: 0xFF;
-	for(; i < 4*8; i += 8){
-		c0 = c00>>i; c0 = lerp(c0, c01>>i & 0xFF, s->Δx);
-		c1 = c10>>i; c1 = lerp(c1, c11>>i & 0xFF, s->Δx);
-		c  = lerp(c0, c1, s->Δy);
-		o |= (ulong)c << i;
-	}
-	return o;
+	c0₀ = c00>>24;
+	c0₁ = c00>>16;
+	c0₂ = c00>>8;
+	c0₃ = c00;
+	c1₀ = c10>>24;
+	c1₁ = c10>>16;
+	c1₂ = c10>>8;
+	c1₃ = c10;
+	c0₀ = lerp(c0₀, c01>>24 & 0xFF, s->Δx);
+	c0₁ = lerp(c0₁, c01>>16 & 0xFF, s->Δx);
+	c0₂ = lerp(c0₂, c01>>8  & 0xFF, s->Δx);
+	c0₃ = lerp(c0₃, c01     & 0xFF, s->Δx);
+	c1₀ = lerp(c1₀, c11>>24 & 0xFF, s->Δx);
+	c1₁ = lerp(c1₁, c11>>16 & 0xFF, s->Δx);
+	c1₂ = lerp(c1₂, c11>>8  & 0xFF, s->Δx);
+	c1₃ = lerp(c1₃, c11     & 0xFF, s->Δx);
+	return    (lerp(c0₀, c1₀, s->Δy)) << 24
+		| (lerp(c0₁, c1₁, s->Δy)) << 16
+		| (lerp(c0₂, c1₂, s->Δy)) << 8
+		| (lerp(c0₃, c1₃, s->Δy));
 }
 
 static ulong
@@ -300,11 +712,13 @@ memaffinewarp(Memimage *d, Rectangle r, Memimage *s, Point sp0, Warp m)
 	samp.a = s->data->bdata + s->zero;
 	samp.bpl = sizeof(ulong)*s->width;
 	samp.cmask = (1ULL << s->depth) - 1;
+	samp.getpixel = initsampfn(s->chan);
 
 	blit.i = d;
 	blit.a = d->data->bdata + d->zero;
 	blit.bpl = sizeof(ulong)*d->width;
 	blit.cmask = (1ULL << d->depth) - 1;
+	blit.putpixel = initblitfn(d->chan);
 
 	/*
 	 * incremental affine warping technique from:
@@ -322,7 +736,7 @@ memaffinewarp(Memimage *d, Rectangle r, Memimage *s, Point sp0, Warp m)
 		sp.y = sp0.y + fix2int(p2.y);
 
 		c = sample(&samp, sp);
-		putpixel(&blit, dp, c);
+		blit.putpixel(&blit, dp, c);
 
 		p2.x += m[0][0];
 		p2.y += m[1][0];
