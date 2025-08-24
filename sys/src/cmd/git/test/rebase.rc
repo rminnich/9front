@@ -21,7 +21,6 @@ echo @@ rebase test @@
 	q git/add b
 	q git/commit -m b b
 
-	q git/fs
-	q git/branch front-test
-	q git/rebase front | rc
+	git/branch front-test
+	git/rebase front | rc
 }

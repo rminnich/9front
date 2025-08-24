@@ -1,5 +1,7 @@
 #!/bin/rc -e
 
+rfork en
+
 . /sys/lib/git/common.rc
 gitup
 
