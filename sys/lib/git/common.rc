@@ -116,7 +116,7 @@ fn gitup{
 	if(! grep -s '^repo '$gitroot'$' $gitfs/ctl >[2]/dev/null)
 		startfs=true
 	if(~ $#startfs 1)
-		git/fs
+		git/fs >[1=2]
 	if not
 		status=''
 }
