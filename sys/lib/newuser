@@ -43,8 +43,8 @@ case cpu
 		}
 	} 
 	bind -a /mnt/term/dev /dev
-	prompt=($"sysname'% ' '	')
-	fn $"sysname^%{ $x^* }
+	prompt=($x^"sysname'% ' '	')
+	fn $x^"sysname^%{ $x^* }
 	if(! test -e /mnt/term/dev/wsys){
 		# call from drawterm
 		if(test -e /mnt/term/dev/secstore){
