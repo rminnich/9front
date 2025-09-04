@@ -9,11 +9,16 @@
 /* 25.7 fixed-point number operations */
 
 #define FMASK		((1<<7) - 1)
+#define flt2fix(n)	((long)((n)*(1<<7) + ((n) < 0? -0.5: 0.5)))
+#define fix2flt(n)	((n)/128.0)
 #define int2fix(n)	((vlong)(n)<<7)
 #define fix2int(n)	((n)>>7)
 #define fixmul(a,b)	((vlong)(a)*(vlong)(b) >> 7)
+#define fixdiv(a,b)	(((vlong)(a) << 7)/(vlong)(b))
 #define fixfrac(n)	((n)&FMASK)
 #define lerp(a,b,t)	((a) + ((((b) - (a))*(t))>>7))
+
+#define clamp(a,b,c)	((a)<(b)?(b):((a)>(c)?(c):(a)))
 
 typedef struct Sampler Sampler;
 typedef struct Blitter Blitter;
@@ -26,7 +31,9 @@ struct Sampler
 	int bpl;
 	int cmask;
 	long Δx, Δy;
-	ulong (*getpixel)(Sampler*, Point);
+	Memimage *k;			/* filtering kernel */
+	Point kcp;			/* kernel center point */
+	ulong (*fn)(Sampler*, Point);
 };
 
 struct Blitter
@@ -35,11 +42,34 @@ struct Blitter
 	uchar *a;
 	int bpl;
 	int cmask;
-	void (*putpixel)(Blitter*, Point, ulong);
+	void (*fn)(Blitter*, Point, ulong);
 };
 
+static void *getsampfn(ulong);
+static void *getblitfn(ulong);
+
+static void
+initsampler(Sampler *s, Memimage *i)
+{
+	s->i = i;
+	s->a = i->data->bdata + i->zero;
+	s->bpl = sizeof(ulong)*i->width;
+	s->cmask = (1ULL << i->depth) - 1;
+	s->fn = getsampfn(i->chan);
+}
+
+static void
+initblitter(Blitter *b, Memimage *i)
+{
+	b->i = i;
+	b->a = i->data->bdata + i->zero;
+	b->bpl = sizeof(ulong)*i->width;
+	b->cmask = (1ULL << i->depth) - 1;
+	b->fn = getblitfn(i->chan);
+}
+
 static Point
-fix_xform(Point p, Warp m)
+xform(Point p, Warp m)
 {
 	return (Point){
 		fixmul(p.x, m[0][0]) + fixmul(p.y, m[0][1]) + m[0][2],
@@ -57,8 +87,7 @@ getpixel_k1(Sampler *s, Point pt)
 	npack = 8;
 	off = pt.x % npack;
 	v = p[0] >> (npack-1-off) & 0x1;
-	v *= 0xFFFFFFFF;
-	return v|0xFF;
+	return v*0xFFFFFF00 | 0xFF;
 }
 
 static ulong
@@ -71,9 +100,7 @@ getpixel_k2(Sampler *s, Point pt)
 	npack = 8/2;
 	off = pt.x % npack;
 	v = p[0] >> 2*(npack-1-off) & 0x3;
-	v |= v<<2;
-	v |= v<<4;
-	return (v<<24)|(v<<16)|(v<<8)|0xFF;
+	return v*0x55555500 | 0xFF;
 }
 
 static ulong
@@ -86,32 +113,27 @@ getpixel_k4(Sampler *s, Point pt)
 	npack = 8/4;
 	off = pt.x % npack;
 	v = p[0] >> 4*(npack-1-off) & 0xF;
-	v |= v<<4;
-	return (v<<24)|(v<<16)|(v<<8)|0xFF;
+	return v*0x11111100 | 0xFF;
 }
 
 static ulong
 getpixel_k8(Sampler *s, Point pt)
 {
-	uchar *p, v;
+	uchar *p;
 
 	p = s->a + pt.y*s->bpl + pt.x;
-	v = p[0];
-	return (v<<24)|(v<<16)|(v<<8)|0xFF;
+	return p[0]*0x01010100 | 0xFF;
 }
 
 static ulong
 getpixel_m8(Sampler *s, Point pt)
 {
-	uchar *p, m, r, g, b;
+	uchar *p, m;
 
 	p = s->a + pt.y*s->bpl + pt.x;
 	m = p[0];
 	p = s->i->cmap->cmap2rgb+3*m;
-	r = p[0];
-	g = p[1];
-	b = p[2];
-	return (r<<24)|(g<<16)|(b<<8)|0xFF;
+	return (p[0]<<24)|(p[1]<<16)|(p[2]<<8)|0xFF;
 }
 
 static ulong
@@ -149,88 +171,64 @@ getpixel_r5g6b5(Sampler *s, Point pt)
 static ulong
 getpixel_r8g8b8(Sampler *s, Point pt)
 {
-	uchar *p, r, g, b;
+	uchar *p;
 
 	p = s->a + pt.y*s->bpl + pt.x*3;
-	b = p[0];
-	g = p[1];
-	r = p[2];
-	return (r<<24)|(g<<16)|(b<<8)|0xFF;
+	return (p[2]<<24)|(p[1]<<16)|(p[0]<<8)|0xFF;
 }
 
 static ulong
 getpixel_r8g8b8a8(Sampler *s, Point pt)
 {
-	uchar *p, r, g, b, a;
+	uchar *p;
 
 	p = s->a + pt.y*s->bpl + pt.x*4;
-	a = p[0];
-	b = p[1];
-	g = p[2];
-	r = p[3];
-	return (r<<24)|(g<<16)|(b<<8)|a;
+	return (p[3]<<24)|(p[2]<<16)|(p[1]<<8)|p[0];
 }
 
 static ulong
 getpixel_a8r8g8b8(Sampler *s, Point pt)
 {
-	uchar *p, r, g, b, a;
+	uchar *p;
 
 	p = s->a + pt.y*s->bpl + pt.x*4;
-	b = p[0];
-	g = p[1];
-	r = p[2];
-	a = p[3];
-	return (r<<24)|(g<<16)|(b<<8)|a;
+	return (p[2]<<24)|(p[1]<<16)|(p[0]<<8)|p[3];
 }
 
 static ulong
 getpixel_x8r8g8b8(Sampler *s, Point pt)
 {
-	uchar *p, r, g, b;
+	uchar *p;
 
 	p = s->a + pt.y*s->bpl + pt.x*4;
-	b = p[0];
-	g = p[1];
-	r = p[2];
-	return (r<<24)|(g<<16)|(b<<8)|0xFF;
+	return (p[2]<<24)|(p[1]<<16)|(p[0]<<8)|0xFF;
 }
 
 static ulong
 getpixel_b8g8r8(Sampler *s, Point pt)
 {
-	uchar *p, r, g, b;
+	uchar *p;
 
 	p = s->a + pt.y*s->bpl + pt.x*3;
-	r = p[0];
-	g = p[1];
-	b = p[2];
-	return (r<<24)|(g<<16)|(b<<8)|0xFF;
+	return (p[0]<<24)|(p[1]<<16)|(p[2]<<8)|0xFF;
 }
 
 static ulong
 getpixel_a8b8g8r8(Sampler *s, Point pt)
 {
-	uchar *p, r, g, b, a;
+	uchar *p;
 
 	p = s->a + pt.y*s->bpl + pt.x*4;
-	r = p[0];
-	g = p[1];
-	b = p[2];
-	a = p[3];
-	return (r<<24)|(g<<16)|(b<<8)|a;
+	return (p[0]<<24)|(p[1]<<16)|(p[2]<<8)|p[3];
 }
 
 static ulong
 getpixel_x8b8g8r8(Sampler *s, Point pt)
 {
-	uchar *p, r, g, b;
+	uchar *p;
 
 	p = s->a + pt.y*s->bpl + pt.x*4;
-	r = p[0];
-	g = p[1];
-	b = p[2];
-	return (r<<24)|(g<<16)|(b<<8)|0xFF;
+	return (p[0]<<24)|(p[1]<<16)|(p[2]<<8)|0xFF;
 }
 
 static ulong
@@ -391,12 +389,11 @@ putpixel_k8(Blitter *blt, Point dp, ulong rgba)
 {
 	uchar *p, r, g, b, m;
 
-	p = blt->a + dp.y*blt->bpl + dp.x;
-
 	r = rgba>>24;
 	g = rgba>>16;
 	b = rgba>>8;
 	m = RGB2K(r,g,b);
+	p = blt->a + dp.y*blt->bpl + dp.x;
 	p[0] = m;
 }
 
@@ -405,12 +402,11 @@ putpixel_m8(Blitter *blt, Point dp, ulong rgba)
 {
 	uchar *p, r, g, b, m;
 
-	p = blt->a + dp.y*blt->bpl + dp.x;
-
 	r = rgba>>24;
 	g = rgba>>16;
 	b = rgba>>8;
 	m = blt->i->cmap->rgb2cmap[(r>>4)*256+(g>>4)*16+(b>>4)];
+	p = blt->a + dp.y*blt->bpl + dp.x;
 	p[0] = m;
 }
 
@@ -420,13 +416,13 @@ putpixel_x1r5g5b5(Blitter *blt, Point dp, ulong rgba)
 	uchar *p, r, g, b;
 	ushort v;
 
-	p = blt->a + dp.y*blt->bpl + dp.x*2;
 	r = rgba>>24;
 	g = rgba>>16;
 	b = rgba>>8;
 	v = r>>(8-5);
 	v = (v<<5)|(g>>(8-5));
 	v = (v<<5)|(b>>(8-5));
+	p = blt->a + dp.y*blt->bpl + dp.x*2;
 	p[0] = v;
 	p[1] = v>>8;
 }
@@ -437,13 +433,13 @@ putpixel_r5g6b5(Blitter *blt, Point dp, ulong rgba)
 	uchar *p, r, g, b;
 	ushort v;
 
-	p = blt->a + dp.y*blt->bpl + dp.x*2;
 	r = rgba>>24;
 	g = rgba>>16;
 	b = rgba>>8;
 	v = r>>(8-5);
 	v = (v<<6)|(g>>(8-6));
 	v = (v<<5)|(b>>(8-5));
+	p = blt->a + dp.y*blt->bpl + dp.x*2;
 	p[0] = v;
 	p[1] = v>>8;
 }
@@ -589,7 +585,7 @@ putpixel(Blitter *blt, Point dp, ulong rgba)
 }
 
 static void *
-initsampfn(ulong chan)
+getsampfn(ulong chan)
 {
 	switch(chan){
 	case GREY1: return getpixel_k1;
@@ -611,7 +607,7 @@ initsampfn(ulong chan)
 }
 
 static void *
-initblitfn(ulong chan)
+getblitfn(ulong chan)
 {
 	switch(chan){
 	case GREY1: return putpixel_k1;
@@ -637,10 +633,10 @@ sample1(Sampler *s, Point p)
 {
 	if(p.x >= s->r.min.x && p.x < s->r.max.x
 	&& p.y >= s->r.min.y && p.y < s->r.max.y)
-		return s->getpixel(s, p);
+		return s->fn(s, p);
 	else if(s->i->flags & Frepl){
 		p = drawrepl(s->r, p);
-		return s->getpixel(s, p);
+		return s->fn(s, p);
 	}
 	/* edge handler: constant */
 	return 0;
@@ -683,16 +679,44 @@ bilinear(Sampler *s, Point p)
 }
 
 static ulong
-nearest(Sampler *s, Point p)
+correlate(Sampler *s, Point p)
 {
-	return sample1(s, p);
+	Point sp;
+	int r, g, b, a, Σr, Σg, Σb, Σa;
+	long *kp, kv;
+	ulong v;
+
+	kp = (long*)(s->k->data->bdata + s->k->zero);
+	Σr = Σg = Σb = Σa = 0;
+
+	for(sp.y = 0; sp.y < s->k->r.max.y; sp.y++)
+	for(sp.x = 0; sp.x < s->k->r.max.x; sp.x++){
+		v = sample1(s, addpt(p, subpt(sp, s->kcp)));
+		r = v>>24 & 0xFF; r = int2fix(r);
+		g = v>>16 & 0xFF; g = int2fix(g);
+		b = v>>8  & 0xFF; b = int2fix(b);
+		a = v>>0  & 0xFF; a = int2fix(a);
+
+		kv = kp[sp.y*s->k->r.max.x + sp.x];
+		r = fixmul(r, kv);
+		g = fixmul(g, kv);
+		b = fixmul(b, kv);
+		a = fixmul(a, kv);
+
+		Σr += r; Σg += g; Σb += b; Σa += a;
+	}
+	r = clamp(fix2int(Σr), 0, 0xFF);
+	g = clamp(fix2int(Σg), 0, 0xFF);
+	b = clamp(fix2int(Σb), 0, 0xFF);
+	a = clamp(fix2int(Σa), 0, 0xFF);
+
+	return r<<24|g<<16|b<<8|a;
 }
 
-static ulong (*sample)(Sampler*, Point) = bilinear;
-
 int
-memaffinewarp(Memimage *d, Rectangle r, Memimage *s, Point sp0, Warp m)
+memaffinewarp(Memimage *d, Rectangle r, Memimage *s, Point sp0, Warp m, int smooth)
 {
+	ulong (*sample)(Sampler*, Point) = sample1;
 	Sampler samp;
 	Blitter blit;
 	Point sp, dp, p2, p2₀;
@@ -708,17 +732,11 @@ memaffinewarp(Memimage *d, Rectangle r, Memimage *s, Point sp0, Warp m)
 	if(rectclip(&samp.r, s->r) == 0)
 		return 0;
 
-	samp.i = s;
-	samp.a = s->data->bdata + s->zero;
-	samp.bpl = sizeof(ulong)*s->width;
-	samp.cmask = (1ULL << s->depth) - 1;
-	samp.getpixel = initsampfn(s->chan);
+	if(smooth)
+		sample = bilinear;
 
-	blit.i = d;
-	blit.a = d->data->bdata + d->zero;
-	blit.bpl = sizeof(ulong)*d->width;
-	blit.cmask = (1ULL << d->depth) - 1;
-	blit.putpixel = initblitfn(d->chan);
+	initsampler(&samp, s);
+	initblitter(&blit, d);
 
 	/*
 	 * incremental affine warping technique from:
@@ -726,7 +744,7 @@ memaffinewarp(Memimage *d, Rectangle r, Memimage *s, Point sp0, Warp m)
 	 * 	Lee, S., Lee, GG., Jang, E.S., Kim, WY,
 	 * 	Intelligent Computing.  ICIC 2006. LNCS, vol 4113.
 	 */
-	p2 = p2₀ = fix_xform((Point){int2fix(r.min.x - dr.min.x), int2fix(r.min.y - dr.min.y)}, m);
+	p2 = p2₀ = xform((Point){int2fix(r.min.x - dr.min.x) + (1<<6), int2fix(r.min.y - dr.min.y) + (1<<6)}, m);
 	for(dp.y = r.min.y; dp.y < r.max.y; dp.y++){
 	for(dp.x = r.min.x; dp.x < r.max.x; dp.x++){
 		samp.Δx = fixfrac(p2.x);
@@ -736,13 +754,96 @@ memaffinewarp(Memimage *d, Rectangle r, Memimage *s, Point sp0, Warp m)
 		sp.y = sp0.y + fix2int(p2.y);
 
 		c = sample(&samp, sp);
-		blit.putpixel(&blit, dp, c);
+		blit.fn(&blit, dp, c);
 
 		p2.x += m[0][0];
 		p2.y += m[1][0];
 	}
 		p2.x = p2₀.x += m[0][1];
 		p2.y = p2₀.y += m[1][1];
+	}
+	return 0;
+}
+
+static double
+coeffsum(double *m, int len)
+{
+	double *e, Σ;
+
+	e = m + len;
+	Σ = 0;
+	while(m < e)
+		Σ += *m++;
+	return Σ;
+}
+
+Memimage *
+allocmemimagekernel(double *k, int dx, int dy, double denom)
+{
+	Memimage *ik;
+	long *kern;
+	double t;
+	int x, y;
+
+	ik = allocmemimage(Rect(0,0,dx,dy), RGBA32); /* any 32-bit depth chan would do */
+	if(ik == nil){
+		werrstr("could not allocate image kernel: %r");
+		return nil;
+	}
+
+	if(denom == 0)
+		denom = coeffsum(k, dx*dy);
+	denom = denom? 1/denom: 1;
+
+	kern = (long*)(ik->data->bdata + ik->zero);
+	for(y = 0; y < dy; y++)
+	for(x = 0; x < dx; x++){
+		t = k[y*dx + x];
+		t *= denom;
+		kern[y*dx + x] = flt2fix(t);
+	}
+
+	return ik;
+}
+
+int
+memimagecorrelate(Memimage *d, Rectangle r, Memimage *s, Point sp0, Memimage *k)
+{
+	Sampler samp;
+	Blitter blit;
+	Point sp, dp;
+	Rectangle dr;
+	ulong c;
+
+	dr = d->clipr;
+	rectclip(&dr, d->r);
+	if(rectclip(&r, dr) == 0)
+		return 0;
+
+	samp.r = s->clipr;
+	if(rectclip(&samp.r, s->r) == 0)
+		return 0;
+
+	initsampler(&samp, s);
+	initblitter(&blit, d);
+
+	if(k == nil){
+		werrstr("kernel image is nil");
+		return -1;
+	}
+	if(k->depth != 32){
+		werrstr("kernel image depth is not 32");
+		return -1;
+	}
+	samp.k = k;
+	samp.kcp = Pt(Dx(k->r)/2, Dy(k->r)/2);
+
+	for(dp.y = r.min.y; dp.y < r.max.y; dp.y++)
+	for(dp.x = r.min.x; dp.x < r.max.x; dp.x++){
+		sp.x = sp0.x + dp.x - dr.min.x;
+		sp.y = sp0.y + dp.y - dr.min.y;
+		c = correlate(&samp, sp);
+		blit.fn(&blit, dp, c);
 	}
 	return 0;
 }

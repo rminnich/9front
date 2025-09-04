@@ -85,7 +85,7 @@ initworkrects(Rectangle *wr, int nwr, Rectangle *fbr)
 void
 usage(void)
 {
-	fprint(2, "usage: %s [-s sx sy] [-t tx ty] [-r θ]\n", argv0);
+	fprint(2, "usage: %s [-SRp] [-s sx sy] [-t tx ty] [-r θ]\n", argv0);
 	exits("usage");
 }
 
@@ -96,12 +96,13 @@ main(int argc, char *argv[])
 	Warp w;
 	Rectangle dr, *wr;
 	double sx, sy, tx, ty, θ, c, s;
-	int dorepl, parallel, nproc, i;
+	int smooth, dorepl, parallel, nproc, i;
 	char *nprocs;
 
 	sx = sy = 1;
 	tx = ty = 0;
 	θ = 0;
+	smooth = 0;
 	dorepl = 0;
 	parallel = 0;
 	ARGBEGIN{
@@ -115,6 +116,9 @@ main(int argc, char *argv[])
 		break;
 	case 'r':
 		θ = strtod(EARGF(usage()), nil)*DEG;
+		break;
+	case 'S':
+		smooth++;
 		break;
 	case 'R':
 		dorepl++;
@@ -175,7 +179,7 @@ main(int argc, char *argv[])
 			case -1:
 				sysfatal("rfork: %r");
 			case 0:
-				if(memaffinewarp(dst, wr[i], src, src->r.min, w) < 0)
+				if(memaffinewarp(dst, wr[i], src, src->r.min, w, smooth) < 0)
 					fprint(2, "[%d] memaffinewarp: %r\n", getpid());
 				exits(nil);
 			}
@@ -185,23 +189,23 @@ main(int argc, char *argv[])
 
 		free(wr);
 	}else{
-		if(memaffinewarp(dst, dr, src, src->r.min, w) < 0)
+		if(memaffinewarp(dst, dr, src, src->r.min, w, smooth) < 0)
 			sysfatal("memaffinewarp: %r");
 
 //		dr = rectaddpt(Rect(0,0,Dx(dst->r)/2,Dy(dst->r)/2), dst->r.min);
 //		dst->clipr = dr;
-//		if(memaffinewarp(dst, dr, src, src->r.min, w) < 0)
+//		if(memaffinewarp(dst, dr, src, src->r.min, w, smooth) < 0)
 //			sysfatal("memaffinewarp: %r");
 //		dr = rectaddpt(Rect(Dx(dst->r)/2+1,0,Dx(dst->r),Dy(dst->r)/2), dst->r.min);
 //		dst->clipr = dst->r;
-//		if(memaffinewarp(dst, dr, src, src->r.min, w) < 0)
+//		if(memaffinewarp(dst, dr, src, src->r.min, w, smooth) < 0)
 //			sysfatal("memaffinewarp: %r");
 //		dr = rectaddpt(Rect(0,Dy(dst->r)/2+1,Dx(dst->r)/2,Dy(dst->r)), dst->r.min);
-//		if(memaffinewarp(dst, dr, src, src->r.min, w) < 0)
+//		if(memaffinewarp(dst, dr, src, src->r.min, w, smooth) < 0)
 //			sysfatal("memaffinewarp: %r");
 //		dr = rectaddpt(Rect(Dx(dst->r)/2+1,Dy(dst->r)/2+1,Dx(dst->r),Dy(dst->r)), dst->r.min);
 //		dst->clipr = dr;
-//		if(memaffinewarp(dst, dr, src, src->r.min, w) < 0)
+//		if(memaffinewarp(dst, dr, src, src->r.min, w, smooth) < 0)
 //			sysfatal("memaffinewarp: %r");
 	}
 	profend();
