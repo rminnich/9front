@@ -36,8 +36,10 @@ unloadimage(Image *i, Rectangle r, uchar *data, int ndata)
 				dy = Dy(r);
 			n = bpl*dy;
 		}
+		_lockdisplay(d);
 		a = bufimage(d, 1+4+4*4);
 		if(a == nil){
+			_unlockdisplay(d);
 			werrstr("unloadimage: %r");
 			return -1;
 		}
@@ -47,10 +49,15 @@ unloadimage(Image *i, Rectangle r, uchar *data, int ndata)
 		BPLONG(a+9, r.min.y);
 		BPLONG(a+13, r.min.x+dx);
 		BPLONG(a+17, r.min.y+dy);
+		_unlockdisplay(d);
 		if(flushimage(d, 0) < 0)
 			return -1;
-		if(read(d->fd, data, n) < 0)
+		_lockdisplay(d);
+		if(read(d->fd, data, n) < 0){
+			_unlockdisplay(d);
 			return -1;
+		}
+		_unlockdisplay(d);
 		data += bpl*dy;
 		r.min.y += dy;
 	}

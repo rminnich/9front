@@ -13,7 +13,7 @@ struct Hlist{
 };
 
 int
-writeimage(int fd, Image *i, int dolock)
+writeimage(int fd, Image *i, int)
 {
 	uchar *outbuf, *outp, *eout;		/* encoded data, pointer, end */
 	uchar *loutp;				/* start of encoded line */
@@ -47,11 +47,7 @@ writeimage(int fd, Image *i, int dolock)
 			return -1;
 		data = malloc(bpl);
 		for(miny = r.min.y; miny != r.max.y; miny++){
-			if(dolock)
-				lockdisplay(i->display);
 			nb = unloadimage(i, Rect(r.min.x, miny, r.max.x, miny+1), data, bpl);
-			if(dolock)
-				unlockdisplay(i->display);
 			if(nb != bpl)
 				goto ErrOut0;
 			if(write(fd, data, nb) != nb)
@@ -74,12 +70,8 @@ writeimage(int fd, Image *i, int dolock)
 			dy = chunk/bpl;
 		if(dy <= 0)
 			dy = 1;
-		if(dolock)
-			lockdisplay(i->display);
 		nb = unloadimage(i, Rect(r.min.x, miny, r.max.x, miny+dy),
 			data+(miny-r.min.y)*bpl, dy*bpl);
-		if(dolock)
-			unlockdisplay(i->display);
 		if(nb != dy*bpl)
 			goto ErrOut0;
 	}

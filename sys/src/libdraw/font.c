@@ -284,9 +284,12 @@ loadchar(Font *f, Rune r, Cacheinfo *c, int h, int noflush, char **subfontname)
 	c->left = fi->left;
 	if(f->display == nil)
 		return 1;
+	_lockdisplay(f->display);
 	b = bufimage(f->display, 37);
-	if(b == nil)
+	if(b == nil){
+		_unlockdisplay(f->display);
 		return 0;
+	}
 	top = fi->top + (f->ascent-subf->f->ascent);
 	bottom = fi->bottom + (f->ascent-subf->f->ascent);
 	b[0] = 'l';
@@ -301,6 +304,7 @@ loadchar(Font *f, Rune r, Cacheinfo *c, int h, int noflush, char **subfontname)
 	BPLONG(b+31, fi->top);
 	b[35] = fi->left;
 	b[36] = fi->width;
+	_unlockdisplay(f->display);
 	return 1;
 }
 
@@ -329,8 +333,10 @@ fontresize(Font *f, int wid, int ncache, int depth)
 		fprint(2, "font cache resize failed: %r\n");
 		goto Return;
 	}
+	_lockdisplay(d);
 	b = bufimage(d, 1+4+4+1);
 	if(b == nil){
+		_unlockdisplay(d);
 		freeimage(new);
 		goto Return;
 	}
@@ -338,6 +344,7 @@ fontresize(Font *f, int wid, int ncache, int depth)
 	BPLONG(b+1, new->id);
 	BPLONG(b+5, ncache);
 	b[9] = f->ascent;
+	_unlockdisplay(d);
 	freeimage(f->cacheimage);
 	f->cacheimage = new;
     Nodisplay:

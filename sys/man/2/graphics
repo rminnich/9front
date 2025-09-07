@@ -52,6 +52,12 @@ void	lockdisplay(Display *d)
 void	unlockdisplay(Display *d)
 .PP
 .B
+void	rlockdisplay(Display *d)
+.PP
+.B
+void	runlockdisplay(Display *d)
+.PP
+.B
 int	getwindow(Display *d, int ref)
 .PP
 .B
@@ -417,18 +423,18 @@ None of these routines are needed by most programs, since
 .I initdraw
 calls them as needed.
 .PP
-The data structures associated with the display must be protected in a multi-process program,
-because they assume only one process will be using them at a time.
-Multi-process programs should set
-.B display->locking
-to
-.BR 1 ,
-to notify the library to use a locking protocol for its own accesses,
-and call
+When drawing concurrently programs must call
 .I lockdisplay
 and
 .I unlockdisplay
-around any calls to the graphics library that will cause messages to be sent to the display device.
+around any calls to
+.I getwindow
+or any other procedures that could change its global variables (read
+below), and
+.I rlockdisplay
+and
+.I runlockdisplay
+around any access to such variables.
 .I Initdraw
 and
 .I geninitdraw
@@ -592,7 +598,7 @@ if(fd < 0)
 	sysfatal("can't open $wsys: %r");
 
 /* mount creates window; see \f2rio\fP(4) */
-if(mount(fd, -1, "/tmp", MREPL, "new -dx 300-dy 200") < 0)
+if(mount(fd, -1, "/tmp", MREPL, "new -dx 300 -dy 200") < 0)
 	sysfatal("can't mount new window: %r");
 if(gengetwindow(display, "/tmp/winname",
    &screen2, &_screen2, Refnone) < 0)
@@ -636,3 +642,6 @@ and might be more appropriately called
 .B white
 and
 .BR black .
+.br
+.B Display->locking
+is now ignored, but is kept for backwards compatibility.

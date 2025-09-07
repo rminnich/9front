@@ -15,8 +15,10 @@ lineop(Image *dst, Point p0, Point p1, int end0, int end1, int radius, Image *sr
 
 	_setdrawop(dst->display, op);
 
+	_lockdisplay(dst->display);
 	a = bufimage(dst->display, 1+4+2*4+2*4+4+4+4+4+2*4);
 	if(a == nil){
+		_unlockdisplay(dst->display);
 		fprint(2, "image line: %r\n");
 		return;
 	}
@@ -32,4 +34,5 @@ lineop(Image *dst, Point p0, Point p1, int end0, int end1, int radius, Image *sr
 	BPLONG(a+33, src->id);
 	BPLONG(a+37, sp.x);
 	BPLONG(a+41, sp.y);
+	_unlockdisplay(dst->display);
 }

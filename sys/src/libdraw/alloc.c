@@ -47,9 +47,12 @@ _allocimage(Image *ai, Display *d, Rectangle r, ulong chan, int repl, ulong col,
 		return nil;
 	}
 
+	_lockdisplay(d);
 	a = bufimage(d, 1+4+4+1+4+1+4*4+4*4+4);
-	if(a == nil)
+	if(a == nil){
+		_unlockdisplay(d);
 		goto Error;
+	}
 	d->imageid++;
 	id = d->imageid;
 	a[0] = 'b';
@@ -72,18 +75,22 @@ _allocimage(Image *ai, Display *d, Rectangle r, ulong chan, int repl, ulong col,
 	BPLONG(a+39, clipr.max.x);
 	BPLONG(a+43, clipr.max.y);
 	BPLONG(a+47, col);
+	_unlockdisplay(d);
 
 	if(ai != nil)
 		i = ai;
 	else{
 		i = malloc(sizeof(Image));
 		if(i == nil){
+			_lockdisplay(d);
 			a = bufimage(d, 1+4);
 			if(a != nil){
 				a[0] = 'f';
 				BPLONG(a+1, id);
+				_unlockdisplay(d);
 				flushimage(d, 0);
-			}
+			}else
+				_unlockdisplay(d);
 			goto Error;
 		}
 	}
@@ -124,31 +131,42 @@ namedimage(Display *d, char *name)
 	}
 	/* flush pending data so we don't get error allocating the image */
 	flushimage(d, 0);
+	_lockdisplay(d);
 	a = bufimage(d, 1+4+1+n);
-	if(a == nil)
+	if(a == nil){
+		_unlockdisplay(d);
 		goto Error;
+	}
 	d->imageid++;
 	id = d->imageid;
 	a[0] = 'n';
 	BPLONG(a+1, id);
 	a[5] = n;
 	memmove(a+6, name, n);
+	_unlockdisplay(d);
 	if(flushimage(d, 0) < 0)
 		goto Error;
 
-	if(pread(d->ctlfd, buf, sizeof buf, 0) < 12*12)
+	_lockdisplay(d);
+	if(pread(d->ctlfd, buf, sizeof buf, 0) < 12*12){
+		_unlockdisplay(d);
 		goto Error;
+	}
 	buf[12*12] = '\0';
+	_unlockdisplay(d);
 
 	i = malloc(sizeof(Image));
 	if(i == nil){
 	Error1:
+		_lockdisplay(d);
 		a = bufimage(d, 1+4);
 		if(a != nil){
 			a[0] = 'f';
 			BPLONG(a+1, id);
+			_unlockdisplay(d);
 			flushimage(d, 0);
-		}
+		}else
+			_unlockdisplay(d);
 		goto Error;
 	}
 	i->display = d;
@@ -180,14 +198,18 @@ nameimage(Image *i, char *name, int in)
 	int n;
 
 	n = strlen(name);
+	_lockdisplay(i->display);
 	a = bufimage(i->display, 1+4+1+1+n);
-	if(a == nil)
+	if(a == nil){
+		_unlockdisplay(i->display);
 		return 0;
+	}
 	a[0] = 'N';
 	BPLONG(a+1, i->id);
 	a[5] = in;
 	a[6] = n;
 	memmove(a+7, name, n);
+	_unlockdisplay(i->display);
 	if(flushimage(i->display, 0) < 0)
 		return 0;
 	return 1;
@@ -198,29 +220,31 @@ _freeimage1(Image *i)
 {
 	uchar *a;
 	Display *d;
-	Image *w;
+	Image **w;
 
 	if(i == nil || i->display == nil)
 		return 0;
 	d = i->display;
-	if(i->screen != nil){
-		w = d->windows;
-		if(w == i)
-			d->windows = i->next;
-		else
-			while(w != nil){
-				if(w->next == i){
-					w->next = i->next;
-					break;
-				}
-				w = w->next;
-			}
-	}
+	_lockdisplay(d);
 	a = bufimage(d, 1+4);
-	if(a == nil)
+	if(a == nil){
+		_unlockdisplay(d);
 		return -1;
+	}
 	a[0] = 'f';
 	BPLONG(a+1, i->id);
+
+	if(i->screen != nil){
+		w = &d->windows;
+		while(*w != nil){
+			if(*w == i){
+				*w = i->next;
+				break;
+			}
+			w = &(*w)->next;
+		}
+	}
+	_unlockdisplay(d);
 	return 0;
 }
 

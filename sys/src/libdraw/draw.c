@@ -8,11 +8,15 @@ _setdrawop(Display *d, Drawop op)
 	uchar *a;
 
 	if(op != SoverD){
+		_lockdisplay(d);
 		a = bufimage(d, 1+1);
-		if(a == nil)
+		if(a == nil){
+			_unlockdisplay(d);
 			return;
+		}
 		a[0] = 'O';
 		a[1] = op;
+		_unlockdisplay(d);
 	}
 }
 		
@@ -23,9 +27,12 @@ draw1(Image *dst, Rectangle *r, Image *src, Point *p0, Image *mask, Point *p1, D
 
 	_setdrawop(dst->display, op);
 
+	_lockdisplay(dst->display);
 	a = bufimage(dst->display, 1+4+4+4+4*4+2*4+2*4);
-	if(a == nil)
+	if(a == nil){
+		_unlockdisplay(dst->display);
 		return;
+	}
 	if(src == nil)
 		src = dst->display->black;
 	if(mask == nil)
@@ -42,6 +49,7 @@ draw1(Image *dst, Rectangle *r, Image *src, Point *p0, Image *mask, Point *p1, D
 	BPLONG(a+33, p0->y);
 	BPLONG(a+37, p1->x);
 	BPLONG(a+41, p1->y);
+	_unlockdisplay(dst->display);
 }
 
 void

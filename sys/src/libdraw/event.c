@@ -261,19 +261,8 @@ extract(void)
 	int i, n;
 	uchar ebuf[EMAXMSG+1];
 
-	/* avoid generating a message if there's nothing to show. */
-	/* this test isn't perfect, though; could do flushimage(display, 0) then call extract */
-	/* also: make sure we don't interfere if we're multiprocessing the display */
-	if(display->locking){
-		/* if locking is being done by program, this means it can't depend on automatic flush in emouse() etc. */
-		if(canqlock(&display->qlock)){
-			if(display->bufp > display->buf)
-				flushimage(display, 1);
-			unlockdisplay(display);
-		}
-	}else
-		if(display->bufp > display->buf)
-			flushimage(display, 1);
+	if(display->bufp > display->buf)
+		flushimage(display, 1);
 loop:
 	if((n=read(epipe[0], ebuf, EMAXMSG+1)) < 0
 	|| ebuf[0] >= MAXSLAVE)

@@ -9,8 +9,6 @@ Image	*screen;
 static char deffontname[] = "*default*";
 Screen	*_screen;
 
-int	debuglockdisplay = 0;
-
 static void _closedisplay(Display*, int);
 
 /* note handler */
@@ -300,7 +298,7 @@ initdisplay(char *dev, char *win, void(*error)(Display*, char*))
 	disp->error = error;
 	disp->windir = t;
 	disp->devdir = strdup(dev);
-	qlock(&disp->qlock);
+	wlock(&disp->usrlock);
 	disp->white = allocimage(disp, Rect(0, 0, 1, 1), GREY1, 1, DWhite);
 	disp->black = allocimage(disp, Rect(0, 0, 1, 1), GREY1, 1, DBlack);
 	if(disp->white == nil || disp->black == nil){
@@ -324,7 +322,6 @@ initdisplay(char *dev, char *win, void(*error)(Display*, char*))
 }
 
 /*
- * Call with d unlocked.
  * Note that disp->defaultfont and defaultsubfont are not freed here.
  */
 void
@@ -369,23 +366,41 @@ _closedisplay(Display *disp, int isshutdown)
 	close(disp->ctlfd);
 	/* should cause refresh slave to shut down */
 	close(disp->reffd);
-	qunlock(&disp->qlock);
 	free(disp);
 }
 
 void
 lockdisplay(Display *disp)
 {
-	if(debuglockdisplay){
-		/* avoid busy looping; it's rare we collide anyway */
-		while(!canqlock(&disp->qlock))
-			sleep(1000);
-	}else
-		qlock(&disp->qlock);
+	wlock(&disp->usrlock);
 }
 
 void
 unlockdisplay(Display *disp)
+{
+	wunlock(&disp->usrlock);
+}
+
+void
+rlockdisplay(Display *disp)
+{
+	rlock(&disp->usrlock);
+}
+
+void
+runlockdisplay(Display *disp)
+{
+	runlock(&disp->usrlock);
+}
+
+void
+_lockdisplay(Display *disp)
+{
+	qlock(&disp->qlock);
+}
+
+void
+_unlockdisplay(Display *disp)
 {
 	qunlock(&disp->qlock);
 }
@@ -425,8 +440,11 @@ doflush(Display *d)
 int
 flushimage(Display *d, int visible)
 {
+	int rc;
+
 	if(d == nil)
 		return 0;
+	_lockdisplay(d);
 	if(visible){
 		*d->bufp++ = 'v';	/* five bytes always reserved for this */
 		if(d->_isnewdisplay){
@@ -434,7 +452,9 @@ flushimage(Display *d, int visible)
 			d->bufp += 4;
 		}
 	}
-	return doflush(d);
+	rc = doflush(d);
+	_unlockdisplay(d);
+	return rc;
 }
 
 uchar*
@@ -453,4 +473,3 @@ bufimage(Display *d, int n)
 	d->bufp += n;
 	return p;
 }
-

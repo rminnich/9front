@@ -263,3 +263,21 @@ argument (see
 .IR event (2),
 .IR keyboard (2),
 .IR thread (2).
+.SH BUGS
+.I Menuhit
+and
+.I enter
+are not re-entrant and will break when used concurrently with an
+independent window whose
+.B Screen
+changes during their execution (as is the case when receiving a resize
+event while using
+.BR _screen ).
+In such cases they must be recreated after acquiring the new screen.
+When used with a
+.B Screen
+that has an independent backing window (i.e. not
+.BR display->image / screen ),
+this backing window must be drawn periodically to the
+.BR display->image / screen
+to be able to see the changes induced by the input.

@@ -3,7 +3,7 @@
 #include <draw.h>
 
 Image*
-readimage(Display *d, int fd, int dolock)
+readimage(Display *d, int fd, int)
 {
 	char hdr[5*12+1];
 	int dy;
@@ -20,7 +20,7 @@ readimage(Display *d, int fd, int dolock)
 	if(readn(fd, hdr, 11) != 11)
 		return nil;
 	if(memcmp(hdr, "compressed\n", 11) == 0){
-		if(i = creadimage(d, fd, dolock))
+		if(i = creadimage(d, fd, 0))
 			goto Done;
 		return nil;
 	}
@@ -82,11 +82,7 @@ readimage(Display *d, int fd, int dolock)
 	if(l > chunk)
 		chunk = l;
 	if(d != nil){
-		if(dolock)
-			lockdisplay(d);
 		i = allocimage(d, r, chan, 0, -1);
-		if(dolock)
-			unlockdisplay(d);
 		if(i == nil)
 			return nil;
 	}else{
@@ -106,12 +102,7 @@ readimage(Display *d, int fd, int dolock)
 		if(m != n){
 			werrstr("readimage: read count %d not %d: %r", m, n);
    Err:
-			if(dolock)
-				lockdisplay(d);
-   Err1:
  			freeimage(i);
-			if(dolock)
-				unlockdisplay(d);
 			free(tmp);
 			return nil;
 		}
@@ -120,12 +111,8 @@ readimage(Display *d, int fd, int dolock)
 				tmp[j] ^= 0xFF;
 
 		if(d != nil){
-			if(dolock)
-				lockdisplay(d);
 			if(loadimage(i, Rect(r.min.x, miny, r.max.x, miny+dy), tmp, chunk) <= 0)
-				goto Err1;
-			if(dolock)
-				unlockdisplay(d);
+				goto Err;
 		}
 		miny += dy;
 	}

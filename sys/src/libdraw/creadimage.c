@@ -3,7 +3,7 @@
 #include <draw.h>
 
 Image *
-creadimage(Display *d, int fd, int dolock)
+creadimage(Display *d, int fd, int)
 {
 	char hdr[5*12+1];
 	Rectangle r;
@@ -55,11 +55,7 @@ creadimage(Display *d, int fd, int dolock)
 	}
 
 	if(d != nil){
-		if(dolock)
-			lockdisplay(d);
 		i = allocimage(d, r, chan, 0, 0);
-		if(dolock)
-			unlockdisplay(d);
 		if(i == nil)
 			return nil;
 	}else{
@@ -76,12 +72,7 @@ creadimage(Display *d, int fd, int dolock)
 	while(miny != r.max.y){
 		if(readn(fd, hdr, 2*12) != 2*12){
 		Errout:
-			if(dolock)
-				lockdisplay(d);
-		Erroutlock:
 			freeimage(i);
-			if(dolock)
-				unlockdisplay(d);
 			free(buf);
 			return nil;
 		}
@@ -98,11 +89,12 @@ creadimage(Display *d, int fd, int dolock)
 		if(readn(fd, buf, nb)!=nb)
 			goto Errout;
 		if(d != nil){
-			if(dolock)
-				lockdisplay(d);
+			_lockdisplay(d);
 			a = bufimage(i->display, 21+nb);
-			if(a == nil)
-				goto Erroutlock;
+			if(a == nil){
+				_unlockdisplay(d);
+				goto Errout;
+			}
 			a[0] = 'Y';
 			BPLONG(a+1, i->id);
 			BPLONG(a+5, r.min.x);
@@ -112,8 +104,7 @@ creadimage(Display *d, int fd, int dolock)
 			if(!new)	/* old image: flip the data bits */
 				_twiddlecompressed(buf, nb);
 			memmove(a+21, buf, nb);
-			if(dolock)
-				unlockdisplay(d);
+			_unlockdisplay(d);
 		}
 		miny = maxy;
 	}

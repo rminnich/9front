@@ -10,8 +10,10 @@ doellipse(int cmd, Image *dst, Point *c, int xr, int yr, int thick, Image *src, 
 
 	_setdrawop(dst->display, op);
 
+	_lockdisplay(dst->display);
 	a = bufimage(dst->display, 1+4+4+2*4+4+4+4+2*4+2*4);
 	if(a == nil){
+		_unlockdisplay(dst->display);
 		fprint(2, "image ellipse: %r\n");
 		return;
 	}
@@ -27,6 +29,7 @@ doellipse(int cmd, Image *dst, Point *c, int xr, int yr, int thick, Image *src, 
 	BPLONG(a+33, sp->y);
 	BPLONG(a+37, alpha);
 	BPLONG(a+41, phi);
+	_unlockdisplay(dst->display);
 }
 
 void

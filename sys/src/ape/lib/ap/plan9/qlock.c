@@ -22,6 +22,8 @@ static struct {
 enum
 {
 	Queuing,
+	QueuingR,
+	QueuingW,
 };
 
 /* find a free shared memory location to queue ourselves in */
@@ -107,4 +109,170 @@ canqlock(QLock *q)
 	}
 	unlock(&q->lock);
 	return 0;
+}
+
+void
+rlock(RWLock *q)
+{
+	QLp *p, *mp;
+
+	lock(&q->lock);
+	if(q->writer == 0 && q->head == nil){
+		/* no writer, go for it */
+		q->readers++;
+		unlock(&q->lock);
+		return;
+	}
+
+	mp = getqlp();
+	p = q->tail;
+	if(p == nil)
+		q->head = mp;
+	else
+		p->next = mp;
+	q->tail = mp;
+	mp->state = QueuingR;
+	unlock(&q->lock);
+
+	/* wait in kernel */
+	while((*_rendezvousp)(mp, (void*)1) == (void*)~0)
+		;
+	mp->inuse = 0;
+}
+
+int
+canrlock(RWLock *q)
+{
+	lock(&q->lock);
+	if (q->writer == 0 && q->head == nil) {
+		/* no writer; go for it */
+		q->readers++;
+		unlock(&q->lock);
+		return 1;
+	}
+	unlock(&q->lock);
+	return 0;
+}
+
+void
+runlock(RWLock *q)
+{
+	QLp *p;
+
+	lock(&q->lock);
+	if(q->readers <= 0)
+		abort();
+	p = q->head;
+	if(--(q->readers) > 0 || p == nil){
+		unlock(&q->lock);
+		return;
+	}
+
+	/* start waiting writer */
+	if(p->state != QueuingW)
+		abort();
+	q->head = p->next;
+	if(q->head == nil)
+		q->tail = nil;
+	q->writer = 1;
+	unlock(&q->lock);
+
+	/* wakeup waiter */
+	while((*_rendezvousp)(p, 0) == (void*)~0)
+		;
+}
+
+void
+wlock(RWLock *q)
+{
+	QLp *p, *mp;
+
+	lock(&q->lock);
+	if(q->readers == 0 && q->writer == 0){
+		/* noone waiting, go for it */
+		q->writer = 1;
+		unlock(&q->lock);
+		return;
+	}
+
+	/* wait */
+	mp = getqlp();
+	p = q->tail;
+	if(p == nil)
+		q->head = mp;
+	else
+		p->next = mp;
+	q->tail = mp;
+	mp->state = QueuingW;
+	unlock(&q->lock);
+
+	/* wait in kernel */
+	while((*_rendezvousp)(mp, (void*)1) == (void*)~0)
+		;
+	mp->inuse = 0;
+}
+
+int
+canwlock(RWLock *q)
+{
+	lock(&q->lock);
+	if (q->readers == 0 && q->writer == 0) {
+		/* no one waiting; go for it */
+		q->writer = 1;
+		unlock(&q->lock);
+		return 1;
+	}
+	unlock(&q->lock);
+	return 0;
+}
+
+void
+wunlock(RWLock *q)
+{
+	QLp *p, *x;
+
+	lock(&q->lock);
+	if(q->writer == 0)
+		abort();
+	p = q->head;
+	if(p == nil){
+		q->writer = 0;
+		unlock(&q->lock);
+		return;
+	}
+	if(p->state == QueuingW){
+		/* start waiting writer */
+		q->head = p->next;
+		if(q->head == nil)
+			q->tail = nil;
+		unlock(&q->lock);
+		while((*_rendezvousp)(p, 0) == (void*)~0)
+			;
+		return;
+	}
+	if(p->state != QueuingR)
+		abort();
+
+	/* collect waiting readers */
+	q->readers = 1;
+	for(x = p->next; x != nil && x->state == QueuingR; x = x->next){
+		q->readers++;
+		p = x;
+	}
+	p->next = nil;
+	p = q->head;
+
+	/* queue remaining writers */
+	q->head = x;
+	if(x == nil)
+		q->tail = nil;
+	q->writer = 0;
+	unlock(&q->lock);
+
+	/* wakeup waiting readers */
+	for(; p != nil; p = x){
+		x = p->next;
+		while((*_rendezvousp)(p, 0) == (void*)~0)
+			;
+	}
 }

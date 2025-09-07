@@ -36,8 +36,10 @@ loadimage(Image *i, Rectangle r, uchar *data, int ndata)
 				return -1;
 		} else
 			n = dy*bpl;
+		_lockdisplay(i->display);
 		a = bufimage(i->display, 21+n);
 		if(a == nil){
+			_unlockdisplay(i->display);
 			werrstr("loadimage: %r");
 			return -1;
 		}
@@ -48,6 +50,7 @@ loadimage(Image *i, Rectangle r, uchar *data, int ndata)
 		BPLONG(a+13, r.min.x+dx);
 		BPLONG(a+17, r.min.y+dy);
 		memmove(a+21, data, n);
+		_unlockdisplay(i->display);
 		ndata += dy*bpl;
 		data += dy*bpl;
 		r.min.y += dy;

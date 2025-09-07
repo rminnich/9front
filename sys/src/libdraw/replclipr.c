@@ -7,8 +7,10 @@ replclipr(Image *i, int repl, Rectangle clipr)
 {
 	uchar *b;
 
+	_lockdisplay(i->display);
 	b = bufimage(i->display, 22);
 	if(b == nil){
+		_unlockdisplay(i->display);
 		fprint(2, "replclipr: %r\n");
 		return;
 	}
@@ -20,6 +22,7 @@ replclipr(Image *i, int repl, Rectangle clipr)
 	BPLONG(b+10, clipr.min.y);
 	BPLONG(b+14, clipr.max.x);
 	BPLONG(b+18, clipr.max.y);
+	_unlockdisplay(i->display);
 	i->repl = repl;
 	i->clipr = clipr;
 }

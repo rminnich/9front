@@ -111,8 +111,10 @@ _string(Image *dst, Point pt, Image *src, Point sp, Font *f, char *s, Rune *r, i
 		m = 47+2*n;
 		if(bg)
 			m += 4+2*4;
+		_lockdisplay(dst->display);
 		b = bufimage(dst->display, m);
 		if(b == nil){
+			_unlockdisplay(dst->display);
 			fprint(2, "string: %r\n");
 			break;
 		}
@@ -142,6 +144,7 @@ _string(Image *dst, Point pt, Image *src, Point sp, Font *f, char *s, Rune *r, i
 		ec = &cbuf[n];
 		for(c=cbuf; c<ec; c++, b+=2)
 			BPSHORT(b, *c);
+		_unlockdisplay(dst->display);
 		pt.x += wid;
 		bgp.x += wid;
 		agefont(f);

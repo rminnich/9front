@@ -30,9 +30,12 @@ cloadimage(Image *i, Rectangle r, uchar *data, int ndata)
 			werrstr("cloadimage: bad count %d", nb);
 			return -1;
 		}
+		_lockdisplay(i->display);
 		a = bufimage(i->display, 21+nb);
-		if(a == nil)
+		if(a == nil){
+			_unlockdisplay(i->display);
 			return -1;
+		}
 		a[0] = 'Y';
 		BPLONG(a+1, i->id);
 		BPLONG(a+5, r.min.x);
@@ -40,6 +43,7 @@ cloadimage(Image *i, Rectangle r, uchar *data, int ndata)
 		BPLONG(a+13, r.max.x);
 		BPLONG(a+17, maxy);
 		memmove(a+21, data, nb);
+		_unlockdisplay(i->display);
 		miny = maxy;
 		data += nb;
 		ndata += nb;

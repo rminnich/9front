@@ -3,7 +3,7 @@
 #include <draw.h>
 
 Subfont*
-readsubfonti(Display*d, char *name, int fd, Image *ai, int dolock)
+readsubfonti(Display*d, char *name, int fd, Image *ai, int)
 {
 	char hdr[3*12+4+1];
 	int n;
@@ -14,7 +14,7 @@ readsubfonti(Display*d, char *name, int fd, Image *ai, int dolock)
 
 	i = ai;
 	if(i == nil){
-		i = readimage(d, fd, dolock);
+		i = readimage(d, fd, 0);
 		if(i == nil)
 			return nil;
 	}
@@ -39,11 +39,7 @@ readsubfonti(Display*d, char *name, int fd, Image *ai, int dolock)
 	if(fc == nil)
 		goto Err;
 	_unpackinfo(fc, p, n);
-	if(dolock)
-		lockdisplay(d);
 	f = allocsubfont(name, n, atoi(hdr+12), atoi(hdr+24), fc, i);
-	if(dolock)
-		unlockdisplay(d);
 	if(f == nil){
 		free(fc);
 		goto Err;
@@ -58,7 +54,7 @@ Err:
 }
 
 Subfont*
-readsubfont(Display *d, char *name, int fd, int dolock)
+readsubfont(Display *d, char *name, int fd, int)
 {
-	return readsubfonti(d, name, fd, nil, dolock);
+	return readsubfonti(d, name, fd, nil, 0);
 }

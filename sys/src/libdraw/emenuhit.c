@@ -27,19 +27,22 @@ void
 menucolors(void)
 {
 	/* Main tone is greenish, with negative selection */
+	menutxt = allocimage(display, Rect(0,0,1,1), screen->chan, 1, DDarkgreen);
 	back = allocimagemix(display, DPalegreen, DWhite);
-	high = allocimage(display, Rect(0,0,1,1), CMAP8, 1, DDarkgreen);	/* dark green */
-	bord = allocimage(display, Rect(0,0,1,1), CMAP8, 1, DMedgreen);	/* not as dark green */
-	if(back==nil || high==nil || bord==nil)
+	high = allocimage(display, Rect(0,0,1,1), screen->chan, 1, DDarkgreen);	/* dark green */
+	bord = allocimage(display, Rect(0,0,1,1), screen->chan, 1, DMedgreen);	/* not as dark green */
+	if(menutxt==nil || back==nil || high==nil || bord==nil)
 		goto Error;
 	text = display->black;
 	htext = back;
 	return;
 
     Error:
+	freeimage(menutxt);
 	freeimage(back);
 	freeimage(high);
 	freeimage(bord);
+	menutxt = display->black;
 	back = display->white;
 	high = display->black;
 	bord = display->black;
@@ -108,10 +111,10 @@ menuscan(Menu *menu, int but, Mouse *m, Rectangle textr, int off, int lasti, Ima
 	int i;
 
 	paintitem(menu, textr, off, lasti, 1, save, nil);
-	flushimage(display, 1);	/* in case display->locking is set */
+	flushimage(display, 1);
 	*m = emouse();
 	while(m->buttons & (1<<(but-1))){
-		flushimage(display, 1);	/* in case display->locking is set */
+		flushimage(display, 1);
 		*m = emouse();
 		i = menusel(textr, m->xy);
 		if(i != -1 && i == lasti)
@@ -148,10 +151,7 @@ menuscrollpaint(Rectangle scrollr, int off, int nitem, int nitemdrawn)
 	if(r.max.y < r.min.y+2)
 		r.max.y = r.min.y+2;
 	border(screen, r, 1, bord, ZP);
-	if(menutxt == 0)
-		menutxt = allocimage(display, Rect(0, 0, 1, 1), CMAP8, 1, DDarkgreen);
-	if(menutxt)
-		draw(screen, insetrect(r, 1), menutxt, nil, ZP);
+	draw(screen, insetrect(r, 1), menutxt, nil, ZP);
 }
 
 int
@@ -252,7 +252,7 @@ emenuhit(int but, Mouse *m, Menu *menu)
 					menuscrollpaint(scrollr, off, nitem, nitemdrawn);
 				}
 			}
-			flushimage(display, 1);	/* in case display->locking is set */
+			flushimage(display, 1);
 			*m = emouse();
 		}
 	}
