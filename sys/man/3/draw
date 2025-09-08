@@ -176,6 +176,31 @@ using the
 .B publicscreen
 interface.
 .HP
+.B a
+.IR dstid [4]
+.IR dr [4*4]
+.IR srcid [4]
+.IR sp [2*4]
+.IR warp [3*3*4]
+.IR smooth [1]
+.br
+Apply an affine image warping transformation
+.I warp
+to the image with id
+.I srcid
+starting at point
+.IR sp ,
+and blit the result to the subregion of image
+.I dstid
+defined by
+.IR dr .
+If the
+.I smooth
+byte is set, a bilinear interpolation filter will be applied to the
+samples.
+See
+.IR affinewarp (2).
+.HP
 .B b 
 .IR id [4]
 .IR screenid [4]
