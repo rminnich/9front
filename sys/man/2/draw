@@ -1,10 +1,11 @@
 .TH DRAW 2
 .SH NAME
-Image, draw, gendraw, drawreplxy, drawrepl,
-replclipr, line, poly, fillpoly, bezier, bezspline, fillbezier, fillbezspline, ellipse,
-fillellipse, arc, fillarc, icossin, icossin2, border, string, stringn,
-runestring, runestringn, stringbg, stringnbg, runestringbg,
-runestringnbg, _string, ARROW, drawsetdebug \- graphics functions
+Image, draw, gendraw, drawreplxy, drawrepl, replclipr, line, poly,
+fillpoly, bezier, bezspline, fillbezier, fillbezspline, ellipse,
+fillellipse, arc, fillarc, icossin, icossin2, border, mkwarp,
+affinewarp, string, stringn, runestring, runestringn, stringbg,
+stringnbg, runestringbg, runestringnbg, _string, ARROW, drawsetdebug
+\- graphics functions
 .de PB
 .PP
 .ft L
@@ -57,6 +58,8 @@ typedef enum
 .sp 0.1
 	Ncomp = 12,
 } Drawop;
+.PB
+typedef long	Warp[3][3];
 .PB
 .PD 0
 .ta +\w'\fL      'u +\w'\fL    'u +6n +4n
@@ -157,6 +160,11 @@ void	border(Image *dst, Rectangle r, int i, Image *color, Point sp)
 .PB
 void	borderop(Image *dst, Rectangle r, int i, Image *color, Point sp,
 		Drawop op)
+.PB
+void	mkwarp(Warp w, double m[3][3])
+.PB
+void	affinewarp(Image *dst, Rectangle r, Image *src, Point p, Warp w,
+		int smooth)
 .br
 .PB
 Point	string(Image *dst, Point p, Image *src, Point sp,
@@ -735,6 +743,41 @@ The source is aligned so
 .I sp
 corresponds to
 .IB r .min .
+.TP
+.BI mkwarp( w\fP,\fP\ m\fP)
+.I Mkwarp
+converts a 3×3 row-major matrix of
+.BR double s
+(usually a
+.IR geometry (2)
+.BR Matrix )
+into the fixed-point representation required by
+.I affinewarp
+in
+.BR w ,
+ignoring the last row which is always set to
+.B "[0 0 1]"
+for affine transformations.
+.TP
+.BI affinewarp( dst\fP,\fP\ r\fP,\fP\ src\fP,\fP\ p\fP,\fP\ w\fP,\fP\ smooth\fP)
+.I Affinewarp
+applies an affine transformation defined by
+.B w
+to the
+.BR src ,
+and stores the result in the
+.BR dst .
+It follows the behavior of
+.I draw
+regarding the use of
+.B clipr
+and the
+.B repl
+bit, but applied to the affine mappings.
+If
+.B smooth
+is set, each sample will be interpolated for better quality, which
+will make the transformation slower.
 .TP
 .BI string( dst\fP,\fP\ p\fP,\fP\ src\fP,\fP\ sp\fP,\fP\ font\fP,\fP\ s )
 .I String

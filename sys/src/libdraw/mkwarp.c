@@ -1,7 +1,6 @@
 #include <u.h>
 #include <libc.h>
 #include <draw.h>
-#include <memdraw.h>
 #include <geometry.h>
 
 /* 25.7 fixed-point number operations */

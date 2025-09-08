@@ -25,7 +25,6 @@ memfillpoly,
 memimageline,
 memimagedraw,
 memaffinewarp,
-mkwarp,
 allocmemimagekernel,
 memimagecorrelate,
 drawclip,
@@ -92,8 +91,6 @@ typedef struct Memdrawparam
 	\fI...\fP
 } Memdrawparam;
 
-typedef long	Warp[3][3];
-
 .ta \w'\fLMemsubfont* 'u
 int	drawdebug;
 .ft
@@ -141,7 +138,6 @@ void	memimagedraw(Memimage *dst, Rectangle r, Memimage *src,
 	   Point sp, Memimage *mask, Point mp, Drawop op)
 int	memaffinewarp(Memimage *dst, Rectangle r, Memimage *src,
 	   Point sp, Warp w, int smooth)
-void	mkwarp(Warp w, double m[3][3])
 Memimage*	allocmemimagekernel(double *k, int dx, int dy,
 	   double denom)
 int	memimagecorrelate(Memimage *dst, Rectangle r, Memimage *src,
@@ -347,6 +343,7 @@ described in
 .IR memellipse ,
 .IR memfillpoly ,
 .IR memimageline ,
+.IR memaffinewarp ,
 and
 .I memimagedraw
 are identical to the 
@@ -355,6 +352,7 @@ are identical to the
 .IR ellipse ,
 .IR fillpoly ,
 .IR line ,
+.IR affinewarp ,
 and
 .IR gendraw ,
 routines described in
@@ -390,39 +388,6 @@ only on
 .BR Memsubfont s
 rather than
 .BR Font s.
-.PP
-.I Memaffinewarp
-applies an affine transformation defined by
-.B w
-to the
-.BR src ,
-and stores the result in the
-.BR dst .
-It follows the behavior of
-.IR draw (2)
-regarding the use of
-.B clipr
-and the
-.B repl
-bit, but applied to the affine mappings.
-If
-.B smooth
-is set, each sample will be interpolated for better quality, which
-will make the transformation slower.
-.PP
-.I Mkwarp
-converts a 3×3 row-major matrix of
-.BR double s
-(usually a
-.IR geometry (2)
-.BR Matrix )
-into the fixed-point representation required by
-.I memaffinewarp
-in
-.BR w ,
-ignoring the last row which is always set to
-.B "[0 0 1]"
-for affine transformations.
 .PP
 .I Allocmemimagekernel
 takes
