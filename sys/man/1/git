@@ -112,7 +112,10 @@ git/pull, git/rm, git/serve, git/hist \- manage git repositories
 .PP
 .B git/rebase
 [
-.B -ari
+.B -s src
+]
+[
+.B -n
 ]
 .I onto
 .PP
@@ -458,42 +461,15 @@ takes two branches and merges them filewise using
 The next commit made will be a merge commit.
 .PP
 .I Git/rebase
-takes one branch and moves it onto another.
-On error, the remaining commits to rebase are
-saved, and can be resumed once the conflict is
-resolved using the
-.B -r
-option.
-If the rebase is to be aborted, the
-.B -a
-option will clean up the in progress rebase
-and reset the state of the branch.
+prints the commands to move commits from one
+branch onto another, using
+.I git/export
+and
+.I git/import.
 The
-.B -i
-option will open an editor to modify the todo-list before the rebase
-begins.
-.PP
-The following rebase commands are supported:
-.TP 10
-.B pick
-Apply the commit.
-.TP
-.B reword
-Apply the commit, then edit its commit message.
-.TP
-.B edit
-Apply the commit, then exit to allow further changes.
-.TP
-.B squash
-Fold the commit into the previous commit, then edit the combined
-commit message.
-.TP
-.B fixup
-Fold the commit into the previous commit, discarding its commit
-message.
-.TP
-.B break
-Exit to allow for manual edits or inspection before continuing.
+.B -n
+option is passed directly to
+.I git/import.
 .PP
 .I Git/conf
 is a tool for querying the git configuration.
