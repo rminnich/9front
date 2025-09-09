@@ -9,7 +9,7 @@ putwarp(uchar *a, Warp w)
 	BPLONG(a+1*3*4+0*4, w[1][0]); BPLONG(a+1*3*4+1*4, w[1][1]); BPLONG(a+1*3*4+2*4, w[1][2]);
 	BPLONG(a+2*3*4+0*4, w[2][0]); BPLONG(a+2*3*4+1*4, w[2][1]); BPLONG(a+2*3*4+2*4, w[2][2]);
 }
-		
+
 void
 affinewarp(Image *dst, Rectangle r, Image *src, Point p, Warp w, int smooth)
 {
@@ -18,12 +18,11 @@ affinewarp(Image *dst, Rectangle r, Image *src, Point p, Warp w, int smooth)
 	if(dst == nil || src == nil)
 		return;
 
-	_setdrawop(dst->display, S);
-
 	_lockdisplay(dst->display);
 	a = bufimage(dst->display, 1+4+4*4+4+2*4+3*3*4+1);
 	if(a == nil){
 		_unlockdisplay(dst->display);
+		fprint(2, "affinewarp: %r\n");
 		return;
 	}
 	a[0] = 'a';
