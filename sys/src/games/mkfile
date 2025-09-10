@@ -23,6 +23,7 @@ TARG=4s\
 	turtle\
 	vocenc\
 	vocdec\
+	rotzoomer\
 
 OFILES=
 HFILES=
