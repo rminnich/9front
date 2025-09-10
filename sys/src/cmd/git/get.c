@@ -477,6 +477,7 @@ usage(void)
 void
 main(int argc, char **argv)
 {
+	char *s;
 	Conn c;
 
 	ARGBEGIN{
@@ -485,8 +486,9 @@ main(int argc, char **argv)
 	case 'd':	chattygit++;			break;
 	case 'l':	listonly++;			break;
 	case 'h':
+		s = EARGF(usage());
 		if(nheads < nelem(heads))
-			if(hparse(&heads[nheads], EARGF(usage())) == 0)
+			if(hparse(&heads[nheads], s) == 0)
 				nheads++;
 		break;
 	default:
