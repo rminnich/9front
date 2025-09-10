@@ -62,6 +62,15 @@ run(char *file, Rune* (*fn)(Rune*), char* (*fn2)(char*))
 			chartorune(&r, pieces[i]);
 			if(r != L'÷' && r != L'×'){
 				r = estrtoul(pieces[i]);
+				/*
+				 * Unicode v17.0 onwards wants us to handle
+				 * strings with nulls in it, for our interface,
+				 * and C in general, this doesn't make much sense.
+				 * This could be fixed with a change to the exposed interface,
+				 * but we're not convinced of the utility of doing so.
+				 */
+				if(r == 0x0000)
+					goto Break;
 				stack[nstack++] = r;
 				stack[nstack] = 0;
 			} else {
