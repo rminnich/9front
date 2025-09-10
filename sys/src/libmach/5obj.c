@@ -114,6 +114,9 @@ addr(Biobuf *bp)
 	case D_FCONST:
 		skip(bp, 8);
 		break;
+	case D_REGREG:
+		skip(bp, 1);
+		break;
 	}
 	return a;
 }
