@@ -23,6 +23,8 @@ void		lldelete(Flayer*);
 Image	*maincols[NCOL];
 Image	*cmdcols[NCOL];
 
+int	sel;
+
 void
 flstart(Rectangle r)
 {
@@ -78,6 +80,7 @@ flinit(Flayer *l, Rectangle r, Font *ft, Image **cols)
 	l->visible = All;
 	l->origin = l->p0 = l->p1 = 0;
 	frinit(&l->f, insetrect(flrect(l, r), FLMARGIN), ft, screen, cols);
+	l->f.scroll = frscroll;
 	l->f.maxtab = maxtab*stringwidth(ft, "0");
 	newvisibilities(1);
 	draw(screen, l->entire, l->f.cols[BACK], nil, ZP);
@@ -261,7 +264,7 @@ flselect(Flayer *l, ulong *p)
 	dt = mousep->msec - l->click;
 	dx = abs(mousep->xy.x - clickpt.x);
 	dy = abs(mousep->xy.y - clickpt.y);
-	*p = frcharofpt(&l->f, mousep->xy) + l->origin;
+	*p = sel = frcharofpt(&l->f, mousep->xy) + l->origin;
 
 	l->click = mousep->msec;
 	clickpt = mousep->xy;
@@ -271,8 +274,8 @@ flselect(Flayer *l, ulong *p)
 	clickcount = 0;
 
 	frselect(&l->f, mousectl);
-	l->p0 = l->f.p0+l->origin;
-	l->p1 = l->f.p1+l->origin;
+	l->p0 = sel < l->origin? sel: l->origin + l->f.p0;
+	l->p1 = sel > l->origin+l->f.nchars? sel: l->origin + l->f.p1;
 	return 0;
 }
 

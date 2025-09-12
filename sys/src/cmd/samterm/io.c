@@ -177,6 +177,52 @@ rcvstring(void)
 	return (char*)hostp;
 }
 
+void
+frscroll(Frame *f, int n)
+{
+	Flayer *l = which;
+	Text *t = l->user1;
+	long p;
+
+	if(nbrecv(mousectl->c, &mousectl->Mouse) < 0)
+		panic("mouse");
+
+	if(n < 0){
+		if(sel > l->origin+f->p0){
+			l->p0 = l->origin+f->p0;
+			l->p1 = sel;
+		}else{
+			l->p0 = sel;
+			l->p1 = l->origin+f->p0;
+		}
+		scrorigin(l, 1, -n+1);
+	}else if(n == 0){
+		sleep(25);
+		return;
+	}else{
+		if(sel >= l->origin+f->p1){
+			l->p0 = l->origin+f->p1;
+			l->p1 = sel;
+		}else{
+			l->p0 = sel;
+			l->p1 = l->origin+f->p1;
+		}
+		p = l->origin;
+		if(l->origin+f->nchars != t->rasp.nrunes)
+			p += frcharofpt(f, Pt(l->scroll.max.x, l->scroll.min.y + n * f->font->height));
+		scrorigin(l, 2, p);
+	}
+
+	/*
+	 * we must pull io from host while we are in frame(2)
+	 */
+	do{
+		block = ~(1 << RHost);
+		waitforio();
+		rcv();
+	}while(t->lock);
+}
+
 int
 getch(void)
 {

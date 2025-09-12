@@ -620,6 +620,7 @@ hcheck(int m)
 			t->lock++;	/* for the Trequest */
 			t->lock++;	/* for the Tcheck */
 			reqd++;
+			continue;
 		}
 	    Checksel:
 		flsetselect(l, l->p0, l->p1);

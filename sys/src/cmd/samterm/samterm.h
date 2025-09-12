@@ -109,6 +109,7 @@ int	button(int but);
 int	load(char*, int);
 int	waitforio(void);
 int	rcvchar(void);
+void	frscroll(Frame*, int);
 int	getch(void);
 int	kbdchar(void);
 int	qpeekc(void);
