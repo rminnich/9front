@@ -303,6 +303,7 @@ void main(int argc, char *argv[]){
 	int i;
 
 	quotefmtinstall();
+	doquote = needsrcquote;
 	fmtinstall('U', Ufmt);
 
 	ARGBEGIN{
