@@ -8,10 +8,8 @@ doellipse(int cmd, Image *dst, Point *c, int xr, int yr, int thick, Image *src, 
 {
 	uchar *a;
 
-	_setdrawop(dst->display, op);
-
 	_lockdisplay(dst->display);
-	a = bufimage(dst->display, 1+4+4+2*4+4+4+4+2*4+2*4);
+	a = _bufimageop(dst->display, 1+4+4+2*4+4+4+4+2*4+2*4, op);
 	if(a == nil){
 		_unlockdisplay(dst->display);
 		fprint(2, "image ellipse: %r\n");

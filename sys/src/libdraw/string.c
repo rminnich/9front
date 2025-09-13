@@ -106,13 +106,11 @@ _string(Image *dst, Point pt, Image *src, Point sp, Font *f, char *s, Rune *r, i
 		}
 		try = 0;
 
-		_setdrawop(dst->display, op);
-
 		m = 47+2*n;
 		if(bg)
 			m += 4+2*4;
 		_lockdisplay(dst->display);
-		b = bufimage(dst->display, m);
+		b = _bufimageop(dst->display, m, op);
 		if(b == nil){
 			_unlockdisplay(dst->display);
 			fprint(2, "string: %r\n");

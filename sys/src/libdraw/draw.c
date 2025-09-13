@@ -2,33 +2,13 @@
 #include <libc.h>
 #include <draw.h>
 
-void
-_setdrawop(Display *d, Drawop op)
-{
-	uchar *a;
-
-	if(op != SoverD){
-		_lockdisplay(d);
-		a = bufimage(d, 1+1);
-		if(a == nil){
-			_unlockdisplay(d);
-			return;
-		}
-		a[0] = 'O';
-		a[1] = op;
-		_unlockdisplay(d);
-	}
-}
-		
 static void
 draw1(Image *dst, Rectangle *r, Image *src, Point *p0, Image *mask, Point *p1, Drawop op)
 {
 	uchar *a;
 
-	_setdrawop(dst->display, op);
-
 	_lockdisplay(dst->display);
-	a = bufimage(dst->display, 1+4+4+4+4*4+2*4+2*4);
+	a = _bufimageop(dst->display, 1+4+4+4+4*4+2*4+2*4, op);
 	if(a == nil){
 		_unlockdisplay(dst->display);
 		return;

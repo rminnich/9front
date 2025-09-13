@@ -41,10 +41,8 @@ dopoly(int cmd, Image *dst, Point *pp, int np, int end0, int end1, int radius, I
 		oy = pp[i].y;
 	}
 
-	_setdrawop(dst->display, op);
-
 	_lockdisplay(dst->display);
-	a = bufimage(dst->display, 1+4+2+4+4+4+4+2*4+(u-t));
+	a = _bufimageop(dst->display, 1+4+2+4+4+4+4+2*4+(u-t), op);
 	if(a == nil){
 		_unlockdisplay(dst->display);
 		free(t);

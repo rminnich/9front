@@ -521,7 +521,7 @@ extern	Font		*font;
 extern	Image	*screen;
 extern	Screen	*_screen;
 extern	int	_cursorfd;
-extern	void	_setdrawop(Display*, Drawop);
+extern	uchar*	_bufimageop(Display*, int, Drawop);
 
 #define	BGSHORT(p)	((p)[0]|((p)[1]<<8))
 #define	BGLONG(p)	((p)[0]|((p)[1]<<8)|((p)[2]<<16)|((p)[3]<<24))
