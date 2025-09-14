@@ -24,10 +24,9 @@ static char Enonexist[] = "file does not exist";
 static char Eperm[] = "permission denied";
 
 typedef struct Event Event;
-
 struct Event {
 	Dev *dev;	/* the device producing the event,
-			   dev->aux points to Fid processing the event */
+			   dev->aux points to Reader processing the event */
 	char *data;
 	int len;
 	Event *link;
@@ -37,19 +36,36 @@ struct Event {
 			   their link pointers */
 };
 
+typedef struct Reader Reader;
+struct Reader {
+	Event	*event;	/* next event this reader can read */
+	uint	order;	/* open order */
+};
+
 static Event *evlast;
-static Req *reqfirst, *reqlast;
+static Req *reqlist;	/* sorted by open order */
 static QLock evlock;
 
 static void
 addreader(Req *req)
 {
-	req->aux = nil;
-	if(reqfirst == nil)
-		reqfirst = req;
-	else
-		reqlast->aux = req;
-	reqlast = req;
+	Req **l, *r;
+	Reader *rr;
+	uint order;
+
+	rr = req->fid->aux;
+	order = rr->order;
+
+	l = &reqlist;
+	while((r = *l) != nil) {
+		rr = r->fid->aux;
+		if(order > rr->order)
+			break;
+		l = (Req**)&r->aux;
+	}
+
+	req->aux = r;
+	*l = req;
 }
 
 static void
@@ -88,38 +104,35 @@ putevent(Event *e)
 static void
 procreqs(void)
 {
-	Req *r, *p, *x;
+	Req **l, *r;
+	Reader *rr;
 	Event *e;
-	Fid *f;
 
-Loop:
-	for(p = nil, r = reqfirst; r != nil; p = r, r = x){
-		x = r->aux;
-		f = r->fid;
-		e = f->aux;
-		if(e == evlast)
-			continue;
-		if(e->dev->aux == f){
+	for(r = reqlist; r != nil; r = r->aux){
+		rr = r->fid->aux;
+		e = rr->event;
+		if(e != evlast && e->dev->aux == rr){
 			e->dev->aux = nil;	/* release device */
 			e->ref--;
 			e = putevent(e);
 			e->ref++;
-			f->aux = e;
-			goto Loop;
+			rr->event = e;
 		}
-		if(e->dev->aux == nil){
-			e->dev->aux = f;	/* claim device */
-			if(x == nil)
-				reqlast = p;
-			if(p == nil)
-				reqfirst = x;
-			else
-				p->aux = x;
+	}
+
+	l = &reqlist;
+	while((r = *l) != nil){
+		rr = r->fid->aux;
+		e = rr->event;
+		if(e != evlast && e->dev->aux == nil){
+			e->dev->aux = rr;	/* claim device */
+			*l = r->aux;
 			r->aux = nil;
 			fulfill(r, e);
 			respond(r, nil);
-			goto Loop;
+			continue;
 		}
+		l = (Req**)&r->aux;
 	}
 }
 
@@ -342,6 +355,8 @@ static void
 usbdopen(Req *req)
 {
 	extern QLock hublock;
+	static uint order;
+	Reader *rr;
 	Event *e;
 
 	switch((ulong)req->fid->qid.path){
@@ -356,7 +371,11 @@ usbdopen(Req *req)
 		enumerate(&e);
 		e->prev--;
 		e->ref++;
-		req->fid->aux = e;
+
+		rr = emallocz(sizeof(Reader), 1);
+		rr->event = e;
+		rr->order = ++order;
+		req->fid->aux = rr;
 
 		qunlock(&evlock);
 		qunlock(&hublock);
@@ -375,19 +394,22 @@ static void
 usbddestroyfid(Fid *fid)
 {
 	if(fid->qid.path == Qusbevent){
+		Reader *rr;
 		Event *e;
 
 		qlock(&evlock);
-		e = fid->aux;
-		if(e != nil){
+		if((rr = fid->aux) != nil){
 			fid->aux = nil;
-			if(e->dev != nil && e->dev->aux == fid){
-				e->dev->aux = nil;	/* release device */
-				procreqs();
+			if((e = rr->event) != nil){
+				if(e->dev != nil && e->dev->aux == rr){
+					e->dev->aux = nil;	/* release device */
+					procreqs();
+				}
+				e->ref--;
+				while(e->ref == 0 && e->prev == 0 && e != evlast)
+					e = putevent(e);
 			}
-			e->ref--;
-			while(e->ref == 0 && e->prev == 0 && e != evlast)
-				e = putevent(e);
+			free(rr);
 		}
 		qunlock(&evlock);
 	}
@@ -396,22 +418,18 @@ usbddestroyfid(Fid *fid)
 static void
 usbdflush(Req *req)
 {
-	Req *r, *p, *x;
+	Req **l, *r;
 
 	qlock(&evlock);
-	for(p = nil, r = reqfirst; r != nil; p = r, r = x){
-		x = r->aux;
+	l = &reqlist;
+	while((r = *l) != nil){
 		if(r == req->oldreq){
-			if(x == nil)
-				reqlast = p;
-			if(p == nil)
-				reqfirst = x;
-			else
-				p->aux = x;
+			*l = r->aux;
 			r->aux = nil;
 			respond(r, "interrupted");
 			break;
 		}
+		l = (Req**)&r->aux;
 	}
 	qunlock(&evlock);
 	respond(req, nil);
@@ -535,7 +553,7 @@ static int busyfd = -1;
 void
 checkidle(void)
 {
-	if(busyfd < 0 || reqlast == nil || evlast == nil || evlast->prev > 0)
+	if(busyfd < 0 || reqlist == nil || evlast == nil || evlast->prev > 0)
 		return;
 
 	close(busyfd);
