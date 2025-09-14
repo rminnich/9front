@@ -1,0 +1,112 @@
+.TH IMAGE 1
+.SH NAME
+affinewarp, correlate - image processing tools
+.SH SYNOPSIS
+.B image/affinewarp
+[
+.B -Rqp
+] [[
+.B -s
+.I x y
+] [
+.B -r
+.I θ
+] [
+.B -t
+.I x y
+] [
+.B -S
+.I x y
+]
+.I ...
+]
+.br
+.B image/correlate
+[
+.B -cRp
+]
+.I kernel
+[
+.I denom
+]
+.SH DESCRIPTION
+Image processing tools for
+.IR image (6)
+files.
+.PP
+.I Affinewarp
+applies a sequence of affine image warping transformations to an image
+read from stdin and writes the result to stdout.  The transformations
+happen in a left-handed coordinate system where the origin is the
+upper-left corner, and are applied in the order of the arguments.  Its
+options:
+.TP
+.B -R
+Replicate the source image over the entire destination span.  Without
+this option pixels that map outside the bounds of the image will be
+set to black; or transparent for images with an alpha channel.
+.TP
+.B -q
+Apply a bilinear filter when sampling the source for a higher-quality
+(albeit blurrier) result.
+.TP
+.B -p
+Enable parallelism.
+.TP
+.B -s
+Scale the picture
+.I x
+times along the x-axis and
+.I y
+times along the y-axis.
+.TP
+.B -r
+Rotate the image
+.I θ
+degrees.
+.TP
+.B -t
+Translate the picture
+.I x
+pixels along the x-axis and
+.I y
+pixels along the y-axis.
+.TP
+.B -S
+Shear the image
+.I x
+times along the x-axis and
+.I y
+times along the y-axis.
+.PP
+.I Correlate
+applies a correlation operation between an image read from stdin and a
+filtering
+.I kernel
+specified in a file of the same name, writing the result to stdout.
+It will look for the file in the current directory first, and if it
+doesn't find it, it will try in
+.BR /lib/image/filter .
+A
+.I denom
+parameter controls the normalizing coefficient applied to the kernel
+before doing the operation, and it can be any real number; by default
+or when set to zero, it will use the sum of coefficients in the
+kernel.  Its options:
+.TP
+.B -c
+Apply a convolution instead of a correlation.
+.TP
+.B -R
+Replicate the source image.  This changes the behavior of the sampler
+when accessing pixels outside of the image boundaries, warping the
+probe point so that it falls back into the image (a toroidal map).
+.TP
+.B -p
+Enable parallelism.
+.SH SOURCE
+.B /sys/src/cmd/image
+.SH SEE ALSO
+.IR crop (1),
+.IR resample (1),
+.IR image (6)

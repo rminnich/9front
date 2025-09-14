@@ -7,6 +7,7 @@ mkdir -p 386/bin/dial
 mkdir -p 386/bin/disk
 mkdir -p 386/bin/fs
 mkdir -p 386/bin/games
+mkdir -p 386/bin/image
 mkdir -p 386/bin/ip/httpd
 mkdir -p 386/bin/ndb
 mkdir -p 386/bin/nusb
@@ -23,6 +24,7 @@ mkdir -p 68000/bin/dial
 mkdir -p 68000/bin/disk
 mkdir -p 68000/bin/fs
 mkdir -p 68000/bin/games
+mkdir -p 68000/bin/image
 mkdir -p 68000/bin/ip/httpd
 mkdir -p 68000/bin/ndb
 mkdir -p 68000/bin/nusb
@@ -39,6 +41,7 @@ mkdir -p 68020/bin/dial
 mkdir -p 68020/bin/disk
 mkdir -p 68020/bin/fs
 mkdir -p 68020/bin/games
+mkdir -p 68020/bin/image
 mkdir -p 68020/bin/ip/httpd
 mkdir -p 68020/bin/ndb
 mkdir -p 68020/bin/nusb
@@ -66,6 +69,7 @@ mkdir -p amd64/bin/dial
 mkdir -p amd64/bin/disk
 mkdir -p amd64/bin/fs
 mkdir -p amd64/bin/games
+mkdir -p amd64/bin/image
 mkdir -p amd64/bin/ip/httpd
 mkdir -p amd64/bin/ndb
 mkdir -p amd64/bin/nusb
@@ -82,6 +86,7 @@ mkdir -p arm/bin/dial
 mkdir -p arm/bin/disk
 mkdir -p arm/bin/fs
 mkdir -p arm/bin/games
+mkdir -p arm/bin/image
 mkdir -p arm/bin/ip/httpd
 mkdir -p arm/bin/ndb
 mkdir -p arm/bin/nusb
@@ -98,6 +103,7 @@ mkdir -p arm64/bin/dial
 mkdir -p arm64/bin/disk
 mkdir -p arm64/bin/fs
 mkdir -p arm64/bin/games
+mkdir -p arm64/bin/image
 mkdir -p arm64/bin/ip/httpd
 mkdir -p arm64/bin/ndb
 mkdir -p arm64/bin/nusb
@@ -129,6 +135,7 @@ mkdir -p mips/bin/dial
 mkdir -p mips/bin/disk
 mkdir -p mips/bin/fs
 mkdir -p mips/bin/games
+mkdir -p mips/bin/image
 mkdir -p mips/bin/ip/httpd
 mkdir -p mips/bin/ndb
 mkdir -p mips/bin/nusb
@@ -145,6 +152,7 @@ mkdir -p spim/bin/dial
 mkdir -p spim/bin/disk
 mkdir -p spim/bin/fs
 mkdir -p spim/bin/games
+mkdir -p spim/bin/image
 mkdir -p spim/bin/ip/httpd
 mkdir -p spim/bin/ndb
 mkdir -p spim/bin/nusb
@@ -161,6 +169,7 @@ mkdir -p power/bin/dial
 mkdir -p power/bin/disk
 mkdir -p power/bin/fs
 mkdir -p power/bin/games
+mkdir -p power/bin/image
 mkdir -p power/bin/ip/httpd
 mkdir -p power/bin/ndb
 mkdir -p power/bin/nusb
@@ -177,6 +186,7 @@ mkdir -p power64/bin/dial
 mkdir -p power64/bin/disk
 mkdir -p power64/bin/fs
 mkdir -p power64/bin/games
+mkdir -p power64/bin/image
 mkdir -p power64/bin/ip/httpd
 mkdir -p power64/bin/ndb
 mkdir -p power64/bin/nusb
@@ -196,6 +206,7 @@ mkdir -p sparc/bin/dial
 mkdir -p sparc/bin/disk
 mkdir -p sparc/bin/fs
 mkdir -p sparc/bin/games
+mkdir -p sparc/bin/image
 mkdir -p sparc/bin/ip/httpd
 mkdir -p sparc/bin/ndb
 mkdir -p sparc/bin/nusb
@@ -212,6 +223,7 @@ mkdir -p sparc64/bin/dial
 mkdir -p sparc64/bin/disk
 mkdir -p sparc64/bin/fs
 mkdir -p sparc64/bin/games
+mkdir -p sparc64/bin/image
 mkdir -p sparc64/bin/ip/httpd
 mkdir -p sparc64/bin/ndb
 mkdir -p sparc64/bin/nusb

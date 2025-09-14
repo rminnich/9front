@@ -1,0 +1,14 @@
+</$objtype/mkfile
+
+BIN=/$objtype/bin/image
+TARG=\
+	correlate\
+	affinewarp\
+
+OFILES=\
+	util.$O\
+
+HFILES=\
+	fns.h\
+
+</sys/src/cmd/mkmany
