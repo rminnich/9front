@@ -1020,7 +1020,7 @@ main(int argc, char **argv)
 	} ARGEND
 
 	tmfmtinstall();
-
+	memset(&ftpd, 0, sizeof(ftpd));
 	if(argc < 1)
 		ftpd.conn.nci = getnetconninfo(nil, 0);
 	else
