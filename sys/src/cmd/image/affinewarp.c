@@ -102,6 +102,7 @@ Rectangle
 getbbox(Rectangle *sr, Matrix m, Point2 *dp0)
 {
 	Point2 p0, p1, p2, p3;
+	Rectangle bbox;
 
 	p0 = Pt2(sr->min.x + 0.5, sr->min.y + 0.5, 1);
 	p0 = *dp0 = xform(p0, m);
@@ -112,17 +113,17 @@ getbbox(Rectangle *sr, Matrix m, Point2 *dp0)
 	p3 = Pt2(sr->max.x + 0.5, sr->max.y + 0.5, 1);
 	p3 = xform(p3, m);
 
-	p0.x = min(min(min(p0.x, p1.x), p2.x), p3.x);
-	p0.y = min(min(min(p0.y, p1.y), p2.y), p3.y);
-	p1.x = max(max(max(p1.x, p1.x), p2.x), p3.x);
-	p1.y = max(max(max(p1.y, p1.y), p2.y), p3.y);
-	return Rect(p0.x, p0.y, p1.x, p1.y);
+	bbox.min.x = min(min(min(p0.x, p1.x), p2.x), p3.x);
+	bbox.min.y = min(min(min(p0.y, p1.y), p2.y), p3.y);
+	bbox.max.x = max(max(max(p0.x, p1.x), p2.x), p3.x);
+	bbox.max.y = max(max(max(p0.y, p1.y), p2.y), p3.y);
+	return bbox;
 }
 
 void
 usage(void)
 {
-	fprint(2, "usage: %s [-Rqp] [[-s x y] [-r θ] [-t x y] [-S x y]]...\n", argv0);
+	fprint(2, "usage: %s [-Rqp] [[-s x y] [-r θ] [-t x y] [-S x y] ...]\n", argv0);
 	exits("usage");
 }
 
@@ -139,6 +140,7 @@ main(int argc, char *argv[])
 	int smooth, dorepl, parallel, nproc, i;
 	char *nprocs;
 
+	memset(&stk, 0, sizeof stk);
 	dorepl = 0;
 	smooth = 0;
 	parallel = 0;
