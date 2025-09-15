@@ -178,21 +178,27 @@ freerange(Avltree *t, vlong off, vlong len)
 
 Again:
 	s = (Arange*)avlprev(r);
-	if(s != nil && s->off+s->len == r->off){
-		avldelete(t, r);
-		s->len = s->len + r->len;
-		free(r);
-		r = s;
-		goto Again;
+	if(s != nil){
+		if(s->off+s->len == r->off){
+			avldelete(t, r);
+			s->len = s->len + r->len;
+			free(r);
+			r = s;
+			goto Again;
+		}
+		assert(s->off+s->len < r->off);
 	}
 	s = (Arange*)avlnext(r);
-	if(s != nil && r->off+r->len == s->off){
-		avldelete(t, r);
-		s->off = r->off;
-		s->len = s->len + r->len;
-		free(r);
-		r = s;
-		goto Again;
+	if(s != nil){
+		if(r->off+r->len == s->off){
+			avldelete(t, r);
+			s->off = r->off;
+			s->len = s->len + r->len;
+			free(r);
+			r = s;
+			goto Again;
+		}
+		assert(r->off+r->len < s->off);
 	}
 }
 
@@ -537,6 +543,7 @@ blkalloc_lk(Arena *a, int seq)
 		free(r);
 	}
 	a->used += Blksz;
+	tracex("blkalloc" , Zb, b, getcallerpc(&a));
 	return b;
 }
 
@@ -594,13 +601,13 @@ initblk(Blk *b, vlong bp, vlong gen, int ty)
 {
 	Blk *ob;
 
-	ob = cacheget(bp);
-	if(ob != nil)
-		fatal("double alloc: %#p %B %#p %B", b, b->bp, ob, ob->bp);
 	b->type = ty;
 	b->bp.addr = bp;
 	b->bp.hash = -1;
 	b->bp.gen = gen;
+	ob = cacheget(bp);
+	if(ob != nil)
+		fatal("double alloc: %#p %B %#p %B", b, b->bp, ob, ob->bp);
 	switch(ty){
 	case Tdat:
 		b->data = b->buf;
@@ -642,7 +649,6 @@ newdblk(Tree *t, vlong hint, int seq)
 	b = cachepluck();
 	initblk(b, bp, t->memgen, Tdat);
 	b->alloced = getcallerpc(&t);
-	tracex("newblk" , b->bp, Tdat, -1);
 	return b;
 
 }
@@ -657,7 +663,6 @@ newblk(Tree *t, int ty)
 	b = cachepluck();
 	initblk(b, bp, t->memgen, ty);
 	b->alloced = getcallerpc(&t);
-	tracex("newblk" , b->bp, ty, -1);
 	return b;
 }
 
