@@ -19,7 +19,6 @@ struct Path {
 
 	/* Flowing up from flush */
 	int	op;	/* change done along path */
-	Blk	*m;	/* node merged against, for post-update free */
 	Blk	*nl;	/* new left */
 	Blk	*nr;	/* new right, if we split or rotated */
 	int	midx;	/* modification index */
@@ -1136,8 +1135,6 @@ freepath(Tree *t, Path *path, int npath, int ok)
 
 	for(p = path; p != path + npath; p++){
 		if(ok && p->b != nil)
-			freeblk(t, p->b);
-		if(ok && p->m != nil)
 			freeblk(t, p->b);
 		dropblk(p->b);
 		dropblk(p->nl);
