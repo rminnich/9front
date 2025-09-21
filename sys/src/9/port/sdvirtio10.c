@@ -24,14 +24,8 @@
 #include "../port/error.h"
 
 #include "../port/sd.h"
+#include "../port/virtio10.h"
 
-typedef struct Vscsidev Vscsidev;
-typedef struct Vblkdev Vblkdev;
-
-typedef struct Vconfig Vconfig;
-typedef struct Vring Vring;
-typedef struct Vdesc Vdesc;
-typedef struct Vused Vused;
 typedef struct Vqueue Vqueue;
 typedef struct Vdev Vdev;
 
@@ -68,68 +62,23 @@ enum {
 	SENSESIZE	= 96,
 };
 
-	
-struct Vscsidev
-{
-	u32int	num_queues;
-	u32int	seg_max;
-	u32int	max_sectors;
-	u32int	cmd_per_lun;
-	u32int	event_info_size;
-	u32int	sense_size;
-	u32int	cdb_size;
-	u16int	max_channel;
-	u16int	max_target;
-	u32int	max_lun;
+enum {
+	Vscsi_num_queues = 0,
+	Vscsi_seg_max = 4,
+	Vscsi_max_sectors = 8,
+	Vscsi_cmd_per_lun = 12,
+	Vscsi_event_info_size = 16,
+	Vscsi_sense_size = 20,
+	Vscsi_cdb_size = 24,
+	Vscsi_max_channel = 28,
+	Vscsi_max_target = 30,
+	Vscsi_max_lun = 32,
+	Vscsi_sz = 36
 };
 
-struct Vblkdev
-{
-	u64int	capacity;
-};
-
-struct Vconfig {
-	u32int	devfeatsel;
-	u32int	devfeat;
-	u32int	drvfeatsel;
-	u32int	drvfeat;
-
-	u16int	msixcfg;
-	u16int	nqueues;
-
-	u8int	status;
-	u8int	cfggen;
-	u16int	queuesel;
-
-	u16int	queuesize;
-	u16int	queuemsixvect;
-
-	u16int	queueenable;
-	u16int	queuenotifyoff;
-
-	u64int	queuedesc;
-	u64int	queueavail;
-	u64int	queueused;
-};
-
-struct Vring
-{
-	u16int	flags;
-	u16int	idx;
-};
-
-struct Vdesc
-{
-	u64int	addr;
-	u32int	len;
-	u16int	flags;
-	u16int	next;
-};
-
-struct Vused
-{
-	u32int	id;
-	u32int	len;
+enum {
+	Vblk_capacity = 0,
+	Vblk_sz = 8
 };
 
 struct Vqueue
@@ -137,7 +86,7 @@ struct Vqueue
 	Lock;
 
 	Vdev	*dev;
-	void	*notify;
+	Vio	notify;
 	int	idx;
 
 	int	size;
@@ -171,12 +120,12 @@ struct Vdev
 	int	nqueue;
 	Vqueue	*queue[16];
 
-	void	*dev;	/* device specific config (for scsi) */
+	Vio	dev;	/* device specific config (for scsi) */
 
 	/* registers */
-	Vconfig	*cfg;
-	u8int	*isr;
-	u8int	*notify;
+	Vio	cfg;
+	Vio	isr;
+	Vio	notify;
 	u32int	notifyoffmult;
 
 	Vdev	*next;
@@ -240,11 +189,10 @@ matchvirtiocfgcap(Pcidev *p, int cap, int off, int typ)
 	if(cap != 9 || pcicfgr8(p, off+3) != typ)
 		return 1;
 
-	/* skip invalid or non memory bars */
+	/* skip invalid bars */
 	bar = pcicfgr8(p, off+4);
 	if(bar < 0 || bar >= nelem(p->mem) 
-	|| p->mem[bar].size == 0
-	|| (p->mem[bar].bar & 3) != 0)
+	|| p->mem[bar].size == 0)
 		return 1;
 
 	return 0;
@@ -256,36 +204,16 @@ virtiocap(Pcidev *p, int typ)
 	return pcienumcaps(p, matchvirtiocfgcap, typ);
 }
 
-static void*
-virtiomapregs(Pcidev *p, int cap, int size)
-{
-	int bar, len;
-	uvlong addr;
-
-	if(cap < 0)
-		return nil;
-	bar = pcicfgr8(p, cap+4) % nelem(p->mem);
-	addr = pcicfgr32(p, cap+8);
-	len = pcicfgr32(p, cap+12);
-	if(size <= 0)
-		size = len;
-	else if(len < size)
-		return nil;
-	if(addr+len > p->mem[bar].size)
-		return nil;
-	addr += p->mem[bar].bar & ~0xFULL;
-	return vmap(addr, size);
-}
-
 static Vdev*
 viopnpdevs(int typ)
 {
 	Vdev *vd, *h, *t;
-	Vconfig *cfg;
+	Vio cfg;
 	Vqueue *q;
 	Pcidev *p;
 	int cap, bar;
 	int n, i;
+	uvlong mask;
 
 	h = t = nil;
 	for(p = nil; p = pcimatch(p, 0x1AF4, 0x1040+typ);){
@@ -294,21 +222,20 @@ viopnpdevs(int typ)
 		if((cap = virtiocap(p, 1)) < 0)
 			continue;
 		bar = pcicfgr8(p, cap+4) % nelem(p->mem);
-		cfg = virtiomapregs(p, cap, sizeof(Vconfig));
-		if(cfg == nil)
+		if(virtiomapregs(p, cap, Vconf_sz, &cfg) == 0)
 			continue;
 		if((vd = malloc(sizeof(*vd))) == nil){
 			print("virtio: no memory for Vdev\n");
 			break;
 		}
-		vd->port = p->mem[bar].bar & ~0xFULL;
+		mask = p->mem[bar].bar&1?~0x3ULL:~0xFULL;
+		vd->port = p->mem[bar].bar & mask;
 		vd->typ = typ;
 		vd->pci = p;
 		vd->cfg = cfg;
 		pcienable(p);
 
-		vd->isr = virtiomapregs(p, virtiocap(p, 3), 0);
-		if(vd->isr == nil){
+		if(virtiomapregs(p, virtiocap(p, 3), 0, &vd->isr) == nil){
 Baddev:
 			pcidisable(p);
 			/* TODO: vunmap */
@@ -316,43 +243,52 @@ Baddev:
 			continue;
 		}
 		cap = virtiocap(p, 2);
-		vd->notify = virtiomapregs(p, cap, 0);
-		if(vd->notify == nil)
+		if(virtiomapregs(p, cap, 0, &vd->notify) == nil)
 			goto Baddev;
 		vd->notifyoffmult = pcicfgr32(p, cap+16);
 
 		/* reset */
-		cfg->status = 0;
-		while(cfg->status != 0)
+		coherence();
+		vout8(&cfg, Vconf_status, 0);
+		while(vin8(&cfg, Vconf_status) != 0)
 			delay(1);
-		cfg->status = Acknowledge|Driver;
+		vout8(&cfg, Vconf_status, Acknowledge|Driver);
 
 		/* negotiate feature bits */
-		cfg->devfeatsel = 1;
-		vd->feat[1] = cfg->devfeat;
-		cfg->devfeatsel = 0;
-		vd->feat[0] = cfg->devfeat;
-		cfg->drvfeatsel = 1;
-		cfg->drvfeat = vd->feat[1] & 1;
-		cfg->drvfeatsel = 0;
-		cfg->drvfeat = 0;
-		cfg->status |= FeaturesOk;
+		vout32(&cfg, Vconf_devfeatsel, 1);
+		vd->feat[1] = vin32(&cfg, Vconf_devfeat);
+
+		vout32(&cfg, Vconf_devfeatsel, 0);
+		vd->feat[0] = vin32(&cfg, Vconf_devfeat);
+
+		vout32(&cfg, Vconf_drvfeatsel, 1);
+		vout32(&cfg, Vconf_drvfeat, vd->feat[1] & 1);
+
+		vout32(&cfg, Vconf_drvfeatsel, 0);
+		vout32(&cfg, Vconf_drvfeat, 0);
+
+		vout8(&cfg, Vconf_status, vin8(&cfg, Vconf_status) | FeaturesOk);
+
 
 		for(i=0; i<nelem(vd->queue); i++){
-			cfg->queuesel = i;
-			n = cfg->queuesize;
+			vout16(&cfg, Vconf_queuesel, i);
+			n = vin16(&cfg, Vconf_queuesize);
 			if(n == 0 || (n & (n-1)) != 0)
 				break;
 			if((q = mkvqueue(n)) == nil)
 				break;
-			q->notify = vd->notify + vd->notifyoffmult * cfg->queuenotifyoff;
+			q->notify = vd->notify;
+			if(q->notify.type == Vio_port)
+				q->notify.port += vd->notifyoffmult * vin16(&cfg, Vconf_queuenotifyoff);
+			else
+				q->notify.mem += vd->notifyoffmult * vin16(&cfg, Vconf_queuenotifyoff);
 			q->dev = vd;
 			q->idx = i;
 			vd->queue[i] = q;
 			coherence();
-			cfg->queuedesc = PADDR(q->desc);
-			cfg->queueavail = PADDR(q->avail);
-			cfg->queueused = PADDR(q->used);
+			vout64(&cfg, Vconf_queuedesc, PADDR(q->desc));
+			vout64(&cfg, Vconf_queueavail, PADDR(q->avail));
+			vout64(&cfg, Vconf_queueused, PADDR(q->used));
 		}
 		vd->nqueue = i;
 	
@@ -406,7 +342,7 @@ viointerrupt(Ureg *, void *arg)
 {
 	Vdev *vd = arg;
 
-	if(vd->isr[0] & 1)
+	if(vin8(&vd->isr, 0) & 1)
 		vqinterrupt(vd->queue[vd->typ == TypSCSI ? 2 : 0]);
 }
 
@@ -429,7 +365,7 @@ vqio(Vqueue *q, int head)
 	q->avail->idx++;
 	iunlock(q);
 	if((q->used->flags & 1) == 0)
-		*((u16int*)q->notify) = q->idx;
+		vout16(&q->notify, 0, q->idx);
 	while(!rock.done){
 		while(waserror())
 			;
@@ -515,11 +451,9 @@ vioscsireq(SDreq *r)
 	Vdesc *d;
 	Vdev *vd;
 	SDunit *u;
-	Vscsidev *scsi;
 
 	u = r->unit;
 	vd = u->dev->ctlr;
-	scsi = vd->dev;
 
 	memset(resp, 0, sizeof(resp));
 	memset(req, 0, sizeof(req));
@@ -547,7 +481,7 @@ vioscsireq(SDreq *r)
 
 	d = &q->desc[free]; free = d->next;
 	d->addr = PADDR(req);
-	d->len = 8+8+3+scsi->cdb_size;
+	d->len = 8+8+3+vin32(&vd->dev, Vscsi_cdb_size);
 	d->flags = Next;
 
 	if(r->write && r->dlen > 0){
@@ -559,7 +493,7 @@ vioscsireq(SDreq *r)
 
 	d = &q->desc[free]; free = d->next;
 	d->addr = PADDR(resp);
-	d->len = 4+4+2+2+scsi->sense_size;
+	d->len = 4+4+2+2+vin32(&vd->dev, Vscsi_sense_size);
 	d->flags = Write;
 
 	if(!r->write && r->dlen > 0){
@@ -656,15 +590,13 @@ static int
 vioonline(SDunit *u)
 {
 	Vdev *vd;
-	Vblkdev *blk;
 	uvlong cap;
 
 	vd = u->dev->ctlr;
 	if(vd->typ == TypSCSI)
 		return scsionline(u);
 
-	blk = vd->dev;
-	cap = blk->capacity;
+	cap = vin64(&vd->dev, Vblk_capacity);
 	if(u->sectors != cap){
 		u->sectors = cap;
 		u->secsize = 512;
@@ -701,10 +633,10 @@ vioenable(SDev *sd)
 	coherence();
 
 	for(i = 0; i < vd->nqueue; i++){
-		vd->cfg->queuesel = i;
-		vd->cfg->queueenable = 1;
+		vout16(&vd->cfg, Vconf_queuesel, i);
+		vout16(&vd->cfg, Vconf_queueenable, 1);
 	}
-	vd->cfg->status |= DriverOk;
+	vout8(&vd->cfg, Vconf_status, vin8(&vd->cfg, Vconf_status) | DriverOk);
 
 	return 1;
 }
@@ -736,7 +668,7 @@ viopnp(void)
 		if(vd->nqueue == 0)
 			continue;
 
-		if((vd->dev = virtiomapregs(vd->pci, virtiocap(vd->pci, 4), sizeof(Vblkdev))) == nil)
+		if(virtiomapregs(vd->pci, virtiocap(vd->pci, 4), Vblk_sz, &vd->dev) == nil)
 			break;
 		if((s = malloc(sizeof(*s))) == nil)
 			break;
@@ -753,31 +685,28 @@ viopnp(void)
 
 	id = '0';
 	for(vd = viopnpdevs(TypSCSI); vd; vd = vd->next){
-		Vscsidev *scsi;
-
 		if(vd->nqueue < 3)
 			continue;
 
-		if((scsi = virtiomapregs(vd->pci, virtiocap(vd->pci, 4), sizeof(Vscsidev))) == nil)
+		if(virtiomapregs(vd->pci, virtiocap(vd->pci, 4), Vscsi_sz, &vd->dev) == nil)
 			break;
-		if(scsi->max_target == 0){
-			vunmap(scsi, sizeof(Vscsidev));
+		if(vin16(&vd->dev, Vscsi_max_target) == 0){
+			virtiounmap(&vd->dev, Vscsi_sz);
 			continue;
 		}
-		if((scsi->cdb_size > CDBSIZE) || (scsi->sense_size > SENSESIZE)){
+		if((vin32(&vd->dev, Vscsi_cdb_size) > CDBSIZE) || (vin32(&vd->dev, Vscsi_sense_size) > SENSESIZE)){
 			print("sdvirtio: cdb %ud or sense size %ud too big\n",
-				scsi->cdb_size, scsi->sense_size);
-			vunmap(scsi, sizeof(Vscsidev));
+				vin32(&vd->dev, Vscsi_cdb_size), vin32(&vd->dev, Vscsi_sense_size));
+			virtiounmap(&vd->dev, Vscsi_sz);
 			continue;
 		}
-		vd->dev = scsi;
 
 		if((s = malloc(sizeof(*s))) == nil)
 			break;
 		s->ctlr = vd;
 		s->idno = id++;
 		s->ifc = &sdvirtio10ifc;
-		s->nunit = scsi->max_target;
+		s->nunit = vin16(&vd->dev, Vscsi_max_target);
 
 		if(h)
 			t->next = s;

@@ -133,6 +133,7 @@ etherm10g.$O:			../pc/etherm10g2k.i ../pc/etherm10g4k.i
 $SDEV pmmc.$O:			../port/sd.h
 sdiahci.$O:			ahci.h
 devaoe.$O sdaoe.$O:		../port/aoe.h
+sdvirtio10.$O:			../port/virtio10.h
 main.$O:			rebootcode.i
 
 devusb.$O usbuhci.$O usbohci.$O usbehci.$O usbehcipc.$O usbxhci.$O: ../port/usb.h
@@ -151,7 +152,10 @@ ethervt6105m.$O:		../port/ethermii.h
 etherwpi.$O:			../port/wifi.h
 etherrt2860.$O: 		../port/wifi.h
 
+ethervirtio10.$O:		../port/virtio10.h
+
 pcipc.$O:	../port/pci.h io.h
+virtio10pc.$O:	../port/virtio10.h
 
 initcode.out:		init9.$O initcode.$O /$objtype/lib/libc.a
 	$LD -l -R1 -s -o $target $prereq

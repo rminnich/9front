@@ -79,7 +79,7 @@ link
 	etherwpi	pci wifi
 	etherrt2860	pci wifi
 	ethervirtio	pci
-	ethervirtio10	pci
+	ethervirtio10	pci virtio10pc
 	ethermedium
 	loopbackmedium
 	netdevmedium
@@ -110,7 +110,7 @@ misc
 	sdiahci		pci sdscsi led
 	sdodin		pci sdscsi led
 	sdvirtio	pci sdscsi
-	sdvirtio10	pci sdscsi
+	sdvirtio10	pci sdscsi virtio10pc
 	sdmmc		pci pmmc
 	sdnvme		pci
 	sdloop

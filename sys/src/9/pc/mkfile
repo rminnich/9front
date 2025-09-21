@@ -126,6 +126,7 @@ $SDEV pmmc.$O:			../port/sd.h
 sd53c8xx.$O:			sd53c8xx.i
 sdiahci.$O:			ahci.h ../port/led.h
 devaoe.$O sdaoe.$O:		../port/aoe.h
+sdvirtio10.$O:			../port/virtio10.h
 main.$O:			rebootcode.i
 wavelan.$O:			wavelan.c ../pc/wavelan.c ../pc/wavelan.h ../port/etherif.h ../port/netif.h
 etherwavelan.$O:		etherwavelan.c ../pc/wavelan.h
@@ -143,8 +144,10 @@ ethervt6105m.$O:		../port/ethermii.h
 etherm10g.$O:			etherm10g2k.i etherm10g4k.i
 etherwpi.$O:			../port/wifi.h
 etherrt2860.$O: 		../port/wifi.h
+ethervirtio10.$O:		../port/virtio10.h
 l.$O rebootcode.$O apbootstrap.$O:	mem.h
 pcipc.$O pcibios.$O:		../port/pci.h io.h
+virtio10pc.$O:			../port/virtio10.h
 
 initcode.out:		init9.$O initcode.$O /$objtype/lib/libc.a
 	$LD -l -R1 -s -o $target $prereq

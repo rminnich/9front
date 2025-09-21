@@ -23,7 +23,7 @@ dev
 
 link
 	usbxhcipci	pci usbxhci
-	ethervirtio10	pci
+	ethervirtio10	pci virtio10mem
 	ethersink
 	ethermedium
 	loopbackmedium
@@ -42,7 +42,7 @@ ip
 misc
 	gic
 	uartqemu
-	sdvirtio10	pci sdscsi
+	sdvirtio10	pci sdscsi virtio10mem
 port
 	int cpuserver = 0;
 bootdir
