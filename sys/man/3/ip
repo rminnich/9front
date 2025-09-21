@@ -788,7 +788,7 @@ graceful hangup
 turn on keep alive messages.
 .IR N ,
 if given, is the milliseconds between keepalives
-(default 30000).
+(default 120000).
 .TP
 .BI checksum \ n
 emit TCP checksums of zero if
