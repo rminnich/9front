@@ -399,17 +399,6 @@ struct Tcppriv
 	uvlong	stats[Nstats];
 };
 
-/*
- *  Setting tcpporthogdefense to non-zero enables Dong Lin's
- *  solution to hijacked systems staking out port's as a form
- *  of DoS attack.
- *
- *  To avoid stateless Conv hogs, we pick a sequence number at random.  If
- *  that number gets acked by the other end, we shut down the connection.
- *  Look for tcpporthogdefense in the code.
- */
-int tcpporthogdefense = 0;
-
 static	int	addreseq(Fs*, Tcpctl*, Tcppriv*, Tcp*, Block**, ushort);
 static	int	dumpreseq(Tcpctl*);
 static	void	getreseq(Tcpctl*, Tcp*, Block**, ushort*);
@@ -2268,22 +2257,6 @@ reset:
 		break;
 	}
 
-	/*
-	 *  One DOS attack is to open connections to us and then forget about them,
-	 *  thereby tying up a conv at no long term cost to the attacker.
-	 *  This is an attempt to defeat these stateless DOS attacks.  See
-	 *  corresponding code in tcpsendka().
-	 */
-	if(tcb->state != Syn_received && (seg.flags & RST) == 0){
-		if(tcpporthogdefense
-		&& seq_within(seg.ack, tcb->snd.una-(1<<31), tcb->snd.una-(1<<29))){
-			print("stateless hog %I.%d->%I.%d f %ux %lux - %lux - %lux\n",
-				source, seg.source, dest, seg.dest, seg.flags,
-				tcb->snd.una-(1<<31), seg.ack, tcb->snd.una-(1<<29));
-			localclose(s, "stateless hog");
-		}
-	}
-
 	/* Cut the data to fit the receive window */
 	tcprcvwin(s);
 	if(tcptrim(tcb, &seg, &bp, &length) == -1) {
@@ -2764,10 +2737,7 @@ tcpsendka(Conv *s)
 	seg.flags = ACK|PSH;
 	seg.mss = 0;
 	seg.ws = 0;
-	if(tcpporthogdefense)
-		seg.seq = tcb->snd.una-(1<<30)-nrand(1<<20);
-	else
-		seg.seq = tcb->snd.una-1;
+	seg.seq = tcb->snd.una-1;
 	seg.ack = tcb->rcv.nxt;
 	tcb->rcv.ackptr = seg.ack;
 	tcprcvwin(s);
@@ -3343,18 +3313,6 @@ tcpmssclamp(uchar *p, int n, int mtu)
 	}
 }
 
-static char*
-tcpporthogdefensectl(char *val)
-{
-	if(strcmp(val, "on") == 0)
-		tcpporthogdefense = 1;
-	else if(strcmp(val, "off") == 0)
-		tcpporthogdefense = 0;
-	else
-		return "unknown value for tcpporthogdefense";
-	return nil;
-}
-
 /* called with c qlocked */
 static char*
 tcpctl(Conv* c, char** f, int n)
@@ -3367,8 +3325,6 @@ tcpctl(Conv* c, char** f, int n)
 		return tcpstartka(c, f, n);
 	if(n >= 1 && strcmp(f[0], "checksum") == 0)
 		return tcpsetchecksum(c, f, n);
-	if(n >= 1 && strcmp(f[0], "tcpporthogdefense") == 0)
-		return tcpporthogdefensectl(f[1]);
 	return "unknown control request";
 }
 

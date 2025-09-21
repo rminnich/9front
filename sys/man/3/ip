@@ -795,31 +795,6 @@ emit TCP checksums of zero if
 .I n
 is zero; otherwise, and by default,
 TCP checksums are computed and sent normally.
-.TP
-.BI tcpporthogdefense \ onoff
-.I onoff
-of
-.L on
-enables the TCP port-hog defense for all TCP connections;
-.I onoff
-of
-.L off
-disables it.
-The defense is a solution to hijacked systems staking out ports
-as a form of denial-of-service attack.
-To avoid stateless TCP conversation hogs,
-.I ip
-picks a TCP sequence number at random for keepalives.
-If that number gets acked by the other end,
-.I ip
-shuts down the connection.
-Some firewalls,
-notably ones that perform stateful inspection,
-discard such out-of-specification keepalives,
-so connections through such firewalls
-will be killed after five minutes
-by the lack of keepalives.
-.
 .SS UDP
 UDP connections carry unreliable and unordered datagrams.  A read from
 .B data
