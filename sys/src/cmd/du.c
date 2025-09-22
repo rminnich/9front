@@ -75,7 +75,6 @@ main(int argc, char *argv[])
 	int i, scale;
 	char *s, *ss, *name;
 
-	doquote = needsrcquote;
 	quotefmtinstall();
 
 	ARGBEGIN {

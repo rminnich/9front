@@ -79,7 +79,6 @@ main(int argc, char *argv[])
 	Rune r;
 	Fmt fmt;
 	
-	doquote = needsrcquote;
 	quotefmtinstall();
 	argv0 = argv[0];	/* for sysfatal */
 	

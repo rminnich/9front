@@ -1,7 +1,7 @@
 #include <u.h>
 #include <libc.h>
 
-int	(*doquote)(int);
+int	(*doquote)(int) = needsrcquote;
 
 extern int _needsquotes(char*, int*);
 extern int _runeneedsquotes(Rune*, int*);

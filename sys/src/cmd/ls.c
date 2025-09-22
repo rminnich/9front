@@ -71,7 +71,6 @@ main(int argc, char *argv[])
 			exits("usage");
 	}ARGEND
 
-	doquote = needsrcquote;
 	quotefmtinstall();
 	fmtinstall('M', dirmodefmt);
 

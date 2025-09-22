@@ -51,7 +51,7 @@ _quotesetup(char *s, Rune *r, int nin, int nout, Quoteinfo *q, int sharp, int ru
 				break;
 		}
 
-		if((c <= L' ') || (c == L'\'') || (doquote!=nil && doquote(c))){
+		if((c <= L' ') || (c == L'\'') || doquote(c)){
 			if(!q->quoted){
 				if(runesout){
 					if(1+q->nrunesout+1+1 > nout)	/* no room for quotes */

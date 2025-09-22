@@ -1068,7 +1068,6 @@ threadmain(int argc, char **argv)
 	int i;
 
 	mbox.view = Vgroup;
-	doquote = needsrcquote;
 	quotefmtinstall();
 	tmfmtinstall();
 

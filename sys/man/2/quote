@@ -121,7 +121,7 @@ Regardless of the return value of
 .IR *doquote ,
 blanks, control characters, and quotes are always quoted.
 .I Needsrcquote
-is provided as a
+is provided as the default
 .I doquote
 function that flags any character special to
 .IR rc (1).

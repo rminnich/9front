@@ -375,7 +375,6 @@ main(int argc, char **argv)
 
 	fmtinstall('D', Dfmt);
 	quotefmtinstall();
-	doquote = needsrcquote;
 	getwd(homewd, sizeof homewd);
 	user = getlog();
 	if(user == nil || *user == 0)
