@@ -52,8 +52,6 @@ static Convfmt knownfmt[] = {
 	0,	nil,
 };
 
-int	(*doquote)(int);
-
 /*
  * _fmtlock() must be set
  */
