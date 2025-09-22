@@ -110,10 +110,10 @@ not
 .PP
 The function pointer
 .I doquote
-is
-.B nil
+is set to
+.B needsrcquote
 by default.
-If it is non-nil, characters are passed to that function to see if they should
+Characters are passed to that function to see if they should
 be quoted.
 This mechanism allows programs to specify that
 characters other than blanks, control characters, or quotes be quoted.
