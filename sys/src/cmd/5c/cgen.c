@@ -954,7 +954,7 @@ cgen64(Node *n, Node *nn)
 					regfree(&nod0);
 					regfree(&nod1);
 				} else {
-					regalloc(&nod0, l, Z);
+					regalloc(&nod0, l, nn);
 					cgen(l, &nod0);
 					cgen(nod0.left, nn);
 					regfree(&nod0);

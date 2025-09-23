@@ -338,7 +338,7 @@ regalloc(Node *n, Node *tn, Node *o)
 			regalloc(n->left, &regnode, o->left);
 			regalloc(n->right, &regnode, o->right);
 		} else {
-			regalloc(n->left, &regnode, Z);
+			regalloc(n->left, &regnode, o);
 			regalloc(n->right, &regnode, Z);
 		}
 		if(n->left->reg > n->right->reg){
