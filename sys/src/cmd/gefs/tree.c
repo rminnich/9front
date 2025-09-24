@@ -104,7 +104,7 @@ getval(Blk *b, int i, Kvp *kv)
 	char *p;
 	int o;
 
-	assert(i >= 0 && i < b->nval);
+	bassert(b, i >= 0 && i < b->nval);
 	p = b->data + 2*i;
 	o = UNPACK16(p);	p = b->data + o;
 	kv->nk = UNPACK16(p);	p += 2;
@@ -133,8 +133,8 @@ setval(Blk *b, Kvp *kv)
 	off = spc - b->valsz;
 
 	if(kv->k[0] == Kent) assert(kv->nv != 0);
-	assert(2*(b->nval+1) + b->valsz <= spc);
-	assert(2*(b->nval+1) <= off);
+	bassert(b, 2*(b->nval+1) + b->valsz <= spc);
+	bassert(b, 2*(b->nval+1) <= off);
 
 	p = b->data + 2*b->nval;
 	PACK16(p, off);
@@ -169,7 +169,7 @@ setmsg(Blk *b, Msg *m)
 	char *p;
 	int o;
 
-	assert(b->type == Tpivot);
+	bassert(b, b->type == Tpivot);
 	b->bufsz += msgsz(m)-2;
 
 	p = b->data + Pivspc + 2*b->nbuf;
@@ -192,8 +192,8 @@ getmsg(Blk *b, int i, Msg *m)
 	char *p;
 	int o;
 
-	assert(b->type == Tpivot);
-	assert(i >= 0 && i < b->nbuf);
+	bassert(b, b->type == Tpivot);
+	bassert(b, i >= 0 && i < b->nbuf);
 	p = b->data + Pivspc + 2*i;
 	o = UNPACK16(p);
 	p = b->data + Pivspc + o;
@@ -284,21 +284,21 @@ blksearch(Blk *b, Key *k, Kvp *rp, int *same)
 static int
 buffill(Blk *b)
 {
-	assert(b->type == Tpivot);
+	bassert(b, b->type == Tpivot);
 	return 2*b->nbuf + b->bufsz;
 }
 
 static int
 filledbuf(Blk *b, int nmsg, int needed)
 {
-	assert(b->type == Tpivot);
+	bassert(b, b->type == Tpivot);
 	return 2*(b->nbuf+nmsg) + b->bufsz + needed > Bufspc;
 }
 
 static int
 filledleaf(Blk *b, int needed)
 {
-	assert(b->type == Tleaf);
+	bassert(b, b->type == Tleaf);
 	return 2*(b->nval+1) + b->valsz + needed > Leafspc;
 }
 
@@ -310,7 +310,7 @@ filledpiv(Blk *b, int reserve)
 	 * at all times, so that splits along the whole path
 	 * have somewhere to go as they propagate up.
 	 */
-	assert(b->type == Tpivot);
+	bassert(b, b->type == Tpivot);
 	return 2*(b->nval+1) + b->valsz + reserve*Kpmax > Pivspc;
 }
 
@@ -435,7 +435,6 @@ apply(Kvp *kv, Msg *m, char *buf, int nbuf)
 	default:
 		fatal("invalid op %d\n", m->op);
 	}
-	return 0;
 }
 
 static Blk*
@@ -707,7 +706,7 @@ splitleaf(Tree *t, Path *up, Path *p, Kvp *mid)
 	if(halfsz > Leafspc/2)
 		halfsz = Leafspc/2;
 	spc = Leafspc - (halfsz + Msgmax);
-	assert(b->nval >= 4);
+	bassert(b, b->nval >= 4);
 	while(i < b->nval){
 		/*
 		 * We're trying to balance size,
@@ -815,7 +814,7 @@ splitpiv(Tree *t, Path *, Path *p, Path *pp, Kvp *mid)
 	d = l;
 	copied = 0;
 	halfsz = (2*b->nval + b->valsz)/2;
-	assert(b->nval >= 4);
+	bassert(b, b->nval >= 4);
 	for(i = 0; i < b->nval; i++){
 		/*
 		 * We're trying to balance size,
@@ -1000,7 +999,7 @@ rotmerge(Tree *t, Path *p, Path *pp, int idx, Blk *a, Blk *b)
 {
 	int na, nb, ma, mb, imbalance;
 
-	assert(a->type == b->type);
+	bassert(a, a->type == b->type);
 
 	na = 2*a->nval + a->valsz;
 	nb = 2*b->nval + b->valsz;
@@ -1327,8 +1326,8 @@ Again:
 	else
 		fatal("broken path change");
 
-	assert(rb->bp.addr != 0);
-	assert(rb->bp.addr != 0);
+	bassert(rb, rb->bp.addr != 0);
+	bassert(rb, rb->bp.addr != 0);
 
 	lock(&t->lk);
 	traceb("setroot", rb->bp);

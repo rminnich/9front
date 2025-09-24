@@ -31,8 +31,8 @@ lrutop(Blk *b)
 	 * to put this into the LRU, because
 	 * its now in use.
 	 */
-	assert(b->magic == Magic);
-	assert(checkflag(b, 0, Bstatic));
+	bassert(b, b->magic == Magic);
+	bassert(b, checkflag(b, 0, Bstatic));
 	if(agetl(&b->ref) != 0){
 		qunlock(&fs->lrulk);
 		return;
@@ -58,8 +58,8 @@ lrubot(Blk *b)
 	 * to put this into the LRU, because
 	 * its now in use.
 	 */
-	assert(b->magic == Magic);
-	assert(checkflag(b, 0, Bstatic));
+	bassert(b, b->magic == Magic);
+	bassert(b, checkflag(b, 0, Bstatic));
 	if(agetl(&b->ref) != 0){
 		qunlock(&fs->lrulk);
 		return;
@@ -81,16 +81,16 @@ cacheins(Blk *b)
 	Bucket *bkt;
 	u32int h;
 
-	assert(b->magic == Magic);
+	bassert(b, b->magic == Magic);
 	h = ihash(b->bp.addr);
 	bkt = &fs->bcache[h % fs->cmax];
 	qlock(&fs->lrulk);
 	traceb("cache", b->bp);
-	assert(checkflag(b, 0, Bstatic|Bcached));
+	bassert(b, checkflag(b, 0, Bstatic|Bcached));
 	setflag(b, Bcached, 0);
-	assert(b->hnext == nil);
+	bassert(b, b->hnext == nil);
 	for(Blk *bb = bkt->b; bb != nil; bb = bb->hnext)
-		assert(b != bb && b->bp.addr != bb->bp.addr);
+		bassert(b, b != bb && b->bp.addr != bb->bp.addr);
 	b->cached = getcallerpc(&b);
 	b->hnext = bkt->b;
 	bkt->b = b;
@@ -115,7 +115,7 @@ cachedel_lk(vlong addr)
 	for(b = bkt->b; b != nil; b = b->hnext){
 		if(b->bp.addr == addr){
 			/* FIXME: Until we clean up snap.c, we can have dirty blocks in cache */
-			assert(checkflag(b, Bcached, Bstatic)); //Bdirty));
+			bassert(b, checkflag(b, Bcached, Bstatic)); //Bdirty));
 			*p = b->hnext;
 			b->uncached = getcallerpc(&addr);
 			b->hnext = nil;
@@ -171,13 +171,13 @@ cachepluck(void)
 		rsleep(&fs->lrurz);
 
 	b = fs->ctail;
-	assert(b->magic == Magic);
-	assert(agetl(&b->ref) == 0);
+	bassert(b, b->magic == Magic);
+	bassert(b, agetl(&b->ref) == 0);
 	if(checkflag(b, Bcached, 0))
 		cachedel_lk(b->bp.addr);
 	if(checkflag(b, Bcached, 0))
 		fprint(2, "%B cached %#p freed %#p\n", b->bp, b->cached, b->freed);
-	assert(checkflag(b, 0, Bcached));
+	bassert(b, checkflag(b, 0, Bcached));
 	lrudel(b);
 	aswapl(&b->flag, 0);
 	b->lasthold = 0;

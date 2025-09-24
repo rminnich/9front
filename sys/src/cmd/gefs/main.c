@@ -31,6 +31,43 @@ Bfree	*bfbuf;
 Errctx	**errctx;
 
 void
+writetrace(void *bfd, vlong addr)
+{
+	Trace *t;
+	long ti;
+	int i;
+
+	ti = agetl(&fs->traceidx);
+	for(i = 0; i < fs->ntrace; i++){
+		t = &fs->trace[(ti+ i) % fs->ntrace];
+		if(t->msg[0] == 0)
+			continue;
+		if(t->bp.addr != -1 && t->bp.addr != addr)
+			continue;
+		Bprint(bfd, "[%d@%d] %s", t->tid, t->qgen, t->msg);
+		if(t->bp.addr != -1)
+			Bprint(bfd, " %B", t->bp);
+		if(t->v0 != -1)
+			Bprint(bfd, " %llx", t->v0);
+		if(t->v1 != -1)
+			Bprint(bfd, " %llx", t->v1);
+		Bprint(bfd, "\n");
+	}
+}
+
+_Noreturn void
+_babort(vlong addr, char *msg)
+{
+	Biobuf *bfd;
+
+	bfd = Bfdopen(2, OWRITE);
+	writetrace(bfd, addr);
+	Bprint(bfd, "assert failed for [%llx]: %s\n", addr, msg);
+	Bterm(bfd);
+	abort();
+}
+
+void
 _trace(char *msg, Bptr bp, vlong v0, vlong v1)
 {
 	Trace *t;

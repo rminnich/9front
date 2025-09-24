@@ -128,22 +128,18 @@ void	showbp(int, Bptr, int);
 void	showtreeroot(int, Tree*);
 int	checkfs(int);
 
+
 #define dprint(...) \
-	do{ \
-		if(debug) fprint(2, __VA_ARGS__); \
-	}while(0)
+		if(debug) fprint(2, __VA_ARGS__)
 
 #define fatal(...) \
-	do{ \
-		fprint(2, __VA_ARGS__); \
-		abort(); \
-	}while(0)
+	fprint(2, __VA_ARGS__), abort()
 
 #define tracex(msg, bp, v0, v1) \
-	do{ \
-		if(fs->trace != nil) \
-			_trace(msg, bp, v0, v1); \
-	} while(0)
+		if(fs->trace != nil) _trace(msg, bp, v0, v1)
+
+#define bassert(b, cond) \
+	if(cond){}else _babort(b->bp.addr, "cond")
 
 #define traceb(msg, bp)	tracex(msg, bp, -1, -1)
 #define tracev(msg, v0)	tracex(msg, Zb, v0, -1)
@@ -153,10 +149,12 @@ jmp_buf*	_waserror(void);
 _Noreturn void	error(char*, ...);
 _Noreturn void	broke(char*, ...);
 _Noreturn void	nexterror(void);
+_Noreturn void	_babort(vlong, char*);
 #define waserror()	(setjmp(*_waserror()))
 #define errmsg()	((*errctx)->err)
 #define	poperror()	assert((*errctx)->nerrlab-- > 0)
 #define estacksz()	((*errctx)->nerrlab)
+void	writetrace(void*, vlong);
 void	_trace(char*, Bptr, vlong, vlong);
 char*	packstr(char*, char*, char*);
 
@@ -210,4 +208,4 @@ void	runcons(int, void*);
 void	runtasks(int, void*);
 void	runsync(int, void*);
 void	runsweep(int, void*);
-void	runsweep(int, void*);
+void	runsnap(int, void*);

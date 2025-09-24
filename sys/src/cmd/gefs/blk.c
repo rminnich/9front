@@ -1,5 +1,6 @@
 #include <u.h>
 #include <libc.h>
+#include <bio.h>
 #include <fcall.h>
 #include <avl.h>
 
@@ -37,8 +38,8 @@ setflag(Blk *b, int set, int clr)
 void
 syncblk(Blk *b)
 {
-	assert(checkflag(b, Bfinal, 0));
-	assert(b->bp.addr >= 0);
+	bassert(b, checkflag(b, Bfinal, 0));
+	bassert(b, b->bp.addr >= 0);
 	tracex("syncblk", b->bp, b->type, -1);
 	if(pwrite(fs->fd, b->buf, Blksz, b->bp.addr) == -1)
 		broke("%B %s: %r", b->bp, Eio);
@@ -92,7 +93,7 @@ readblk(Blk *b, Bptr bp, int flg)
 		b->logsz = UNPACK16(p);		p += 2;
 		b->logh = UNPACK64(p);		p += 8;
 		b->logp = unpackbp(p, Ptrsz);	p += Ptrsz;
-		assert(p - b->buf == Loghdsz);
+		bassert(b, p - b->buf == Loghdsz);
 		b->data = p;
 		break;
 	case Tpivot:
@@ -100,13 +101,13 @@ readblk(Blk *b, Bptr bp, int flg)
 		b->valsz = UNPACK16(p);		p += 2;
 		b->nbuf = UNPACK16(p);		p += 2;
 		b->bufsz = UNPACK16(p);		p += 2;
-		assert(p - b->buf == Pivhdsz);
+		bassert(b, p - b->buf == Pivhdsz);
 		b->data = p;
 		break;
 	case Tleaf:
 		b->nval = UNPACK16(p);		p += 2;
 		b->valsz = UNPACK16(p);		p += 2;
-		assert(p - b->buf == Leafhdsz);
+		bassert(b, p - b->buf == Leafhdsz);
 		b->data = p;
 		break;
 	}
@@ -119,7 +120,7 @@ readblk(Blk *b, Bptr bp, int flg)
 	}
 	if((!flg&GBnochk) && ck != xh)
 		broke("%s: %ullx %llux != %llux", Ecorrupt, bp.addr, xh, ck);
-	assert(b->magic == Magic);
+	bassert(b, b->magic == Magic);
 }
 
 static Arena*
@@ -244,7 +245,7 @@ mklogblk(Arena *a, vlong o)
 	lb = a->logbuf[0];
 	if(lb == a->logtl)
 		lb = a->logbuf[1];
-	assert(agetl(&lb->ref) == 1);
+	bassert(lb, agetl(&lb->ref) == 1);
 	aswapl(&lb->flag, Bstatic);
 	initblk(lb, o, -1, Tlog);
 	traceb("logblk" , lb->bp);
@@ -276,9 +277,9 @@ logappend(Arena *a, vlong off, vlong len, int op)
 		assert(off < end);
 	}
 	lb = a->logtl;
-	assert(agetl(&lb->ref) > 0);
-	assert(lb->type == Tlog);
-	assert(lb->logsz >= 0);
+	bassert(lb, agetl(&lb->ref) > 0);
+	bassert(lb, lb->type == Tlog);
+	bassert(lb, lb->logsz >= 0);
 	dprint("logop %d: %llx+%llx@%x\n", op, off, len, lb->logsz);
 
 	if(checkflag(lb, 0, Bdirty))
@@ -341,7 +342,7 @@ loadlog(Arena *a, Bptr bp)
 	traceb("loadlog", bp);
 	b = a->logbuf[0];
 	while(1){
-		assert(checkflag(b, Bstatic, Bcached));
+		bassert(b, checkflag(b, Bstatic, Bcached));
 		holdblk(b);
 		readblk(b, bp, 0);
 		dprint("\tload %B chain %B\n", bp, b->logp);
@@ -736,8 +737,8 @@ getblk(Bptr bp, int flg)
 		nexterror();
 	}
 	if((b = cacheget(bp.addr)) != nil){
-		assert(checkflag(b, 0, Bfreed));
-		assert(b->bp.gen == bp.gen);
+		bassert(b, checkflag(b, 0, Bfreed));
+		bassert(b, b->bp.gen == bp.gen);
 	} else {
 		b = cachepluck();
 		b->alloced = getcallerpc(&bp);
@@ -823,7 +824,7 @@ freeblk(Tree *t, Blk *b)
 	tracex("freeb", b->bp, getcallerpc(&t), -1);
 	setflag(b, Blimbo, 0);
 	holdblk(b);
-	assert(agetl(&b->ref) > 1);
+	bassert(b, agetl(&b->ref) > 1);
 	limbo(DFblk, b);
 }
 
@@ -966,8 +967,8 @@ enqueue(Blk *b)
 	Arena *a;
 	Qent qe;
 
-	assert(checkflag(b, Bdirty, Bqueued|Bstatic));
-	assert(b->bp.addr >= 0);
+	bassert(b, checkflag(b, Bdirty, Bqueued|Bstatic));
+	bassert(b, b->bp.addr >= 0);
 	finalize(b);
 	if(checkflag(b, 0, Bcached)){
 		cacheins(b);
@@ -1018,7 +1019,7 @@ qput(Syncq *q, Qent qe)
 	else
 		abort();
 	if(qe.b != nil)
-		assert(agetl(&qe.b->ref) > 0);
+		bassert(qe.b, agetl(&qe.b->ref) > 0);
 	qlock(&q->lk);
 	qe.qgen = agetv(&fs->qgen);
 	while(q->nheap == q->heapsz)
