@@ -77,6 +77,7 @@ Rectangle scrposr;
 Rectangle viewr;
 Col cols[Ncols];
 Col scrlcol;
+Image *trlcol;
 Image *bord;
 Image *expander[2];
 Image *fb;
@@ -140,31 +141,53 @@ plumb(char *f, int l)
 void
 renderline(Image *b, Rectangle r, int pad, int lt, char *ls)
 {
-	Point p;
+	Point p0, p;
+	Rectangle trlr;
 	Rune  rn;
 	char *s;
-	int off, tab, nc;
+	int off, tab, nc, hastrl;
 
 	draw(b, r, cols[lt].bg, nil, ZP);
 	p = Pt(r.min.x + pad + Hpadding, r.min.y + (Dy(r)-font->height)/2);
 	off = Δpan / spacew;
-	for(s = ls, nc = -1, tab = 0; *s; nc++, tab--, off--){
-		if(tab <= 0 && *s == '\t'){
+	hastrl = 0;
+	for(s = ls, nc = -1, tab = 0; *s || tab > 0; nc++, tab--, off--){
+		if(tab <= 0 && *s && *s == '\t'){
 			tab = 4 - nc % 4;
 			s++;
 		}
 		if(tab > 0){
+			p0 = p;
 			if(off <= 0)
 				p = runestring(b, p, cols[lt].bg, ZP, font, L"█");
+			if(hastrl)
+				trlr.max = addpt(p, Pt(0, font->height));
+			else{
+				trlr.min = p0;
+				hastrl = 1;
+			}
 		}else if((p.x+Hpadding+spacew+ellipsisw>=b->r.max.x)){
 			string(b, p, cols[lt].fg, ZP, font, ellipsis);
 			break;
 		}else{
 			s += chartorune(&rn, s);
+			p0 = p;
 			if(off <= 0)
 				p = runestringn(b, p, cols[lt].fg, ZP, font, &rn, 1);
+			if(isspacerune(rn)){
+				if(hastrl)
+					trlr.max = addpt(p, Pt(0, font->height));
+				else{
+					trlr.min = p0;
+					hastrl = 1;
+				}
+			}else if(hastrl)
+				hastrl = 0;
 		}
 	}
+
+	if(hastrl)
+		draw(b, trlr, trlcol, nil, ZP);
 }
 
 void
@@ -495,6 +518,7 @@ initcols(int black)
 		initcol(&cols[Ladd],  DWhite, 0x002800FF);
 		initcol(&cols[Ldel],  DWhite, 0x3F0000FF);
 		initcol(&cols[Lnone], DWhite, DBlack);
+		trlcol = ecolor(0x9F0000FF);
 	}else{
 		bord = ecolor(0x888888FF);
 		initcol(&scrlcol,     DWhite, 0x999999FF);
@@ -503,6 +527,7 @@ initcols(int black)
 		initcol(&cols[Ladd],  DBlack, 0xE6FFEDFF);
 		initcol(&cols[Ldel],  DBlack, 0xFFEEF0FF);
 		initcol(&cols[Lnone], DBlack, DWhite);
+		trlcol = ecolor(0xFF8890FF);
 	}
 }
 
