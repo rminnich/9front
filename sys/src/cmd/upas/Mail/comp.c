@@ -97,7 +97,9 @@ postmesg(Comp *c, char **, int nf)
 static void
 compquit(Comp *c, char **, int)
 {
-	c->quitting = 1;
+	if(c->quitting == 0)
+		fprint(2, "composing message\n");
+	c->quitting++;
 }
 
 static Fn compfn[] = {
@@ -119,13 +121,10 @@ compmain(void *cp)
 	c->quitting = 0;
 	c->qnext = mbox.opencomp;
 	mbox.opencomp = c;
-	fprint(c->ctl, "clean\n");
 	mbox.nopen++;
-	while(!c->quitting){
+	while(c->quitting < 2){
 		if(winevent(c, &ev) != 'M')
 			continue;
-		if(strcmp(ev.text, "Del") == 0)
-			break;
 		switch(ev.type){
 		case 'l':
 		case 'L':
