@@ -200,7 +200,6 @@ emulate(void)
 		buf[0] = get_next_char();
 		buf[1] = '\0';
 		switch(buf[0]) {
-
 		case '\000':
 		case '\001':
 		case '\002':
@@ -361,7 +360,8 @@ emulate(void)
 			 */
 			case 'Z':
 			Ident:
-				sendnchars(7, "\033[?1;2c");	/* VT100 with AVO option */
+				if(!rewound() && operand[0] == 0)
+					sendnchars(7, "\033[?1;2c");	/* VT100 with AVO option */
 				break;
 
 			/*
@@ -436,6 +436,8 @@ emulate(void)
 					 * c - same as ESC Z: what are you?
 					 */
 					case 'c':
+						if(operand[0] != 0)
+							break;
 						goto Ident;
 
 					/*
@@ -473,7 +475,8 @@ emulate(void)
 							case 2:	/* set VT52 mode (not implemented) */
 								break;
 							case 3:	/* set 80 columns */
-								setdim(-1, 80);
+								if(!rewound())
+									setdim(-1, 80);
 								break;
 							case 4:	/* set jump scrolling */
 								break;
@@ -530,7 +533,8 @@ emulate(void)
 							case 2:	/* set ANSI */
 								break;
 							case 3:	/* set 132 columns */
-								setdim(-1, 132);
+								if(!rewound())
+									setdim(-1, 132);
 								break;
 							case 4:	/* set smooth scrolling */
 								break;
@@ -569,6 +573,8 @@ emulate(void)
 					 * n - request various reports
 					 */
 					case 'n':
+						if(rewound())
+							break;
 						switch(operand[0]){
 						case 5:	/* status */
 							sendnchars(4, "\033[0n");	/* terminal ok */
@@ -612,7 +618,8 @@ emulate(void)
 					 * x - report terminal parameters
 					 */
 					case 'x':
-						sendnchars(20, "\033[3;1;1;120;120;1;0x");
+						if(!rewound())
+							sendnchars(20, "\033[3;1;1;120;120;1;0x");
 						break;
 
 					/*

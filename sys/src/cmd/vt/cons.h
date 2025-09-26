@@ -63,6 +63,7 @@ extern Point	pt(int, int);
 extern Point	pos(Point);
 extern void	funckey(int);
 extern void	drawstring(Rune*, int);
+extern int	rewound(void);
 
 extern int	yscrmin, yscrmax;
 extern int	attr;
