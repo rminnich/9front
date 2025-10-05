@@ -95,7 +95,7 @@ fn merge1 {@{
 	}
 	if not {
 		rm -f $tmp $out
-		git/rm $out
+		echo R NOQID 0 $out >> $gitroot/.git/INDEX9
 	}
 }}
 
