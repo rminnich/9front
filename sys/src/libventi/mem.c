@@ -65,7 +65,7 @@ vtbrk(ulong n)
 	else	
 		align = 4;
 
-	if(n > ChunkSize){
+	if(n + align > ChunkSize){
 		p = sbrk(n);
 		if(p == (void*)-1)
 			sysfatal("Failed to allocate permanent chunk size %lud", n);
