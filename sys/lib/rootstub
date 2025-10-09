@@ -113,7 +113,7 @@ mkdir -p arm64/bin/venti
 mkdir -p arm64/lib/ape
 mkdir -p cfg/pxe
 mkdir -p cron
-mkdir -p dist/plan9front
+mkdir -p dist/9front
 mkdir -p lib/audio/icon
 mkdir -p lib/firmware
 mkdir -p lib/ndb/dhcp

@@ -438,7 +438,7 @@ usr	d775
 		tmp	d775
 
 dist	d775
-	plan9front	d775
+	9front	d775
 		uid=glenda
 		.git		d775
 			+

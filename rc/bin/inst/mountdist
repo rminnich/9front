@@ -11,12 +11,12 @@ fn domount{
 }
 
 fn exitifdone{
-	if(test -d /n/dist/dist/plan9front)
+	if(test -d /n/dist/dist/9front)
 		exit
 }
 
 fn havedist {
-	test -d $1/dist/plan9front
+	test -d $1/dist/9front
 }
 
 switch($1){
@@ -134,7 +134,7 @@ case checkdone
 
 	exitifdone
 
-	if(test -d /n/distmedia/$distmediadir/dist/plan9front){
+	if(test -d /n/distmedia/$distmediadir/dist/9front){
 		bind /n/distmedia/$distmediadir /n/dist
 		exitifdone
 		mountdist=notdone

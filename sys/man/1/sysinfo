@@ -40,7 +40,7 @@ updates the local git repository by executing
 the following commands:
 .IP
 .EX
-bind -ac /dist/plan9front /
+bind -ac /dist/9front /
 git/pull -u $repo
 .EE
 .SH SOURCE
