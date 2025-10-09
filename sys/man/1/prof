@@ -1,6 +1,6 @@
 .TH PROF 1
 .SH NAME
-prof, tprof, kprof \- display profiling data
+prof, flambe, tprof, kprof \- display profiling data
 .SH SYNOPSIS
 .B prof
 [
