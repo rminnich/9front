@@ -27,6 +27,9 @@ lib	d775
 	font	d775
 		bit	d775
 			+
+	image	d775
+		filter	d775
+			+
 	ktrans	d775
 		+
 	legal	d775
