@@ -341,7 +341,7 @@ fetchrsp(Imap *imap, char *p, Mailbox *, Message *m, int idx)
 	extern void msgrealloc(Message*, ulong);
 
 	if(idx < 0 || idx >= imap->muid){
-		snprint(error, sizeof error, "fetchrsp: bad idx %d", idx);
+		snprint(error, sizeof error, "fetchrsp: bad idx %d [message %s]", idx, p);
 		return error;
 	}
 
@@ -516,12 +516,13 @@ imap4resp0(Imap *imap, Mailbox *mb, Message *m)
 					imap->nuid = n;
 				break;
 			case Expunge:
-				if(n < 1 || n > imap->muid || (n - 1) >= imap->nmsg){
-					snprint(error, sizeof(error), "bad expunge %d (nmsg %d)", n, imap->nuid);
-					return error;
+				if(n < 1 || n > imap->muid){
+					fprint(2, "unknown message for expunge: %d", n);
+					break;
 				}
 				idx = n - 1;
-				memmove(&imap->f[idx], &imap->f[idx + 1], (imap->nmsg - idx - 1)*sizeof(imap->f[0]));
+				memmove(&imap->f[idx], &imap->f[idx + 1], (imap->muid - idx - 1)*sizeof(imap->f[0]));
+				imap->muid--;
 				imap->nmsg--;
 				imap->nuid--;
 				break;
