@@ -337,9 +337,8 @@ main(int argc, char *argv[])
 		mboxfile = mbox;
 	}
 
-	if(mboxfile != nil)
-		if(err = newmbox(mboxfile, "mbox", 0, nil))
-			sysfatal("opening %s: %s", mboxfile, err);
+	if(err = newmbox(mboxfile, nil, 0, nil))
+		sysfatal("opening %s: %s", mboxfile, err);
 
 	switch(rfork(RFFDG|RFPROC|RFNAMEG|RFNOTEG|RFREND)){
 	case -1:
