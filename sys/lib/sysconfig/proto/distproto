@@ -80,6 +80,7 @@ mail	d775 upas upas
 		disk	d775
 		fs	d775
 		games	d775
+		image	d775
 		ip	d775
 			httpd	d775
 		ndb	d775
@@ -103,6 +104,7 @@ mail	d775 upas upas
 		disk	d775
 		fs	d775
 		games	d775
+		image	d775
 		ip	d775
 			httpd	d775
 		ndb	d775
@@ -126,6 +128,7 @@ mail	d775 upas upas
 		disk	d775
 		fs	d775
 		games	d775
+		image	d775
 		ip	d775
 			httpd	d775
 		ndb	d775
@@ -149,6 +152,7 @@ amd64	d775
 		disk	d775
 		fs	d775
 		games	d775
+		image	d775
 		ip	d775
 			httpd	d775
 		ndb	d775
@@ -172,6 +176,7 @@ arm	d775
 		disk	d775
 		fs	d775
 		games	d775
+		image	d775
 		ip	d775
 			httpd	d775
 		ndb	d775
@@ -195,6 +200,7 @@ arm64	d775
 		disk	d775
 		fs	d775
 		games	d775
+		image	d775
 		ip	d775
 			httpd	d775
 		ndb	d775
@@ -218,6 +224,7 @@ power	d775
 		disk	d775
 		fs	d775
 		games	d775
+		image	d775
 		ip	d775
 			httpd	d775
 		ndb	d775
@@ -241,6 +248,7 @@ power64	d775
 		disk	d775
 		fs	d775
 		games	d775
+		image	d775
 		ip	d775
 			httpd	d775
 		ndb	d775
@@ -264,6 +272,7 @@ sparc	d775
 		disk	d775
 		fs	d775
 		games	d775
+		image	d775
 		ip	d775
 			httpd	d775
 		ndb	d775
@@ -287,6 +296,7 @@ sparc64	d775
 		disk	d775
 		fs	d775
 		games	d775
+		image	d775
 		ip	d775
 			httpd	d775
 		ndb	d775
@@ -310,6 +320,7 @@ mips	d775
 		disk	d775
 		fs	d775
 		games	d775
+		image	d775
 		ip	d775
 			httpd	d775
 		ndb	d775
@@ -333,6 +344,7 @@ spim	d775
 		disk	d775
 		fs	d775
 		games	d775
+		image	d775
 		ip	d775
 			httpd	d775
 		ndb	d775
