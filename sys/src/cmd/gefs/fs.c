@@ -1804,6 +1804,8 @@ fscreate(Fmsg *m)
 		error(e);
 	if(m->perm & (DMMOUNT|DMAUTH))
 		error(Ebotch);
+	if(m->perm & ~(DMDIR|DMAPPEND|DMEXCL|DMTMP|0777))
+		error(Ewstatb);
 	if((f = getfid(m->conn, m->fid)) == nil)
 		error(Enofid);
 	if(waserror()){
