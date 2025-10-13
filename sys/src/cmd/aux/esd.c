@@ -106,7 +106,7 @@ Init:
 				die("open");
 			dup(fd, 1);
 			execl("/bin/audio/pcmconv", "pcmconv",
-				"-i", pcmfmt(fmt, rate), 0);
+				"-i", pcmfmt(fmt, rate), nil);
 			die("exec");
 			break;
 		case 4:
@@ -119,7 +119,7 @@ Init:
 				die("open");
 			dup(fd, 0);
 			execl("/bin/audio/pcmconv", "pcmconv",
-				"-o", pcmfmt(fmt, rate), 0);
+				"-o", pcmfmt(fmt, rate), nil);
 			die("exec");
 			break;
 		case 6:		/* sample-cache */
@@ -137,7 +137,7 @@ Init:
 				snprint(buf, sizeof(buf), "%lud", len);
 				execl("/bin/audio/pcmconv", "pcmconv",
 					"-l", buf,
-					"-i", pcmfmt(fmt, rate), 0);
+					"-i", pcmfmt(fmt, rate), nil);
 				die("exec");
 			}
 			waitpid();
