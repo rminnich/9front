@@ -241,7 +241,7 @@ main(int argc, char **argv)
 
 	if(fork()==0){
 		execl("/bin/sort", "sort", sortopt, "+0", "-1", "+1", "-o",
-			sortfile, sortfile, 0);
+			sortfile, sortfile, NULL);
 		diag("sort exec failed","");
 	}
 	if((w = wait()) == NULL || w->msg[0] != '\0')
@@ -252,7 +252,7 @@ main(int argc, char **argv)
 	if(fork()==0){
 		if(dup(create(wfile,OWRITE|OTRUNC,0666),1) == -1)
 			diag("Cannot create width file:",wfile);
-		execl(roff, roff, "-a", kfile, 0);
+		execl(roff, roff, "-a", kfile, NULL);
 		diag("troff exec failed","");
 	}
 	if((w = wait()) == NULL || w->msg[0] != '\0')
