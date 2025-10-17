@@ -95,6 +95,7 @@ struct Frame
 	Image	*cols[NCOL];	/* text and background colors */
 	Rectangle	r;		/* in which text appears */
 	Rectangle	entire;		/* of full frame */
+	void	(*scroll)(Frame*, int);
 	Frbox	*box;
 	ulong	p0, p1;		/* selection */
 	ushort	nbox, nalloc;
@@ -311,6 +312,17 @@ still be down) and will set
 and
 .IB f ->p1
 to the selected range of text.
+If
+.IB f ->scroll
+is non-nil, and the mouse is above (below)
+.IB f ->r ,
+then
+.B frselect
+will repeatedly call
+.IB f ->scroll
+with its integer argument alternating between the negative (positive)
+number of lines to scroll up (down) by, and the value of zero so the
+application may delay in order to throttle the scrolling speeds.
 .PP
 Programs that wish to manage the selection themselves have several routines to help.
 They involve the maintenance of the `tick', the vertical line indicating a null selection
