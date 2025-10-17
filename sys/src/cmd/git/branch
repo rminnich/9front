@@ -87,8 +87,6 @@ if not {
 			cleanpaths=($cleanpaths $p)
 }
 
-echo $commit > .git/$new
-
 for(d in $deleted){
 	if(! test -d $d){
 		rm -f $d
