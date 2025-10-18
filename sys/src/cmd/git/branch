@@ -128,10 +128,9 @@ for(ours in $dirtypaths){
 }
 if(~ $new */*)
 	mkdir -p .git/`{basename -d $new}
-if(! ~ $#stay 0){
-	echo $commit > .git/$new
+echo $commit > .git/$new
+if(! ~ $#stay 0)
 	exit
-}
 
 cat $idxchange >> .git/INDEX9
 echo ref: $new > .git/HEAD
