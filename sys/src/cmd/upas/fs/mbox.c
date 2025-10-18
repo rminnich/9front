@@ -213,7 +213,7 @@ newmbox(char *path, char *name, int flags, Mailbox **r)
 	initheaders();
 	mb = emalloc(sizeof *mb);
 	mb->flags = flags;
-	strncpy(mb->path, path, sizeof mb->path - 1);
+	snprint(mb->path, sizeof(mb->path), "%s", path);
 	p = name;
 	if(p == nil){
 		p = strrchr(path, '/');
@@ -226,7 +226,7 @@ newmbox(char *path, char *name, int flags, Mailbox **r)
 			return "bad mbox name";
 		}
 	}
-	strncpy(mb->name, p, sizeof mb->name - 1);
+	snprint(mb->name, sizeof(mb->name), "%s", p);
 	mb->idxread = genericidxread;
 	mb->idxwrite = genericidxwrite;
 	mb->idxinvalid = genericidxinvalid;
@@ -1204,19 +1204,6 @@ mboxincref(Mailbox *mb)
 {
 	assert(mb->refs > 0);
 	mb->refs++;
-}
-
-static void
-mbrmidx(char *path, int flags)
-{
-	char buf[Pathlen];
-
-	snprint(buf, sizeof buf, "%s.idx", path);
-	vremove(buf);
-	if((flags & Rtrunc) == 0){
-		snprint(buf, sizeof buf, "%s.imp", path);
-		vremove(buf);
-	}
 }
 
 void
