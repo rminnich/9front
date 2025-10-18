@@ -1113,15 +1113,15 @@ imap4close(Mailbox *mb)
 	free(imap);
 }
 
-static char*
-mkmbox(Imap *imap, char* name, char *p, char *e)
+static void
+setmbpath(Imap *imap, char *p, char *e)
 {
 	p = seprint(p, e, "%s/box/%s/imap.%s", MAILROOT, getlog(), imap->host);
-	if(imap->user && strcmp(imap->user, getlog()))
+	if(imap->user != nil && strcmp(imap->user, getlog()) != 0)
 		p = seprint(p, e, ".%s", imap->user);
-	if(cistrcmp(name, "mbox"))
-		p = seprint(p, e, ".%s", name);
-	return p;
+	if(imap->mbox != nil)
+		p = seprint(p, e, ".%s", imap->mbox);
+	assert(p+1 != e);
 }
 
 static char*
@@ -1152,7 +1152,7 @@ imap4rename(Mailbox *mb, char *p2, int)
 		return r;
 	free(imap->mbox);
 	imap->mbox = smprint("%s", new);
-	mkmbox(imap, mb->name, mb->path, mb->path + sizeof mb->path);
+	setmbpath(imap, mb->path, mb->path + sizeof mb->path);
 	return 0;
 }
 
@@ -1199,7 +1199,7 @@ imap4mbox(Mailbox *mb, char *path)
 		imap->mbox = strdup("inbox");
 	else
 		imap->mbox = strdup(f[4]);
-	mkmbox(imap, mb->name, mb->path, mb->path + sizeof mb->path);
+	setmbpath(imap, mb->path, mb->path + sizeof mb->path);
 	mb->aux = imap;
 	mb->sync = imap4sync;
 	mb->close = imap4close;
