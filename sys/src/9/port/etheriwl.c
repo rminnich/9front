@@ -69,6 +69,8 @@ enum {
 		Prepare		= 1<<27,
 		EnablePme	= 1<<28,
 
+	Iclsc		= 0x004,	/* interrupt coalescing */
+		ClscDis		= 1<<31,
 	Isr		= 0x008,	/* interrupt status */
 	Imr		= 0x00c,	/* interrupt mask */
 		Ialive		= 1<<0,
@@ -280,6 +282,7 @@ enum {
 		RfhDmaNrbdShift		= 20,
 		RfhDmaMinRbSizeShift	= 24,
 		RfhDmaDropTooLarge	= 1<<26,
+		RfhDmaSingleFrame	= 1<<29,
 		RfhDmaEnable		= 1<<31,
 };
 
@@ -512,6 +515,7 @@ struct RXQ
 	uint	i;
 	int	psz;
 	Block	**b;
+	Bpool	bp;
 	uchar	*s;
 	uchar	*p;
 	uchar	*u;
@@ -658,8 +662,6 @@ enum {
 	Type6005	= 11,	/* also Centrino Advanced-N 6030, 6235 */
 	Type2030	= 12,
 	Type2000	= 16,
-
-	Type7260	= 20,
 };
 
 static struct ratetab {
@@ -721,6 +723,7 @@ static char *cmd(Ctlr *ctlr, uint code, uchar *data, int size);
 
 #define csr32r(c, r)	(*((c)->nic+((r)/4)))
 #define csr32w(c, r, v)	(*((c)->nic+((r)/4)) = (v))
+#define csr8w(c, r, v)	(*(((uchar*)(c)->nic)+(r)) = (v))
 
 static uint
 get16(uchar *p){
@@ -1114,7 +1117,7 @@ poweron(Ctlr *ctlr)
 	}
 
 	/* Enable the oscillator to count wake up time for L1 exit. (weird W/A) */
-	if(ctlr->type == Type7260){
+	if(ctlr->pdev->did >= 0x08b1 && ctlr->pdev->did <= 0x08b4){
 		if((err = niclock(ctlr)) != nil)
 			return err;
 
@@ -1683,10 +1686,9 @@ rbplant(Ctlr *ctlr, uint i)
 
 	assert(i < Nrx);
 
-	b = iallocb(Rbufsize*2);
+	b = iallocbp(&ctlr->rx.bp);
 	if(b == nil)
 		return -1;
-	b->rp = b->wp = (uchar*)ROUND((uintptr)b->base, Rbufsize);
 	memset(b->rp, 0, Rbufsize);
 	dmaflush(1, b->rp, Rbufsize);
 	coherence();
@@ -1753,6 +1755,11 @@ initmem(Ctlr *ctlr)
 	if(rx->p == nil || rx->b == nil || rx->s == nil)
 		return "no memory for rx ring";
 	memset(rx->s, 0, Rstatsize);
+	if(rx->bp.size == 0){
+		rx->bp.size = Rbufsize;
+		rx->bp.align = 4096;
+		growbp(&rx->bp, 2*Nrx);
+	}
 	for(i=0; i<Nrx; i++){
 		if(rx->b[i] != nil){
 			freeb(rx->b[i]);
@@ -1906,6 +1913,7 @@ reset(Ctlr *ctlr)
 		/* Enable RX DMA */
 		prphwrite(ctlr, RfhDmaCfg,
 			RfhDmaEnable |
+			RfhDmaSingleFrame |
 			RfhDmaDropTooLarge |
 			((Rbufsize/1024) << RfhDma1KSizeShift) |
 			(3 << RfhDmaMinRbSizeShift) |
@@ -1921,6 +1929,8 @@ reset(Ctlr *ctlr)
 		prphwrite(ctlr, RfhRxqActive, (1 << 16) | 1);
 		delay(1);
 
+		csr8w(ctlr, Iclsc, 64); /* 64*32=2048 usec */
+
 		csr32w(ctlr, FhRxQ0Wptr, (Nrx-1) & ~7);
 		delay(1);
 	} else {
@@ -1934,6 +1944,11 @@ reset(Ctlr *ctlr)
 			FhRxConfigIrqDstHost | 
 			FhRxConfigSingleFrame |
 			(Nrxlog << FhRxConfigNrbdShift));
+
+		csr8w(ctlr, Iclsc, 64); /* 64*32=2048 usec */
+		/* hardware bug */
+		if(ctlr->pdev->did >= 0x08b1 && ctlr->pdev->did <= 0x08b4)
+			csr32w(ctlr, Iclsc, csr32r(ctlr, Iclsc) | ClscDis); 
 
 		csr32w(ctlr, FhRxWptr, (Nrx-1) & ~7);
 	}
@@ -2806,17 +2821,21 @@ setmcastfilter(Ctlr *ctlr)
 }
 
 static char*
-setmacpowermode(Ctlr *ctlr)
+setmacpowermode(Ctlr *ctlr, Wnode *bss)
 {
 	uchar c[4 + 2+2 + 4+4+4+4 + 1+1 + 2+2 + 1+1+1+1 + 1+1+1+1 + 1+1], *p;
+	int dtim;
 
 	p = c;
 	put32(p, ctlr->macid);
 	p += 4;
 
-	put16(p, 0);	// flags
+	put16(p, 1);	// flags
 	p += 2;
-	put16(p, 5);	// keep alive seconds
+	/* a value below 25 seconds results in weird behavior */
+	dtim = bss ? 3*bss->dtimperiod*bss->ival : 0;
+	dtim = (dtim*1024 + 999999)/1000000;
+	put16(p, dtim > 25 ? dtim : 25);	// keep alive seconds
 	p += 2;
 
 	put32(p, 0);	// rx data timeout
@@ -3679,7 +3698,7 @@ rxoff7000(Ether *edev, Ctlr *ctlr)
 }
 
 static char*
-rxon7000(Ether *edev, Ctlr *ctlr)
+rxon7000(Ether *edev, Ctlr *ctlr, Wnode *bss)
 {
 	char *err;
 
@@ -3699,7 +3718,7 @@ rxon7000(Ether *edev, Ctlr *ctlr)
 		print("can't set mcast filter: %s\n", err);
 		return err;
 	}
-	if((err = setmacpowermode(ctlr)) != nil){
+	if((err = setmacpowermode(ctlr, bss)) != nil){
 		print("can't set mac power: %s\n", err);
 		return err;
 	}
@@ -3801,7 +3820,7 @@ rxon(Ether *edev, Wnode *bss)
 			edev->ctlrno, ctlr->bssid, ctlr->aid, ctlr->channel, ctlr->rxfilter, ctlr->rxflags);
 
 	if(ctlr->family >= 7000)
-		err = rxon7000(edev, ctlr);
+		err = rxon7000(edev, ctlr, bss);
 	else
 		err = rxon6000(edev, ctlr);
 	if(err != nil)
@@ -3933,7 +3952,10 @@ Broken:
 	put32(p, ~0);	/* lifetime */
 	p += 4;
 
-	/* BUG: scratch ptr? not clear what this is for */
+	/*
+	 * the device makes accesses to this page
+	 * to prevent host RAM going into sleep
+	 */
 	put32(p, PCIWADDR(ctlr->kwpage));
 	p += 5;
 
@@ -4416,7 +4438,7 @@ iwlpci(void)
 	int family;
 	
 	pdev = nil;
-	while(pdev = pcimatch(pdev, Vintel, 0)) {
+	while(pdev = pcimatch(pdev, 0x8086, 0)) {
 		Ctlr *ctlr;
 		void *mem;
 		
@@ -4462,6 +4484,7 @@ iwlpci(void)
 			fwname = "iwm-7260-17";
 			break;
 		case 0x08b3:	/* Wireless AC 3160 */
+		case 0x08b4:	/* Wireless AC 3160 */
 			family = 7000;
 			fwname = "iwm-3160-17";
 			break;
