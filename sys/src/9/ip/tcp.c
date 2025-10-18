@@ -1630,7 +1630,7 @@ tcpincoming(Conv *s, Tcp *seg, uchar *src, uchar *dst, int version)
 	tcpsynackrtt(tcb);
 
 	/* the same as what we sent in SYN,ACK */
-	tcb->mss = tcpmtu(v6lookup(s->p->f, src, dst, s), &tcb->scale, version);
+	tcb->mss = tcpmtu(v6lookup(s->p->f, src, dst, new), &tcb->scale, version);
 
 	tcpsetmss(new, lp->mss);
 	tcpsetscale(new, lp->ws);
@@ -1995,7 +1995,7 @@ reset:
 
 		/*
 		 *  if there's a matching call in limbo, tcpincoming will
-		 *  return it in state Syn_received
+		 *  return it in state Established
 		 */
 		s = tcpincoming(s, &seg, source, dest, version);
 		if(s == nil)
