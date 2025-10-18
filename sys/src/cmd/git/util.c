@@ -85,8 +85,8 @@ hasheq(Hash *a, Hash *b)
 	return memcmp(a->h, b->h, sizeof(a->h)) == 0;
 }
 
-static int
-charval(int c, int *err)
+int
+charval(int c)
 {
 	if(c >= '0' && c <= '9')
 		return c - '0';
@@ -94,7 +94,7 @@ charval(int c, int *err)
 		return c - 'a' + 10;
 	if(c >= 'A' && c <= 'F')
 		return c - 'A' + 10;
-	*err = 1;
+	werrstr("invalid hex char");
 	return -1;
 }
 
@@ -259,18 +259,14 @@ gitinit(void)
 int
 hparse(Hash *h, char *b)
 {
-	int i, err;
+	int i, c0, c1;
 
-	err = 0;
-	for(i = 0; i < sizeof(h->h); i++){
-		err = 0;
-		h->h[i] = 0;
-		h->h[i] |= ((charval(b[2*i], &err) & 0xf) << 4);
-		h->h[i] |= ((charval(b[2*i+1], &err)& 0xf) << 0);
-		if(err){
-			werrstr("invalid hash");
+	for(i = 0; i < nelem(h->h); i++){
+		if((c0 = charval(b[2*i+0])) == -1)
 			return -1;
-		}
+		if((c1 = charval(b[2*i+1])) == -1)
+			return -1;
+		h->h[i] = (c0 << 4) | c1;
 	}
 	return 0;
 }

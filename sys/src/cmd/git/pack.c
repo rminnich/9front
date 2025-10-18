@@ -677,8 +677,22 @@ error:
 	return -1;
 }
 
+int
+hashcmp(uchar *a, uchar *b, uint nbit)
+{
+	int x, y, i, r;
+
+	i = nbit/8;
+	r = memcmp(a, b, i);
+	if(r != 0 || nbit % 8 == 0)
+		return r;
+	x = (a[i+1] & 0xff00>>nbit) & 0xff;
+	y = (b[i+1] & 0xff00>>nbit) & 0xff;
+	return x - y;
+}
+
 vlong
-searchindex(char *idx, int nidx, Hash h)
+searchindex(char *idx, int nidx, Hash h, int npfx, Hash *hret)
 {
 	int lo, hi, hidx, i, r, nent;
 	vlong o, oo;
@@ -686,6 +700,8 @@ searchindex(char *idx, int nidx, Hash h)
 
 	o = 8;
 	if(nidx < 8 + 256*4)
+		return -1;
+	if(npfx < 8)
 		return -1;
 	/*
 	 * Read the fanout table. The fanout table
@@ -713,12 +729,13 @@ searchindex(char *idx, int nidx, Hash h)
 	 * entry may exist in, search them
 	 */
 	r = -1;
+	s = nil;
 	hidx = -1;
 	o = 8 + 256*4;
 	while(lo < hi){
 		hidx = (hi + lo)/2;
 		s = idx + o + hidx*sizeof(h.h);
-		r = memcmp(h.h, s, sizeof(h.h));
+		r = hashcmp(h.h, s, npfx);
 		if(r < 0)
 			hi = hidx;
 		else if(r > 0)
@@ -728,6 +745,8 @@ searchindex(char *idx, int nidx, Hash h)
 	}
 	if(r != 0)
 		goto notfound;
+	if(hret != nil)
+		memcpy(hret, s, sizeof(Hash));
 
 	/*
 	 * We found the entry. If it's 32 bits, then we
@@ -1032,7 +1051,7 @@ readidxobject(Biobuf *idx, Hash h, int flag)
 	retried = 0;
 retry:
 	for(i = 0; i < npackf; i++){
-		o = searchindex(packf[i].idx, packf[i].nidx, h);
+		o = searchindex(packf[i].idx, packf[i].nidx, h, SHA1dlen*8, nil);
 		if(o != -1){
 			if((f = openpack(&packf[i])) == nil)
 				goto error;
@@ -1070,6 +1089,38 @@ errorf:
 error:
 	free(new);
 	return nil;
+}
+
+int
+expandprefix(Hash *rh, Hash h, int npfx)
+{
+	int i, fd, ndir;
+	char buf[128];
+	Dir *d;
+
+	refreshpacks();
+	if(npfx < 8 || npfx % 4 != 0)
+		return -1;
+	for(i = 0; i < npackf; i++)
+		if(searchindex(packf[i].idx, packf[i].nidx, h, npfx, rh) != -1)
+			return 0;
+	sprint(buf, ".git/objects/%x", h.h[0]);
+	if((fd = open(buf, OREAD)) == -1)
+		return -1;
+	ndir = dirreadall(fd, &d);
+	close(fd);
+	if(ndir == -1)
+		return -1;
+	for(i = 0; i < ndir; i++){
+		snprint(buf, sizeof(buf), "%x%s", h.h[0], d[i].name);
+		if(hparse(rh, buf) == 0 && hashcmp(h.h, rh->h, npfx) == 0){
+			free(d);
+			return 0;
+		}
+
+	}
+	free(d);
+	return -1;
 }
 
 /*

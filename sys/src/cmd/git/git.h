@@ -281,6 +281,7 @@ Object	*ancestor(Object *, Object *);
 int	findtwixt(Hash *, int, Hash *, int, Object ***, int *);
 Object	*readobject(Hash);
 Object	*clearedobject(Hash, int);
+int	expandprefix(Hash*, Hash, int);
 void	parseobject(Object *);
 int	indexpack(char *, char *, Hash);
 int	writepack(int, Hash*, int, Hash*, int, Hash*);
@@ -321,6 +322,7 @@ int	findrepo(char *, int, int*);
 int	showprogress(int, int);
 u64int	murmurhash2(void*, usize);
 Qid	parseqid(char*);
+int	charval(int);
 
 /* packing */
 void	dtinit(Dtab *, Object*);
