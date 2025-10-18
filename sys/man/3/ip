@@ -789,12 +789,6 @@ turn on keep alive messages.
 .IR N ,
 if given, is the milliseconds between keepalives
 (default 120000).
-.TP
-.BI checksum \ n
-emit TCP checksums of zero if
-.I n
-is zero; otherwise, and by default,
-TCP checksums are computed and sent normally.
 .SS UDP
 UDP connections carry unreliable and unordered datagrams.  A read from
 .B data
