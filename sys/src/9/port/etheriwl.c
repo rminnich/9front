@@ -2830,7 +2830,7 @@ setmacpowermode(Ctlr *ctlr, Wnode *bss)
 	put32(p, ctlr->macid);
 	p += 4;
 
-	put16(p, 1);	// flags
+	put16(p, ctlr->prom ? 0 : 1);	// flags
 	p += 2;
 	/* a value below 25 seconds results in weird behavior */
 	dtim = bss ? 3*bss->dtimperiod*bss->ival : 0;
