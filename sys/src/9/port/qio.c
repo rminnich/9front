@@ -759,6 +759,24 @@ qbypass(void (*bypass)(void*, Block*), void *arg)
 	return q;
 }
 
+void
+qsetbypass(Queue *q, void (*bypass)(void*, Block*))
+{
+	Block *b;
+
+	ilock(q);
+	if(bypass != nil){
+		while((b = qremove(q)) != nil){
+			iunlock(q);
+			(*bypass)(q->arg, b);
+			ilock(q);
+		}
+		q->state |= Qstarve;
+	}
+	q->bypass = bypass;
+	iunlock_consumer(q);
+}
+
 static int
 notempty(void *a)
 {
