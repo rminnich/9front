@@ -202,8 +202,8 @@ struct Tcpctl
 {
 	Conv	*bypass;		/* The other when bypassing */
 	uchar	state;			/* Connection state */
-	uchar	type;			/* Listening or active connection */
-	uchar	code;			/* Icmp code */
+	uchar	flags;			/* State flags */
+	uchar	flgcnt;			/* Number of flags in the send sequence (FIN,SYN) */
 	struct {
 		ulong	una;		/* Unacked data pointer */
 		ulong	nxt;		/* Next sequence expected */
@@ -238,9 +238,7 @@ struct Tcpctl
 	Reseq	*reseq;			/* Resequencing queue */
 	int	nreseq;
 	int	reseqlen;
-	uchar	flags;			/* State flags */
-	uchar	flgcnt;			/* Number of flags in the send sequence (FIN,SYN) */
-	uchar	backoff;		/* Exponential backoff counter */
+	int	backoff;		/* Exponential backoff counter */
 	int	backedoff;		/* ms we've backed off for rexmits */
 	Tcptimer	timer;			/* Activity timer */
 	Tcptimer	acktimer;		/* Acknowledge timer */
@@ -1621,7 +1619,7 @@ tcpsplice(Conv *new, Conv *old)
 	qsetbypass(new->wq, tcpbypass);
 	qsetbypass(old->wq, tcpbypass);
 
-	/* stop timers and drump resequencing queue */
+	/* stop timers and dump resequencing queue */
 	tpriv = (Tcppriv*)new->p->priv;
 	tcphalt(tpriv, &ntcb->timer);
 	tcphalt(tpriv, &otcb->timer);
@@ -2689,7 +2687,8 @@ tcptimeout(void *arg)
 	qlock(s);
 	switch(tcb->state){
 	default:
-		tcb->backoff++;
+		if(tcb->backoff < 8)
+			tcb->backoff++;
 		if(tcb->state == Syn_sent)
 			maxback = MAXBACKMS/2;
 		else
