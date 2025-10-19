@@ -391,6 +391,7 @@ struct Ipifc
 	uchar	mac[MAClen];	/* MAC address */
 
 	Iplifc	*lifc;		/* logical interfaces on this physical one */
+	Queue	*loopback;
 
 	ulong	in, out;	/* message statistics */
 	ulong	inerr, outerr;	/* ... */
@@ -719,6 +720,8 @@ extern uchar IPallbits[IPaddrlen];
  */
 extern Medium	ethermedium;
 extern Medium	nullmedium;
+extern Medium	unboundmedium;	/* same as nullmedium, to prevent unbind while bind or unbind is in progress */
+extern Medium	loopbackmedium;
 extern Medium	pktmedium;
 
 /*
