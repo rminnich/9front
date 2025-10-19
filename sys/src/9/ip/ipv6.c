@@ -101,6 +101,16 @@ ipoput6(Fs *f, Block *bp, Ipifc *gating, int ttl, int tos, Routehint *rh)
 		eh->vcf[0] = IP_VER6;
 		eh->vcf[0] |= tos >> 4;
 		eh->vcf[1]  = tos << 4;
+
+		/* bypass for loopback */
+		if(r->type & Runi){
+			eh->ttl = ttl;
+			hnputs(eh->ploadlen, len - IP6HDR);
+			(*loopbackmedium.bwrite)(ifc, concatblock(bp), V6, gate, rh);
+			runlock(ifc);
+			poperror();
+			return 0;
+		}
 	}
 	eh->ttl = ttl;
 

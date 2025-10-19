@@ -122,9 +122,6 @@ ipfindmedium(char *name)
 	return *mp;
 }
 
-/* same as nullmedium, to prevent unbind while bind or unbind is in progress */
-extern Medium unboundmedium;
-
 /*
  *  attach a device (or pkt driver) to the interface.
  *  called with c locked
@@ -174,6 +171,8 @@ ipifcbind(Conv *c, char **argv, int argc)
 		wunlock(ifc);
 		nexterror();
 	}
+	if(m != &loopbackmedium)
+		(*loopbackmedium.bind)(ifc, argc, argv);
 	(*m->bind)(ifc, argc, argv);
 	poperror();
 
@@ -466,6 +465,7 @@ ipifccreate(Conv *c)
 	c->sq = qopen(QMAX, 0, 0, 0);
 	if(c->rq == nil || c->wq == nil || c->sq == nil)
 		error(Enomem);
+
 	ifc = (Ipifc*)c->ptcl;
 	ifc->conv = c;
 	ifc->m = nil;

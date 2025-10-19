@@ -146,6 +146,23 @@ ipoput4(Fs *f, Block *bp, Ipifc *gating, int ttl, int tos, Routehint *rh)
 	} else {
 		eh->vihl = IP_VER4|IP_HLEN4;
 		eh->tos = tos;
+
+		/* bypass for loopback */
+		if(r->type & Runi){
+			eh->ttl = ttl;
+			hnputs(eh->length, len);
+			hnputs(eh->id, incref(&ip->id4));
+			eh->frag[0] = 0;
+			eh->frag[1] = 0;
+			eh->cksum[0] = 0;
+			eh->cksum[1] = 0;
+			hnputs(eh->cksum, ipcsum(&eh->vihl));
+			bp->flag |= Bipck;
+			(*loopbackmedium.bwrite)(ifc, concatblock(bp), V4, gate, rh);
+			runlock(ifc);
+			poperror();
+			return 0;
+		}
 	}
 	eh->ttl = ttl;
 
@@ -160,7 +177,6 @@ ipoput4(Fs *f, Block *bp, Ipifc *gating, int ttl, int tos, Routehint *rh)
 		eh->cksum[0] = 0;
 		eh->cksum[1] = 0;
 		hnputs(eh->cksum, ipcsum(&eh->vihl));
-
 		ipifcoput(ifc, bp, V4, gate, rh);
 		runlock(ifc);
 		poperror();
@@ -244,7 +260,6 @@ ipoput4(Fs *f, Block *bp, Ipifc *gating, int ttl, int tos, Routehint *rh)
 		feh->cksum[0] = 0;
 		feh->cksum[1] = 0;
 		hnputs(feh->cksum, ipcsum(&feh->vihl));
-
 		ipifcoput(ifc, nb, V4, gate, rh);
 		ip->stats[FragCreates]++;
 	}
