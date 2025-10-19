@@ -53,9 +53,8 @@ enum
 
 static char network[] = "network";
 
-QLock	fslock;
-Fs	*ipfs[Nfs];	/* attached fs's */
-Queue	*qlog;
+static Fs	*ipfs[Nfs];	/* attached fs's */
+static Queue	*qlog;
 
 extern	void nullmediumlink(void);
 extern	void pktmediumlink(void);
@@ -290,6 +289,7 @@ newipaux(char *owner, char *tag)
 static Chan*
 ipattach(char* spec)
 {
+	static QLock lk;
 	Chan *c;
 	ulong dev;
 
@@ -297,7 +297,7 @@ ipattach(char* spec)
 	if(dev >= Nfs)
 		error(Enodev);
 
-	qlock(&fslock);
+	qlock(&lk);
 	if(ipfs[dev] == nil){
 		extern void (*ipprotoinit[])(Fs*);
 		Fs *f;
@@ -310,9 +310,10 @@ ipattach(char* spec)
 		for(i = 0; ipprotoinit[i]; i++)
 			ipprotoinit[i](f);
 		f->dev = dev;
+		coherence();
 		ipfs[dev] = f;
 	}
-	qunlock(&fslock);
+	qunlock(&lk);
 
 	c = devattach('I', spec);
 	mkqid(&c->qid, QID(0, 0, Qtopdir), 0, QTDIR);
