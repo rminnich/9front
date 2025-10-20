@@ -957,18 +957,16 @@ int format(char **pbuf, int *pbufsize, char *s, Node *a)	/* printf-like conversi
 			break;
 		case 5:
 			if (isnum(x)) {
-				if (getfval(x)) {
-					*p++ = (uchar)getfval(x);
-					*p = '\0';
-				} else {
-					*p++ = '\0';
-					*p = '\0';
-				}
-			} else {
-				chartorune(&r, getsval(x));
+				r = getfval(x);
 				p += runetochar(p, &r);
-				*p = '\0';
+			} else {
+				t = getsval(x);
+				if(*t != '\0'){
+					chartorune(&r, t);
+					p += runetochar(p, &r);
+				}
 			}
+			*p = '\0';
 			break;
 		}
 		if (istemp(x))
