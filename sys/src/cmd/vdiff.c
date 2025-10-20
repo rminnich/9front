@@ -120,6 +120,17 @@ erealloc(void *p, ulong n)
 	return q;
 }
 
+Image*
+eallocimage(Rectangle r, int repl, ulong n)
+{
+	Image *i;
+
+	i = allocimage(display, r, screen->chan, repl, n);
+	if(i == nil)
+		sysfatal("allocimage: %r");
+	return i;
+}
+
 void
 plumb(char *f, int l)
 {
@@ -337,10 +348,8 @@ eresize(int new)
 		clampoffset(1);
 	else
 		clampoffset(0);
-	free(fb);
-	fb = allocimage(display, screen->r, screen->chan, 0, DBlack);
-	if(fb == nil)
-		sysfatal("allocimage: %r");
+	freeimage(fb);
+	fb = eallocimage(screen->r, 0, DBlack);
 	redraw();
 }
 
@@ -392,7 +401,8 @@ genmenu(int i)
 		if(i >= npatches || npatches == 1)
 			return nil;
 		if(patches[i].name == nil)
-			patches[i].name = smprint("%d", i);
+			if((patches[i].name = smprint("%d", i)) == nil)
+				sysfatal("smprint: %r");
 		return patches[i].name;
 	}
 }
@@ -489,45 +499,40 @@ emouse(Mouse m)
 	oldbuttons = m.buttons;
 }
 
-Image*
-ecolor(ulong n)
-{
-	Image *i;
-
-	i = allocimage(display, Rect(0,0,1,1), screen->chan, 1, n);
-	if(i == nil)
-		sysfatal("allocimage: %r");
-	return i;
-}
-
 void
 initcol(Col *c, ulong fg, ulong bg)
 {
-	c->fg = ecolor(fg);
-	c->bg = ecolor(bg);
+	Rectangle r;
+
+	r = Rect(0, 0, 1, 1);
+	c->fg = eallocimage(r, 1, fg);
+	c->bg = eallocimage(r, 1, bg);
 }
 
 void
 initcols(int black)
 {
+	Rectangle r;
+
+	r = Rect(0, 0, 1, 1);
 	if(black){
-		bord = ecolor(0x888888FF^(~0xFF));
+		bord = eallocimage(r, 1, 0x888888FF^(~0xFF));
 		initcol(&scrlcol,     DBlack, 0x999999FF^(~0xFF));
 		initcol(&cols[Lfile], DWhite, 0x333333FF);
 		initcol(&cols[Lsep],  DBlack, DPurpleblue);
 		initcol(&cols[Ladd],  DWhite, 0x002800FF);
 		initcol(&cols[Ldel],  DWhite, 0x3F0000FF);
 		initcol(&cols[Lnone], DWhite, DBlack);
-		trlcol = ecolor(0x9F0000FF);
+		trlcol = eallocimage(r, 1, 0x9F0000FF);
 	}else{
-		bord = ecolor(0x888888FF);
+		bord = eallocimage(r, 1, 0x888888FF);
 		initcol(&scrlcol,     DWhite, 0x999999FF);
 		initcol(&cols[Lfile], DBlack, 0xEFEFEFFF);
 		initcol(&cols[Lsep],  DBlack, 0xEAFFFFFF);
 		initcol(&cols[Ladd],  DBlack, 0xE6FFEDFF);
 		initcol(&cols[Ldel],  DBlack, 0xFFEEF0FF);
 		initcol(&cols[Lnone], DBlack, DWhite);
-		trlcol = ecolor(0xFF8890FF);
+		trlcol = eallocimage(r, 1, 0xFF8890FF);
 	}
 }
 
@@ -539,18 +544,14 @@ initicons(void)
 
 	w = font->height;
 	h = font->height;
-	expander[0] = allocimage(display, Rect(0, 0, w, h), screen->chan, 0, DNofill);
-	if(expander[0] == nil)
-		sysfatal("allocimage: %r");
+	expander[0] = eallocimage(Rect(0, 0, w, h), 0, DNofill);
 	draw(expander[0], expander[0]->r, cols[Lfile].bg, nil, ZP);
 	p[0] = Pt(0.25*w, 0.25*h);
 	p[1] = Pt(0.25*w, 0.75*h);
 	p[2] = Pt(0.75*w, 0.5*h);
 	p[3] = p[0];
 	fillpoly(expander[0], p, 4, 0, bord, ZP);
-	expander[1] = allocimage(display, Rect(0, 0, w, h), screen->chan, 0, DNofill);
-	if(expander[1] == nil)
-		sysfatal("allocimage: %r");
+	expander[1] = eallocimage(Rect(0, 0, w, h), 0, DNofill);
 	draw(expander[1], expander[1]->r, cols[Lfile].bg, nil, ZP);
 	p[0] = Pt(0.25*w, 0.25*h);
 	p[1] = Pt(0.75*w, 0.25*h);
@@ -621,6 +622,8 @@ lineno(char *s)
 	int n, l;
 
 	p = strdup(s);
+	if(p == nil)
+		sysfatal("strdup: %r");
 	n = tokenize(p, t, 5);
 	if(n<=0)
 		return -1;
@@ -653,17 +656,18 @@ parse(int fd, char *name)
 			gotterm = 1;
 			/* remove '--' and extra newline */
 			b->nlines--;
+			free(s);
 			free(Brdstr(bp, '\n', 1));
 		New:
 			npatches++;
-			patches = realloc(patches, sizeof *patches * npatches);
+			patches = erealloc(patches, sizeof *patches * npatches);
 			cur = patches+npatches-1;
 			cur->blocks = nil;
 			cur->nblocks = 0;
 			cur->name = name;
 			b = addblock();
 			n = 0;
-			ab = 0;		
+			ab = 0;
 			break;
 		case Lfile:
 			if(s[0] == '-'){
@@ -685,7 +689,10 @@ parse(int fd, char *name)
 					*tab = 0;
 				if(strcmp(f, "/dev/null") != 0)
 					b->f = f;
-			}
+				else
+					free(s);
+			}else
+				free(s);
 			break;
 		case Lsep:
 			n = lineno(s) - 1; /* -1 as the separator is not an actual line */
@@ -699,6 +706,8 @@ parse(int fd, char *name)
 						cur->name = smprint("%s %.*s", name, 9, f);
 					else
 						cur->name = smprint("%.*s", 9, f);
+					if(cur->name == nil)
+						sysfatal("smprint: %r");
 				}
 			}
 			t = Lnone;
