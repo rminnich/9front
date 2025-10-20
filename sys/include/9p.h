@@ -235,6 +235,7 @@ struct Srv {
 	int	spid;	/* pid of srv() caller */
 	int	authok;	/* auth was done on this channel (for none) */
 
+	jmp_buf	srvtos;
 	void	(*forker)(void (*)(void*), void*, int);
 	void	(*free)(Srv*);
 };

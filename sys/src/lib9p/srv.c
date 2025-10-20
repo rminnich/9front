@@ -810,12 +810,21 @@ srvacquire(Srv *srv)
 	qlock(&srv->slock);
 }
 
+static void
+resetstack(void *arg)
+{
+	longjmp(arg, 1);
+}
+
 void
 srvrelease(Srv *srv)
 {
 	if(decref(&srv->sref) == 0){
 		incref(&srv->sref);
-		(*srv->forker)(srvwork, srv, 0);
+		if(srv->forker == srvforker)
+			srvforker(resetstack, srv->srvtos, 0);
+		else
+			(*srv->forker)(srvwork, srv, 0);
 	}
 	qunlock(&srv->slock);
 }
@@ -849,6 +858,7 @@ srv(Srv *srv)
 		srv->forker = srvforker;
 
 	incref(&srv->sref);
+	setjmp(srv->srvtos);
 	srvwork(srv);
 }
 
