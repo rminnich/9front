@@ -22,8 +22,6 @@ ARISING OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF
 THIS SOFTWARE.
 ****************************************************************/
 
-char	*version = "version 19990602";
-
 #include <u.h>
 #include <libc.h>
 #include <bio.h>
@@ -52,8 +50,7 @@ int	safe	= 0;	/* 1 => "safe" mode */
 
 void main(int argc, char *argv[])
 {
-	char *fs = nil, *marg;
-	int temp;
+	char *fs = nil;
 
 	setfcr(getfcr() & ~FPINVAL);
 
@@ -109,30 +106,10 @@ void main(int argc, char *argv[])
 			if (argv[1][2] == '\0' && --argc > 1 && isclvar((++argv)[1]))
 				setclvar(argv[1]);
 			break;
-		case 'm':	/* more memory: -mr=record, -mf=fields */
-				/* no longer needed */
-			marg = argv[1];
-			if (argv[1][3])
-				temp = atoi(&argv[1][3]);
-			else {
-				argv++; argc--;
-				temp = atoi(&argv[1][0]);
-			}
-			switch (marg[2]) {
-			case 'r':	recsize = temp; break;
-			case 'f':	nfields = temp; break;
-			default: FATAL("unknown option %s\n", marg);
-			}
-			break;
 		case 'd':
 			dbg = atoi(&argv[1][2]);
 			if (dbg == 0)
 				dbg = 1;
-			print("awk %s\n", version);
-			break;
-		case 'V':	/* added for exptools "standard" */
-			print("awk %s\n", version);
-			exits(0);
 			break;
 		default:
 			WARNING("unknown option %s ignored", argv[1]);
