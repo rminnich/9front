@@ -441,15 +441,17 @@ apply(Kvp *kv, Msg *m, char *buf, int nbuf)
 	}
 }
 
-static Blk*
-setb(Tree *t, Blk *b)
+static void
+setb(Blk **dst, Tree *t, Blk *b)
 {
+	if(*dst != nil)
+		freeblk(t, *dst);
 	if(b->nval == 0){
 		freeblk(t, b);
-		return nil;
+		*dst = nil;
 	}else{
 		enqueue(b);
-		return b;
+		*dst = b;
 	}
 }
 		
@@ -576,7 +578,7 @@ updateleaf(Tree *t, Path *up, Path *p)
 	}
 	p->npull = (j - up->lo);
 	p->op = POmod;
-	p->nl = setb(t, n);
+	setb(&p->nl, t, n);
 }
 
 /*
@@ -666,7 +668,7 @@ updatepiv(Tree *t, Path *up, Path *p, Path *pp)
 	}
 	p->npull = (j - up->lo);
 	p->op = POmod;
-	p->nl = setb(t, n);
+	setb(&p->nl, t, n);
 }
 
 /*
@@ -781,8 +783,8 @@ splitleaf(Tree *t, Path *up, Path *p, Kvp *mid)
 	}
 	p->npull = (j - up->lo);
 	p->op = POsplit;
-	p->nl = setb(t, l);
-	p->nr = setb(t, r);
+	setb(&p->nl, t, l);
+	setb(&p->nr, t, r);
 	poperror();
 }
 
@@ -851,8 +853,8 @@ splitpiv(Tree *t, Path *, Path *p, Path *pp, Kvp *mid)
 		setmsg(d, &m);
 	}
 	p->op = POsplit;
-	p->nl = setb(t, l);
-	p->nr = setb(t, r);
+	setb(&p->nl, t, l);
+	setb(&p->nr, t, r);
 	poperror();
 }
 
@@ -884,7 +886,7 @@ merge(Tree *t, Path *p, Path *pp, int idx, Blk *a, Blk *b)
 	}
 	p->midx = idx;
 	pp->op = POmerge;
-	pp->nl = setb(t, d);
+	setb(&pp->nl, t, d);
 }
 
 /*
@@ -993,8 +995,8 @@ rotate(Tree *t, Path *p, Path *pp, int midx, Blk *a, Blk *b, int halfpiv)
 	}
 	p->midx = midx;
 	pp->op = POrot;
-	pp->nl = setb(t, l);
-	pp->nr = setb(t, r);
+	setb(&pp->nl, t, l);
+	setb(&pp->nr, t, r);
 	poperror();
 }
 
@@ -1034,7 +1036,7 @@ trybalance(Tree *t, Path *p, Path *pp, int idx)
 
 	if(p->idx == -1 || pp == nil || pp->nl == nil)
 		return;
-	if(pp->op != POmod || pp->op != POmerge)
+	if(pp->op != POmod && pp->op != POmerge)
 		return;
 
 	l = nil;
