@@ -3,7 +3,9 @@
 
 int dopipe;
 int buflen;
-uvlong bc, sec;
+int windowed;
+vlong sec;
+Avlong nbytes;
 
 void
 usage(void)
@@ -26,6 +28,9 @@ main(int argc, char **argv)
 	case 'p':
 		dopipe = 1;
 		break;
+	case 'w':
+		windowed = 1;
+		break;
 	default:
 		usage();
 	} ARGEND
@@ -33,8 +38,6 @@ main(int argc, char **argv)
 	if(argc != 0)
 		usage();
 
-	bc = 0;
-	sec = 0;
 	if(buflen <= 0){
 		buflen = iounit(0);
 		if(buflen <= 0)
@@ -47,7 +50,10 @@ main(int argc, char **argv)
 	if(cpid == 0) {
 		while(1) {
 			sleep(1000);
-			speed = bc / ++sec;
+			if(windowed)
+				speed = aswapv(&nbytes, 0);
+			else
+				speed = agetv(&nbytes) / ++sec;
 			if(speed >= 1073741824) fprint(2, "%.2f GB/s\n", speed / 1073741824);
 			else if(speed >= 1048576) fprint(2, "%.2f MB/s\n", speed / 1048576);
 			else if(speed >= 1024) fprint(2, "%.2f KB/s\n", speed / 1024);
@@ -58,7 +64,7 @@ main(int argc, char **argv)
 		rc = read(0, buf, buflen);
 		if(rc <= 0) break;
 		if(dopipe) write(1, buf, rc);
-		bc += rc;
+		aincv(&nbytes, rc);
 	}
 	postnote(PNPROC, cpid, "kill");
 	if(rc < 0) sysfatal("%r");
