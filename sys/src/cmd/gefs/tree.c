@@ -308,10 +308,14 @@ filledpiv(Blk *b, int reserve)
 	/* 
 	 * We need to guarantee there's room for one message
 	 * at all times, so that splits along the whole path
-	 * have somewhere to go as they propagate up.
+	 * have somewhere to go as they propagate up. For
+	 * each key-ptr pair we have 8 bytes of overhead,
+	 * so remember to account for that: 2 bytes of fill,
+	 * 2 bytes of offset table, and 2 bytes of length
+	 * for both key and value.
 	 */
 	bassert(b, b->type == Tpivot);
-	return 2*(b->nval+1) + b->valsz + reserve*Kpmax > Pivspc;
+	return 2*(b->nval+1) + b->valsz + reserve*(8+Keymax+Ptrsz) > Pivspc;
 }
 
 static void
