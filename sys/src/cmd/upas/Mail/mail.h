@@ -136,7 +136,8 @@ struct Mbox {
 
 	Mesg	*openmesg;
 	Comp	*opencomp;
-	int	canquit;
+	int	quitwopen;
+	int quitdirty;
 
 	Channel	*see;
 	Channel	*show;

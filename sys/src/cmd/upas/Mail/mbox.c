@@ -796,17 +796,26 @@ quitall(char **, int)
 {
 	Mesg *m;
 	Comp *c;
+	char d;
 
-	if(mbox.nopen > 0 && !mbox.canquit){
+	if(mbox.nopen > 0 && !mbox.quitwopen){
 		fprint(2, "Del: %d open messages\n", mbox.nopen);
-		mbox.canquit = 1;
+		mbox.quitwopen = 1;
 		return;
 	}
 	for(m = mbox.openmesg; m != nil; m = m->qnext)
 		fprint(m->ctl, "del\n");
 	for(c = mbox.opencomp; c != nil; c = c->qnext)
 		fprint(c->ctl, "del\n");
-	fprint(mbox.ctl, "del\n");
+	/* check if mbox has unsaved changes by reading dirty flag before closing */
+	pread(mbox.ctl, &d, 1, 58);
+	if(d == '1' && !mbox.quitdirty){
+		fprint(2, "Del: unsaved changes in mailbox\n");
+		mbox.quitdirty = 1;
+		return;
+	}
+	else
+		fprint(mbox.ctl, "delete\n");
 	threadexitsall(nil);
 }
 
@@ -991,8 +1000,10 @@ doevent(Event *ev)
 			}
 		if(p->fn == nil)
 			winreturn(&mbox, ev);
-		else if(p->fn != quitall)
-			mbox.canquit = 0;
+		else if(p->fn != quitall) {
+			mbox.quitwopen = 0;
+			mbox.quitdirty = 0;
+		}
 		break;
 	}
 }
