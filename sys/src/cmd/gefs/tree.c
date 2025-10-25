@@ -1103,7 +1103,15 @@ flush(Tree *t, Path *path, int npath)
 		p--;
 	}
 	while(p != path){
-		if(!filledpiv(p->b, 1)){
+		/*
+		 * While we will add at most one key to a tree,
+		 * we can mutate the children so that we end up
+		 * replacing small nodes with large ones; as a
+		 * result we need to be a bit more conservative
+		 * here, and split earlier than we may otherwise
+		 * want to do.
+		 */
+		if(!filledpiv(p->b, 2)){
 			trybalance(t, p, pp, p->idx);
 			/* If we merged the root node, break out. */
 			if(up == path && pp != nil && pp->op == POmerge && p->b->nval == 2){
