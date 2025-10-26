@@ -58,10 +58,10 @@ extern	int	patlen;		/* length of pattern matched.  set in b.c */
 typedef struct Cell {
 	uchar	ctype;		/* OCELL, OBOOL, OJUMP, etc. */
 	uchar	csub;		/* CCON, CTEMP, CFLD, etc. */
+	short	tval;		/* type info: STR|NUM|ARR|FCN|FLD|CON|DONTFREE */
 	char	*nval;		/* name, for variables only */
 	char	*sval;		/* string value */
 	Awkfloat fval;		/* value as number */
-	int	 tval;		/* type info: STR|NUM|ARR|FCN|FLD|CON|DONTFREE */
 	struct Cell *cnext;	/* ptr to next if chained */
 } Cell;
 

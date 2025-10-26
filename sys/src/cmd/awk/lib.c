@@ -49,8 +49,8 @@ int	lastfld	= 0;	/* last used field */
 int	argno	= 1;	/* current input argument number */
 extern	Awkfloat *AARGC;
 
-static Cell dollar0 = { OCELL, CFLD, nil, "", 0.0, REC|STR|DONTFREE };
-static Cell dollar1 = { OCELL, CFLD, nil, "", 0.0, FLD|STR|DONTFREE };
+static Cell dollar0 = { OCELL, CFLD, REC|STR|DONTFREE, nil, "", 0.0 };
+static Cell dollar1 = { OCELL, CFLD, FLD|STR|DONTFREE, nil, "", 0.0 };
 
 void recinit(unsigned int n)
 {

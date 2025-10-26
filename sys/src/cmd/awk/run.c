@@ -36,23 +36,23 @@ extern	Awkfloat	srand_seed;
 Node	*winner = nil;	/* root of parse tree */
 Cell	*tmps;		/* free temporary cells for execution */
 
-static Cell	truecell	={ OBOOL, BTRUE, 0, 0, 1.0, NUM };
+static Cell	truecell	={ OBOOL, BTRUE, NUM, 0, 0, 1.0 };
 Cell	*True	= &truecell;
-static Cell	falsecell	={ OBOOL, BFALSE, 0, 0, 0.0, NUM };
+static Cell	falsecell	={ OBOOL, BFALSE, NUM, 0, 0, 0.0 };
 Cell	*False	= &falsecell;
-static Cell	breakcell	={ OJUMP, JBREAK, 0, 0, 0.0, NUM };
+static Cell	breakcell	={ OJUMP, JBREAK, NUM, 0, 0, 0.0 };
 Cell	*jbreak	= &breakcell;
-static Cell	contcell	={ OJUMP, JCONT, 0, 0, 0.0, NUM };
+static Cell	contcell	={ OJUMP, JCONT, NUM, 0, 0, 0.0 };
 Cell	*jcont	= &contcell;
-static Cell	nextcell	={ OJUMP, JNEXT, 0, 0, 0.0, NUM };
+static Cell	nextcell	={ OJUMP, JNEXT, NUM, 0, 0, 0.0 };
 Cell	*jnext	= &nextcell;
-static Cell	nextfilecell	={ OJUMP, JNEXTFILE, 0, 0, 0.0, NUM };
+static Cell	nextfilecell	={ OJUMP, JNEXTFILE, NUM, 0, 0, 0.0 };
 Cell	*jnextfile	= &nextfilecell;
-static Cell	exitcell	={ OJUMP, JEXIT, 0, 0, 0.0, NUM };
+static Cell	exitcell	={ OJUMP, JEXIT, NUM, 0, 0, 0.0 };
 Cell	*jexit	= &exitcell;
-static Cell	retcell		={ OJUMP, JRET, 0, 0, 0.0, NUM };
+static Cell	retcell		={ OJUMP, JRET, NUM, 0, 0, 0.0 };
 Cell	*jret	= &retcell;
-static Cell	tempcell	={ OCELL, CTEMP, 0, "", 0.0, NUM|STR|DONTFREE };
+static Cell	tempcell	={ OCELL, CTEMP, NUM|STR|DONTFREE, 0, "", 0.0 };
 
 Node	*curnode = nil;	/* the node being executed, for debugging */
 
@@ -224,7 +224,7 @@ struct Frame *fp = nil;	/* frame pointer. bottom level unused */
 
 Cell *call(Node **a, int)	/* function call.  very kludgy and fragile */
 {
-	static Cell newcopycell = { OCELL, CCOPY, 0, "", 0.0, NUM|STR|DONTFREE };
+	static Cell newcopycell = { OCELL, CCOPY, NUM|STR|DONTFREE, 0, "", 0.0 };
 	int i, ncall, ndef;
 	Node *x;
 	Cell *args[NARGS], *oargs[NARGS];	/* BUG: fixed size arrays */
