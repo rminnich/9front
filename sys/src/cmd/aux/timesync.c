@@ -40,7 +40,7 @@ int stratum = 14;
 vlong mydisp, rootdisp;
 vlong mydelay, rootdelay;
 vlong avgdelay;
-vlong lastutc;
+vlong lastrefts;
 uchar rootid[4];
 char *sysid;
 int myprec;
@@ -490,6 +490,7 @@ main(int argc, char **argv)
 		/* add current sample to list. */
 		*l = s;
 		l = &s->next;
+		lastrefts = s->stime;
 
 		if(logging)
 			syslog(0, logfile, "δ %lld avgδ %lld hz %lld",
@@ -1093,8 +1094,7 @@ utcsample(void)
 		gettime(&s, nil, nil);
 		s -= atoll(v[1]);
 	}
-	lastutc = atoll(v[0]) + s;
-	return lastutc;
+	return atoll(v[0]) + s;
 }
 
 /*
@@ -1173,7 +1173,7 @@ ntpserver(char *servenet)
 		ntp->precision = myprec;
 		hnputfp(ntp->rootdelay, rootdelay + mydelay);
 		hnputfp(ntp->rootdisp, rootdisp + mydisp);
-		hnputts(ntp->refts, lastutc);
+		hnputts(ntp->refts, lastrefts);
 		memmove(ntp->origts, ntp->xmitts, sizeof(ntp->origts));
 		hnputts(ntp->recvts, recvts);
 		memmove(ntp->rootid, rootid, sizeof(ntp->rootid));
@@ -1361,7 +1361,7 @@ background(void)
 		return;
 
 	if(!debug) 
-		switch(rfork(RFPROC|RFFDG|RFNAMEG|RFNOTEG|RFNOWAIT)){
+		switch(rfork(RFPROC|RFMEM|RFFDG|RFNAMEG|RFNOTEG|RFNOWAIT)){
 		case -1:
 			sysfatal("forking: %r");
 			break;
