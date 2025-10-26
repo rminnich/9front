@@ -1261,11 +1261,12 @@ Cell *dopa2(Node **a, int)	/* a[0], a[1] { a[2] } */
 Cell *split(Node **a, int)	/* split(a[0], a[1], a[2]); a[3] is type */
 {
 	Cell *x = 0, *y, *ap;
-	char *s, *t, *fs = 0;
+	char *s, *ds, *t, *fs = 0;
 	char temp, num[50];
 	int n, nb, sep, arg3type;
 
 	y = execute(a[0]);	/* source string */
+	ds = nil;
 	s = getsval(y);
 	arg3type = ptoi(a[3]);
 	if (a[2] == 0)		/* fs string */
@@ -1279,10 +1280,9 @@ Cell *split(Node **a, int)	/* split(a[0], a[1], a[2]); a[3] is type */
 		FATAL("illegal type of split");
 	sep = *fs;
 	ap = execute(a[1]);	/* array name */
-	n = y->tval;
-	y->tval |= DONTFREE;	/* split(a[x], a); */
+	if (isarr(ap) && lookup(y->nval, (Array *)ap->sval) != nil)
+		ds = s = tostring(s);
 	freesymtab(ap);
-	y->tval = n;
 	   dprint( ("split: s=|%s|, a=%s, sep=|%s|\n", s, ap->nval, fs) );
 	ap->tval &= ~STR;
 	ap->tval |= ARR;
@@ -1381,6 +1381,7 @@ Cell *split(Node **a, int)	/* split(a[0], a[1], a[2]); a[3] is type */
 				break;
 		}
 	}
+	free(ds);
 	if (istemp(ap))
 		tfree(ap);
 	if (istemp(y))
