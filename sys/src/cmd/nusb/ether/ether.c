@@ -773,15 +773,16 @@ ethermux(Block *bp, Conn *from)
 		goto Drop;
 	pkt = (Etherpkt*)bp->rp;
 	if(!(multi = pkt->d[0] & 1)){
-		tome = memcmp(pkt->d, macaddr, Eaddrlen) == 0;
-		if(!tome && from != nil && nprom == 0)
+		if(from != nil && nprom == 0)
 			return bp;
+		tome = (from == nil || from->bridge) &&
+			memcmp(pkt->d, macaddr, Eaddrlen) == 0;
 	} else {
-		tome = 0;
 		if(from == nil && nprom == 0
 		&& memcmp(pkt->d, bcast, Eaddrlen) != 0
 		&& activemulti(pkt->d) < 0)
 			goto Drop;
+		tome = 0;
 	}
 
 	port = -1;

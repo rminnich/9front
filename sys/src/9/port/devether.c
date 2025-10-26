@@ -174,15 +174,16 @@ ethermux(Ether *ether, Block *bp, Netfile **from)
 
 	pkt = (Etherpkt*)bp->rp;
 	if(!(multi = pkt->d[0] & 1)){
-		tome = memcmp(pkt->d, ether->ea, Eaddrlen) == 0;
-		if(!tome && from != nil && ether->prom == 0)
+		if(from != nil && ether->prom == 0)
 			return bp;
+		tome = (from == nil || (*from)->bridge) &&
+			memcmp(pkt->d, ether->ea, Eaddrlen) == 0;
 	} else {
-		tome = 0;
 		if(from == nil && ether->prom == 0
 		&& memcmp(pkt->d, ether->bcast, Eaddrlen) != 0
 		&& !activemulti(ether, pkt->d, Eaddrlen))
 			goto Drop;
+		tome = 0;
 	}
 
 	port = -1;

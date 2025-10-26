@@ -574,12 +574,6 @@ recvarp(Ipifc *ifc)
 				}
 				break;
 			}
-		} else {
-			if(memcmp(e->sha, ifc->mac, sizeof(e->sha)) == 0){
-				print("arpreq: %V also has ether addr %E\n",
-					e->spa, e->sha);
-				break;
-			}
 		}
 
 		/*
