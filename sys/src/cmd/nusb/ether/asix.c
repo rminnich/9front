@@ -422,9 +422,9 @@ enum
 		Nid		= 0x10,
 
 	Aphy			= 0x02,
-		Physts		= 0x02,
+		Phyusb		= 0x02,
 		Phyid		= 0x03,
-		Phyfd		= 0x11,
+		Physr		= 0x11,
 
 	/* Control */
 	Crxctl			= 0x0b,
@@ -447,15 +447,18 @@ enum
 	Cpwtrh			= 0x55,
 	Capo			= 0x91,		/* auto-power off phy */
 
-	/* USB/Link conn. */
+	/* Phy link */
+	Linkup		= 0x0400,
+	Linkfd		= 0x2000,
+	Link10		= 0x0000,
+	Link100		= 0x4000,
+	Link1000	= 0x8000,
+	Linkmask	= Link10 | Link100 | Link1000,
+
+	/* USB conn. */
 	Usbfs		= 0x01,
 	Usbhs		= 0x02,
 	Usbss 		= 0x04,
-	Link10		= 0x10,
-	Link100		= 0x20,
-	Link1000	= 0x40,
-
-	Linkfd		= 0x2000,
 };
 
 static int
@@ -592,16 +595,16 @@ static int
 a179linkup(Dev *d)
 {
 	int timeout;
-	ushort link;
+	int link;
 
 	timeout = 5000;
 	do{
-		link = a179miiread(d, Miibmsr);
-		if(link & Bmsrlink)
+		if((link = a179miiread(d, Physr)) < 0)
+			return -1;
+		if(link & Linkup)
 			return 0;
 		sleep(50);
 	}while(timeout -= 50);
-
 	fprint(2, "%s: a179linkup: no link\n", argv0);
 	return -1;
 }
@@ -635,15 +638,18 @@ a179multicast(Dev *d, uchar*, int)
 static int
 a179linkspeed(Dev *d)
 {
-	uchar link;
+	int link;
 
-	a179get(d, Amac, Physts, 1, &link, 1);
-	if(link & Link1000)
+	if((link = a179miiread(d, Physr)) < 0)
+		return -1;
+	switch(link & Linkmask){
+	case Link1000:
 		return 1000;
-	if(link & Link100)
+	case Link100:
 		return 100;
-	if(link & Link10)
+	case Link10:
 		return 10;
+	}
 	return 0;
 }
 
@@ -656,9 +662,10 @@ a88179init(Dev *d)
 		{0x07, 0xae, 0x07, 0x04, 0xff},
 		{0x07, 0xcc, 0x4c, 0x04, 0x08}
 	};
-	ushort mode, fd;
-	uchar link;
+	ushort mode;
+	uchar usbspd;
 	int spd;
+	int link;
 
 	a179set2(d, Cphy, 0);
 	a179set2(d, Cphy, Cphyiprl);
@@ -684,24 +691,29 @@ a88179init(Dev *d)
 
 	spd = 3;	/* default bulkinq */
 	mode = Mtfc | Mrfc | Mre;
-	a179get(d, Amac, Physts, 1, &link, 1);
-	if(link & Link1000){
+	if(a179get(d, Amac, Phyusb, 1, &usbspd, 1) < 0)
+		return -1;
+	if((link = a179miiread(d, Physr)) < 0)
+		return -1;
+	switch(link & Linkmask){
+	case Link1000:
 		mode |= Mgm|Mmhz|Mjfe|Munk;
-		if(link & Usbss)
+		if(usbspd & Usbss)
 			spd = 0;
-		else if(link & Usbhs)
+		else if(usbspd & Usbhs)
 			spd = 1;
-	}else if(link & Link100){
+		break;
+	case Link100:
 		mode |= Mps;
-		if(link & (Usbss|Usbhs))
+		if(usbspd & (Usbss|Usbhs))
 			spd = 2;
-	} /* Link10 */
+	case Link10:
+		break;
+	}
 	a179set(d, Amac, Cblkinq, 5, qctrl[spd], 5);
 	a179bufsz = 1024*(qctrl[spd][3]+2);
-	fd = a179miiread(d, Phyfd);
-	if(fd & Linkfd)
+	if(link & Linkfd)
 		mode |= Mfd;
-
 	if(a179set2(d, Cmed, mode) < 0)
 		return -1;
 
@@ -710,6 +722,5 @@ a88179init(Dev *d)
 	eppromiscuous = a179promiscuous;
 	epmulticast = a179multicast;
 	eplinkspeed = a179linkspeed;
-
 	return 0;
 }
