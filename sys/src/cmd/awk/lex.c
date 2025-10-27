@@ -306,7 +306,7 @@ int yylex(void)
 					unputstr("(NF)");
 					RET(INDIRECT);
 				}
-				yylval.cp = setsymtab(buf, "", 0.0, STR|NUM, symtab);
+				yylval.cp = setsymtab(buf, EMPTY, 0.0, STR|NUM, symtab);
 				RET(IVAR);
 			} else {
 				unputstr(buf);
@@ -467,7 +467,7 @@ int word(char *w)
 				SYNTAX( "return not in function" );
 			RET(kp->type);
 		case VARNF:
-			yylval.cp = setsymtab("NF", "", 0.0, NUM, symtab);
+			yylval.cp = nfloc;
 			RET(VARNF);
 		default:
 			RET(kp->type);
@@ -478,7 +478,7 @@ int word(char *w)
 		yylval.i = n;
 		RET(ARG);
 	} else {
-		yylval.cp = setsymtab(w, "", 0.0, STR|NUM|DONTFREE, symtab);
+		yylval.cp = setsymtab(w, EMPTY, 0.0, STR|NUM|DONTFREE, symtab);
 		if (c == '(') {
 			RET(CALL);
 		} else {

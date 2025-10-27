@@ -190,7 +190,8 @@ Node *makearr(Node *p)
 		if (isfcn(cp))
 			SYNTAX( "%s is a function, not an array", cp->nval );
 		else if (!isarr(cp)) {
-			xfree(cp->sval);
+			if (freeable(cp))
+				xfree(cp->sval);
 			cp->sval = (char *) makesymtab(NSYMTAB);
 			cp->tval = ARR;
 		}

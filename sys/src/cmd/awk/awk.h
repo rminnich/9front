@@ -48,6 +48,8 @@ extern int	donefld;	/* 1 if record broken into fields */
 extern int	donerec;	/* 1 if record is valid (no fld has changed */
 extern char	inputFS[];	/* FS at time of input, for field splitting */
 
+extern char	EMPTY[];
+
 extern int	dbg;
 
 extern	char	*patbeg;	/* beginning of pattern matched */

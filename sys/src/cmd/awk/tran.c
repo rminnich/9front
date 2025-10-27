@@ -32,6 +32,8 @@ THIS SOFTWARE.
 #define	FULLTAB	2	/* rehash when table gets this x full */
 #define	GROWTAB 4	/* grow table by this factor */
 
+char	EMPTY[] = {'\0'};
+
 Array	*symtab;	/* main symbol table */
 
 char	**FS;		/* initial field sep */
@@ -68,7 +70,7 @@ void syminit(void)	/* initialize symbol table with builtin vars */
 {
 	literal0 = setsymtab("0", "0", 0.0, NUM|STR|CON|DONTFREE, symtab);
 	/* this is used for if(x)... tests: */
-	nullloc = setsymtab("$zero&null", "", 0.0, NUM|STR|CON|DONTFREE, symtab);
+	nullloc = setsymtab("$zero&null", EMPTY, 0.0, NUM|STR|CON|DONTFREE, symtab);
 	nullnode = celltonode(nullloc, CCON);
 
 	FS = &setsymtab("FS", " ", 0.0, STR|DONTFREE, symtab)->sval;
@@ -77,19 +79,19 @@ void syminit(void)	/* initialize symbol table with builtin vars */
 	ORS = &setsymtab("ORS", "\n", 0.0, STR|DONTFREE, symtab)->sval;
 	OFMT = &setsymtab("OFMT", "%.6g", 0.0, STR|DONTFREE, symtab)->sval;
 	CONVFMT = &setsymtab("CONVFMT", "%.6g", 0.0, STR|DONTFREE, symtab)->sval;
-	FILENAME = &setsymtab("FILENAME", "", 0.0, STR|DONTFREE, symtab)->sval;
-	nfloc = setsymtab("NF", "", 0.0, NUM, symtab);
+	FILENAME = &setsymtab("FILENAME", EMPTY, 0.0, STR|DONTFREE, symtab)->sval;
+	nfloc = setsymtab("NF", EMPTY, 0.0, NUM, symtab);
 	NF = &nfloc->fval;
-	nrloc = setsymtab("NR", "", 0.0, NUM, symtab);
+	nrloc = setsymtab("NR", EMPTY, 0.0, NUM, symtab);
 	NR = &nrloc->fval;
-	fnrloc = setsymtab("FNR", "", 0.0, NUM, symtab);
+	fnrloc = setsymtab("FNR", EMPTY, 0.0, NUM, symtab);
 	FNR = &fnrloc->fval;
 	SUBSEP = &setsymtab("SUBSEP", "\034", 0.0, STR|DONTFREE, symtab)->sval;
-	rstartloc = setsymtab("RSTART", "", 0.0, NUM, symtab);
+	rstartloc = setsymtab("RSTART", EMPTY, 0.0, NUM, symtab);
 	RSTART = &rstartloc->fval;
-	rlengthloc = setsymtab("RLENGTH", "", 0.0, NUM, symtab);
+	rlengthloc = setsymtab("RLENGTH", EMPTY, 0.0, NUM, symtab);
 	RLENGTH = &rlengthloc->fval;
-	symtabloc = setsymtab("SYMTAB", "", 0.0, ARR, symtab);
+	symtabloc = setsymtab("SYMTAB", EMPTY, 0.0, ARR, symtab);
 	symtabloc->sval = (char *) symtab;
 }
 
@@ -99,8 +101,8 @@ void arginit(int ac, char **av)	/* set up ARGV and ARGC */
 	int i;
 	char temp[50];
 
-	AARGC = &setsymtab("ARGC", "", (Awkfloat) ac, NUM, symtab)->fval;
-	cp = setsymtab("ARGV", "", 0.0, ARR, symtab);
+	AARGC = &setsymtab("ARGC", EMPTY, (Awkfloat) ac, NUM, symtab)->fval;
+	cp = setsymtab("ARGV", EMPTY, 0.0, ARR, symtab);
 	ARGVtab = makesymtab(NSYMTAB);	/* could be (int) ARGC as well */
 	cp->sval = (char *) ARGVtab;
 	for (i = 0; i < ac; i++) {
@@ -227,8 +229,10 @@ Cell *setsymtab(char *n, char *s, Awkfloat f, unsigned t, Array *tp)
 		p->sval = (char *) ENVtab;
 		p->tval = ARR;
 	} else {
-		p->sval = s ? tostring(s) : tostring("");
+		p->sval = s != nil && s != EMPTY ? tostring(s) : EMPTY;
 		p->tval = t;
+		if (p->sval == EMPTY)
+			p->tval |= DONTFREE;
 	}
 	p->csub = CUNK;
 	p->ctype = OCELL;
@@ -338,12 +342,15 @@ char *setsval(Cell *vp, char *s)	/* set string val of a Cell */
 		donefld = 0;	/* mark $1... invalid */
 		donerec = 1;
 	}
-	t = tostring(s);	/* in case it's self-assign */
+	t = s != nil && s != EMPTY ? tostring(s) : EMPTY;	/* in case it's self-assign */
 	vp->tval &= ~NUM;
 	vp->tval |= STR;
 	if (freeable(vp))
 		xfree(vp->sval);
-	vp->tval &= ~DONTFREE;
+	if (t != EMPTY)
+		vp->tval &= ~DONTFREE;
+	else
+		vp->tval |= DONTFREE;
 	   dprint( ("setsval %p: %s = \"%s (%p)\", t=%o\n", vp, vp->nval, t,t, vp->tval) );
 	return(vp->sval = t);
 }
