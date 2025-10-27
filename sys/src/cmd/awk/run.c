@@ -1267,8 +1267,9 @@ Cell *split(Node **a, int)	/* split(a[0], a[1], a[2]); a[3] is type */
 	int n, nb, sep, arg3type;
 
 	y = execute(a[0]);	/* source string */
-	ds = nil;
-	s = getsval(y);
+	ds = s = tostring(getsval(y));
+	if (istemp(y))
+		tfree(y);
 	arg3type = ptoi(a[3]);
 	if (a[2] == 0)		/* fs string */
 		fs = *FS;
@@ -1281,8 +1282,6 @@ Cell *split(Node **a, int)	/* split(a[0], a[1], a[2]); a[3] is type */
 		FATAL("illegal type of split");
 	sep = *fs;
 	ap = execute(a[1]);	/* array name */
-	if (isarr(ap) && lookup(y->nval, (Array *)ap->sval) != nil)
-		ds = s = tostring(s);
 	freesymtab(ap);
 	   dprint( ("split: s=|%s|, a=%s, sep=|%s|\n", s, ap->nval, fs) );
 	ap->tval &= ~STR;
@@ -1385,8 +1384,6 @@ Cell *split(Node **a, int)	/* split(a[0], a[1], a[2]); a[3] is type */
 	free(ds);
 	if (istemp(ap))
 		tfree(ap);
-	if (istemp(y))
-		tfree(y);
 	if (a[2] != 0 && arg3type == STRING)
 		if (istemp(x))
 			tfree(x);
