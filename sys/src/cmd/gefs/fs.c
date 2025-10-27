@@ -80,7 +80,7 @@ wrwait(void)
 }
 
 static void
-sync(void)
+sync(int id)
 {
 	Mount *mnt;
 	Arena *a;
@@ -98,7 +98,7 @@ sync(void)
 		nexterror();
 	}
 
-	/* 
+	/*
 	 * Wait for data that we're syncing to hit disk
 	 */
 	tracem("flush1");
@@ -112,7 +112,9 @@ sync(void)
 	 *  can take a consistent snapshot.
          */
 	qlock(&fs->mutlk);
+	epochstart(id);
 	if(waserror()){
+		epochend(id);
 		aincl(&fs->rdonly, 1);
 		qunlock(&fs->mutlk);
 		nexterror();
@@ -162,6 +164,7 @@ sync(void)
 	finalize(fs->sb0);
 	finalize(fs->sb1);
 	fs->snap.dirty = 0;
+	epochend(id);
 	qunlock(&fs->mutlk);
 	poperror();
 
@@ -2819,7 +2822,7 @@ runsweep(int id, void*)
 					epochwait();
 					epochclean();
 				}
-				sync();
+				sync(id);
 			}
 			postnote(PNGROUP, getpid(), "halted");
 			exits(nil);
@@ -2861,7 +2864,7 @@ runsweep(int id, void*)
 				epochclean();
 			}
 
-			sync();	/* oldhd blocks leaked on error() */
+			sync(id);	/* oldhd blocks leaked on error() */
 
 			for(i = 0; i < fs->narena; i++){
 				for(bp = oldhd[i]; bp.addr != -1; bp = nb){
@@ -2915,7 +2918,7 @@ Syncout:
 			qunlock(&fs->mutlk);
 			poperror();
 
-			sync();	/* t leaked on error() */
+			sync(id);	/* t leaked on error() */
 
 			if(t != nil){
 				epochwait();
