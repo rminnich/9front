@@ -29,7 +29,6 @@ enum
 	Munk		= 0x8000,
 	Mall772		= Mfd|Mrfc|Mtfc|Mps|Mac|Mre,
 	Mall178		= Mps|Mfd|Mac|Mrfc|Mtfc|Mjfe|Mre,
-	Mall179		= Mgm|Mfd|Mmhz|Mrfc|Mtfc|Mjfe|Munk|Mre,
 
 	Rxctldce	= 0x0100,		/* drop crcerr */
 	Rxctlso		= 0x80,			/* start operation */
@@ -427,9 +426,12 @@ enum
 		Physr		= 0x11,
 
 	/* Control */
+	Cfwmd			= 0x08,		/* firmware mode */
+		Fwmd179		= 0x00,
+		Fwmd179a	= 0x01,
 	Crxctl			= 0x0b,
 	Cmed			= 0x22,		/* medium status register */
-	Cmmsr			= 0x24,		/* control monitor */	
+	Cmmsr			= 0x24,		/* control monitor */
 		Mrwmp		= 0x04,
 		Mpmepol		= 0x20,
 		Mpmetyp		= 0x40,
@@ -446,6 +448,10 @@ enum
 	Cpwtrl			= 0x54,
 	Cpwtrh			= 0x55,
 	Capo			= 0x91,		/* auto-power off phy */
+
+	/* USB device release numbers */
+	Dno179		= 0x100,
+	Dno179a		= 0x200,
 
 	/* Phy link */
 	Linkup		= 0x0400,
@@ -540,7 +546,7 @@ a179receive(Dev *ep)
 {
 	Block *b;
 	uchar *hdr;
-	uint pktlen, npkt;
+	ushort pktlen, npkt;
 	int n;
 
 	b = allocb(a179bufsz);
@@ -549,16 +555,18 @@ a179receive(Dev *ep)
 		return -1;
 	}
 	b->wp += n;
-	npkt = GET2(b->wp-4);
 	hdr = b->base + GET2(b->wp-2);
+	npkt = GET2(b->wp-4);
 	b->wp -= 4;
 	while(npkt-- > 0){
 		pktlen = GET2(hdr+2) & 0x1FFF;
+		hdr += 4;
+		if(pktlen == 0)
+			continue;
 		if(pktlen < ETHERHDRSIZE || pktlen > BLEN(b))
 			break;
-		etheriq(copyblock(b, pktlen-4));
+		etheriq(copyblock(b, pktlen));
 		b->rp += (pktlen+7) & 0xFFF8;
-		hdr += 4;
 	}
 	freeb(b);
 	return 0;
@@ -672,6 +680,14 @@ a88179init(Dev *d)
 	sleep(200);
 	a179set1(d, Csclk, Sclkacs|Sclkbcs);
 	sleep(100);
+
+	/*
+	 * 88179 & 88179a differ by release number
+	 */
+	if(d->usb->dno & Dno179a)
+		/* Make 88179a use 88179 firmware compat. */
+		a179set1(d, Cfwmd, Fwmd179);
+
 	a179set1(d, Cpwtrl, 0x34);
 	a179set1(d, Cpwtrh, 0x52);
 	if(setmac){
