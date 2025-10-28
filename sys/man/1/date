@@ -75,4 +75,5 @@ into
 .br
 .B /sys/src/cmd/clock.c
 .SH "SEE ALSO"
+.IR seconds (1),
 .IR tmdate (2)
