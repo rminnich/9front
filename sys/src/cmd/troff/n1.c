@@ -80,12 +80,12 @@ main(int argc, char *argv[])
 			break;
 		case 'F':	/* switch font tables from default */
 			if (argv[0][2] != '\0') {
-				strcpy(termtab, &argv[0][2]);
-				strcpy(fontdir, &argv[0][2]);
+				snprintf(termtab, sizeof termtab, "%s", &argv[0][2]);
+				snprintf(fontdir, sizeof fontdir, "%s", &argv[0][2]);
 			} else {
 				argv++; argc--;
-				strcpy(termtab, argv[0]);
-				strcpy(fontdir, argv[0]);
+				snprintf(termtab, sizeof termtab, "%s", argv[0]);
+				snprintf(fontdir, sizeof fontdir, "%s", argv[0]);
 			}
 			break;
 		case 0:
@@ -116,14 +116,13 @@ main(int argc, char *argv[])
 				ERROR "Too many macro packages: %s", argv[0] WARN;
 				break;
 			}
-			strcpy(mfiles[nmfi], nextf);
-			strcat(mfiles[nmfi++], &argv[0][2]);
+			snprintf(mfiles[nmfi++], sizeof mfiles[0], "%s%s", nextf,  &argv[0][2]);
 			break;
 		case 'o':
 			getpn(&argv[0][2]);
 			break;
 		case 'T':
-			strcpy(devname, &argv[0][2]);
+			snprintf(devname, sizeof devname, "%s", &argv[0][2]);
 			dotT++;
 			break;
 		case 'a':
@@ -827,7 +826,7 @@ n1:
 		nfo -= mflg;
 		done(02);
 	} else
-		strcpy(cfname[ifi],p);
+		snprintf(cfname[ifi], sizeof cfname[0], "%s", p);
 	nfo++;
 	return(0);
 }
@@ -896,7 +895,7 @@ void casenx(void)
 	nx++;
 	if (nmfi > 0)
 		nmfi--;
-	strcpy(mfiles[nmfi], nextf);
+	snprintf(mfiles[nmfi], sizeof mfiles[0], "%s", nextf);
 	nextfile();
 	nlflg++;
 	ip = 0;
@@ -934,7 +933,7 @@ void caseso(void)
 		ERROR "can't open file %s", nextf WARN;
 		done(02);
 	}
-	strcpy(cfname[ifi+1], nextf);
+	snprintf(cfname[ifi+1], sizeof cfname[0], "%s", nextf);
 	cfline[ifi] = numtabp[CD].val;		/*hold line counter*/
 	numtabp[CD].val = 0;
 	flushi();
@@ -958,7 +957,7 @@ void caself(void)	/* set line number and file */
 		cfline[ifi] = numtabp[CD].val = n - 1;
 	if (!skip())
 		if (getname()) {	/* eats '\n' ? */
-			strcpy(cfname[ifi], nextf);
+			snprintf(cfname[ifi], sizeof cfname[0], "%s", nextf);
 			if (!nonumb)
 				numtabp[CD].val--;
 		}

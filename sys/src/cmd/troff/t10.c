@@ -48,13 +48,13 @@ void t_ptinit(void)
 	/* open table for device, */
 	/* read in resolution, size info, font info, etc., set params */
 	if ((p = getenv("TYPESETTER")) != 0){
-		strncpy(devname, p, sizeof devname);
-		devname[sizeof devname-1] = 0;
+		snprintf(devname, sizeof devname, "%s", p);
+		free(p);
 	}
 	if (termtab[0] == 0)
-		strcpy(termtab, DWBfontdir);
+		snprintf(termtab, sizeof termtab, "%s", DWBfontdir);
 	if (fontdir[0] == 0)
-		strcpy(fontdir, DWBfontdir);
+		snprintf(fontdir, sizeof fontdir, "%s", DWBfontdir);
 	if (devname[0] == 0)
 		strcpy(devname, TDEVNAME);
 	hyf = 1;

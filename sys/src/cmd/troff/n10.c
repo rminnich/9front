@@ -26,7 +26,7 @@ static char *parse(char *s, int typeit)	/* convert \0, etc to nroff driving tabl
 #ifdef UNICODE
 	if (mbtowc(&wc, s, strlen(s)) > 1) {	/* it's multibyte, */
 		buf[0] = MBchar;
-		strcpy(buf+1, s);
+		snprintf(buf+1, sizeof buf-1, "%s", s);
 		return obuf;
 	}			/* so just hand it back */
 #endif	/*UNICODE*/
@@ -178,12 +178,14 @@ void n_ptinit(void)
 	setps = n_setps;
 	setwd = n_setwd;
 
-	if ((p = getenv("NROFFTERM")) != 0)
-		strncpy(devname, p, sizeof devname);
+	if ((p = getenv("NROFFTERM")) != 0){
+		snprintf(devname, sizeof devname, "%s", p);
+		free(p);
+	}
 	if (termtab[0] == 0)
-		strcpy(termtab, DWBntermdir);
+		snprintf(termtab, sizeof termtab, "%s", DWBntermdir);
 	if (devname[0] == 0)
-		strncpy(devname, NDEVNAME, sizeof devname);
+		snprintf(devname, sizeof devname, "%s", NDEVNAME);
 	pl = 11*INCH;
 	po = PO;
 	hyf = 0;

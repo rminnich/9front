@@ -708,9 +708,9 @@ setfp(int pos, int f, char *truename, int doprint)	/* mount font f at position p
 
 	zapwcache(0);
 	if (truename)
-		strcpy(shortname, truename);
+		snprintf(shortname, sizeof shortname, "%s", truename);
 	else
-		strcpy(shortname, (char *) unpair(f));
+		snprintf(shortname, sizeof shortname, "%s", (char *) unpair(f));
 	if (truename && strrchr(truename, '/')) {	/* .fp 1 R dir/file: use verbatim */
 		sprintf(pathname, "%s", truename);
 		if (fonts[pos].truename)

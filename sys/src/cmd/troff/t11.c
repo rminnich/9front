@@ -127,7 +127,7 @@ getfont(char *name, int pos)	/* create width tab for font */
 			continue;
 		cmd = toks[0];
 		if (strcmp(cmd, "name") == 0)
-			strcpy(ftemp->longname, toks[1]);
+			snprintf(ftemp->longname, sizeof ftemp->longname, "%s", toks[1]);
 		else if (strcmp(cmd, "special") == 0)
 			ftemp->specfont = 1;
 		else if (strcmp(cmd, "ligatures") == 0)
@@ -146,7 +146,7 @@ getfont(char *name, int pos)	/* create width tab for font */
 					ch = toks[0];
 					wid = atoi(toks[1]);
 					kern = atoi(toks[2]);
-					code = atoi(toks[3]);  /* dec/oct/hex */
+					code = strtol(toks[3], 0, 0);  /* dec/oct/hex */
 					/* toks[4] is char name */
 				}
 				/*
