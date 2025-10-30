@@ -238,6 +238,7 @@ getcol(Meta *m, int c)
 	switch(c){
 	case Palbum: s = m->album; break;
 	case Partist: s = m->artist[0]; break;
+	case Pbasename: s = m->basename; break;
 	case Pcomposer: s = m->composer; break;
 	case Pdate: s = m->date; break;
 	case Ptitle: s = (!colspath && (m->title == nil || *m->title == 0)) ? m->basename : m->title; break;
