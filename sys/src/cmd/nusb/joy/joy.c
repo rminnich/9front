@@ -453,7 +453,14 @@ xbox360(KDev *kd)
 		0xc0,
 	};
 	static uchar ledcmd[] = {1,3,0};
+	uchar b[20];
 	Dev *d = kd->dev;
+
+	if(cistrcmp("shanwan", d->usb->vendor) == 0){
+		usbcmd(d, Rd2h|Rvendor|Riface, 0x01, 0x100, 0, b, 20);
+		usbcmd(d, Rd2h|Rvendor|Riface, 0x01, 0, 0, b, 8);
+		usbcmd(d, Rd2h|Rvendor|Rdev, 0x01, 0, 0, b, 4);
+	}
 
 	memcpy(kd->rep, descr, kd->nrep = sizeof(descr));
 	/* no blinken lights */
