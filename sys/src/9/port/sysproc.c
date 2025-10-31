@@ -277,24 +277,6 @@ sysrfork(va_list list)
 	return pid;
 }
 
-static int
-shargs(char *s, int n, char **ap, int nap)
-{
-	char *p;
-	int i;
-
-	if(n <= 2 || s[0] != '#' || s[1] != '!')
-		return -1;
-	s += 2;
-	n -= 2;		/* skip #! */
-	if((p = memchr(s, '\n', n)) == nil)
-		return 0;
-	*p = 0;
-	i = tokenize(s, ap, nap-1);
-	ap[i] = nil;
-	return i;
-}
-
 ulong
 beswal(ulong l)
 {
@@ -412,9 +394,14 @@ sysexec(va_list list)
 		 * Process #! /bin/sh args ...
 		 */
 		memmove(line, u.buf, n);
-		n = shargs(line, n, progarg, nelem(progarg));
-		if(n < 1)
+		if(n <= 2 || line[0] != '#' || line[1] != '!'
+		|| (a = memchr(line+2, '\n', n-2)) == nil)
 			error(Ebadexec);
+		*a = '\0';
+		n = tokenize(line+2, progarg, nelem(progarg)-1);
+		if(n < 1 || n >= nelem(progarg)-1)
+			error(Ebadexec);
+
 		/*
 		 * First arg becomes complete file name
 		 */
