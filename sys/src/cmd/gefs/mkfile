@@ -10,6 +10,7 @@ OFILES=\
 	dump.$O\
 	error.$O\
 	fs.$O\
+	fuzz.$O\
 	hash.$O\
 	load.$O\
 	main.$O\

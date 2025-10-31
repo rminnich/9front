@@ -17,6 +17,8 @@ extern Blk*	blkbuf;
 extern int	noneid;
 extern int	nogroupid;
 extern int	admid;
+extern int	fuzzonly;
+extern ulong	fuzzseed;
 
 #define	UNPACK8(p)	(((uchar*)(p))[0])
 #define	UNPACK16(p)	((((uchar*)(p))[0]<<8)|(((uchar*)(p))[1]))
@@ -209,3 +211,9 @@ void	runtasks(int, void*);
 void	runsync(int, void*);
 void	runsweep(int, void*);
 void	runsnap(int, void*);
+
+/* fuzzing and testing */
+void	fzinit(void);
+void	fzwrite(int, void*);
+void	fzscan(int, void*);
+

@@ -18,6 +18,7 @@ int	nproc;
 int	permissive;
 int	usereserve;
 int	checkonly;
+ulong	fuzzseed;
 char	*reamuser;
 char	*dev;
 vlong	tracesz		= 16*MiB;
@@ -369,6 +370,9 @@ main(int argc, char **argv)
 			sysfatal("unknown suffix %s", e);
 		}
 		break;
+	case 'z':
+		fuzzseed = strtoul(EARGF(usage()), &e, 0);
+		break;
 	case 'd':
 		debug++;
 		break;
@@ -477,6 +481,13 @@ main(int argc, char **argv)
 		xlaunch(runread, fs->rdchan[i], aincl(&fs->nworker, 1), "readio");
 	for(i = 0; i < fs->nsyncers; i++)
 		xlaunch(runsync, &fs->syncq[i], aincl(&fs->nworker, 1), "syncio");
+	if(fuzzseed != 0){
+		print("fuzzing (seed: %lux)...\n", fuzzseed);
+		fzinit();
+		xlaunch(fzscan, nil, aincl(&fs->nworker, 1), "fzcheck");
+		xlaunch(fzwrite, nil, aincl(&fs->nworker, 1), "fzwrite");
+		exits(nil);
+	}
 	for(i = 0; i < nann; i++)
 		xlaunch(runannounce, ann[i], -1, "announce");
 	if(srvfd != -1){
