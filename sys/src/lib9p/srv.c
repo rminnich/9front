@@ -674,14 +674,18 @@ rstat(Req *r, char *error)
 		return;
 	}
 	n = GBIT16(tmp)+BIT16SZ;
+	if(n+BIT32SZ+BIT8SZ+BIT16SZ+BIT16SZ > r->srv->msize){
+		r->error = "rstat: message size too small";
+		return;
+	}
 	statbuf = emalloc9p(n);
 	r->ofcall.nstat = convD2M(&r->d, statbuf, n);
-	r->ofcall.stat = statbuf;	/* freed in closereq */
 	if(r->ofcall.nstat <= BIT16SZ){
 		r->error = "convD2M fails";
 		free(statbuf);
 		return;
 	}
+	r->ofcall.stat = statbuf;	/* freed in closereq */
 }
 
 static void
