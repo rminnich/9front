@@ -15,6 +15,7 @@ char Enopsmt[] = "Out of pseudo mount points";
 char Enomem[] = "No memory";
 char Ereadonly[] = "File system read only";
 char Enoprocs[] = "Out of processes";
+char Emsize[] = "message size too small";
 
 ulong messagesize;
 int readonly;
@@ -25,7 +26,7 @@ Xversion(Fsrpc *t)
 	Fcall rhdr;
 
 	if(t->work.msize < 256){
-		reply(&t->work, &rhdr, "version: message size too small");
+		reply(&t->work, &rhdr, Emsize);
 		putsbuf(t);
 		return;
 	}
@@ -272,9 +273,16 @@ Xstat(Fsrpc *t)
 	s = sizeD2M(d);
 	statbuf = emallocz(s);
 	s = convD2M(d, statbuf, s);
-	free(d);
+	if(s <= BIT16SZ || s > messagesize-(BIT32SZ+BIT8SZ+BIT16SZ+BIT16SZ)){
+		free(statbuf);
+		free(d);
+		reply(&t->work, &rhdr, Emsize);
+		putsbuf(t);
+		return;
+	}
 	rhdr.nstat = s;
 	rhdr.stat = statbuf;
+	free(d);
 	reply(&t->work, &rhdr, 0);
 	free(statbuf);
 	putsbuf(t);
