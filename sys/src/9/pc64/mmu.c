@@ -355,7 +355,7 @@ pmap(uintptr pa, uintptr va, vlong size)
 	uintptr *pte, *ptee, flags;
 	int z, l;
 
-	if(size <= 0 || va < VMAP)
+	if(size <= 0 || va < VMAP || (va % BY2PG) != 0)
 		panic("pmap: pa=%#p va=%#p size=%lld", pa, va, size);
 	flags = pa;
 	pa = PPN(pa);
@@ -364,23 +364,32 @@ pmap(uintptr pa, uintptr va, vlong size)
 	if(va >= KZERO)
 		flags |= PTEGLOBAL;
 	while(size > 0){
-		if(size >= PGLSZ(1) && (va % PGLSZ(1)) == 0)
-			flags |= PTESIZE;
-		l = (flags & PTESIZE) != 0;
-		z = PGLSZ(l);
-		pte = mmuwalk(m->pml4, va, l, 1);
+		l = 0;
+		pte = nil;
+		if(size >= PGLSZ(1) && ((va|pa) % PGLSZ(1)) == 0
+		&& (pte = mmuwalk(m->pml4, va, l, 0)) == nil)
+			l++;
+		if(pte == nil)
+			pte = mmuwalk(m->pml4, va, l, 1);
 		if(pte == nil){
-			pte = mmuwalk(m->pml4, va, ++l, 0);
-			if(pte && (*pte & PTESIZE)){
-				flags |= PTESIZE;
-				z = va & (PGLSZ(l)-1);
-				va -= z;
-				pa -= z;
-				size += z;
-				continue;
+			if(l == 0 && ((va^pa) % PGLSZ(1)) == 0){
+				pte = mmuwalk(m->pml4, va, ++l, 0);
+				if(pte && (*pte & PTESIZE)){
+					z = va & (PGLSZ(1)-1);
+					va -= z;
+					pa -= z;
+					size += z;
+					goto Create;
+				}
 			}
 			panic("pmap: pa=%#p va=%#p size=%lld", pa, va, size);
 		}
+Create:
+		z = PGLSZ(l);
+		if(l == 0)
+			flags &= ~PTESIZE;
+		else
+			flags |= PTESIZE;
 		ptee = pte + ptecount(va, l);
 		while(size > 0 && pte < ptee){
 			*pte++ = pa | flags;
@@ -607,19 +616,28 @@ vmap(uvlong pa, vlong size)
 	uintptr va;
 	int o;
 
-	if(pa < BY2PG || size <= 0 || -pa < size || pa+size > VMAPSIZE){
+	if(pa < BY2PG || size <= 0 || -pa < size){
+Nope:
 		print("vmap pa=%llux size=%lld pc=%#p\n", pa, size, getcallerpc(&pa));
 		return nil;
 	}
-	va = pa+VMAP;
 
 	/*
 	 * might be asking for less than a page.
 	 */
 	o = pa & (BY2PG-1);
 	pa -= o;
-	va -= o;
 	size += o;
+
+	if(pa+size > VMAPSIZE){
+		va = upaalloc(-1ULL, size, PGLSZ(size>=PGLSZ(1)&&(pa%PGLSZ(1))==0));
+		if(va == -1ULL)
+			goto Nope;
+		va += VMAP;
+		punmap(va, size);
+	} else {
+		va = VMAP+pa;
+	}
 	pmap(pa | PTEUNCACHED|PTEWRITE|PTENOEXEC|PTEVALID, va, size);
 	return (void*)(va+o);
 }
