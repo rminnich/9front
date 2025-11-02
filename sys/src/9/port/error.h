@@ -52,3 +52,4 @@ extern char Ebadip[];		/* bad ip address syntax */
 extern char Edirseek[];		/* seek in directory */
 extern char Etoolong[];		/* name too long */
 extern char Echange[];		/* media or partition has changed */
+extern char Emsize[];		/* message size too small */

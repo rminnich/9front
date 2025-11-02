@@ -1044,11 +1044,8 @@ mountio(Mnt *m, Mntrpc *r)
 		nexterror();
 	}
 	n = convS2M(&r->request, b->wp, n);
-	if(n <= 0 || n > m->msize) {
-		print("mountio: proc %s %lud: convS2M returned %d for tag %d fid %d T%d\n",
-			up->text, up->pid, n, r->request.tag, r->request.fid, r->request.type);
-		error(Emountrpc);
-	}
+	if(n <= 0 || n > m->msize)
+		error(Emsize);
 	b->wp += n;
 	if(r->request.type == Twrite && cachedchan(r->c))
 		r->w = copyblock(b, n);
