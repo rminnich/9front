@@ -8,6 +8,7 @@
 #include "fns.h"
 
 typedef struct Fuzz	Fuzz;
+typedef struct Rand	Rand;
 typedef struct Shadow	Shadow;
 
 struct Shadow {
@@ -15,6 +16,12 @@ struct Shadow {
 	Kvp;
 	char buf[Kvmax];
 };
+
+struct Rand {
+	u32int s[4];
+};
+
+Rand Wr, Rr;
 
 struct Fuzz {
 	Mount *mnt;
@@ -26,13 +33,39 @@ Avltree	*shadow;
 Lock	shadowlk;
 int	nshadow;
 
+static ulong
+xrand(Rand *r, ulong n)
+{
+	ulong v, t, x, slop;
+
+	slop = 0x7fffffffL % n;
+	do{
+		x = r->s[0] + r->s[3];
+		v = (x << 7 | x >> (32-7)) + r->s[0];
+		t = r->s[1] << 9;
+		r->s[2] ^= r->s[0];
+		r->s[3] ^= r->s[1];
+		r->s[1] ^= r->s[2];
+		r->s[0] ^= r->s[3];
+		r->s[2] ^= t;
+		r->s[3] = r->s[3] << 11 | r->s[3] >> (32-11);
+	}while(v <= slop);
+	return v%n;
+}
+
+static void
+xsrand(Rand *r, ulong seed)
+{
+	r->s[0] = seed;
+}
+
 static uvlong
-vrand(void)
+vrand(Rand *r)
 {
 	uvlong v;
-	v = nrand(1<<4);
-	v = (v<<30) | nrand(1<<30);
-	v = (v<<30) | nrand(1<<30);
+	v = xrand(r, 1<<4);
+	v = (v<<30) | xrand(r, 1<<30);
+	v = (v<<30) | xrand(r, 1<<30);
 	return v;
 }
 
@@ -55,77 +88,88 @@ fail(char *fmt, ...)
 }
 
 static void
-genname(char *name, int *nname)
+genname(char *s, int n)
 {
-	int n, i;
-	char c;
+	int i, c;
 
-	n = 1 + nrand(244);
 	for(i = 0; i < n; i++){
 		do {
-			c = nrand(256);
+			c = xrand(&Wr, 256);
 		} while(c == '/' || c == '\0');
-		name[i] = c;
+		*s++ = c;
 	}
-	*nname = n;
+	*s = 0;
 }
 
 static void
-genent(char *k, int *nk)
+genent(Msg *m, char *k)
 {
-	char name[256], *p;
+	char buf[256], *p;
 	vlong pqid;
-	int nname;
+	int n;
 
-	pqid = (vlong)nrand(1<<30) << 32 | nrand(1<<30);
-	genname(name, &nname);
-	name[nname] = '\0';
-	p = packdkey(k, Keymax, pqid, name);
-	*nk = p - k;
+	n = 1 + xrand(&Wr, 243);
+	pqid = vrand(&Wr);
+	genname(buf, n);
+
+	p = packdkey(k, Keymax, pqid, buf);
+	m->k = k;
+	m->nk = p - k;
 }
 
 static void
-gendir(char *v, short *nv)
+gendptr(Msg *m, char *k)
+{
+	vlong qid, off;
+	char *p;
+
+	qid = vrand(&Wr);
+	off = vrand(&Wr) & ~(Blksz-1);
+	p = k;
+	p[0] = Kdat;	p += 1;
+	PACK64(p, qid);	p += 8;
+	PACK64(p, off);	p += 8;
+	m->k = k;
+	m->nk = p - k;
+}
+
+static void
+gendblk(Tree *t, Msg *m, char *v)
+{
+	Blk *b;
+	int seq;
+
+	seq = xrand(&Wr, 2);
+	b = newdblk(t, 0, seq);
+	memset(b->buf, 0x42, Blksz);
+	packbp(v, Ptrsz, &b->bp);
+	enqueue(b);
+	dropblk(b);
+	m->v = v;
+	m->nv = Ptrsz;
+}
+static void
+gendir(Msg *m, char *v)
 {
 	char *p;
 	Xdir d;
 
 	memset(&d, 0, sizeof(d));
 	d.flag = 0;
-	d.qid.path = vrand();
-	d.qid.vers = nrand(1<<20);
-	d.qid.type = nrand(2) ? QTFILE : QTDIR;
-	d.mode = nrand(2) ? 0644 : (DMDIR|0755);
-	d.atime = vrand();
-	d.mtime = vrand();
-	d.length = nrand(1<<20);
-	d.uid = nrand(100);
-	d.gid = nrand(100);
-	d.muid = nrand(100);
+	d.qid.path = vrand(&Wr);
+	d.qid.vers = xrand(&Wr, 1<<20);
+	d.qid.type = xrand(&Wr, 2) ? QTFILE : QTDIR;
+	d.mode = xrand(&Wr, 2) ? 0644 : (DMDIR|0755);
+	d.atime = vrand(&Wr);
+	d.mtime = vrand(&Wr);
+	d.length = xrand(&Wr, 1<<20);
+	d.uid = xrand(&Wr, 100);
+	d.gid = xrand(&Wr, 100);
+	d.muid = xrand(&Wr, 100);
 
 	p = packdval(v, Inlmax, &d);
-	*nv = p - v;
-}
-
-static void
-genins(Msg *m, char *kbuf, char *vbuf)
-{
-	m->op = Oinsert;
-	m->k = kbuf;
-	genent(kbuf, &m->nk);
-	m->v = vbuf;
-	gendir(vbuf, &m->nv);
-}
-
-static void
-gendel(Msg *m, Key *k, char *kbuf)
-{
-	memcpy(kbuf, k->k, k->nk);
-	m->op = Odelete;
-	m->k = kbuf;
-	m->nk = k->nk;
-	m->v = nil;
-	m->nv = 0;
+	m->v = v;
+	m->nv = p - v;
 }
 
 static void
@@ -144,41 +188,41 @@ genwstat(Msg *m, Key *k, char *kbuf, char *vbuf)
 
 	p = vbuf;
 	do {
-		flags = nrand(128);
+		flags = xrand(&Wr, 128);
 	} while(flags == 0);
 	*p++ = flags;
 	if(flags & Owsize){
-		size = nrand(1<<20);
+		size = xrand(&Wr, 1<<20);
 		PACK64(p, size);
 		p += 8;
 	}
 	if(flags & Owmode){
-		mode = nrand(2) ? 0644 : (DMDIR|0755);
+		mode = xrand(&Wr, 2) ? 0644 : (DMDIR|0755);
 		PACK32(p, mode);
 		p += 4;
 	}
 	if(flags & Owmtime){
-		mtime = vrand();
+		mtime = vrand(&Wr);
 		PACK64(p, mtime);
 		p += 8;
 	}
 	if(flags & Owatime){
-		atime = vrand();
+		atime = vrand(&Wr);
 		PACK64(p, atime);
 		p += 8;
 	}
 	if(flags & Owuid){
-		uid = nrand(100);
+		uid = xrand(&Wr, 100);
 		PACK32(p, uid);
 		p += 4;
 	}
 	if(flags & Owgid){
-		gid = nrand(100);
+		gid = xrand(&Wr, 100);
 		PACK32(p, gid);
 		p += 4;
 	}
 	if(flags & Owmuid){
-		muid = nrand(100);
+		muid = xrand(&Wr, 100);
 		PACK32(p, muid);
 		p += 4;
 	}
@@ -197,14 +241,14 @@ shadowcmp(Avl *a, Avl *b)
 }
 
 static Shadow*
-pickrand(void)
+pickrand(Rand *r)
 {
 	Avl *a, *c;
 	int n, i;
 
 	if(shadow->root == nil)
 		return nil;
-	n = nrand(nshadow);
+	n = xrand(r, nshadow);
 	a = shadow->root;
 	i = nshadow;
 	while(i > 1){
@@ -370,39 +414,52 @@ deleted(Msg *m, int nm, Key *k)
 }
 
 static void
-genrand(Msg *m, char *kbuf, char *vbuf, Msg *batch, int nbatch)
+genrand(Tree *t, Msg *m, char *kbuf, char *vbuf, Msg *batch, int nbatch)
 {
 	Shadow *s;
 	int op, d;
 
-	s = pickrand();
-	op = nrand(100);
+Again:
+	s = pickrand(&Wr);
+	op = xrand(&Wr, 100);
 	/* If deleted, we need to do an insert or a replacement */
 	d = deleted(batch, nbatch, s);
-	if(d) d += nrand(2);
+	if(d) d += xrand(&Wr, 2);
 	/* 40% chance of new insertion */
 	if(s == nil || op < 40 || d == 1){
-		genins(m, kbuf, vbuf);
+		m->op = Oinsert;
+		if(xrand(&Wr, 2) == 0){
+			genent(m, kbuf);
+			gendir(m, vbuf);
+		}else{
+			gendptr(m, kbuf);
+			gendblk(t, m, vbuf);
+		}
 		return;
 	}
 	/* 20% chance of clobber */
 	if(op < 60 || d == 2){
-		memmove(kbuf, s->k, s->nk);
 		m->op = Oinsert;
-		m->k = kbuf;
-		m->nk = s->nk;
-		m->v = vbuf;
-		gendir(vbuf, &m->nv);
+		cpkey(m, s, kbuf, Keymax);
+		switch(m->k[0]){
+		case Kent:	gendir(m, vbuf);	break;
+		case Kdat:	gendblk(t, m, vbuf);	break;
+		default:	goto Again;		break;
+		}
 		return;
 	}
+	assert(d == 0);
 	/* 20% of Owstat */
-	if(op < 80){
+	if(op < 80 && s->k[0] == Kent){
 		genwstat(m, s, kbuf, vbuf);
 		return;
 	}
 	/* 20% chance of delete */
 	if(op < 100){
-		gendel(m, s, kbuf);
+		m->op = Odelete;
+		cpkey(m, s, kbuf, Keymax);
+		m->v = nil;
+		m->nv = 0;
 		return;
 	}
 	abort();
@@ -426,16 +483,19 @@ fzupsert(int tid)
 	 * the upsert, so we need to keep the tree somewhere
 	 * temporary as we do the update.
 	 */
+	qlock(&fs->mutlk);
 	lock(&shadowlk);
 	memset(&t, 0, sizeof(Tree));
 	r = agetp(&fz->mnt->root);
+	nm = 1 + xrand(&Wr, nelem(m)-1);
+	for(i = 0; i < nm; i++)
+		genrand(r, &m[i], kbuf[i], vbuf[i], m, i);
 	lock(&r->lk);
 	t.bp = r->bp;
 	t.ht = r->ht;
+	t.gen = r->gen;
+	t.memgen = r->memgen;
 	unlock(&r->lk);
-	nm = 1 + nrand(nelem(m)-1);
-	for(i = 0; i < nm; i++)
-		genrand(&m[i], kbuf[i], vbuf[i], m, i);
 	unlock(&shadowlk);
 
 	if(waserror()){
@@ -446,7 +506,6 @@ fzupsert(int tid)
 			fprint(2, "  msg[%d]: %M\n", i, &m[i]);
 		fail("btupsert failure\n");
 	}
-	qlock(&fs->mutlk);
 	epochstart(tid);
 	btupsert(&t, m, nm);
 	epochend(tid);
@@ -456,10 +515,11 @@ fzupsert(int tid)
 	lock(&shadowlk);
 	for(i = 0; i < nm; i++)
 		shadowapply(&m[i]);
-	r = agetp(&fz->mnt->root);
 	lock(&r->lk);
 	r->bp = t.bp;
 	r->ht = t.ht;
+	r->gen = t.gen;
+	r->memgen = t.memgen;
 	unlock(&r->lk);
 	fz->nops += nm;
 	unlock(&shadowlk);
@@ -499,7 +559,7 @@ look1(int nsamp, int tid)
 	for(i = 0; i < nsamp; i++){
 		if(nshadow == 0)
 			break;
-		s = pickrand();
+		s = pickrand(&Rr);
 		ok = btlookup(t, s, &kv, buf, sizeof(buf));
 		if(!ok)
 			fail("key %K not found in tree, nops: %d\n", &s->Key, fz->nops);
@@ -584,7 +644,8 @@ fzinit(void)
 		sysfatal("getmount fuzz: %r");
 	fz->nops = 0;
 
-	srand(fuzzseed);
+	xsrand(&Rr, fuzzseed);
+	xsrand(&Wr, fuzzseed);
 	buf[0] = Kent;
 	btnewscan(&sc, buf, 1);
 	t = agetp(&fz->mnt->root);
