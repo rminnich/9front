@@ -549,6 +549,7 @@ updateleaf(Tree *t, Path *up, Path *p)
 			ok = 0;
 			if(m.op != Oclearb && m.op != Oclobber){
 				/* New keys need to start off with Oinsert */
+if(m.op != Oinsert) fprint(2, "not insert: [%d] %M\n", m.op, &m);
 				assert(m.op == Oinsert);
 				spc -= valsz(&m);
 				p->pullsz += msgsz(&m);
@@ -755,6 +756,7 @@ splitleaf(Tree *t, Path *up, Path *p, Kvp *mid)
 			ok = 0;
 			if(m.op != Oclearb && m.op != Oclobber){
 				/* New keys need to start off with Oinsert */
+if(m.op != Oinsert) fprint(2, "not insert: %d\n", m.op);
 				assert(m.op == Oinsert);
 				spc -= valsz(&m);
 				p->pullsz += msgsz(&m);
@@ -1272,8 +1274,11 @@ btupsert(Tree *t, Msg *msg, int nmsg)
 		error(Erdonly);
 	sz = 0;
 	stablesort(msg, nmsg);
-	for(i = 0; i < nmsg; i++)
+	for(i = 0; i < nmsg; i++){
+		assert(msg[i].nk <= Keymax);
+		assert(msg[i].nv <= Inlmax);
 		sz += msgsz(&msg[i]);
+	}
 	npull = 0;
 Again:
 	b = getroot(t, &height);
@@ -1548,6 +1553,7 @@ Again:
 		getval(p[h-1].b, p[h-1].vi, &m);
 	}else{
 		getmsg(p[start-1].b, p[start-1].bi, &m);
+if(m.op != Oinsert) fprint(2, "not insert: %d\n", m.op);
 		assert(m.op == Oinsert);
 		bufsrc = start-1;
 	}
