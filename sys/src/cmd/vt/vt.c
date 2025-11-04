@@ -200,6 +200,7 @@ emulate(void)
 		buf[0] = get_next_char();
 		buf[1] = '\0';
 		switch(buf[0]) {
+		Escapeesc:
 		case '\000':
 		case '\001':
 		case '\002':
@@ -214,14 +215,16 @@ emulate(void)
 			break;
 
 		case '\010':		/* backspace */
-			if (x > 0)
+			if(x > xmax)
+				x = xmax;
+			if(x > 0)
 				--x;
 			break;
 
 		case '\011':		/* tab to next tab stop; if none, to right margin */
 			for(c=x+1; c<nelem(tabcol) && !tabcol[c]; c++)
 				;
-			if(c < nelem(tabcol))
+			if(c < xmax && c < nelem(tabcol))
 				x = c;
 			else
 				x = xmax;
@@ -585,6 +588,8 @@ emulate(void)
 							sendnchars(4, "\033[0n");	/* terminal ok */
 							break;
 						case 6:	/* cursor position */
+							if(x > xmax)
+								x = xmax;
 							sendnchars(sprint((char*)buf, "\033[%d;%dR",
 								originrelative ? y+1 - yscrmin : y+1, x+1), (char*)buf);
 							break;
