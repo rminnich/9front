@@ -310,6 +310,7 @@ emulate(void)
 			case 'c':
 				cursoron = 1;
 				ttystate[cs->raw].nlcr = 0;
+				attr = defattr;
 				break;
 
 			/*
