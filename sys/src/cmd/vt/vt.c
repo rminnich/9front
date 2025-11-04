@@ -476,7 +476,9 @@ emulate(void)
 							case 2:	/* set VT52 mode (not implemented) */
 								break;
 							case 3:	/* set 80 columns */
-								if(!rewound())
+								if(rewound())
+									clear(0, 0, xmax+1, ymax+1);
+								else
 									setdim(-1, 80);
 								break;
 							case 4:	/* set jump scrolling */
@@ -534,7 +536,9 @@ emulate(void)
 							case 2:	/* set ANSI */
 								break;
 							case 3:	/* set 132 columns */
-								if(!rewound())
+								if(rewound())
+									clear(0, 0, xmax+1, ymax+1);
+								else
 									setdim(-1, 132);
 								break;
 							case 4:	/* set smooth scrolling */
