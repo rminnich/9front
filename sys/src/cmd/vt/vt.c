@@ -200,7 +200,6 @@ emulate(void)
 		buf[0] = get_next_char();
 		buf[1] = '\0';
 		switch(buf[0]) {
-		Escapeesc:
 		case '\000':
 		case '\001':
 		case '\002':
@@ -998,8 +997,8 @@ osc(void)
 	Rune ch, buf[BUFS+1];
 	int fd, osc, got, i;
 	char *o, *s;
-	osc = number(&ch, &got);
 
+	osc = number(&ch, &got);
 	if(got) {
 		switch(osc) {
 		case 0:
@@ -1044,6 +1043,7 @@ osc(void)
 				}
 				*o = 0;
 			}
+			cleanname(osc7cwd);
 			break;
 		}
 	}
