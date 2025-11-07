@@ -157,14 +157,42 @@ char gmap[256] = {
 	['~']	'.',	/* centered dot: · */
 };
 
-static void setattr(int argc, int *argv);
-static void osc(void);
+static void	setattr(int argc, int *argv);
+static void	osc(void);
+static int	cursctl(int);
 
 void
 fixops(int *operand)
 {
 	if(operand[0] < 1)
 		operand[0] = 1;
+}
+
+int
+nextcmd(void)
+{
+	int c;
+
+	do {
+		c = nextchar();
+	}while(cursctl(c));
+	return c;
+}
+
+int
+number(Rune *p, int *got)
+{
+	int c, n = 0;
+
+	if(got)
+		*got = 0;
+	while ((c = nextcmd()) >= '0' && c <= '9'){
+		if(got)
+			*got = 1;
+		n = n*10 + c - '0';
+	}
+	*p = c;
+	return(n);
 }
 
 void
@@ -197,7 +225,7 @@ emulate(void)
 			x = 0;
 			newline();
 		}
-		buf[0] = get_next_char();
+		buf[0] = nextcmd();
 		buf[1] = '\0';
 		switch(buf[0]) {
 		case '\000':
@@ -208,40 +236,6 @@ emulate(void)
 		case '\005':
 		case '\006':
 			goto Default;
-
-		case '\007':		/* bell */
-			ringbell();
-			break;
-
-		case '\010':		/* backspace */
-			if(x > xmax)
-				x = xmax;
-			if(x > 0)
-				--x;
-			break;
-
-		case '\011':		/* tab to next tab stop; if none, to right margin */
-			for(c=x+1; c<nelem(tabcol) && !tabcol[c]; c++)
-				;
-			if(c < xmax && c < nelem(tabcol))
-				x = c;
-			else
-				x = xmax;
-			break;
-
-		case '\012':		/* linefeed */
-		case '\013':
-		case '\014':
-			newline();
-			if (ttystate[cs->raw].nlcr)
-				x = 0;
-			break;
-
-		case '\015':		/* carriage return */
-			x = 0;
-			if (ttystate[cs->raw].crnl)
-				newline();
-			break;
 
 		case '\016':	/* SO: invoke G1 char set */
 			isgraphics = (isdigit(g1set));
@@ -273,7 +267,7 @@ emulate(void)
 			break;
 
 		case '\033':
-			switch(get_next_char()){
+			switch(nextcmd()){
 			/*
 			 * 1 - graphic processor option on (no-op; not installed)
 			 */
@@ -389,7 +383,7 @@ emulate(void)
 			 * # - Takes a one-digit argument
 			 */
 			case '#':
-				switch(get_next_char()){
+				switch(nextcmd()){
 				case '3':		/* Top half of double-height line */
 				case '4':		/* Bottom half of double-height line */
 				case '5':		/* Single-width single-height line */
@@ -404,14 +398,14 @@ emulate(void)
 			 * ( - switch G0 character set
 			 */
 			case '(':
-				g0set = get_next_char();
+				g0set = nextcmd();
 				break;
 
 			/*
 			 * - switch G1 character set
 			 */
 			case ')':
-				g1set = get_next_char();
+				g1set = nextcmd();
 				break;
 
 			/*
@@ -465,7 +459,7 @@ emulate(void)
 						if(noperand == 1){
 							switch(operand[0]){	
 							case 20:	/* set line feed mode */
-								ttystate[cs->raw].nlcr = 1;
+								ttystate[cs->raw].nlcr = 0;
 								break;
 							case 30:	/* screen invisible (? not supported through VT220) */
 								break;
@@ -523,7 +517,7 @@ emulate(void)
 							default:
 								break;
 							case 20:	/* set newline mode */
-								ttystate[cs->raw].nlcr = 0;
+								ttystate[cs->raw].nlcr = 1;
 								break;
 							case 30:	/* screen visible (? not supported through VT220) */
 								break;
@@ -897,7 +891,7 @@ Default:
 			n = 1;
 			c = 0;
 			while (!cs->raw && host_avail() && x+n<=xmax && n<BUFS
-			    && (c = get_next_char())>=' ' && c<'\177') {
+			    && (c = nextcmd())>=' ' && c<'\177') {
 				buf[n++] = c;
 				c = 0;
 			}
@@ -990,6 +984,50 @@ hexnib(char c)
 	return c - '0';
 }
 
+static int
+cursctl(int c)
+{
+	switch(c){
+	default:
+	    return 0;
+	case '\007':		/* bell */
+		ringbell();
+		break;
+	
+	case '\010':		/* backspace */
+		if(x > xmax)
+			x = xmax;
+		if(x > 0)
+			--x;
+		break;
+	
+	case '\011':		/* tab to next tab stop; if none, to right margin */
+		for(c=x+1; c<nelem(tabcol) && !tabcol[c]; c++)
+			;
+		if(c < xmax && c < nelem(tabcol))
+			x = c;
+		else
+			x = xmax;
+		break;
+	
+	case '\012':		/* linefeed */
+	case '\013':
+	case '\014':
+		newline();
+		if (ttystate[cs->raw].nlcr)
+			x = 0;
+		break;
+	
+	case '\015':		/* carriage return */
+		x = 0;
+		if (ttystate[cs->raw].crnl)
+			newline();
+		break;
+	}
+	return 1;
+}
+
+
 // handle ESC], Operating System Command
 static void
 osc(void)
@@ -1006,7 +1044,7 @@ osc(void)
 		case 2: /* set title */
 			i = 0;
 
-			while((ch = get_next_char()) != '\a') {
+			while((ch = nextcmd()) != '\a') {
 				if(i < nelem(buf) - 1) {
 					buf[i++] = ch;
 				}
@@ -1021,11 +1059,11 @@ osc(void)
 		case 7: /* set pwd */
 			i = 0;
 
-			while((ch = get_next_char()) != '\033'){
+			while((ch = nextcmd()) != '\033'){
 				if(i < sizeof(osc7cwd)-UTFmax-1)
 					i += runetochar(osc7cwd+i, &ch);
 			}
-			get_next_char();
+			nextcmd();
 			osc7cwd[i] = 0;
 
 			/* file://hostname/path → /n/hostname/path */

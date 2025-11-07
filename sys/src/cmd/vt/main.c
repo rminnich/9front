@@ -516,7 +516,7 @@ newline(void)
 }
 
 int
-get_next_char(void)
+nextchar(void)
 {
 	int c = peekc;
 
@@ -1417,22 +1417,6 @@ bigscroll(void)			/* scroll up half a page */
 	y -= half;
 	if(olines)
 		olines -= half;
-}
-
-int
-number(Rune *p, int *got)
-{
-	int c, n = 0;
-
-	if(got)
-		*got = 0;
-	while ((c = get_next_char()) >= '0' && c <= '9'){
-		if(got)
-			*got = 1;
-		n = n*10 + c - '0';
-	}
-	*p = c;
-	return(n);
 }
 
 /* stubs */
