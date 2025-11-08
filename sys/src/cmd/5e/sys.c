@@ -647,6 +647,24 @@ syssemrelease(void)
 	segunlock(seg);
 }
 
+static void
+sysfauth(void)
+{
+	u32int fd, aname;
+	char *anamet;
+	int copied;
+
+	fd = arg(0);
+	aname = arg(1);
+	anamet = copyifnec(aname, -1, &copied);
+	if(systrace)
+		fprint(2, "fauth(%d, %s)\n", fd, anamet);
+	P->R[0] = noteerr(fauth(fd, anamet), 0);
+
+	if(copied)
+		free(anamet);
+}
+
 void
 syscall(void)
 {
@@ -683,6 +701,7 @@ syscall(void)
 		[ALARM] sysalarm,
 		[SEMACQUIRE] syssemacquire,
 		[SEMRELEASE] syssemrelease,
+		[FAUTH] sysfauth,
 	};
 	
 	n = P->R[0];
