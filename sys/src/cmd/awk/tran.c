@@ -100,6 +100,7 @@ void arginit(int ac, char **av)	/* set up ARGV and ARGC */
 	Cell *cp;
 	int i;
 	char temp[50];
+	Awkfloat f;
 
 	AARGC = &setsymtab("ARGC", EMPTY, (Awkfloat) ac, NUM, symtab)->fval;
 	cp = setsymtab("ARGV", EMPTY, 0.0, ARR, symtab);
@@ -107,8 +108,8 @@ void arginit(int ac, char **av)	/* set up ARGV and ARGC */
 	cp->sval = (char *) ARGVtab;
 	for (i = 0; i < ac; i++) {
 		sprint(temp, "%d", i);
-		if (is_number(*av))
-			setsymtab(temp, *av, atof(*av), STR|NUM, ARGVtab);
+		if (to_number(*av, &f, nil))
+			setsymtab(temp, *av, f, STR|NUM, ARGVtab);
 		else
 			setsymtab(temp, *av, 0.0, STR, ARGVtab);
 		av++;
@@ -120,6 +121,7 @@ void envinit(void)	/* set up ENVIRON variable */
 	int	fd, i, n;
 	char	*k, *v;
 	Dir	*buf;
+	Awkfloat f;
 
 	ENVtab = makesymtab(NSYMTAB);
 	if ((fd = open("/env", OREAD)) < 0)
@@ -133,8 +135,8 @@ void envinit(void)	/* set up ENVIRON variable */
 				continue;
 			if ((v = getenv(k)) == nil)
 				continue;
-			if (is_number(v))
-				setsymtab(k, v, atof(v), STR|NUM, ENVtab);
+			if (to_number(v, &f, nil))
+				setsymtab(k, v, f, STR|NUM, ENVtab);
 			else
 				setsymtab(k, v, 0.0, STR, ENVtab);
 			free(v);
@@ -364,9 +366,11 @@ Awkfloat getfval(Cell *vp)	/* get float val of a Cell */
 	else if (isrec(vp) && donerec == 0)
 		recbld();
 	if (!isnum(vp)) {	/* not a number */
-		vp->fval = atof(vp->sval);	/* best guess */
-		if (is_number(vp->sval) && !(vp->tval&CON))
-			vp->tval |= NUM;	/* make NUM only sparingly */
+		vp->fval = 0;
+		if (to_number(vp->sval, &vp->fval, nil)) {
+			if (!(vp->tval&CON))
+				vp->tval |= NUM;	/* make NUM only sparingly */
+		}
 	}
 	   dprint( ("getfval %p: %s = %g, t=%o\n", vp, vp->nval, vp->fval, vp->tval) );
 	return(vp->fval);

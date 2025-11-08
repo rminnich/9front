@@ -145,10 +145,8 @@ int getrec(char **pbuf, int *pbufsize, int isrecord)	/* get next input record */
 					xfree(fldtab[0]->sval);
 				fldtab[0]->sval = buf;	/* buf == record */
 				fldtab[0]->tval = REC | STR | DONTFREE;
-				if (is_number(fldtab[0]->sval)) {
-					fldtab[0]->fval = atof(fldtab[0]->sval);
+				if (to_number(fldtab[0]->sval, &fldtab[0]->fval, nil))
 					fldtab[0]->tval |= NUM;
-				}
 			}
 			setfval(nrloc, nrloc->fval+1);
 			setfval(fnrloc, fnrloc->fval+1);
@@ -237,10 +235,8 @@ void setclvar(char *s)	/* set var=value from s */
 	p = qstring(p, '\0');
 	q = setsymtab(s, p, 0.0, STR, symtab);
 	setsval(q, p);
-	if (is_number(q->sval)) {
-		q->fval = atof(q->sval);
+	if (to_number(q->sval, &q->fval, nil))
 		q->tval |= NUM;
-	}
 	   dprint( ("command line set %s to |%s|\n", s, p) );
 }
 
@@ -329,10 +325,8 @@ void fldbld(void)	/* create fields from current record */
 	donefld = 1;
 	for (j = 1; j <= lastfld; j++) {
 		p = fldtab[j];
-		if(is_number(p->sval)) {
-			p->fval = atof(p->sval);
+		if (to_number(p->sval, &p->fval, nil))
 			p->tval |= NUM;
-		}
 	}
 	setfval(nfloc, (Awkfloat) lastfld);
 	if (dbg) {
@@ -666,45 +660,81 @@ int isclvar(char *s)	/* is s of form var=something ? */
 	return *s == '=' && s > os && *(s+1) != '=';
 }
 
-/* strtod is supposed to be a proper test of what's a valid number */
-
-int is_number(char *s)
+static int is_float(char *s, Awkfloat *fp, char **tp)
 {
-	double r;
-	char *ep;
+	char c, *p, *q;
+	Awkfloat f;
 
-	/*
-	 * fast could-it-be-a-number check before calling strtod,
-	 * which takes a surprisingly long time to reject non-numbers.
-	 */
-	switch (*s) {
-	case '0': case '1': case '2': case '3': case '4':
-	case '5': case '6': case '7': case '8': case '9':
-	case '\t':
-	case '\n':
-	case '\v':
-	case '\f':
-	case '\r':
-	case ' ':
-	case '-':
-	case '+':
-	case '.':
-	case 'n':		/* nans */
-	case 'N':
-	case 'i':		/* infs */
-	case 'I':
-		break;
-	default:
-		return 0;	/* can't be a number */
-	}
-
-	r = strtod(s, &ep);
-	if (ep == s || isInf(r, 1) || isInf(r, -1) || isNaN(r))
+	f = *fp = strtod(s, &p);
+	if (tp != nil)
+		*tp = p;
+	if (p == s)
 		return 0;
-	while (*ep == ' ' || *ep == '\t' || *ep == '\n')
-		ep++;
-	if (*ep == '\0')
+	else if (isInf(f, 1) || isInf(f, -1) || isNaN(f))
+		return 0;
+	else if (f == 0.0 && ((q = strchr(s, '0')) == nil || q > p))
+		return 0;
+	else if (tp != nil)
 		return 1;
-	else
+	for (; (c = *p) != '\0'; p++) {
+		switch(c) {
+		case ' ':
+		case '\t':
+		case '\n':
+		case '\f':
+		case '\r':
+		case '\v':
+			continue;
+		case '\0':
+			return 1;
+		default:
+			return 0;
+		}
+	}
+	return 1;
+}
+
+int to_number(char *s, Awkfloat *fp, char **tp)
+{
+	vlong v;
+	char c, *p, *q;
+
+	v = strtoll(s, &p, 0);
+	*fp = (Awkfloat)v;
+	if (tp != nil)
+		*tp = p;
+	switch(*p){
+	case '.':
+	case 'E':
+	case 'I':	/* inf */
+	case 'N':	/* nan */
+	case 'e':
+	case 'i':
+	case 'n':
+		if (is_float(s, fp, tp))
+			return NUM;
 		return 0;
+	}
+	if (p == s)
+		return 0;
+	else if (v == 0 && ((q = strchr(s, '0')) == nil || q > p))
+		return 0;
+	else if (tp != nil)
+		return NUM;
+	for (; (c = *p) != '\0'; p++) {
+		switch(c) {
+		case ' ':
+		case '\t':
+		case '\n':
+		case '\f':
+		case '\r':
+		case '\v':
+			continue;
+		case '\0':
+			return NUM;
+		default:
+			return 0;
+		}
+	}
+	return NUM;
 }

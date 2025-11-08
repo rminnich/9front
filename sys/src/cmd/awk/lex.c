@@ -103,7 +103,7 @@ int peek(void)
 	return c;
 }
 
-int gettok(char **pbuf, int *psz)	/* get next input token */
+static int gettok(char **pbuf, int *psz, Awkfloat *fp)	/* get next input token */
 {
 	int c;
 	char *buf = *pbuf;
@@ -132,6 +132,7 @@ int gettok(char **pbuf, int *psz)	/* get next input token */
 				break;
 			}
 		}
+		c = 'a';
 	} else {	/* it's a number */
 		char *rem;
 		/* read input until can't be a number */
@@ -148,13 +149,16 @@ int gettok(char **pbuf, int *psz)	/* get next input token */
 			}
 		}
 		*bp = 0;
-		strtod(buf, &rem);	/* parse the number */
+		if(to_number(buf, fp, &rem))	/* parse the number */
+			c = '0';
+		else
+			c = buf[0];
 		unputstr(rem);		/* put rest back for later */
 		rem[0] = 0;
 	}
 	*pbuf = buf;
 	*psz = sz;
-	return buf[0];
+	return c;
 }
 
 int	word(char *);
@@ -166,6 +170,7 @@ int	reg	= 0;	/* 1 => return a REGEXPR now */
 int yylex(void)
 {
 	int c;
+	Awkfloat f;
 	static char *buf = 0;
 	static int bufsize = 500;
 
@@ -180,14 +185,16 @@ int yylex(void)
 		return regexpr();
 	}
 	for (;;) {
-		c = gettok(&buf, &bufsize);
+		c = gettok(&buf, &bufsize, &f);
 		if (c == 0)
 			return 0;
-		if (isalpha(c) || c == '_')
+		if (c == 'a')
 			return word(buf);
-		if (isdigit(c) || c == '.') {
-			yylval.cp = setsymtab(buf, tostring(buf), atof(buf), CON|NUM, symtab);
-			/* should this also have STR set? */
+		/* may be unsuitable for printing (T.strnum) so don't set STR,
+		 * but may be a regex to be treated literally (T.coerce[23])
+		 * via strnode, so save a copy. */
+		if (c == '0') {
+			yylval.cp = setsymtab(buf, tostring(buf), f, CON|NUM, symtab);
 			RET(NUMBER);
 		}
 	
@@ -297,7 +304,7 @@ int yylex(void)
 	
 		case '$':
 			/* BUG: awkward, if not wrong */
-			c = gettok(&buf, &bufsize);
+			c = gettok(&buf, &bufsize, &f);
 			if (c == '(' || c == '[' || (infunc && isarg(buf) >= 0)) {
 				unputstr(buf);
 				RET(INDIRECT);
@@ -449,7 +456,7 @@ int word(char *w)
 	Keyword *kp;
 	int c, n;
 
-	n = binsearch(w, keywords, sizeof(keywords)/sizeof(keywords[0]));
+	n = binsearch(w, keywords, nelem(keywords));
 	kp = keywords + n;
 	if (n != -1) {	/* found in table */
 		yylval.i = kp->sub;

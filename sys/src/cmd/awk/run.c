@@ -416,10 +416,8 @@ Cell *getline(Node **a, int n)	/* get next line from specific input */
 				tfree(x);
 		} else {			/* getline <file */
 			setsval(fldtab[0], buf);
-			if (is_number(fldtab[0]->sval)) {
-				fldtab[0]->fval = atof(fldtab[0]->sval);
+			if (to_number(fldtab[0]->sval, &fldtab[0]->fval, nil))
 				fldtab[0]->tval |= NUM;
-			}
 		}
 	} else {			/* bare getline; use current input */
 		if (a[0] == nil)	/* getline */
@@ -724,9 +722,11 @@ Cell *indirect(Node **a, int)	/* $( a[0] ) */
 
 	x = execute(a[0]);
 	m = (int) getfval(x);
-	if (m == 0 && !is_number(s = getsval(x)))	/* suspicion! */
-		FATAL("illegal field $(%s), name \"%s\"", s, x->nval);
-		/* BUG: can x->nval ever be null??? */
+	if (m == 0) {
+		if (!to_number(s = getsval(x), &x->fval, nil))	/* suspicion! */
+			FATAL("illegal field $(%s), name \"%s\"", s, x->nval);
+			/* BUG: can x->nval ever be null??? */
+	}
 	if (istemp(x))
 		tfree(x);
 	x = fieldadr(m);
@@ -1251,6 +1251,7 @@ Cell *split(Node **a, int)	/* split(a[0], a[1], a[2]); a[3] is type */
 	Cell *x = 0, *y, *ap;
 	char *s, *ds, *t, *fs = 0;
 	char temp, num[50];
+	Awkfloat f;
 	int n, nb, sep, arg3type;
 
 	y = execute(a[0]);	/* source string */
@@ -1290,8 +1291,8 @@ Cell *split(Node **a, int)	/* split(a[0], a[1], a[2]); a[3] is type */
 				sprint(num, "%d", n);
 				temp = *patbeg;
 				*patbeg = '\0';
-				if (is_number(t))
-					setsymtab(num, t, atof(t), STR|NUM, (Array *) ap->sval);
+				if (to_number(t, &f, nil))
+					setsymtab(num, t, f, STR|NUM, (Array *) ap->sval);
 				else
 					setsymtab(num, t, 0.0, STR, (Array *) ap->sval);
 				*patbeg = temp;
@@ -1306,8 +1307,8 @@ Cell *split(Node **a, int)	/* split(a[0], a[1], a[2]); a[3] is type */
 		}
 		n++;
 		sprint(num, "%d", n);
-		if (is_number(t))
-			setsymtab(num, t, atof(t), STR|NUM, (Array *) ap->sval);
+		if (to_number(t, &f, nil))
+			setsymtab(num, t, f, STR|NUM, (Array *) ap->sval);
 		else
 			setsymtab(num, t, 0.0, STR, (Array *) ap->sval);
   spdone:
@@ -1326,8 +1327,8 @@ Cell *split(Node **a, int)	/* split(a[0], a[1], a[2]); a[3] is type */
 			temp = *s;
 			*s = '\0';
 			sprint(num, "%d", n);
-			if (is_number(t))
-				setsymtab(num, t, atof(t), STR|NUM, (Array *) ap->sval);
+			if (to_number(t, &f, nil))
+				setsymtab(num, t, f, STR|NUM, (Array *) ap->sval);
 			else
 				setsymtab(num, t, 0.0, STR, (Array *) ap->sval);
 			*s = temp;
@@ -1344,8 +1345,8 @@ Cell *split(Node **a, int)	/* split(a[0], a[1], a[2]); a[3] is type */
 			nb = chartorune(&r, s);
 			memmove(buf, s, nb);
 			buf[nb] = '\0';
-			if (isdigit(buf[0]))
-				setsymtab(num, buf, atof(buf), STR|NUM, (Array *) ap->sval);
+			if (to_number(buf, &f, nil))
+				setsymtab(num, buf, f, STR|NUM, (Array *) ap->sval);
 			else
 				setsymtab(num, buf, 0.0, STR, (Array *) ap->sval);
 		}
@@ -1358,8 +1359,8 @@ Cell *split(Node **a, int)	/* split(a[0], a[1], a[2]); a[3] is type */
 			temp = *s;
 			*s = '\0';
 			sprint(num, "%d", n);
-			if (is_number(t))
-				setsymtab(num, t, atof(t), STR|NUM, (Array *) ap->sval);
+			if (to_number(t, &f, nil))
+				setsymtab(num, t, f, STR|NUM, (Array *) ap->sval);
 			else
 				setsymtab(num, t, 0.0, STR, (Array *) ap->sval);
 			*s = temp;
