@@ -218,8 +218,6 @@ struct Frame {	/* stack frame for awk function calls */
 
 #define	NARGS	50	/* max args in a call */
 
-struct Frame *frame = nil;	/* base of stack frames; dynamically allocated */
-int	nframe = 0;		/* number of frames allocated */
 struct Frame *fp = nil;	/* frame pointer. bottom level unused */
 
 Cell *call(Node **a, int)	/* function call.  very kludgy and fragile */
@@ -227,87 +225,75 @@ Cell *call(Node **a, int)	/* function call.  very kludgy and fragile */
 	static Cell newcopycell = { OCELL, CCOPY, NUM|STR|DONTFREE, 0, EMPTY, 0.0 };
 	int i, ncall, ndef;
 	Node *x;
-	Cell *args[NARGS], *oargs[NARGS];	/* BUG: fixed size arrays */
+	Cell *args[NARGS], **oargs;
 	Cell *y, *z, *fcn;
+	struct Frame frame, *up;
 	char *s;
 
 	fcn = execute(a[0]);	/* the function itself */
 	s = fcn->nval;
 	if (!isfcn(fcn))
 		FATAL("calling undefined function %s", s);
-	if (frame == nil) {
-		fp = frame = (struct Frame *) calloc(nframe += 100, sizeof(struct Frame));
-		if (frame == nil)
-			FATAL("out of space for stack frames calling %s", s);
-	}
 	for (ncall = 0, x = a[1]; x != nil; x = x->nnext)	/* args in call */
 		ncall++;
 	ndef = (int) fcn->fval;			/* args in defn */
-	   dprint( ("calling %s, %d args (%d in defn), fp=%d\n", s, ncall, ndef, (int) (fp-frame)) );
-	if (ncall > ndef)
+	   dprint( ("calling %s, %d args (%d in defn)\n", s, ncall, ndef) );
+	if (ncall > ndef) {
 		WARNING("function %s called with %d args, uses only %d",
 			s, ncall, ndef);
-	if (ncall + ndef > NARGS)
-		FATAL("function %s has %d arguments, limit %d", s, ncall+ndef, NARGS);
-	for (i = 0, x = a[1]; x != nil; i++, x = x->nnext) {	/* get call args */
-		   dprint( ("evaluate args[%d], fp=%d:\n", i, (int) (fp-frame)) );
+		ncall = ndef;
+	}
+	if (ndef+ncall > NARGS)
+		FATAL("function %s has %d arguments, limit %d", s, ndef+ncall, NARGS);
+	oargs = args+ndef;
+	for (i = 0, x = a[1]; i < ncall && x != nil; i++, x = x->nnext) {	/* get call args */
+		   dprint( ("evaluate args[%d]:\n", i) );
 		y = execute(x);
-		oargs[i] = y;
 		   dprint( ("args[%d]: %s %f <%s>, t=%o\n",
 			   i, y->nval, y->fval, isarr(y) ? "(array)" : y->sval, y->tval) );
 		if (isfcn(y))
 			FATAL("can't use function %s as argument in %s", y->nval, s);
-		if (isarr(y))
+		if (isarr(y)) {
 			args[i] = y;	/* arrays by ref */
-		else
+			y = nil;
+		} else if (istemp(y)) {
+			y->csub = CCOPY;
+			args[i] = y;
+		} else
 			args[i] = copycell(y);
-			if (istemp(y))
-				tfree(y);
+		oargs[i] = y;	/* potential output arg for arrays */
 	}
 	for ( ; i < ndef; i++) {	/* add null args for ones not provided */
 		args[i] = gettemp();
 		*args[i] = newcopycell;
 	}
-	fp++;	/* now ok to up frame */
-	if (fp >= frame + nframe) {
-		int dfp = fp - frame;	/* old index */
-		frame = (struct Frame *)
-			realloc((char *) frame, (nframe += 100) * sizeof(struct Frame));
-		if (frame == nil)
-			FATAL("out of space for stack frames in %s", s);
-		fp = frame + dfp;
-	}
+	/* now ok to up frame */
+	up = fp;
+	fp = &frame;
 	fp->fcncell = fcn;
 	fp->args = args;
 	fp->nargs = ndef;	/* number defined with (excess are locals) */
 	fp->retval = gettemp();
 
-	dprint( ("start exec of %s, fp=%d\n", s, (int) (fp-frame)) );
+	dprint( ("start exec of %s\n", s) );
 	y = execute((Node *)(fcn->sval));	/* execute body */
-	dprint( ("finished exec of %s, fp=%d\n", s, (int) (fp-frame)) );
+	dprint( ("finished exec of %s\n", s) );
 
 	for (i = 0; i < ndef; i++) {
-		Cell *t = fp->args[i];
+		Cell *t = args[i];
 		if (isarr(t)) {
 			if (t->csub == CCOPY) {
 				if (i >= ncall) {
 					freesymtab(t);
-					t->csub = CTEMP;
-				if (istemp(t))
 					tfree(t);
-				} else {
+				} else if(oargs[i] != nil) {
 					oargs[i]->tval = t->tval;
 					oargs[i]->tval &= ~(STR|NUM|DONTFREE);
 					oargs[i]->sval = t->sval;
-					if (istemp(t))
-						tfree(t);
 				}
 			}
-		} else if (t != y) {	/* kludge to prevent freeing twice */
-			t->csub = CTEMP;
-			if (istemp(t))
-				tfree(t);
-		}
+		} else if (t != y)	/* kludge to prevent freeing twice */
+			tfree(t);
 	}
 	if (istemp(fcn))
 		tfree(fcn);
@@ -317,7 +303,7 @@ Cell *call(Node **a, int)	/* function call.  very kludgy and fragile */
 		tfree(y);		/* this can free twice! */
 	z = fp->retval;			/* return value */
 	   dprint( ("%s returns %g |%s| %o\n", s, getfval(z), getsval(z), z->tval) );
-	fp--;
+	fp = up;
 	return(z);
 }
 
@@ -341,7 +327,7 @@ Cell *arg(Node **a, int n)	/* nth argument of a function */
 
 	n = ptoi(a[0]);	/* argument number, counting from 0 */
 	   dprint( ("arg(%d), fp->nargs=%d\n", n, fp->nargs) );
-	if (n+1 > fp->nargs)
+	if (n >= fp->nargs)
 		FATAL("argument #%d of function %s was not supplied",
 			n+1, fp->fcncell->nval);
 	return fp->args[n];
