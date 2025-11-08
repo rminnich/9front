@@ -429,7 +429,8 @@ int refldbld(char *rec, char *fs)	/* build fields from reg expr in FS */
 			break;
 		}
 	}
-	return i;		
+	releasere(p);
+	return i;
 }
 
 void recbld(void)	/* create $0 from $1..$NF if necessary */

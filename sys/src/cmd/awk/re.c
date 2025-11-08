@@ -64,10 +64,23 @@ static struct pat_list		/* dynamic pattern cache */
 {
 	char	*re;
 	int	use;
+	int inuse;
 	Reprog	*program;
 } pattern[NPATS];
 
 static int npats;		/* cache fill level */
+
+void
+releasere(void *p)
+{
+	int i;
+
+	for (i = 0; i < npats; i++)
+		if (pattern[i].program == p) {
+			pattern[i].inuse--;
+			break;
+		}
+}
 
 	/* Compile a pattern */
 void
@@ -81,6 +94,7 @@ void
 		for (i = 0; i < npats; i++)
 			if (!strcmp(pat, pattern[i].re)) {
 				pattern[i].use++;
+				pattern[i].inuse++;
 				return((void *) pattern[i].program);
 			}
 	}
@@ -162,20 +176,25 @@ void
 		if (npats < NPATS)	/* Room in cache */
 			i = npats++;
 		else {			/* Throw out least used */
-			int use = pattern[0].use;
-			i = 0;
-			for (j = 1; j < NPATS; j++) {
-				if (pattern[j].use < use) {
+			int use = -1U;
+			i = -1;
+			for (j = 0; j < NPATS; j++) {
+				if (pattern[j].inuse == 0 && pattern[j].use < use) {
 					use = pattern[j].use;
 					i = j;
 				}
 			}
-			xfree(pattern[i].program);
-			xfree(pattern[i].re);
+			if (i >= 0) {
+				xfree(pattern[i].program);
+				xfree(pattern[i].re);
+			}
 		}
-		pattern[i].re = tostring(pat);
-		pattern[i].program = program;
-		pattern[i].use = 1;
+		if (i >= 0) {
+			pattern[i].re = tostring(pat);
+			pattern[i].program = program;
+			pattern[i].use = 1;
+			pattern[i].inuse = 1;
+		}
 	}
 	return((void *) program);
 }

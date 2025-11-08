@@ -608,6 +608,7 @@ Cell *matchop(Node **a, int n)	/* ~ and match() */
 		i = pmatch(p, s, s);
 	else
 		i = match(p, s, s);
+	releasere(p);
 	if (istemp(x))
 		tfree(x);
 	if (n == MATCHFCN) {
@@ -1324,8 +1325,7 @@ Cell *split(Node **a, int)	/* split(a[0], a[1], a[2]); a[3] is type */
 		else
 			setsymtab(num, t, 0.0, STR, (Array *) ap->sval);
   spdone:
-		p = nil;
-		USED(p);
+  		releasere(p);
 	} else if (sep == ' ') {
 		for (n = 0; ; ) {
 			while (*s == ' ' || *s == '\t' || *s == '\n')
@@ -1884,6 +1884,7 @@ Cell *sub(Node **a, int)	/* substitute command */
 		setsval(x, buf);	/* BUG: should be able to avoid copy */
 		result = True;;
 	}
+	releasere(p);
 	if (istemp(x))
 		tfree(x);
 	if (istemp(y))
@@ -1981,6 +1982,7 @@ Cell *gsub(Node **a, int)	/* global substitute */
 			;
 		setsval(x, buf);	/* BUG: should be able to avoid copy + free */
 	}
+	releasere(p);
 	if (istemp(x))
 		tfree(x);
 	if (istemp(y))
