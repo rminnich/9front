@@ -328,7 +328,7 @@ Cell *copycell(Cell *x)	/* make a copy of a cell in a temp */
 	y = gettemp();
 	y->csub = CCOPY;	/* prevents freeing until call is over */
 	y->nval = x->nval;	/* BUG? */
-	y->sval = x->sval != nil && x->sval != EMPTY ? tostring(x->sval) : EMPTY;
+	y->sval = x->sval != nil && *x->sval ? tostring(x->sval) : EMPTY;
 	y->fval = x->fval;
 	y->tval = x->tval & ~(CON|FLD|REC|DONTFREE);	/* copy is not constant or field */
 	if (y->sval == EMPTY)

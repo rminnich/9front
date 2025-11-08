@@ -229,7 +229,7 @@ Cell *setsymtab(char *n, char *s, Awkfloat f, unsigned t, Array *tp)
 		p->sval = (char *) ENVtab;
 		p->tval = ARR;
 	} else {
-		p->sval = s != nil && s != EMPTY ? tostring(s) : EMPTY;
+		p->sval = s && *s ? tostring(s) : EMPTY;
 		p->tval = t;
 		if (p->sval == EMPTY)
 			p->tval |= DONTFREE;
@@ -342,7 +342,7 @@ char *setsval(Cell *vp, char *s)	/* set string val of a Cell */
 		donefld = 0;	/* mark $1... invalid */
 		donerec = 1;
 	}
-	t = s != nil && s != EMPTY ? tostring(s) : EMPTY;	/* in case it's self-assign */
+	t = s && *s ? tostring(s) : EMPTY;	/* in case it's self-assign */
 	vp->tval &= ~NUM;
 	vp->tval |= STR;
 	if (freeable(vp))
