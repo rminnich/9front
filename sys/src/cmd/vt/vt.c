@@ -891,7 +891,7 @@ Default:
 			n = 1;
 			c = 0;
 			while (!cs->raw && host_avail() && x+n<=xmax && n<BUFS
-			    && (c = nextcmd())>=' ' && c<'\177') {
+			    && (c = nextchar())>=' ' && c<'\177') {
 				buf[n++] = c;
 				c = 0;
 			}
@@ -1027,14 +1027,41 @@ cursctl(int c)
 	return 1;
 }
 
+static int
+readosc(char *buf, int nbuf)
+{
+	Rune ch;
+	int i;
+
+	i = 0;
+	while(1){
+		ch = nextchar();
+		if(ch == '\a')
+			break;
+		if(ch == '\033'){
+			ch = nextchar();
+			if(ch == '\\')
+				break;
+			if(i < nbuf - UTFmax - 1)
+				buf[i++] = '\033';
+		}
+		if(cursctl(ch))
+			continue;
+		if(i < nbuf - UTFmax - 1)
+			i += runetochar(buf+i, &ch);
+	}
+	buf[i] = 0;
+	return i;
+}
 
 // handle ESC], Operating System Command
 static void
 osc(void)
 {
-	Rune ch, buf[BUFS+1];
-	int fd, osc, got, i;
+	char buf[BUFS];
+	int fd, osc, got;
 	char *o, *s;
+	Rune ch;
 
 	osc = number(&ch, &got);
 	if(got) {
@@ -1042,30 +1069,15 @@ osc(void)
 		case 0:
 		case 1:
 		case 2: /* set title */
-			i = 0;
-
-			while((ch = nextcmd()) != '\a') {
-				if(i < nelem(buf) - 1) {
-					buf[i++] = ch;
-				}
-			}
-			buf[i] = 0;
+			readosc(buf, sizeof(buf));
 			if((fd = open("/dev/label", OWRITE)) >= 0) {
-				fprint(fd, "%S", buf);
+				fprint(fd, "%s", buf);
 				close(fd);
 			}
 			break;
 
 		case 7: /* set pwd */
-			i = 0;
-
-			while((ch = nextcmd()) != '\033'){
-				if(i < sizeof(osc7cwd)-UTFmax-1)
-					i += runetochar(osc7cwd+i, &ch);
-			}
-			nextcmd();
-			osc7cwd[i] = 0;
-
+			readosc(osc7cwd, sizeof(osc7cwd));
 			/* file://hostname/path → /n/hostname/path */
 			if(strncmp(osc7cwd, "file://", 7) == 0){
 				osc7cwd[0] = '/';
