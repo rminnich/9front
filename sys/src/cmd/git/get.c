@@ -403,7 +403,8 @@ fetchpack(Conn *c)
 				break;
 			if(strncmp(buf, "ACK ", 4) == 0)
 				break;
-			if(c->sideband && buf[0] == 0 || buf[0] == 1 || buf[0] == 2){
+			if((c->sideband || c->sideband64k)
+			&& (buf[0] == 0 || buf[0] == 1 || buf[0] == 2)){
 				if(buf[0] == 2)
 					fprint(2, "%s", buf);
 				continue;
