@@ -401,8 +401,14 @@ fetchpack(Conn *c)
 				sysfatal("read: %r");
 			if(strncmp(buf, "NAK\n", 4) == 0)
 				break;
-			if(strncmp(buf, "ACK ", 4) != 0)
-				sysfatal("bad response: '%s'", buf);
+			if(strncmp(buf, "ACK ", 4) == 0)
+				break;
+			if(c->sideband && buf[0] == 0 || buf[0] == 1 || buf[0] == 2){
+				if(buf[0] == 2)
+					fprint(2, "%s", buf);
+				continue;
+			}
+			sysfatal("bad response: '%s'", buf);
 		}
 	} 
 	if(readpkt(c, buf, sizeof(buf)) == -1)
