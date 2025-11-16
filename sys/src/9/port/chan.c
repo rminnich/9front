@@ -1282,7 +1282,7 @@ namelenerror(char *aname, int len, char *err)
 Chan*
 namec(char *aname, int amode, int omode, ulong perm)
 {
-	int len, n, t, nomount, devunmount;
+	int len, n, t, nomount;
 	Chan *c;
 	Chan *volatile cnew;
 	Path *volatile path;
@@ -1302,20 +1302,6 @@ namec(char *aname, int amode, int omode, ulong perm)
 	name = aname;
 
 	/*
-	 * When sandboxing, unmounting a sharp from a union is a valid
-	 * operation even if the device is blocked.
-	 */
-	devunmount = 0;
-	if(amode == Aunmount){
-		/*
-		 * Doing any walks down the device could leak information
-		 * about the existence of files.
-		 */
-		if(name[0] == '#' && utflen(name) == 2)
-			devunmount = 1;
-	}
-
-	/*
 	 * Find the starting off point (the current slash, the root of
 	 * a device tree, or the current dot) as well as the name to
 	 * evaluate starting there.
@@ -1329,7 +1315,6 @@ namec(char *aname, int amode, int omode, ulong perm)
 	
 	case '#':
 		nomount = 1;
-		up->genbuf[0] = '\0';
 		n = 0;
 		while(*name != '\0' && (*name != '/' || n < 2)){
 			if(n >= sizeof(up->genbuf)-1)
@@ -1341,7 +1326,14 @@ namec(char *aname, int amode, int omode, ulong perm)
 		t = devno(r, 1);
 		if(t == -1)
 			error(Ebadsharp);
-		if(!devunmount && !devallowed(up->pgrp, r))
+		/*
+		 * When sandboxing, unmounting a sharp from a union is a valid
+		 * operation even if the device is blocked.
+		 * Doing any walks down the device could leak information
+		 * about the existence of files.
+		 */
+		if((amode != Aunmount || up->genbuf[n] || *name)
+		&& !devallowed(up->pgrp, r))
 			error(Enoattach);
 
 		c = devtab[t]->attach(up->genbuf+n);
