@@ -1302,11 +1302,8 @@ namec(char *aname, int amode, int omode, ulong perm)
 	name = aname;
 
 	/*
-	 * When unmounting, the name parameter must be accessed
-	 * using Aopen in order to get the real chan from
-	 * something like /srv/cs or /fd/0. However when sandboxing,
-	 * unmounting a sharp from a union is a valid operation even
-	 * if the device is blocked.
+	 * When sandboxing, unmounting a sharp from a union is a valid
+	 * operation even if the device is blocked.
 	 */
 	devunmount = 0;
 	if(amode == Aunmount){
@@ -1316,7 +1313,6 @@ namec(char *aname, int amode, int omode, ulong perm)
 		 */
 		if(name[0] == '#' && utflen(name) == 2)
 			devunmount = 1;
-		amode = Aopen;
 	}
 
 	/*
@@ -1420,6 +1416,14 @@ namec(char *aname, int amode, int omode, ulong perm)
 		error("cannot exec directory");
 
 	switch(amode){
+	case Aunmount:
+		/*
+		 * When unmounting, the channel must be opend when not a directory
+		 * in order to get the real chan from something like /srv/cs or /fd/0.
+		 */ 
+		if((c->qid.type&QTDIR) == 0)
+			goto Open;
+		/* wet floor */
 	case Abind:
 		/* no need to maintain path - cannot dotdot an Abind */
 		m = nil;
@@ -1472,6 +1476,7 @@ namec(char *aname, int amode, int omode, ulong perm)
 
 		case Aopen:
 		case Acreate:
+		case Aunmount:
 			/* only save the mount head if it's a multiple element union */
 			if(m != nil) {
 				rlock(&m->lock);
