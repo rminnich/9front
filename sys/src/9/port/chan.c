@@ -1323,7 +1323,7 @@ namec(char *aname, int amode, int omode, ulong perm)
 		}
 		up->genbuf[n] = '\0';
 		n = chartorune(&r, up->genbuf+1)+1;
-		t = devno(r, 1);
+		t = devno(r);
 		if(t == -1)
 			error(Ebadsharp);
 		/*

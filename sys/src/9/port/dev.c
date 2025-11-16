@@ -16,7 +16,7 @@ mkqid(Qid *q, vlong path, ulong vers, int type)
 }
 
 int
-devno(int c, int user)
+devno(int c)
 {
 	int i;
 
@@ -24,9 +24,6 @@ devno(int c, int user)
 		if(devtab[i]->dc == c)
 			return i;
 	}
-	if(user == 0)
-		panic("devno %C %#ux", c, c);
-
 	return -1;
 }
 
@@ -46,7 +43,7 @@ devmask(Pgrp *pgrp, int invert, char *devs)
 	w = sizeof mask[0] * 8;
 	for(p = devs; *p != '\0';){
 		p += chartorune(&r, p);
-		t = devno(r, 1);
+		t = devno(r);
 		if(t == -1)
 			continue;
 		if(invert)
@@ -66,7 +63,7 @@ devallowed(Pgrp *pgrp, int r)
 {
 	int t, w, b;
 
-	t = devno(r, 1);
+	t = devno(r);
 	if(t == -1)
 		return 0;
 
@@ -188,7 +185,7 @@ devattach(int tc, char *spec)
 
 	c = newchan();
 	mkqid(&c->qid, 0, 0, QTDIR);
-	c->type = devno(tc, 0);
+	c->type = devno(tc);
 	if(spec == nil)
 		spec = "";
 	n = 1+UTFmax+strlen(spec)+1;

@@ -71,7 +71,7 @@ void		devdir(Chan*, Qid, char*, vlong, char*, long, Dir*);
 long		devdirread(Chan*, char*, long, Dirtab*, int, Devgen*);
 Devgen		devgen;
 void		devinit(void);
-int		devno(int, int);
+int		devno(int);
 Chan*		devopen(Chan*, int, Dirtab*, int, Devgen*);
 void		devpermcheck(char*, ulong, int);
 void		devpower(int);

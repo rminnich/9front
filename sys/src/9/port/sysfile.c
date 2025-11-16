@@ -406,7 +406,7 @@ dirfixed(uchar *p, uchar *e, Dir *d)
 		return -1;
 
 	p += BIT16SZ;	/* ignore size */
-	d->type = devno(GBIT16(p), 1);
+	d->type = devno(GBIT16(p));
 	p += BIT16SZ;
 	d->dev = GBIT32(p);
 	p += BIT32SZ;
