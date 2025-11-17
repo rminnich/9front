@@ -1335,7 +1335,7 @@ pccardwrite(Chan *c, void *v, long n, vlong)
 		case CMdown:
 			device = cbf->f[1];
 			device += chartorune(&r, device);
-			if ((n = devno(r, 1)) >= 0 && devtab[n]->config)
+			if ((n = devno(r)) >= 0 && devtab[n]->config)
 				devtab[n]->config(0, device, nil);
 			qengine(cb, CardEjected);
 			break;
