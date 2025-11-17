@@ -51,11 +51,11 @@ The case-conversion routines return the character unchanged if it has no case.
 If a rune contains a value that is not a valid codepoint (ie, greater than Runemax),
 these routines return 0.
 .SH SOURCE
-.B /sys/src/libc/port/mkrunetype.c
+.B /sys/src/libc/ucd/mkrunetype.c
 .br
-.B /sys/src/libc/port/runeistype.c
+.B /sys/src/libc/ucd/runeistype.c
 .br
-.B /sys/src/libc/port/runetotype.c
+.B /sys/src/libc/ucd/runetotype.c
 .SH "SEE ALSO
 .IR ctype (2) ,
 .IR "The Unicode Standard" .
