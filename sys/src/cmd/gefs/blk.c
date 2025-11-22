@@ -359,6 +359,7 @@ loadlog(Arena *a, Bptr bp)
 				dprint("\tlog@%x: sync %lld\n", i, gen);
 				if(gen >= agetv(&fs->qgen)){
 					if(a->logtl == nil){
+						b->logp = Zb;
 						b->logsz = i;
 						a->logtl = b;
 						cachedel(b->bp.addr);
