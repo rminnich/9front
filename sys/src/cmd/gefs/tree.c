@@ -724,7 +724,6 @@ splitleaf(Tree *t, Path *up, Path *p, Kvp *mid)
 		if((i == b->nval-2) || (i >= 2 && copied >= halfsz)){
 			d = r;
 			spc = Leafspc - (halfsz + Msgmax);
-			getval(b, i, mid);
 		}
 		getval(b, i, &v);
  		c = pullmsg(up, j, &v, &m, &full, spc);
@@ -783,6 +782,7 @@ splitleaf(Tree *t, Path *up, Path *p, Kvp *mid)
 	}
 	p->npull = (j - up->lo);
 	p->op = POsplit;
+	getval(r, 0, mid);
 	setb(&p->nl, t, l);
 	setb(&p->nr, t, r);
 	poperror();
