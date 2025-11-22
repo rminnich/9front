@@ -11,6 +11,11 @@ enum {
 
 	Getbaud		= 0x1D,
 	Setbaud		= 0x1E,
+	Setflow		= 0x13,
+		Flowdtron = 0x01,
+		Flowctshs = 0x08,
+		Flowrtson = 0x40,
+		Flowrtshs = 0x80,
 	Setlcr		= 0x03,
 	Getlcr		= 0x04,
 		Bitsmask	= 0x0F00,
@@ -21,6 +26,9 @@ enum {
 		Stop1		= 0x0000,
 		Stop1_5		= 0x0001,
 		Stop2		= 0x0002,
+	Setctrl		= 0x07,
+		Dtron		= 0x0001,
+		Rtson		= 0x0002,
 };
 
 static Cinfo slinfo[] = {
@@ -72,12 +80,32 @@ slread(Serialport *p, int req, void *buf, int len)
 }
 
 static int
+slgettype(Serialport *p)
+{
+	Serial *ser;
+	uchar buf;
+	int res;
+
+	ser = p->s;
+	res = usbcmd(ser->dev, Rd2h | Rvendor | Riface, 0xff, 0x370B, p->interfc,
+		&buf, 1);
+
+	if(res < 0)
+		return 0xff;
+
+	return buf;
+}
+
+static int
 slinit(Serialport *p)
 {
 	Serial *ser;
 
 	ser = p->s;
 	dsprint(2, "slinit\n");
+
+	strncpy(ser->driver, "silabs", sizeof(ser->driver));
+	ser->type = slgettype(p);
 
 	slput(p, Enable, 1);
 
@@ -114,6 +142,38 @@ slsetparam(Serialport *p)
 }
 
 static int
+slsendlines(Serialport *p)
+{
+	u16int ctrl;
+	
+	ctrl = (p->dtr? Dtron : 0) | Dtron << 8;
+	ctrl |= (p->rts? Rtson : 0) | Rtson << 8;
+
+	slput(p, Setctrl, ctrl);
+	return 0;
+}
+
+static
+slmodemctl(Serialport *p, int set)
+{
+	uchar flow[4*4];
+
+	memset(flow, 0, sizeof flow);
+
+	if(set){
+		p->mctl = 1;
+		PUT4(flow, (p->dtr?Flowdtron:0) | Flowctshs);
+		PUT4(flow+4, Flowrtshs);
+	}else{
+		p->mctl = 0;
+		PUT4(flow, (p->dtr)?Flowdtron:0);
+		PUT4(flow+4, (p->rts)?Flowrtson:0);
+	}
+	slwrite(p, Setflow, flow, sizeof flow);
+	return 0;
+}
+
+static int
 wait4data(Serialport *p, uchar *data, int count)
 {
 	int n;
@@ -129,6 +189,8 @@ static Serialops slops = {
 	.init		= slinit,
 	.getparam	= slgetparam,
 	.setparam	= slsetparam,
+	.sendlines	= slsendlines,
+	.modemctl	= slmodemctl,
 	.wait4data	= wait4data,
 	.findeps	= findendpoints,
 };

@@ -887,7 +887,7 @@ ftmodemctl(Serialport *p, int set)
 {
 	if(set == 0){
 		p->mctl = 0;
-		ftdiwrite(p, 0, 0, FTSETMODEMCTRL);
+		ftdiwrite(p, 0, FTDISABLEFLOWCTRL, FTSETFLOWCTRL);
 		return 0;
 	}
 	p->mctl = 1;
@@ -1435,12 +1435,15 @@ ftreset(Serial *ser, Serialport *p)
 
 	if(p != nil){
 		ftdiwrite(p, FTRESETCTLVAL, 0, FTRESET);
+		p->mctl = p->rts = p->dtr = 0;
 		return 0;
 	}
 	p = ser->p;
 	for(i = 0; i < Maxifc; i++)
-		if(p[i].s != nil)
+		if(p[i].s != nil){
 			ftdiwrite(&p[i], FTRESETCTLVAL, 0, FTRESET);
+			p->mctl = p->rts = p->dtr = 0;
+		}
 	return 0;
 }
 
@@ -1448,22 +1451,21 @@ static int
 ftinit(Serialport *p)
 {
 	Serial *ser;
-	uint timerval;
+	uchar timerval;
 	int res;
 
 	ser = p->s;
+	strncpy(ser->driver, "ftdi", sizeof(ser->driver));
+	ftreset(ser, p);
 	if(p->isjtag){
-		res = ftdiwrite(p, FTSETFLOWCTRL, 0, FTDISABLEFLOWCTRL);
-		if(res < 0)
-			return -1;
-		res = ftdiread(p, FTSETLATENCYTIMER, 0, (uchar *)&timerval,
+		res = ftdiread(p, FTGETLATENCYTIMER, 0, &timerval,
 			FTLATENCYTIMERSZ);
 		if(res < 0)
 			return -1;
 		dsprint(2, "serial: jtag latency timer is %d\n", timerval);
 		timerval = 2;
 		ftdiwrite(p, FTLATENCYDEFAULT, 0, FTSETLATENCYTIMER);
-		res = ftdiread(p, FTSETLATENCYTIMER, 0, (uchar *)&timerval,
+		res = ftdiread(p, FTGETLATENCYTIMER, 0, &timerval,
 			FTLATENCYTIMERSZ);
 		if(res < 0)
 			return -1;
@@ -1492,58 +1494,42 @@ ftclearpipes(Serialport *p)
 	return 0;
 }
 
-static int
-setctlline(Serialport *p, uchar val)
-{
-	return ftdiwrite(p, val | (val << 8), 0, FTSETMODEMCTRL);
-}
-
 static void
-updatectlst(Serialport *p, int val)
+composectl(Serialport *p)
 {
 	if(p->rts)
-		p->ctlstate |= val;
+		p->ctlstate |= CtlRTS;
 	else
-		p->ctlstate &= ~val;
-}
-
-static int
-setctl(Serialport *p)
-{
-	int res;
-	Serial *ser;
-
-	ser = p->s;
-
-	if(ser->dev->usb->vid == FTVid && ser->dev->usb->did ==  FTHETIRA1Did){
-		fprint(2, "serial: cannot set lines for this device\n");
-		updatectlst(p, CtlRTS|CtlDTR);
-		p->rts = p->dtr = 1;
-		return -1;
-	}
-
-	/* NB: you can not set DTR and RTS with one control message */
-	updatectlst(p, CtlRTS);
-	res = setctlline(p, (CtlRTS<<8)|p->ctlstate);
-	if(res < 0)
-		return res;
-
-	updatectlst(p, CtlDTR);
-	res = setctlline(p, (CtlDTR<<8)|p->ctlstate);
-	if(res < 0)
-		return res;
-
-	return 0;
+		p->ctlstate &= ~CtlRTS;
+	if(p->dtr)
+		p->ctlstate |= CtlDTR;
+	else
+		p->ctlstate &= ~CtlDTR;
 }
 
 static int
 ftsendlines(Serialport *p)
 {
 	int res;
+	Serial *ser;
 
-	dsprint(2, "serial: sendlines: %#2.2x\n", p->ctlstate);
-	res = setctl(p);
-	dsprint(2, "serial: sendlines res: %d\n", res);
+	ser = p->s;
+
+	composectl(p);
+	if(ser->dev->usb->vid == FTVid && ser->dev->usb->did ==  FTHETIRA1Did){
+		fprint(2, "serial: cannot set lines for this device\n");
+		return -1;
+	}
+
+	/* NB: you can not set DTR and RTS with one control message */
+	res = ftdiwrite(p, (CtlRTS<<8)|p->ctlstate, 0, FTSETMODEMCTRL);
+	if(res < 0)
+		return res;
+
+	res = ftdiwrite(p, (CtlDTR<<8)|p->ctlstate, 0, FTSETMODEMCTRL);
+	if(res < 0)
+		return res;
+
 	return 0;
 }
 

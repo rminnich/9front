@@ -74,6 +74,7 @@ struct Serial {
 	QLock;
 	Dev	*dev;		/* usb device*/
 
+	char	driver[8];	/* driver name, e.g. ch340 */
 	int	type;		/* serial model subtype */
 	int	recover;	/* # of non-fatal recovery tries */
 	Serialops;

@@ -129,8 +129,11 @@ serialctl(Serialport *p, char *cmd)
 	nf = tokenize(cmd, f, nelem(f));
 	for(i = 0; i < nf; i++){
 		if(strncmp(f[i], "break", 5) == 0){
-			if(ser->setbreak != nil)
+			if(ser->setbreak != nil){
 				ser->setbreak(p, 1);
+				sleep(200);
+				ser->setbreak(p, 0);
+			}
 			continue;
 		}
 
@@ -173,7 +176,7 @@ serialctl(Serialport *p, char *cmd)
 		case 'k':
 			drain++;
 			ser->setbreak(p, 1);
-			sleep(n);
+			sleep(n<=0?200:n);
 			ser->setbreak(p, 0);
 			break;
 		case 'l':
@@ -291,7 +294,7 @@ serdumpst(Serialport *p, char *buf, int bufsz)
 	s = seprint(s, e, "r%d ", p->rts);
 	s = seprint(s, e, "s%d ", p->stop);
 	s = seprint(s, e, "i%d ", p->fifo);
-	s = seprint(s, e, "\ndev(%d) ", 0);
+	s = seprint(s, e, "\ndev(%s) ", ser->driver);
 	s = seprint(s, e, "type(%d)  ", ser->type);
 	s = seprint(s, e, "framing(%d) ", p->nframeerr);
 	s = seprint(s, e, "overruns(%d) ", p->novererr);

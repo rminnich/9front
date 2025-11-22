@@ -24,6 +24,9 @@ enum {
 	LcrCS7		= 0x02,
 	LcrCS6		= 0x01,
 	LcrCS5		= 0x00,
+
+	DtrMask		= 0x20,
+	RtsMask		= 0x40,
 };
 
 static Cinfo chinfo[] = {
@@ -79,6 +82,9 @@ chinit(Serialport *p)
 
 	dsprint(2, "ch340: chip version: %ux.%ux\n", ver[0], ver[1]);
 
+	strncpy(ser->driver, "ch340", sizeof(ser->driver));
+	ser->type = ver[0];
+
 	if(chout(p, SerialInit, 0, 0) < 0)
 		return -1;
 
@@ -113,6 +119,31 @@ chsetbaud(Serialport *p)
 	a = (factor & 0xFF00) | divisor;
 	a |= 1<<7;
 	return chout(p, WriteReg, 0x1312, a);
+}
+
+static int
+chsendlines(Serialport *p)
+{
+	uchar val;
+
+	val = 0;
+	if(p->rts)
+		val |= RtsMask;
+	if(p->dtr)
+		val |= DtrMask;
+
+	return chout(p, ModemCtrl, ~val, 0);
+}
+
+static int
+chmodemctl(Serialport *p, int set)
+{
+	/* XXX set dtr and rts for flow control?
+	   Linux does the same. do we even need flow control then? */
+	p->rts = p->dtr = set?1:0;
+	chsendlines(p);
+	p->mctl = p->rts;
+	return chout(p, WriteReg, 0x2727, (p->mctl<<8)|p->mctl);
 }
 
 static int
@@ -162,11 +193,15 @@ chsetparam(Serialport *p)
 	if(p->stop == 2)
 		lcr |= LcrStopBits2;
 
+	chmodemctl(p, p->mctl);
+
 	return chout(p, WriteReg, 0x2518, lcr);
 }
 
 static Serialops chops = {
 	.init		= chinit,
 	.setparam	= chsetparam,
+	.sendlines	= chsendlines,
+	.modemctl	= chmodemctl,
 	.findeps	= findendpoints,
 };
