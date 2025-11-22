@@ -423,13 +423,13 @@ tagsnap(Tree *t, char *name, int flg)
 		poperror();
 	}else{
 		t->nlbl++;
+
 		m[i].op = Orelink;
 		retag2kv(t->gen, t->succ, 1, 0, &m[i], buf[i], sizeof(buf[i]));
 		i++;
 
-		m[i].op = Oinsert;
 		t->pred = t->gen;
-		t->nlbl++;
+		m[i].op = Oinsert;
 		lbl2kv(name, t->gen, flg, &m[i], buf[i], sizeof(buf[i]));
 		i++;
 	}
