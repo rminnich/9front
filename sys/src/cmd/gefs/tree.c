@@ -677,7 +677,7 @@ updatepiv(Tree *t, Path *up, Path *p, Path *pp)
  * grow the total height of the tree by more than 1.
  */
 static void
-splitleaf(Tree *t, Path *up, Path *p, Kvp *mid)
+splitleaf(Tree *t, Path *up, Path *p)
 {
 	char buf[Msgmax];
 	Blk *b, *d, *l, *r;
@@ -782,7 +782,6 @@ splitleaf(Tree *t, Path *up, Path *p, Kvp *mid)
 	}
 	p->npull = (j - up->lo);
 	p->op = POsplit;
-	getval(r, 0, mid);
 	setb(&p->nl, t, l);
 	setb(&p->nr, t, r);
 	poperror();
@@ -795,11 +794,11 @@ splitleaf(Tree *t, Path *up, Path *p, Kvp *mid)
  * than one.
  */
 static void
-splitpiv(Tree *t, Path *, Path *p, Path *pp, Kvp *mid)
+splitpiv(Tree *t, Path *, Path *p, Path *pp)
 {
 	int i, copied, halfsz;
 	Blk *b, *d, *l, *r;
-	Kvp tk;
+	Kvp tk, mid;
 	Msg m;
 
 	/*
@@ -823,16 +822,11 @@ splitpiv(Tree *t, Path *, Path *p, Path *pp, Kvp *mid)
 	bassert(b, b->nval >= 4);
 	for(i = 0; i < b->nval; i++){
 		/*
-		 * We're trying to balance size,
-		 * but we need at least 2 nodes
-		 * in each half of the split if
-		 * we want a valid tree.
+		 * Balance size, but ensure we have at least 2 nodes
+		 * in each half of the split so we have a valid tree.
 		 */
-		if(d == l)
-		if((i == b->nval-2) || (i >= 2 && copied >= halfsz)){
+		if(d == l && (i == b->nval-2 || (i >= 2 && copied >= halfsz)))
 			d = r;
-			getval(b, i, mid);
-		}
 		if(i == p->idx){
 			copyup(d, pp, &copied);
 			continue;
@@ -842,13 +836,14 @@ splitpiv(Tree *t, Path *, Path *p, Path *pp, Kvp *mid)
 		copied += valsz(&tk);
 	}
 	d = l;
+	getval(r, 0, &mid);
 	for(i = 0; i < b->nbuf; i++){
 		if(i == p->lo)
 			i += pp->npull;
 		if(i == b->nbuf)
 			break;
 		getmsg(b, i, &m);
-		if(d == l && keycmp(&m, mid) >= 0)
+		if(d == l && keycmp(&m, &mid) >= 0)
 			d = r;
 		setmsg(d, &m);
 	}
@@ -1079,7 +1074,6 @@ flush(Tree *t, Path *path, int npath)
 {
 
 	Path *up, *p, *pp, *rp;
-	Kvp mid;
 
 	/*
 	 * The path must contain at minimum two elements:
@@ -1097,7 +1091,7 @@ flush(Tree *t, Path *path, int npath)
 			updateleaf(t, p-1, p);
 			rp = p;
 		}else{
-			splitleaf(t, up, p, &mid);
+			splitleaf(t, up, p);
 		}
 		p->midx = -1;
 		pp = p;
@@ -1123,7 +1117,7 @@ flush(Tree *t, Path *path, int npath)
 			updatepiv(t, up, p, pp);
 			rp = p;
 		}else{
-			splitpiv(t, up, p, pp, &mid);
+			splitpiv(t, up, p, pp);
 		}
 		pp = p;
 		up--;
