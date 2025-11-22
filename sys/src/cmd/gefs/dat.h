@@ -441,7 +441,7 @@ struct Tree {
 
 	/* in-memory */
 	Lock	lk;
-	long	memref;	/* number of in-memory references to this */
+	Along	memref;	/* number of in-memory references to this */
 	vlong	memgen;	/* wip next generation */
 	int	dirty;
 
@@ -525,7 +525,7 @@ struct Gefs {
 
 	/* arena allocation */
 	Arena	*arenas;
-	long	roundrobin;
+	Along	roundrobin;
 	long	syncing;
 	long	nsyncers;
 	long	nreaders;
@@ -636,7 +636,7 @@ struct Dent {
 	QLock	trunclk;
 	Rendez	truncrz;
 	vlong	up;
-	long	ref;
+	Along	ref;
 	char	gone;
 	char	trunc;
 
@@ -659,7 +659,7 @@ struct Mount {
 	Limbo;
 	Lock;
 	Mount	*next;
-	long	ref;
+	Along	ref;
 	vlong	gen;
 	char	name[64];
 	Aptr	root;	/* Tree*, EBR protected */
@@ -686,7 +686,7 @@ struct Conn {
 	int	authok;
 	int	hangup;
 
-	long	ref;
+	Along	ref;
 
 	/* fid hash table */
 	Lock	fidtablk[Nfidtab];
@@ -710,7 +710,7 @@ struct Fid {
 	u32int	fid;
 	vlong	qpath;
 	vlong	pqpath;
-	long	ref;
+	Along	ref;
 	int	mode;
 	int	iounit;
 

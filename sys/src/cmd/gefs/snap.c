@@ -398,7 +398,7 @@ tagsnap(Tree *t, char *name, int flg)
 			free(n);
 			nexterror();
 		}
-		n->memref = 1;
+		aswapl(&n->memref, 1);
 		n->dirty = 0;
 		n->nlbl = 1;
 		n->nref = 0;
@@ -467,7 +467,7 @@ updatesnap(Tree *o, char *lbl, int flg)
 		free(t);
 		nexterror();
 	}
-	t->memref = 1;
+	aswapl(&t->memref, 1);
 	t->dirty = 0;
 
 	t->nlbl = 1;
@@ -544,7 +544,7 @@ opensnap(char *label, int *flg)
 	if(!btlookup(&fs->snap, &k, &kv, buf, sizeof(buf)))
 		broke(Efs);
 	unpacktree(t, kv.v, kv.nv);
-	t->memref = 1;
+	aswapl(&t->memref, 1);
 	t->memgen = fs->nextgen++;
 	poperror();
 	return t;
@@ -557,7 +557,7 @@ opensnap(char *label, int *flg)
 void
 closesnap(Tree *t)
 {
-	if(t == nil || adec(&t->memref) != 0)
+	if(t == nil || aincl(&t->memref, -1) != 0)
 		return;
 	limbo(DFtree, t);
 }

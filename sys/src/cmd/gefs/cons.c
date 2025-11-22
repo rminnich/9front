@@ -245,7 +245,8 @@ showfid(int fd, char**, int)
 			for(f = c->fidtab[i]; f != nil; f = f->next){
 				rlock(f->dent);
 				fprint(fd, "\tfid[%d] from %#zx: %d [refs=%ld, k=%K, qid=%Q m=%d, dmode:%d duid: %d, dgid: %d]\n",
-					i, getmalloctag(f), f->fid, f->dent->ref, &f->dent->Key, f->dent->qid,
+					i, getmalloctag(f), f->fid,
+					agetl(&f->dent->ref), &f->dent->Key, f->dent->qid,
 					f->mode, f->dmode, f->duid, f->dgid);
 				runlock(f->dent);
 			}

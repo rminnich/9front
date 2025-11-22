@@ -81,7 +81,7 @@ loadfs(char *dev)
 	if(waserror())
 		sysfatal("load fs: %s", errmsg());
 	snprint(dump->name, sizeof(dump->name), "dump");
-	dump->ref = 1;
+	aswapl(&dump->ref, 1);
 	dump->gen = -1;
 	aswapp(&dump->root, &fs->snap);
 

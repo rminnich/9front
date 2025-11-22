@@ -226,7 +226,7 @@ snapfs(Amsg *a, Tree **tp)
 		if(strcmp(a->old, mnt->name) == 0){
 			t = agetp(&mnt->root);
 			t = updatesnap(t, mnt->name, mnt->flag);
-			ainc(&t->memref);
+			aincl(&t->memref, 1);
 			aswapp(&mnt->root, t);
 			break;
 		}
@@ -243,7 +243,7 @@ snapfs(Amsg *a, Tree **tp)
 			return;
 		}
 		if(t->nlbl == 1 && t->nref <= 1 && t->succ == -1){
-			ainc(&t->memref);
+			aincl(&t->memref, 1);
 			r = t;
 		}
 		delsnap(t, t->succ, a->old);
@@ -571,7 +571,7 @@ getdent(Mount *mnt, vlong pqid, Xdir *d)
 	lock(&mnt->dtablk);
 	for(de = mnt->dtab[h]; de != nil; de = de->next){
 		if(de->qid.path == d->qid.path){
-			ainc(&de->ref);
+			aincl(&de->ref, 1);
 			goto Out;
 		}
 	}
@@ -581,7 +581,7 @@ getdent(Mount *mnt, vlong pqid, Xdir *d)
 	}
 	de = emalloc(sizeof(Dent), 1);
 	de->Xdir = *d;
-	de->ref = 1;
+	aswapl(&de->ref, 1);
 	de->up = pqid;
 	de->qid = d->qid;
 	de->length = d->length;
@@ -700,7 +700,7 @@ getmount(char *name)
 	int flg;
 
 	if(strcmp(name, "dump") == 0){
-		ainc(&fs->snapmnt->ref);
+		aincl(&fs->snapmnt->ref, 1);
 		return fs->snapmnt;
 	}
 
@@ -708,7 +708,7 @@ getmount(char *name)
 	hd = agetp(&fs->mounts);
 	for(mnt = hd; mnt != nil; mnt = mnt->next){
 		if(strcmp(name, mnt->name) == 0){
-			ainc(&mnt->ref);
+			aincl(&mnt->ref, 1);
 			qunlock(&fs->mountlk);
 			return mnt;
 		}
@@ -719,7 +719,7 @@ getmount(char *name)
 		nexterror();
 	}
 	mnt = emalloc(sizeof(*mnt), 1);
-	mnt->ref = 1;
+	aswapl(&mnt->ref, 1);
 	snprint(mnt->name, sizeof(mnt->name), "%s", name);
 	if((t = opensnap(name, &flg)) == nil)
 		error(Enosnap);
@@ -742,7 +742,7 @@ clunkmount(Mount *mnt)
 	if(mnt == nil)
 		return;
 	qlock(&fs->mountlk);
-	if(adec(&mnt->ref) == 0){
+	if(aincl(&mnt->ref, -1) == 0){
 		pp = nil;
 		for(p = agetp(&fs->mounts); p != nil; p = p->next){
 			if(p == mnt)
@@ -768,14 +768,14 @@ clunkdent(Mount *mnt, Dent *de)
 	if(de == nil)
 		return;
 	if(de->qid.type & QTAUTH){
-		if(adec(&de->ref) == 0){
+		if(aincl(&de->ref, -1) == 0){
 			authfree(de->auth);
 			free(de);
 		}
 		return;
 	}
 	lock(&mnt->dtablk);
-	if(adec(&de->ref) != 0)
+	if(aincl(&de->ref, -1) != 0)
 		goto Out;
 	h = ihash(de->qid.path) % Ndtab;
 	pe = &mnt->dtab[h];
@@ -801,7 +801,7 @@ getfid(Conn *c, u32int fid)
 	lock(&c->fidtablk[h]);
 	for(f = c->fidtab[h]; f != nil; f = f->next)
 		if(f->fid == fid){
-			ainc(&f->ref);
+			aincl(&f->ref, 1);
 			break;
 		}
 	unlock(&c->fidtablk[h]);
@@ -811,7 +811,7 @@ getfid(Conn *c, u32int fid)
 static void
 putfid(Fid *f)
 {
-	if(adec(&f->ref) != 0)
+	if(aincl(&f->ref, -1) != 0)
 		return;
 	clunkdent(f->mnt, f->dent);
 	clunkdent(f->mnt, f->dir);
@@ -832,7 +832,7 @@ dupfid(Conn *c, u32int new, Fid *f)
 	*n = *f;
 	memset(&n->RWLock, 0, sizeof(RWLock));
 	n->fid = new;
-	n->ref = 2; /* one for dup, one for clunk */
+	aswapl(&n->ref, 2); /* one for dup, one for clunk */
 	n->mode = -1;
 	n->next = nil;
 
@@ -852,9 +852,9 @@ dupfid(Conn *c, u32int new, Fid *f)
 		return nil;
 	}
 	if(n->mnt != nil)
-		ainc(&n->mnt->ref);
-	ainc(&n->dent->ref);
-	ainc(&n->dir->ref);
+		aincl(&n->mnt->ref, 1);
+	aincl(&n->dent->ref, 1);
+	aincl(&n->dir->ref, 1);
 	setmalloctag(n, getcallerpc(&c));
 	return n;
 }
@@ -878,7 +878,7 @@ clunkfid(Conn *c, Fid *fid, Amsg **ao)
 	pf = &c->fidtab[h];
 	for(f = c->fidtab[h]; f != nil; f = f->next){
 		if(f == fid){
-			assert(adec(&f->ref) != 0);
+			assert(aincl(&f->ref, -1) != 0);
 			*pf = f->next;
 			break;
 		}
@@ -903,8 +903,8 @@ clunkfid(Conn *c, Fid *fid, Amsg **ao)
 		f->dent->gone = 1;
 		wunlock(f->dent);
 
-		ainc(&f->dent->ref);
-		ainc(&f->mnt->ref);
+		aincl(&f->dent->ref, 1);
+		aincl(&f->mnt->ref, 1);
 		(*ao)->op = AOrclose;
 		(*ao)->mnt = f->mnt;
 		(*ao)->qpath = f->qpath;
@@ -957,7 +957,7 @@ readmsg(Conn *c, Fmsg **pm)
 		free(m);
 		return -1;
 	}
-	ainc(&c->ref);
+	aincl(&c->ref, 1);
 	m->conn = c;
 	m->sz = sz;
 	PBIT32(m->buf, sz);
@@ -1101,7 +1101,7 @@ fsauth(Fmsg *m)
 		free(de);
 		return;
 	}
-	de->ref = 0;
+	aswapl(&de->ref, 0);
 	de->qid.type = QTAUTH;
 	qlock(&fs->mutlk);
 	de->qid.path = fs->nextqid++;
@@ -1484,7 +1484,7 @@ fswalk(Fmsg *m)
 		clunkdent(f->mnt, f->dir);
 		if(mnt != f->mnt){
 			clunkmount(f->mnt);
-			ainc(&mnt->ref);
+			aincl(&mnt->ref, 1);
 			f->mnt = mnt;
 		}
 		f->qpath = r.wqid[i-1].path;
@@ -1613,8 +1613,8 @@ fswstat(Fmsg *m, int id, Amsg **ao)
 				qlock(&de->trunclk);
 				de->trunc = 1;
 				qunlock(&de->trunclk);
-				ainc(&de->ref);
-				ainc(&f->mnt->ref);
+				aincl(&de->ref, 1);
+				aincl(&f->mnt->ref, 1);
 				(*ao)->op = AOclear;
 				(*ao)->mnt = f->mnt;
 				(*ao)->qpath = f->qpath;
@@ -1962,7 +1962,7 @@ fsremove(Fmsg *m, int id, Amsg **ao)
 	}
 	if(f->dent->gone)
 		error(Ephase);
-	if((f->dent->qid.type & QTEXCL) && f->dent->ref != 1)
+	if((f->dent->qid.type & QTEXCL) && agetl(&f->dent->ref) != 1)
 		error(Elocked);
 	/*
 	 * we need a double check that the file is in the tree
@@ -1998,7 +1998,7 @@ fsremove(Fmsg *m, int id, Amsg **ao)
 		nm++;
 	}else{
 		*ao = emalloc(sizeof(Amsg), 1);
-		ainc(&f->mnt->ref);
+		aincl(&f->mnt->ref, 1);
 		(*ao)->op = AOclear;
 		(*ao)->mnt = f->mnt;
 		(*ao)->qpath = f->qpath;
@@ -2055,7 +2055,7 @@ fsopen(Fmsg *m, int id, Amsg **ao)
 	}
 	if(f->dent->gone)
 		error(Ephase);
-	if((f->dent->qid.type & QTEXCL) && f->dent->ref != 1)
+	if((f->dent->qid.type & QTEXCL) && agetl(&f->dent->ref) != 1)
 		error(Elocked);
 	if(m->mode & ORCLOSE)
 		if((e = candelete(f)) != nil)
@@ -2093,8 +2093,8 @@ fsopen(Fmsg *m, int id, Amsg **ao)
 		qlock(&f->dent->trunclk);
 		f->dent->trunc = 1;
 		qunlock(&f->dent->trunclk);
-		ainc(&f->dent->ref);
-		ainc(&f->mnt->ref);
+		aincl(&f->dent->ref, 1);
+		aincl(&f->mnt->ref, 1);
 		(*ao)->op = AOclear;
 		(*ao)->mnt = f->mnt;
 		(*ao)->qpath = f->qpath;
@@ -2472,8 +2472,7 @@ newconn(int rfd, int wfd, int cfd)
 
 	c->iounit = Max9p;
 
-	c->ref = 1;
-
+	aswapl(&c->ref, 1);
 	lock(&fs->connlk);
 	c->next = fs->conns;
 	fs->conns = c;
@@ -2490,7 +2489,7 @@ putconn(Conn *c)
 	Fid *f;
 	int i;
 
-	if(adec(&c->ref) != 0)
+	if(aincl(&c->ref, -1) != 0)
 		return;
 
 	lock(&fs->connlk);
@@ -2516,7 +2515,7 @@ putconn(Conn *c)
 				unlock(&c->fidtablk[i]);
 				break;
 			}
-			ainc(&f->ref);
+			aincl(&f->ref, 1);
 			unlock(&c->fidtablk[i]);
 			
 			wlock(f);
