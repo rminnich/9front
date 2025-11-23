@@ -444,10 +444,13 @@ apply(Kvp *kv, Msg *m, char *buf, int nbuf)
 static void
 setb(Blk **dst, Tree *t, Blk *b)
 {
-	if(*dst != nil)
+	if(*dst != nil){
 		freeblk(t, *dst);
+		dropblk(*dst);
+	}
 	if(b->nval == 0){
 		freeblk(t, b);
+		dropblk(b);
 		*dst = nil;
 	}else{
 		enqueue(b);
