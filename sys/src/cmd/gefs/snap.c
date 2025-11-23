@@ -222,25 +222,27 @@ mergedl(vlong merge, vlong gen, vlong bgen)
 	 * chain onto the existing dlist
 	 * tail.
 	 */
-	if(d->hd.addr == -1){
-		assert(d->ins == nil);
-		d->hd = m->hd;
-		d->tl = m->tl;
-		d->ins = m->ins;
-		if(d->ins != nil)
-			holdblk(d->ins);
-	}else{
-		if(m->ins != nil){
-			enqueue(m->ins);
-			dropblk(m->ins);
-			m->ins = nil;
+	if(m->hd.addr != -1){
+		if(d->hd.addr == -1){
+			assert(d->ins == nil);
+			d->hd = m->hd;
+			d->tl = m->tl;
+			d->ins = m->ins;
+			if(d->ins != nil)
+				holdblk(d->ins);
+		}else{
+			if(m->ins != nil){
+				enqueue(m->ins);
+				dropblk(m->ins);
+				m->ins = nil;
+			}
+			b = getblk(d->tl, 0);
+			b->logp = m->hd;
+			assert(d->hd.addr != m->hd.addr);
+			finalize(b);
+			syncblk(b);
+			dropblk(b);
 		}
-		b = getblk(d->tl, 0);
-		b->logp = m->hd;
-		assert(d->hd.addr != m->hd.addr);
-		finalize(b);
-		syncblk(b);
-		dropblk(b);
 	}
 	msg[0].op = Odelete;
 	dlist2kv(m, &msg[0], buf[0], sizeof(buf[0]));
