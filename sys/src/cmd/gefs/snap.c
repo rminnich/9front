@@ -238,6 +238,7 @@ mergedl(vlong merge, vlong gen, vlong bgen)
 			}
 			b = getblk(d->tl, 0);
 			b->logp = m->hd;
+			d->tl = m->tl;
 			assert(d->hd.addr != m->hd.addr);
 			finalize(b);
 			syncblk(b);
