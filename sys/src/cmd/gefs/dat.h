@@ -135,6 +135,7 @@ enum {
 };
 
 #define Zb (Bptr){-1, -1, -1}
+#define Tmfmt "YYYY.MM.DD[_]hh:mm:ss"
 
 /* internal errors */
 //#define Efs	(abort(), "fs broke")

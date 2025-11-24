@@ -605,13 +605,14 @@ Out:
 void
 loadhist(Mount *mnt, Cron *c)
 {
-	char pfx[128];
+	static Tzone *tz;
+	char pfx[128], buf[128], *p;
 	int i, ns;
 	Scan s;
+	Tm tm;
 
-	if(c->cnt == 0)
-		return;
 	i = 0;
+	p = nil;
 	pfx[0] = Klabel;
 	ns = snprint(pfx+1, sizeof(pfx)-1, "%s@%s.", mnt->name, c->tag);
 	btnewscan(&s, pfx, ns+1);
@@ -619,15 +620,22 @@ loadhist(Mount *mnt, Cron *c)
 	while(1){
 		if(!btnext(&s, &s.kv))
 			break;
-		if(c->lbl[i][0] != 0)
-			snapmsg(c->lbl[i], nil);
-		assert(s.kv.nk-1 < sizeof(c->lbl[i]));
-		memcpy(c->lbl[i], s.kv.k+1, s.kv.nk-1);
-		c->lbl[i][s.kv.nk-1] = 0;
-		i = (i+1) % c->cnt;
+		p = buf;
+		if(c->cnt != 0){
+			if(c->lbl[i][0] != 0)
+				snapmsg(c->lbl[i], nil);
+			p = c->lbl[i];
+			i = (i+1) % c->cnt;
+		}
+		assert(s.kv.nk-1 < sizeof(c->lbl[0])-1);
+		memcpy(p, s.kv.k+1, s.kv.nk-1);
+		p[s.kv.nk-1] = 0;
 	}
 	btexit(&s);
-	c->last = time(nil);
+	if(tz == nil)
+		tz = tzload("UTC");
+	if(p != nil && tmparse(&tm, Tmfmt, p+ns, tz, nil) != nil)
+		c->last = tmnorm(&tm);
 	c->i = i;
 }
 
@@ -3066,7 +3074,7 @@ cronsync(char *name, Cron *c, Tm *tm, vlong now)
 	}
 	seprint(p, e, "%s@%s.%τ",
 		name, c->tag,
-		tmfmt(tm, "YYYY.MM.DD[_]hh:mm:ss"));
+		tmfmt(tm, Tmfmt));
 	snapmsg(name, p);
 	c->last = now;
 }
