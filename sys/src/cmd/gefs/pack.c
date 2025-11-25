@@ -152,7 +152,7 @@ dir2statbuf(Xdir *d, char *buf, int nbuf)
 	if((u = uid2user(d->uid)) == nil)
 		u = uid2user(noneid);
 	if((g = uid2user(d->gid)) == nil)
-		u = uid2user(nogroupid);
+		g = uid2user(nogroupid);
 	if((m = uid2user(d->muid)) == nil)
 		m = uid2user(noneid);
 	if(u == nil || g == nil || m == nil){
