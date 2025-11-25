@@ -450,9 +450,6 @@ execregs(uintptr entry, ulong ssize, ulong nargs)
 	ulong *sp;
 	Ureg *ureg;
 
-	up->fpstate = FPinit;
-	fpoff();
-
 	sp = (ulong*)(USTKTOP - ssize);
 	*--sp = nargs;
 
