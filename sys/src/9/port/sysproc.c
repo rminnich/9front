@@ -308,13 +308,10 @@ sysexec(va_list list)
 		} ehdr;
 		char buf[256];
 	} u;
-	char line[256];
-	char *progarg[32+1];
-	volatile char *args, *elem, *file0;
-	char **argv, **argp, **argp0;
-	char *a, *e, *charp, *file;
-	int i, n, indir;
-	ulong magic, ssize, nargs, nbytes;
+	char *progarg[32+1], **argv, **argp;
+	char *file, *elem, *args, *charp, *a, *e;
+	int i, n, indir, nargs;
+	ulong magic, ssize, nbytes, argc;
 	uintptr entry, text, data, bss, adata, abss, ebss, tstk, align;
 	Segment *s, *ts;
 	Image *img;
@@ -322,151 +319,53 @@ sysexec(va_list list)
 	Chan *tc;
 	Fgrp *f;
 
-	args = elem = nil;
-	file0 = va_arg(list, char*);
-	validaddr((uintptr)file0, 1, 0);
-	argp0 = va_arg(list, char**);
-	evenaddr((uintptr)argp0);
-	validaddr((uintptr)argp0, 2*BY2WD, 0);
-	if(*argp0 == nil)
+	file = va_arg(list, char*);
+	validaddr((uintptr)file, 1, 0);
+	argp = va_arg(list, char**);
+	evenaddr((uintptr)argp);
+	validaddr((uintptr)argp, 2*BY2WD, 0);
+	if(*argp == nil)
 		error(Ebadarg);
-	file0 = validnamedup(file0, 1);
+
 	if(waserror()){
-		free(file0);
-		free(elem);
-		free(args);
 		/* Disaster after commit */
 		if(up->seg[SSEG] == nil)
 			pexit(up->errstr, 1);
+		qlock(&up->seglock);
+		s = up->seg[ESEG];
+		up->seg[ESEG] = nil;
+		qunlock(&up->seglock);
+		if(s != nil) {
+			putseg(s);
+			flushmmu();
+		}
 		nexterror();
 	}
-	align = BY2PG-1;
-	indir = 0;
-	file = file0;
-	for(;;){
-		tc = namec(file, Aopen, OEXEC, 0);
-		if(waserror()){
-			cclose(tc);
-			nexterror();
-		}
-		if(!indir)
-			kstrdup(&elem, up->genbuf);
 
-		n = devtab[tc->type]->read(tc, u.buf, sizeof(u.buf), 0);
-		if(n >= sizeof(Exec)) {
-			magic = beswal(u.ehdr.magic);
-			if(magic == AOUT_MAGIC) {
-				if(magic & HDR_MAGIC) {
-					if(n < sizeof(u.ehdr))
-						error(Ebadexec);
-					entry = beswav(u.ehdr.hdr[0]);
-					text = UTZERO+sizeof(u.ehdr);
-				} else {
-					entry = beswal(u.ehdr.entry);
-					text = UTZERO+sizeof(Exec);
-				}
-				if(entry < text)
-					error(Ebadexec);
-				text += beswal(u.ehdr.text);
-				if(text <= entry || text >= (USTKTOP-USTKSIZE))
-					error(Ebadexec);
+	file = validnamedup(file, 1);
+	if(waserror()){
+		free(file);
+		nexterror();
+	}
 
-				switch(magic){
-				case S_MAGIC:	/* 2MB segment alignment for amd64 */
-					align = 0x1fffff;
-					break;
-				case P_MAGIC:	/* 16K segment alignment for spim */
-				case V_MAGIC:	/* 16K segment alignment for mips */
-					align = 0x3fff;
-					break;
-				case R_MAGIC:	/* 64K segment alignment for arm64 */
-					align = 0xffff;
-					break;
-				}
-				break; /* for binary */
-			}
-		}
+	tc = namec(file, Aopen, OEXEC, 0);
 
-		if(indir++)
-			error(Ebadexec);
+	/* Last path element becomes up->text (and argv[0] for script) */
+	elem = nil;
+	kstrdup(&elem, up->genbuf);
 
-		/*
-		 * Process #! /bin/sh args ...
-		 */
-		memmove(line, u.buf, n);
-		if(n <= 2 || line[0] != '#' || line[1] != '!'
-		|| (a = memchr(line+2, '\n', n-2)) == nil)
-			error(Ebadexec);
-		*a = '\0';
-		n = tokenize(line+2, progarg, nelem(progarg)-1);
-		if(n < 1 || n >= nelem(progarg)-1)
-			error(Ebadexec);
-
-		/*
-		 * First arg becomes complete file name
-		 */
-		progarg[n++] = file;
-		progarg[n] = nil;
-		argp0++;
-		file = progarg[0];
-		progarg[0] = elem;
-		poperror();
+	poperror();
+	if(waserror()){
+		free(elem);
+		free(file);
+		nexterror();
+	}
+	if(waserror()){
 		cclose(tc);
+		nexterror();
 	}
 
-	adata = (text+align) & ~align;
-	text -= UTZERO;
-	data = beswal(u.ehdr.data);
-	bss = beswal(u.ehdr.bss);
-	align = BY2PG-1;
-	
-	abss = (adata + data + align) & ~align;
-	ebss = (adata + data + bss + align) & ~align;
-	if(adata >= (USTKTOP-USTKSIZE) || abss >= (USTKTOP-USTKSIZE) || ebss >= (USTKTOP-USTKSIZE))
-		error(Ebadexec);
-
-	/*
-	 * Args: pass 1: count
-	 */
-	nbytes = sizeof(Tos);		/* hole for profiling clock at top of stack (and more) */
-	nargs = 0;
-	if(indir){
-		argp = progarg;
-		while(*argp != nil){
-			a = *argp++;
-			nbytes += strlen(a) + 1;
-			nargs++;
-		}
-	}
-	argp = argp0;
-	while(*argp != nil){
-		a = *argp++;
-		if(((uintptr)argp&(BY2PG-1)) < BY2WD)
-			validaddr((uintptr)argp, BY2WD, 0);
-		validaddr((uintptr)a, 1, 0);
-		e = vmemchr(a, 0, USTKSIZE);
-		if(e == nil)
-			error(Ebadarg);
-		nbytes += (e - a) + 1;
-		if(nbytes >= USTKSIZE)
-			error(Enovmem);
-		nargs++;
-	}
-	ssize = BY2WD*(nargs+1) + ((nbytes+(BY2WD-1)) & ~(BY2WD-1));
-
-	/*
-	 * 8-byte align SP for those (e.g. sparc) that need it.
-	 * execregs() will subtract another 4 bytes for argc.
-	 */
-	if(BY2WD == 4 && (ssize+4) & 7)
-		ssize += 4;
-
-	if(PGROUND(ssize) >= USTKSIZE)
-		error(Enovmem);
-
-	/*
-	 * Build the stack segment, putting it in kernel virtual for the moment
-	 */
+	/* Attach new stack segment, place it below current stack */
 	qlock(&up->seglock);
 	if(waserror()){
 		qunlock(&up->seglock);
@@ -480,71 +379,201 @@ sysexec(va_list list)
 	} while((s = isoverlap(tstk-USTKSIZE, USTKSIZE)) != nil);
 	up->seg[ESEG] = newseg(SG_STACK | SG_NOEXEC, tstk-USTKSIZE, USTKSIZE/BY2PG);
 	qunlock(&up->seglock);
+	poperror();	/* up->seglock */
 
-	if(waserror()){
-		qlock(&up->seglock);
-		s = up->seg[ESEG];
-		if(s != nil){
-			up->seg[ESEG] = nil;
-			putseg(s);
+	/* Setup TOS; paged in on demand */
+	tos = (Tos*)(tstk - sizeof(Tos));
+	memset(tos, 0, sizeof(Tos));
+	tos->cyclefreq = m->cyclefreq;
+
+	/* Stash interpreter args below TOS */
+	charp = (char*)tos;
+	argc = 0;
+
+	/* Read a.out(6) header */
+	for(indir=0;;indir++){
+		n = devtab[tc->type]->read(tc, u.buf, sizeof(u.buf), 0);
+		if(n >= sizeof(Exec)) {
+			magic = beswal(u.ehdr.magic);
+			if(magic == AOUT_MAGIC)
+				break; /* for binary */
 		}
-		nexterror();
+
+		/* Process #! /bin/sh args ... */
+		if(n <= 2 || u.buf[0] != '#' || u.buf[1] != '!'
+		|| (a = memchr(u.buf+2, '\n', n-2)) == nil)
+			error(Ebadexec);
+		*a = '\0';
+
+		/* First arg becomes complete file name */
+		if(indir == 0) {
+			argc++;
+			n = strlen(file)+1;
+			charp -= n;
+			if(charp <= (char*)tstk-USTKSIZE)
+				error(Enovmem);
+			memmove(charp, file, n);
+		} else if(indir >= 8)
+			error(Ebadexec);
+
+		i = tokenize(u.buf+2, progarg, nelem(progarg));
+		if(i < 1 || i >= nelem(progarg))
+			error(Ebadexec);
+
+		/* Push interpreter args in reverse order */
+		argc += i;
+		while(--i >= 0) {
+			a = progarg[i];
+			n = strlen(a)+1;
+			charp -= n;
+			if(charp <= (char*)tstk-USTKSIZE)
+				error(Enovmem);
+			memmove(charp, a, n);
+		}
+		cclose(tc);
+		poperror();	/* tc */
+
+		/* Open interpreter */
+		tc = namec(progarg[0], Aopen, OEXEC, 0);
+		if(waserror()){
+			cclose(tc);
+			nexterror();
+		}
 	}
+
+	/* Process a.out(6) header */
+	if(magic & HDR_MAGIC) {
+		if(n < sizeof(u.ehdr))
+			error(Ebadexec);
+		entry = beswav(u.ehdr.hdr[0]);
+		text = UTZERO+sizeof(u.ehdr);
+	} else {
+		entry = beswal(u.ehdr.entry);
+		text = UTZERO+sizeof(Exec);
+	}
+	if(entry < text)
+		error(Ebadexec);
+	text += beswal(u.ehdr.text);
+	if(text <= entry || text >= (USTKTOP-USTKSIZE))
+		error(Ebadexec);
+
+	switch(magic){
+	case S_MAGIC:	/* 2MB segment alignment for amd64 */
+		align = 0x1fffff;
+		break;
+	case P_MAGIC:	/* 16K segment alignment for spim */
+	case V_MAGIC:	/* 16K segment alignment for mips */
+		align = 0x3fff;
+		break;
+	case R_MAGIC:	/* 64K segment alignment for arm64 */
+		align = 0xffff;
+		break;
+	default:
+		align = BY2PG-1;
+	}
+
+	adata = (text+align) & ~align;
+	text -= UTZERO;
+	data = beswal(u.ehdr.data);
+	bss = beswal(u.ehdr.bss);
+	align = BY2PG-1;
+	
+	abss = (adata + data + align) & ~align;
+	ebss = (adata + data + bss + align) & ~align;
+	if(adata >= (USTKTOP-USTKSIZE) || abss >= (USTKTOP-USTKSIZE) || ebss >= (USTKTOP-USTKSIZE))
+		error(Ebadexec);
+
+	/* Replace argv[0] with script name */
+	if(indir){
+		n = strlen(charp)+1;
+		charp += n;
+		n = strlen(elem)+1;
+		charp -= n;
+		if(charp <= (char*)tstk-USTKSIZE)
+			error(Enovmem);
+		memmove(charp, elem, n);
+		argp++;
+	}
+
+	/* Count user arguments */
+	nbytes = (char*)tstk - charp;
+	for(i = 0; (a = argp[i]) != nil; i++) {
+		validaddr((uintptr)a, 1, 0);
+		if((e = vmemchr(a, 0, USTKSIZE-nbytes)) == nil)
+			error(Ebadarg);
+		nbytes += (e - a) + 1;
+		if(nbytes >= USTKSIZE)
+			error(Enovmem);
+		/* crossing page boundary? */
+		if(((uintptr)&argp[i]&(BY2PG-1)) >= BY2PG-BY2WD)
+			validaddr((uintptr)&argp[i+1], BY2WD, 0);
+	}
+	argc += i;
+
+	ssize = BY2WD*(argc+1) + ((nbytes+(BY2WD-1)) & ~(BY2WD-1));
 
 	/*
-	 * Args: pass 2: assemble; the pages will be faulted in
+	 * 8-byte align SP for those (e.g. sparc) that need it.
+	 * execregs() will subtract another 4 bytes for argc.
 	 */
-	tos = (Tos*)(tstk - sizeof(Tos));
-	tos->cyclefreq = m->cyclefreq;
-	tos->kcycles = 0;
-	tos->pcycles = 0;
-	tos->clock = 0;
+	if(BY2WD == 4 && (ssize+4) & 7)
+		ssize += 4;
 
+	if(PGROUND(ssize) >= USTKSIZE)
+		error(Enovmem);
+
+	/* save interpreter args */
+	a = charp;
+
+	/*
+	 * Now we know the actual stack size and argument count,
+	 * copy in the strings to charp and build argv[] array.
+	 */
 	argv = (char**)(tstk - ssize);
-	charp = (char*)(tstk - nbytes);
-	if(indir)
-		argp = progarg;
-	else
-		argp = argp0;
+	charp = (char*)tstk - nbytes;
 
-	for(i=0; i<nargs; i++){
-		if(indir && *argp==nil) {
-			indir = 0;
-			argp = argp0;
-		}
-		*argv++ = charp + (USTKTOP-tstk);
+	i = 0;
+	if(indir)	/* move interpreter args down before user args */
+	for(; i < argc && a < (char*)tos; i++) {
+		n = strlen(a) + 1;
+		memmove(charp, a, n);
+		argv[i] = charp + (USTKTOP-tstk);
+		charp += n;
+		a += n;
+	}
+	for(; i < argc; i++) {
 		a = *argp++;
-		if(indir)
-			e = strchr(a, 0);
-		else {
-			if(charp >= (char*)tos)
-				error(Ebadarg);
-			validaddr((uintptr)a, 1, 0);
-			e = vmemchr(a, 0, (char*)tos - charp);
-			if(e == nil)
-				error(Ebadarg);
-		}
+		validaddr((uintptr)a, 1, 0);
+		if(charp >= (char*)tos
+		|| (e = vmemchr(a, 0, (char*)tos-charp)) == nil)
+			error(Ebadarg);
 		n = (e - a) + 1;
 		memmove(charp, a, n);
+		argv[i] = charp + (USTKTOP-tstk);
 		charp += n;
 	}
-	*argv = nil;
+	argv[i] = nil;
 
-	/* copy args; easiest from new process's stack */
-	a = (char*)(tstk - nbytes);
-	n = charp - a;
-	if(n > 128)	/* don't waste too much space on huge arg lists */
-		n = 128;
-	args = smalloc(n);
-	memmove(args, a, n);
-	if(n>0 && args[n-1]!='\0'){
+	/* Copy args for proc(3); easiest from new process's stack */
+	a = (char*)tstk - nbytes;
+	nargs = charp - a;
+	if(nargs > 128)	/* don't waste too much space on huge arg lists */
+		nargs = 128;
+	if((args = malloc(nargs)) == nil)
+		error(Enomem);
+	if(waserror()){
+		free(args);
+		nexterror();
+	}
+	memmove(args, a, nargs);
+	if(nargs>0 && args[nargs-1]!='\0'){
 		/* make sure last arg is NUL-terminated */
 		/* put NUL at UTF-8 character boundary */
-		for(i=n-1; i>0; --i)
-			if(fullrune(args+i, n-i))
+		for(i=nargs-1; i>0; --i)
+			if(fullrune(args+i, nargs-i))
 				break;
-		args[i] = 0;
-		n = i+1;
+		args[i] = '\0';
+		nargs = i+1;
 	}
 
 	/* Attach text segment */
@@ -566,7 +595,7 @@ sysexec(va_list list)
 		ts->flen = text;
 		img->s = ts;
 		unlock(img);
-		poperror();
+		poperror();	/* img */
 	}
 
 	/*
@@ -574,8 +603,11 @@ sysexec(va_list list)
 	 * Free old memory.
 	 * Special segments are maintained across exec
 	 */
-	poperror();
 	qlock(&up->seglock);
+	if(waserror()){
+		qunlock(&up->seglock);
+		nexterror();
+	}
 
 	for(i = SSEG; i <= BSEG; i++) {
 		s = up->seg[i];
@@ -608,9 +640,7 @@ sysexec(va_list list)
 	/* BSS. Zero fill on demand */
 	up->seg[BSEG] = newseg(SG_BSS, abss, (ebss - abss)>>PGSHIFT);
 
-	/*
-	 * Move the stack
-	 */
+	/* Move the stack */
 	s = up->seg[ESEG];
 	up->seg[ESEG] = nil;
 	qlock(s);
@@ -620,7 +650,12 @@ sysexec(va_list list)
 	qunlock(s);
 	up->seg[SSEG] = s;
 	qunlock(&up->seglock);
-	poperror();	/* seglock */
+
+	poperror();	/* up->seglock */
+	poperror();	/* args */
+	poperror();	/* tc */
+	poperror();	/* elem, file */
+	poperror();	/* up->seg[SSEG] */
 
 	if(tc == img->c){
 		/* avoid double caching */
@@ -628,14 +663,9 @@ sysexec(va_list list)
 		cclunk(tc);
 	}
 	cclose(tc);
-	poperror();	/* tc */
+	free(file);
 
-	free(file0);
-	poperror();	/* file0 */
-
-	/*
-	 * Close on exec
-	 */
+	/* Close on exec */
 	if((f = up->fgrp) != nil) {
 		for(i=0; i<=f->maxfd; i++)
 			fdclose(i, CCEXEC);
@@ -646,7 +676,7 @@ sysexec(va_list list)
 	up->text = elem;
 	free(up->args);
 	up->args = args;
-	up->nargs = n;
+	up->nargs = nargs;
 	up->setargs = 0;
 
 	freenotes(up);
@@ -672,7 +702,7 @@ sysexec(va_list list)
 
 	if(up->hang)
 		up->procctl = Proc_stopme;
-	return execregs(entry, ssize, nargs);
+	return execregs(entry, ssize, argc);
 }
 
 int
