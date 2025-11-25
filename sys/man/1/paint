@@ -31,7 +31,7 @@ Undos the previous action.
 .B c
 Clears the canvas with the background color.
 .TP
-.B 1-9
+.B 0-9
 Select brush size.
 .TP
 .B f
