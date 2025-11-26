@@ -137,20 +137,16 @@ forkchild(Proc *p, Ureg *ur)
 
 /* set up user registers before return from exec() */
 uintptr
-execregs(ulong entry, ulong ssize, ulong nargs)
+execregs(ulong entry, int argc, char *argv[], Tos *tos)
 {
+	ulong *sp = (void*)argv;
 	Ureg *ur;
-	ulong *sp;
 
-	sp = (ulong*)(USTKTOP - ssize);
-	*--sp = nargs;
+	*--sp = argc;
 
 	ur = (Ureg*)up->dbgreg;
 	ur->usp = (ulong)sp;
-	ur->pc = entry - 4;		/* syscall advances it */
+	ur->pc = entry - 4;	/* syscall advances it */
 
-//	iprint("%lud: %s EXECREGS pc %#luX sp %#luX nargs %ld", up->pid, up->text, ur->pc, ur->usp, nargs);
-//	delay(20);
-
-	return USTKTOP-sizeof(Tos);	/* address of kernel/user shared data */
+	return (uintptr)tos;	/* address of kernel/user shared data */
 }

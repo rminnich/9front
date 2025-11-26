@@ -518,13 +518,12 @@ if(0) print("%s %lud: noted %#p %#p\n", up->text, up->pid, ureg->pc, ureg->usp);
 }
 
 uintptr
-execregs(uintptr entry, ulong ssize, ulong nargs)
+execregs(uintptr entry, int argc, char *argv[], Tos *tos)
 {
-	ulong *sp;
+	ulong *sp = (void*)argv;
 	Ureg *ureg;
 
-	sp = (ulong*)(USTKTOP - ssize);
-	*--sp = nargs;
+	*--sp = argc;
 
 	ureg = up->dbgreg;
 	ureg->usp = (ulong)sp;
@@ -532,7 +531,8 @@ execregs(uintptr entry, ulong ssize, ulong nargs)
 	ureg->cs = UESEL;
 	ureg->ss = ureg->ds = ureg->es = UDSEL;
 	ureg->fs = ureg->gs = NULLSEL;
-	return USTKTOP-sizeof(Tos);		/* address of kernel/user shared data */
+
+	return (uintptr)tos;		/* address of kernel/user shared data */
 }
 
 /*
@@ -541,10 +541,7 @@ execregs(uintptr entry, ulong ssize, ulong nargs)
 uintptr
 userpc(void)
 {
-	Ureg *ureg;
-
-	ureg = (Ureg*)up->dbgreg;
-	return ureg->pc;
+	return up->dbgreg->pc;
 }
 
 /* This routine must save the values of registers the user is not permitted

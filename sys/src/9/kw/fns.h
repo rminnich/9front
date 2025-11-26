@@ -92,7 +92,7 @@ extern int fpudevprocio(Proc*, void*, long, uintptr, int);
 extern void fpuinit(void);
 extern void fpuprocrestore(Proc*);
 extern void fpuprocsave(Proc*);
-extern void fpusysprocsetup(Proc*);
+extern void fpuprocsetup(Proc*);
 extern int fpuemu(Ureg*);
 
 /*
@@ -118,7 +118,6 @@ extern void setkernur(Ureg*, Proc*);		/* only devproc.c */
 extern void spldone(void);
 extern int splfhi(void);
 extern int splflo(void);
-extern void sysprocsetup(Proc*);
 extern int isaconfig(char*, int, ISAConf*);	/* only devusb.c */
 
 int	cas32(void*, u32int, u32int);

@@ -337,10 +337,7 @@ callwithureg(void (*f) (Ureg *))
 uintptr
 userpc(void)
 {
-	Ureg *ur;
-	
-	ur = up->dbgreg;
-	return ur->pc;
+	return up->dbgreg->pc;
 }
 
 uintptr
@@ -394,17 +391,17 @@ forkchild(Proc *p, Ureg *ureg)
 }
 
 uintptr
-execregs(uintptr entry, ulong ssize, ulong nargs)
+execregs(uintptr entry, int argc, char *argv[], Tos *tos)
 {
-	ulong *sp;
+	ulong *sp = (void*)argv;
 	Ureg *ureg;
 
-	sp = (ulong*)(USTKTOP - ssize);
-	*--sp = nargs;
+	*--sp = argc;
 
 	ureg = up->dbgreg;
 	ureg->sp = (uintptr) sp;
 	ureg->pc = entry;
 	ureg->r14 = 0;
-	return USTKTOP-sizeof(Tos);
+
+	return (uintptr)tos;
 }

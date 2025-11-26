@@ -47,6 +47,7 @@ typedef struct Segio	Segio;
 typedef struct Sema	Sema;
 typedef struct Timer	Timer;
 typedef struct Timers	Timers;
+typedef struct Tos	Tos;
 typedef struct Uart	Uart;
 typedef struct Waitq	Waitq;
 typedef struct Walkqid	Walkqid;
@@ -60,6 +61,7 @@ typedef int    Devgen(Chan*, char*, Dirtab*, int, int, Dir*);
 #pragma incomplete Mntrpc
 #pragma incomplete Queue
 #pragma incomplete Timers
+#pragma incomplete Tos
 
 #include <fcall.h>
 
@@ -796,8 +798,8 @@ struct Proc
 	uintptr	qpc;		/* pc calling last blocking qlock */
 	QLock	*eql;		/* interruptable eqlock */
 
-	void	*noteureg;	/* User registers for notes */
-	void	*dbgreg;	/* User registers for devproc */
+	Ureg	*noteureg;	/* User registers for notes */
+	Ureg	*dbgreg;	/* User registers for devproc */
 
 	PFPU;			/* machine specific fpu state */
 	PMMU;			/* machine specific mmu state */

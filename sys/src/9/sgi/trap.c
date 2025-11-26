@@ -579,27 +579,24 @@ kprocchild(Proc *p, void (*entry)(void))
 
 /* set up user registers before return from exec() */
 uintptr
-execregs(ulong entry, ulong ssize, ulong nargs)
+execregs(uintptr entry, int argc, char *argv[], Tos *tos)
 {
+	uintptr *sp = (void*)argv;
 	Ureg *ur;
-	ulong *sp;
 
-	sp = (ulong*)(USTKTOP - ssize);
-	*--sp = nargs;
+	*--sp = argc;
 
-	ur = (Ureg*)up->dbgreg;
-	ur->usp = (ulong)sp;
+	ur = up->dbgreg;
+	ur->usp = (uintptr)sp;
 	ur->pc = entry - 4;		/* syscall advances it */
-	return USTKTOP-sizeof(Tos);	/* address of kernel/user shared data */
+
+	return (uintptr)tos;	/* address of kernel/user shared data */
 }
 
 ulong
 userpc(void)
 {
-	Ureg *ur;
-
-	ur = (Ureg*)up->dbgreg;
-	return ur->pc;
+	return up->dbgreg->pc;
 }
 
 /*

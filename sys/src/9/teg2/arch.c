@@ -92,7 +92,7 @@ dbgpc(Proc* p)
 void
 procsetup(Proc* p)
 {
-	fpusysprocsetup(p);
+	fpuprocsetup(p);
 }
 
 /*

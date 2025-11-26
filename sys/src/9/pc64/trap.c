@@ -498,20 +498,21 @@ noted(Ureg *ureg, Ureg *nureg, int arg0)
 }
 
 uintptr
-execregs(uintptr entry, ulong ssize, ulong nargs)
+execregs(uintptr entry, int argc, char *argv[], Tos *tos)
 {
-	uintptr *sp;
+	uintptr *sp = (void*)argv;
 	Ureg *ureg;
 
-	sp = (uintptr*)(USTKTOP - ssize);
-	*--sp = nargs;
+	*--sp = argc;
+
 	ureg = up->dbgreg;
 	ureg->sp = (uintptr)sp;
 	ureg->pc = entry;
 	ureg->cs = UESEL;
 	ureg->ss = UDSEL;
 	ureg->r14 = ureg->r15 = 0;	/* extern user registers */
-	return (uintptr)USTKTOP-sizeof(Tos);		/* address of kernel/user shared data */
+
+	return (uintptr)tos;	/* address of kernel/user shared data */
 }
 
 /*
@@ -520,10 +521,7 @@ execregs(uintptr entry, ulong ssize, ulong nargs)
 uintptr
 userpc(void)
 {
-	Ureg *ureg;
-
-	ureg = (Ureg*)up->dbgreg;
-	return ureg->pc;
+	return up->dbgreg->pc;
 }
 
 /* This routine must save the values of registers the user is not permitted

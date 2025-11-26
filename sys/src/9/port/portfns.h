@@ -107,7 +107,7 @@ int		eqchantdqid(Chan*, int, int, Qid, int);
 int		eqqid(Qid, Qid);
 _Noreturn void	error(char*);
 void		eqlock(QLock*);
-uintptr		execregs(uintptr, ulong, ulong);
+uintptr		execregs(uintptr, int, char**, Tos*);
 void		exhausted(char*);
 void		exit(int);
 uvlong		fastticks(uvlong*);

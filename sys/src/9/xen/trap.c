@@ -445,19 +445,18 @@ noted(Ureg *ureg, Ureg *nureg, int arg0)
 }
 
 uintptr
-execregs(uintptr entry, ulong ssize, ulong nargs)
+execregs(uintptr entry, int argc, char *argv[], Tos *tos)
 {
-	ulong *sp;
+	ulong *sp = (void*)argv;
 	Ureg *ureg;
 
-	sp = (ulong*)(USTKTOP - ssize);
-	*--sp = nargs;
+	*--sp = argc;
 
 	ureg = up->dbgreg;
 	ureg->usp = (ulong)sp;
 	ureg->pc = entry;
-//	print("execregs returns 0x%x\n", USTKTOP-sizeof(Tos));
-	return USTKTOP-sizeof(Tos);		/* address of kernel/user shared data */
+
+	return (uintptr)tos;		/* address of kernel/user shared data */
 }
 
 /*

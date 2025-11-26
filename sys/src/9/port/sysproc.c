@@ -310,8 +310,8 @@ sysexec(va_list list)
 	} u;
 	char *progarg[32+1], **argv, **argp;
 	char *file, *elem, *args, *charp, *a, *e;
-	int i, n, indir, nargs;
-	ulong magic, ssize, nbytes, argc;
+	int i, n, indir, nargs, argc;
+	ulong magic, ssize, nbytes;
 	uintptr entry, text, data, bss, adata, abss, ebss, tstk, align;
 	Segment *s, *ts;
 	Image *img;
@@ -509,8 +509,10 @@ sysexec(va_list list)
 			validaddr((uintptr)&argp[i+1], BY2WD, 0);
 	}
 	argc += i;
+	if(argc < 1)
+		error(Ebadarg);
 
-	ssize = BY2WD*(argc+1) + ((nbytes+(BY2WD-1)) & ~(BY2WD-1));
+	ssize = BY2WD*((ulong)argc+1) + ((nbytes+(BY2WD-1)) & ~(BY2WD-1));
 
 	/*
 	 * 8-byte align SP for those (e.g. sparc) that need it.
@@ -702,7 +704,11 @@ sysexec(va_list list)
 
 	if(up->hang)
 		up->procctl = Proc_stopme;
-	return execregs(entry, ssize, argc);
+
+	tos = (Tos*)(USTKTOP - sizeof(Tos));
+	argv = (char**)(USTKTOP - ssize);
+
+	return execregs(entry, argc, argv, tos);
 }
 
 int

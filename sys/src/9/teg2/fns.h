@@ -146,7 +146,7 @@ extern FPalloc *fpalloc(void);
 extern void fpuinit(void);
 extern void fpuprocrestore(Proc*);
 extern void fpuprocsave(Proc*);
-extern void fpusysprocsetup(Proc*);
+extern void fpuprocsetup(Proc*);
 extern void fpuprocfork(Proc*);
 extern int fpuemu(Ureg*);
 
@@ -171,8 +171,6 @@ extern void microdelay(int);			/* only edf.c */
 extern void evenaddr(uintptr);
 extern void idlehands(void);
 extern void setkernur(Ureg*, Proc*);		/* only devproc.c */
-extern void* sysexecregs(uintptr, ulong, int);
-extern void sysprocsetup(Proc*);
 
 /* libc */
 long labs(long);

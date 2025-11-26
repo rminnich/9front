@@ -379,11 +379,11 @@ fpuprocfork(Proc *p)
 
 /*
  * Disable the FPU.
- * Called from sysexec() via sysprocsetup() to
+ * Called from sysexec() via procsetup() to
  * set the FPU for the new process.
  */
 void
-fpusysprocsetup(Proc *p)
+fpuprocsetup(Proc *p)
 {
 	int s;
 

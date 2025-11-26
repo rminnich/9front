@@ -96,31 +96,18 @@ syscall(Ureg* ureg)
 }
 
 uintptr
-execregs(uintptr entry, ulong ssize, ulong nargs)
+execregs(uintptr entry, int argc, char *argv[], Tos *tos)
 {
-	ulong *sp;
+	ulong *sp = (void*)argv;
 	Ureg *ureg;
 
-	sp = (ulong*)(USTKTOP - ssize);
-	*--sp = nargs;
+	*--sp = argc;
 
 	ureg = up->dbgreg;
-//	memset(ureg, 0, 15*sizeof(ulong));
 	ureg->r13 = (ulong)sp;
 	ureg->pc = entry;
-//print("%lud: EXECREGS pc %#ux sp %#ux nargs %ld\n", up->pid, ureg->pc, ureg->r13, nargs);
 
-	/*
-	 * return the address of kernel/user shared data
-	 * (e.g. clock stuff)
-	 */
-	return USTKTOP-sizeof(Tos);
-}
-
-void
-sysprocsetup(Proc* p)
-{
-	fpusysprocsetup(p);
+	return (uintptr)tos;
 }
 
 /* 
