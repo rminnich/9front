@@ -10,7 +10,7 @@ case 9fat esp pidos dos
 	if(~ $#2 1)
 		part=`{ls $2 >[2]/dev/null}
 	if not if(~ $1 pidos)
-		part=`{ls /dev/sdM*/dos >[2]/dev/null}
+		part=`{ls /dev/sd[MN]*/dos >[2]/dev/null}
 	if not
 		part=`{ls /dev/fs/$1 /dev/sd*/$1 >[2]/dev/null}
 	if(~ $#part 0) {
