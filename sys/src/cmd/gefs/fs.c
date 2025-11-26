@@ -207,6 +207,7 @@ sync(int id)
 	 */
 	tracem("snapdl");
 	wrwait();
+	epochwait();
 	freedl(&dl, 1);
 	qunlock(&fs->synclk);
 	tracem("synced");
