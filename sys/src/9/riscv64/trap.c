@@ -141,8 +141,9 @@ forkchild(Proc *p, Ureg *ureg)
 }
 
 uintptr
-execregs(uintptr entry, ulong ssize, ulong nargs)
+execregs(uintptr entry, int argc, char *argv[], Tos *tos)
 {
+	panic("execregs");
 #ifdef XXX
 	uintptr *sp;
 	Ureg *ureg;
