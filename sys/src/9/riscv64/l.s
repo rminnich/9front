@@ -51,12 +51,6 @@ _zerobss:
 	JAL	R1, mmu0init(SB)
 
 	JAL	R1, mmuenable<>(SB)
-	MOV	$_start(SB), R12
-	MOV $0, R16
-	MOV $1, R17
-	MOV $65, R10
-	ECALL
-	JMP (R12)
 
 	MOV	$KTZERO, R11
 	MOV	$zoinked<>(SB), R12
@@ -65,6 +59,12 @@ _zerobss:
 	JMP	(R12)
 
 TEXT	zoinked<>(SB), 1, $-4
+	MOV	$_start(SB), R12
+	MOV $0, R16
+	MOV $1, R17
+	MOV $65, R10
+	ECALL
+	JMP (R12)
 	MOV	$setSB(SB), R3
 	JAL	R1, main(SB)
 
