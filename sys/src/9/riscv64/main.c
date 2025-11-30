@@ -168,6 +168,7 @@ getconf(char *name)
 void
 main(void)
 {
+	while (1) sbiputc('b');
 	machinit();
 #ifdef XXX
 	if(m->machno){

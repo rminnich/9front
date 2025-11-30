@@ -38,6 +38,8 @@ extern void tlbivmalle1(void);
 extern void flushlocaltlb(void);
 extern void tlbivmalle1(void);
 
+extern void sbiputc(char);
+
 /* cache */
 extern ulong cachesize(int level);
 

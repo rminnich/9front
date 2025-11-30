@@ -10,10 +10,31 @@
 #define SATP_SV39	(8ULL<<60)
 #define MAKE_SATP(x)	(SATP_SV39|((x)>>12))
 
+/*
+	MOV	$_start(SB), R12
+	MOV $0, R16
+	MOV $1, R17
+	MOV $65, R10
+	ECALL
+	JMP (R12)
+
+*/
+// THIS MUST BE FIRST FUNCTION IN THIS FILE
 TEXT	_start(SB), 1, $-4
+	MOV	$_start(SB), R12
+	MOV $0, R16
+	MOV $1, R17
+	MOV $65, R10
+	ECALL
+	JMP (R12)
 	MOV	$setSB(SB), R3
 	JAL	R1, mmudisable<>(SB)
 
+	MOV	$_start(SB), R12
+	MOV $1, R17
+	MOV $65, R10
+	ECALL
+	JMP (R12)
 	MOV	$(MACHADDR(0)-KZERO), R7
 	AND	$(MAXMACH-1), R10
 	MOVW	$MACHSIZE, R11
@@ -51,6 +72,12 @@ _zerobss:
 TEXT	zoinked<>(SB), 1, $-4
 	MOV	$setSB(SB), R3
 	JAL	R1, main(SB)
+
+TEXT	sbiputc(SB), 1, $-4
+		MOV $1, R17
+		MOV $0, R16
+		ECALL
+		RET
 
 TEXT	stop<>(SB), 1, $-4
 _stop:
