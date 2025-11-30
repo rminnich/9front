@@ -47,15 +47,15 @@ _zerobss:
 	ADD	$8, R11
 	BNE	R11, R12, _zerobss
 
+	MOV	$(L1-KZERO), R8
+	JAL	R1, mmu0init(SB)
+
 	MOV	$_start(SB), R12
 	MOV $0, R16
 	MOV $1, R17
 	MOV $65, R10
 	ECALL
 	JMP (R12)
-	MOV	$(L1-KZERO), R8
-	JAL	R1, mmu0init(SB)
-
 	JAL	R1, mmuenable<>(SB)
 
 	MOV	$KTZERO, R11
