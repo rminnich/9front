@@ -63,6 +63,7 @@ TEXT	zoinked<>(SB), 1, $-4
 	JAL	R1, main(SB)
 
 TEXT	sbiputc(SB), 1, $-4
+		MOV RARG, R10
 		MOV $1, R17
 		MOV $0, R16
 		ECALL

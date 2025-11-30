@@ -169,8 +169,9 @@ int i = 0;
 void
 main(void)
 {
-	while(i == 0);
-	while (i == 1) sbiputc('b');
+	while(i == 0); // BUG: does not reload i
+	i = 1; // in case you use GDB to bump PC, make sure i is updated.
+	while (i < 2) sbiputc('b');
 	machinit();
 #ifdef XXX
 	if(m->machno){
