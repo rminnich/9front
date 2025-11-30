@@ -290,6 +290,8 @@ donothing(Uart*, int)
 static void
 putc(Uart *uart, int c)
 {
+	sbiputc((char)c);
+	return;
 	u32int *reg = (u32int*)uart->regs;
 
 	while((reg[FR] & TXFF) != 0)

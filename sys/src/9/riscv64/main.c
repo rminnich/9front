@@ -196,15 +196,15 @@ main(void)
 	}
 #endif
 	uartconsinit();
-#ifdef XXX
 	quotefmtinstall();
-	bootargsinit();
+	sbiputc('q');
+	for(;;);
+//	bootargsinit();
 	meminit();
 	confinit();
 	xinit();
 	printinit();
 	print("\nPlan 9\n");
-#endif
 	for(;;);
 #ifdef XXX
 	trapinit();
