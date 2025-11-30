@@ -165,10 +165,12 @@ getconf(char *name)
 	return nil;
 }
 
+int i = 0;
 void
 main(void)
 {
-	while (1) sbiputc('b');
+	while(i == 0);
+	while (i == 1) sbiputc('b');
 	machinit();
 #ifdef XXX
 	if(m->machno){

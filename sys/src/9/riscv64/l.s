@@ -59,12 +59,6 @@ _zerobss:
 	JMP	(R12)
 
 TEXT	zoinked<>(SB), 1, $-4
-	MOV	$_start(SB), R12
-	MOV $0, R16
-	MOV $1, R17
-	MOV $65, R10
-	ECALL
-	JMP (R12)
 	MOV	$setSB(SB), R3
 	JAL	R1, main(SB)
 
