@@ -50,13 +50,13 @@ _zerobss:
 	MOV	$(L1-KZERO), R8
 	JAL	R1, mmu0init(SB)
 
+	JAL	R1, mmuenable<>(SB)
 	MOV	$_start(SB), R12
 	MOV $0, R16
 	MOV $1, R17
 	MOV $65, R10
 	ECALL
 	JMP (R12)
-	JAL	R1, mmuenable<>(SB)
 
 	MOV	$KTZERO, R11
 	MOV	$zoinked<>(SB), R12
