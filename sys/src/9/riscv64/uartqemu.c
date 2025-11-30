@@ -295,6 +295,7 @@ putc(Uart *uart, int c)
 	while((reg[FR] & TXFF) != 0)
 		;
 	reg[DR] = c & 0xFF;
+	sbiputc((char)c);
 }
 
 static int
@@ -310,10 +311,12 @@ getc(Uart *uart)
 void
 uartconsinit(void)
 {
+	sbiputc('u');
 	consuart = &qemuuart;
+	sbiputc('V');
 	consuart->console = 1;
-	uartctl(consuart, "l8 pn s1");
-	for(;;) putc(consuart, 'A');
+	//uartctl(consuart, "l8 pn s1");
+	for(int i = 0; i < 24; i++) putc(consuart, 'A');
 }
 
 PhysUart qemuphysuart = {

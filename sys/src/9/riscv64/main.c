@@ -165,14 +165,21 @@ getconf(char *name)
 	return nil;
 }
 
-int i = 0;
+int i = 1;
 void
 main(void)
 {
 	while(i == 0); // BUG: does not reload i
 	i = 1; // in case you use GDB to bump PC, make sure i is updated.
-	while (i < 2) sbiputc('b');
+	while (i < 32) {
+		sbiputc('b');
+		i++;
+	}
 	machinit();
+	while (i < 64) {
+		sbiputc('c');
+		i++;
+	}
 #ifdef XXX
 	if(m->machno){
 		trapinit();
