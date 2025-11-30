@@ -21,14 +21,14 @@
 */
 // THIS MUST BE FIRST FUNCTION IN THIS FILE
 TEXT	_start(SB), 1, $-4
+	MOV	$setSB(SB), R3
+	JAL	R1, mmudisable<>(SB)
 	MOV	$_start(SB), R12
 	MOV $0, R16
 	MOV $1, R17
 	MOV $65, R10
 	ECALL
 	JMP (R12)
-	MOV	$setSB(SB), R3
-	JAL	R1, mmudisable<>(SB)
 
 	MOV	$_start(SB), R12
 	MOV $1, R17
