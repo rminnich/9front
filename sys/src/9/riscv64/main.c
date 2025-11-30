@@ -196,33 +196,35 @@ main(void)
 	}
 #endif
 	uartconsinit();
-	quotefmtinstall();
+//	quotefmtinstall();
 	sbiputc('q');
-	for(;;);
+	print("hi there\n");
 //	bootargsinit();
 	meminit();
+	print("meminit done\n");
 	confinit();
+	print("confinit done\n");
 	xinit();
+	print("xinit done\n");
 	printinit();
 	print("\nPlan 9\n");
-	for(;;);
-#ifdef XXX
-	trapinit();
-	fpuinit();
-	intrinit();
-	clockinit();
-	cpuidprint();
-	timersinit();
-	pageinit();
-	procinit0();
-	initseg();
-	links();
-	chandevreset();
-	userinit();
-	mpinit();
-	mmu1init();
-	schedinit();
+#ifdef xxx
+	trapinit(); print("DONE 	trapinit();\n"); 
+	fpuinit(); print("DONE 	fpuinit();\n"); 
+	intrinit(); print("DONE 	intrinit();\n"); 
 #endif
+	clockinit(); print("DONE 	clockinit();\n"); 
+	cpuidprint(); print("DONE 	cpuidprint();\n"); 
+	timersinit(); print("DONE 	timersinit();\n"); 
+	pageinit(); print("DONE 	pageinit();\n"); 
+	procinit0(); print("DONE 	procinit0();\n"); 
+	initseg(); print("DONE 	initseg();\n"); 
+	links(); print("DONE 	links();\n"); 
+	chandevreset(); print("DONE 	chandevreset();\n"); 
+	userinit(); print("DONE 	userinit();\n"); 
+	mpinit(); print("DONE 	mpinit();\n"); 
+	mmu1init(); print("DONE 	mmu1init();\n"); 
+	schedinit(); print("DONE 	schedinit();\n"); 
 }
 
 void

@@ -50,27 +50,35 @@ xinit(void)
 	eh = &xlists.hole[Nhole-1];
 	for(h = xlists.hole; h < eh; h++)
 		h->link = h+1;
-
+	print("hole\n");
 	xlists.flist = xlists.hole;
 
 	kpages = conf.npage - conf.upages;
 
 	for(i=0; i<nelem(conf.mem); i++){
+		print("for\n");
 		cm = &conf.mem[i];
+		print("cm is null?:"); if (cm) print("no") ; else print("yes");
 		n = cm->npage;
 		if(n > kpages)
 			n = kpages;
 		/* don't try to use non-KADDR-able memory for kernel */
+		print("call cankaddr");
 		maxpages = cankaddr(cm->base)/BY2PG;
+		print("ok\n");
 		if(n > maxpages)
 			n = maxpages;
+	print("maxpages and n is set\n");
 		/* give to kernel */
 		if(n > 0){
+			print("n > 0\n");
 			cm->kbase = (uintptr)KADDR(cm->base);
 			cm->klimit = (uintptr)cm->kbase+(uintptr)n*BY2PG;
 			if(cm->klimit == 0)
 				cm->klimit = (uintptr)-BY2PG;
+			print("call xhole\n");
 			xhole(cm->base, cm->klimit - cm->kbase);
+			print("...ok\n");
 			kpages -= n;
 		}
 		/*
@@ -78,7 +86,9 @@ xinit(void)
 		 * will be given to user by pageinit()
 		 */
 	}
+	print("print summary\n");
 	xsummary();
+	print("done\n");
 }
 
 void*
@@ -254,6 +264,7 @@ xsummary(void)
 	int i;
 	Hole *h;
 	uintptr s;
+	return;
 
 	i = 0;
 	for(h = xlists.flist; h; h = h->link)
