@@ -508,7 +508,6 @@ uartctl(Uart *p, char *cmd)
 			sbiputc('!');
 			uartdrainoutput(p);
 			sbiputc('#');
-			while(i == 0);
 			if((*p->phys->bits)(p, n) < 0)
 				return -1;
 			sbiputc('$');

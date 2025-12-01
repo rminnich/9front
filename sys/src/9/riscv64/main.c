@@ -196,6 +196,8 @@ main(void)
 	}
 #endif
 	uartconsinit();
+	sbiputc('^');
+	while(i < 2048);
 	quotefmtinstall();
 	sbiputc('q');
 	print("hi there\n");
