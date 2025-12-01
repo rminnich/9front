@@ -196,7 +196,7 @@ main(void)
 	}
 #endif
 	uartconsinit();
-//	quotefmtinstall();
+	quotefmtinstall();
 	sbiputc('q');
 	print("hi there\n");
 //	bootargsinit();

@@ -442,6 +442,8 @@ uartread(Chan *c, void *buf, long n, vlong off)
 	return 0;
 }
 
+int i = 0;
+
 int
 uartctl(Uart *p, char *cmd)
 {
@@ -449,13 +451,16 @@ uartctl(Uart *p, char *cmd)
 	int i, n, nf;
 
 	nf = tokenize(cmd, f, nelem(f));
+	sbiputc('y');
 	for(i = 0; i < nf; i++){
+		sbiputc('z');
 		if(strncmp(f[i], "break", 5) == 0){
 			(*p->phys->dobreak)(p, 0);
 			continue;
 		}
-
 		n = atoi(f[i]+1);
+		sbiputc('=');
+		sbiputc(*f[i]);
 		switch(*f[i]){
 		case 'B':
 		case 'b':
@@ -500,9 +505,13 @@ uartctl(Uart *p, char *cmd)
 			break;
 		case 'L':
 		case 'l':
+			sbiputc('!');
 			uartdrainoutput(p);
+			sbiputc('#');
+			while(i == 0);
 			if((*p->phys->bits)(p, n) < 0)
 				return -1;
+			sbiputc('$');
 			break;
 		case 'm':
 		case 'M':
@@ -555,6 +564,7 @@ uartctl(Uart *p, char *cmd)
 			break;
 		}
 	}
+	sbiputc('@');
 	return 0;
 }
 

@@ -59,6 +59,7 @@ _zerobss:
 	JMP	(R12)
 
 TEXT	zoinked<>(SB), 1, $-4
+	MOV $MACHADDR(0), R2
 	MOV	$setSB(SB), R3
 	JAL	R1, main(SB)
 
@@ -66,6 +67,13 @@ TEXT	sbiputc(SB), 1, $-4
 		MOV RARG, R10
 		MOV $1, R17
 		MOV $0, R16
+		ECALL
+		RET
+
+TEXT	sbigetc(SB), 1, $-4
+		MOV $2, R17
+		MOV $0, R16
+		MOV R10, R8
 		ECALL
 		RET
 
