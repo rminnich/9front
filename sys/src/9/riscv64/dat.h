@@ -174,8 +174,8 @@ struct
 
 #define MACHP(n)	((Mach*)MACHADDR(n))
 
-extern register Mach* m;			/* R27 */
-extern register Proc* up;			/* R26 */
+extern register Mach* m;			/* R7 */
+extern register Proc* up;			/* R6 */
 extern int normalprint;
 
 /*

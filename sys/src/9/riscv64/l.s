@@ -59,8 +59,11 @@ _zerobss:
 	JMP	(R12)
 
 TEXT	zoinked<>(SB), 1, $-4
-	MOV $MACHADDR(0), R2
+	MOV $MACHADDR(1), R2
 	MOV	$setSB(SB), R3
+	// clear out UP and set MACH. 
+	MOV $0, R6
+	MOV $MACHADDR(0), R7
 	JAL	R1, main(SB)
 
 TEXT	sbiputc(SB), 1, $-4
