@@ -197,7 +197,6 @@ main(void)
 #endif
 	uartconsinit();
 	sbiputc('^');
-	while(i < 2048);
 	quotefmtinstall();
 	sbiputc('q');
 	print("hi there\n");
@@ -210,6 +209,7 @@ main(void)
 	print("xinit done\n");
 	printinit();
 	print("\nPlan 9\n");
+	print("\nPlan %d\n", 9);
 #ifdef xxx
 	trapinit(); print("DONE 	trapinit();\n"); 
 	fpuinit(); print("DONE 	fpuinit();\n"); 

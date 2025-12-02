@@ -264,7 +264,6 @@ xsummary(void)
 	int i;
 	Hole *h;
 	uintptr s;
-	return;
 
 	i = 0;
 	for(h = xlists.flist; h; h = h->link)
