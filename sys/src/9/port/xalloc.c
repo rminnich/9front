@@ -54,21 +54,23 @@ xinit(void)
 	xlists.flist = xlists.hole;
 
 	kpages = conf.npage - conf.upages;
+	print("xalloc: kpages %d\n", kpages);
 
 	for(i=0; i<nelem(conf.mem); i++){
 		print("for\n");
 		cm = &conf.mem[i];
-		print("cm is null?:"); if (cm) print("no") ; else print("yes");
+		print("%d: cm %p\n", i, cm);
 		n = cm->npage;
+		print("%d: npage %d\n", i, n);
 		if(n > kpages)
 			n = kpages;
 		/* don't try to use non-KADDR-able memory for kernel */
-		print("call cankaddr");
+		print("call cankaddr with cm->base %p", cm->base);
 		maxpages = cankaddr(cm->base)/BY2PG;
-		print("ok\n");
+		print("maxpages %d\n", maxpages);
 		if(n > maxpages)
 			n = maxpages;
-	print("maxpages and n is set\n");
+	print("maxpages and n is %d\n", n);
 		/* give to kernel */
 		if(n > 0){
 			print("n > 0\n");

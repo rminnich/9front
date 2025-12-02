@@ -50,7 +50,7 @@ meminit(void)
 
 	if(p = getconf("*maxmem"))
 		l = strtoull(p, 0, 0);
-	conf.mem[0].base = PGROUND((uintptr)end);
+	conf.mem[0].base = PGROUND((uintptr)end - KZERO);
 	conf.mem[0].limit = l;
 
 	if(l > KLIMIT)

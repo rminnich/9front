@@ -63,6 +63,7 @@ confinit(void)
 	char *p;
 	int i;
 
+	memset(&conf, 0, sizeof(conf));
 	conf.nmach = 1;
 	if(p = getconf("*ncpu"))
 		conf.nmach = strtol(p, 0, 0);
@@ -92,6 +93,7 @@ confinit(void)
 	if(kpages > ((uintptr)-VDRAM)/BY2PG)
 		kpages = ((uintptr)-VDRAM)/BY2PG;
 
+	print("kpages %ld conf.upages %ld\n", kpages, conf.upages);
 	conf.upages = conf.npage - kpages;
 	conf.ialloc = (kpages/2)*BY2PG;
 
@@ -118,6 +120,7 @@ confinit(void)
 		+ conf.nimage*sizeof(Image)
 		+ conf.nswap
 		+ conf.nswppo*sizeof(Page*);
+	print("exit with kpages %ld\n", kpages);
 	mainmem->maxsize = kpages;
 	imagmem->maxsize = kpages;
 }
