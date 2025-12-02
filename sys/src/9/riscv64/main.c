@@ -160,7 +160,7 @@ cpuidprint(void)
 }
 
 char *
-getconf(char *name)
+getconf(char * )
 {
 	return nil;
 }
@@ -210,6 +210,7 @@ main(void)
 	printinit();
 	print("\nPlan 9\n");
 	print("\nPlan %d\n", 9);
+	print("conf.mem[0].base %p, conf.mem[0].limit %p, conf.mem[0].npage %ld\n", conf.mem[0].base, conf.mem[0].limit, conf.mem[0].npage);
 #ifdef xxx
 	trapinit(); print("DONE 	trapinit();\n"); 
 	fpuinit(); print("DONE 	fpuinit();\n"); 
@@ -226,7 +227,7 @@ main(void)
 	userinit(); print("DONE 	userinit();\n"); 
 	mpinit(); print("DONE 	mpinit();\n"); 
 	mmu1init(); print("DONE 	mmu1init();\n"); 
-	schedinit(); print("DONE 	schedinit();\n"); 
+	schedinit();
 }
 
 void
@@ -252,6 +253,8 @@ exit(int)
 static void
 rebootjump(void *entry, void *code, ulong size)
 {
+	print("rebootjump: %p, %p, %ld\n", entry, code, size);
+	panic("rebootjmp");
 #ifdef XXX
 	void (*f)(void*, void*, ulong);
 
@@ -269,13 +272,13 @@ rebootjump(void *entry, void *code, ulong size)
 
 	(*f)(entry, code, size);
 #endif
-
-	for(;;);
 }
 
 void
-reboot(void*, void *code, ulong size)
+reboot(void*p, void *code, ulong size)
 {
+	print("reboot %p %p %ld\n", p, code, size);
+	panic("reboot");
 #ifdef XXX
 	writeconf();
 	while(m->machno != 0){
@@ -310,6 +313,8 @@ reboot(void*, void *code, ulong size)
 void
 dmaflush(int clean, void *p, ulong len)
 {
+	print("dmaflush %d %p %ld\n", clean, p, len);
+	panic("dmaflush");
 #ifdef XXX
 	uintptr s = (uintptr)p;
 	uintptr e = (uintptr)p + len;

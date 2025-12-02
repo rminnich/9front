@@ -20,6 +20,8 @@ clockinit(void)
 void
 timerset(uvlong next)
 {
+	print("timerset: next %p\n", next);
+	panic("timerset");
 	// TODO
 }
 

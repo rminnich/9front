@@ -73,13 +73,14 @@ prflush(void)
 			break;
 }
 
+int skip = 1;
 static void
 kmesgputs(char *str, int n)
 {
 	uint nn, d;
 
 	for(int i = 0; i < n; i++) sbiputc(str[i]);
-	return;
+	if (skip)	return;
 	ilock(&kmesg.lk);
 	/* take the tail of huge writes */
 	if(n > sizeof kmesg.buf){
@@ -121,7 +122,7 @@ putstrn0(char *str, int n, int usewrite)
 	 *  how many different output devices do we need?
 	 */
 	kmesgputs(str, n);
-	return;
+	if (skip) return;
 
 	/*
 	 *  if someone is reading /dev/kprint,

@@ -15,6 +15,7 @@ void fpoff(void)
 FPsave*
 notefpsave(Proc *p)
 {
+	print("notefpsave %p\n", p);
 	panic("notefpsave");
 #ifdef XXX
 	if(p->fpsave == nil)
@@ -25,13 +26,14 @@ notefpsave(Proc *p)
 		p->fpstate = FPinactive;
 	}
 	return p->fpsave->link;
-#endif
 	return nil;
+#endif
 }
 
 void
 fpuprocsave(Proc *p)
 {
+	print("fpuprocsave %p\n", p);
 	panic("fpuprocsave");
 #ifdef XXX
 	if(p->state == Moribund){
@@ -99,6 +101,7 @@ fpunotify(Proc *p)
 void
 fpunoted(Proc *p)
 {
+	print("fpunoted %p\n", p);
 	panic("fpnoted");
 /*
 	FPalloc *o;
@@ -118,6 +121,7 @@ fpunoted(Proc *p)
 void
 mathtrap(Ureg *ureg)
 {
+	print("mathtrap %p\n", ureg);
 	panic("mathtrap");
 #ifdef XXX
 	if(!userureg(ureg)){

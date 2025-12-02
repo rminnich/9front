@@ -136,7 +136,7 @@ kmapram(uintptr base, uintptr limit)
 uintptr
 mmukmap(uintptr va, uintptr pa, usize size)
 {
-	uintptr attr, off;
+	uintptr attr = 0, off;
 
 	if(va == 0)
 		return 0;

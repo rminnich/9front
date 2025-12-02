@@ -49,6 +49,8 @@ dbgpc(Proc *)
 void
 procfork(Proc *p)
 {
+	print("procrfork %p\n", p);
+	panic("procfork");
 //	fpuprocfork(p);
 //	p->tpidr = up->tpidr;
 }
@@ -56,6 +58,8 @@ procfork(Proc *p)
 void
 procsetup(Proc *p)
 {
+	print("procsetup %p\n", p);
+	panic("procsetup");
 //	fpuprocsetup(p);
 //	p->tpidr = 0;
 //	syswr(TPIDR_EL0, p->tpidr);
@@ -64,6 +68,8 @@ procsetup(Proc *p)
 void
 procsave(Proc *p)
 {
+	print("procsave %p\n", p);
+	panic("procsave");
 //	fpuprocsave(p);
 //	if(p->kp == 0)
 //		p->tpidr = sysrd(TPIDR_EL0);
@@ -73,6 +79,8 @@ procsave(Proc *p)
 void
 procrestore(Proc *p)
 {
+	print("procsave %p\n", p);
+	panic("procsave");
 //	fpuprocrestore(p);
 //	if(p->kp == 0)
 //		syswr(TPIDR_EL0, p->tpidr);
@@ -89,12 +97,16 @@ setkernur(Ureg *ureg, Proc *p)
 int
 userureg(Ureg* ureg)
 {
-	return 0;
+	print("userureg %p\n", ureg);
+	panic("userureg");
+//	return 0;
 }
 
 void
 callwithureg(void (*f) (Ureg *))
 {
+	print("callwithureg %p\n", f);
+	panic("callwithureg");
 #ifdef XXX
 	Ureg u;
 	
@@ -107,6 +119,8 @@ callwithureg(void (*f) (Ureg *))
 void
 kprocchild(Proc *p, void (*entry)(void))
 {
+	print("kprocchild %p %p\n", p, entry);
+	panic("kprocchild");
 #ifdef XXX
 	p->sched.pc = (uintptr) entry;
 	p->sched.sp = (uintptr) p - 16;
@@ -117,6 +131,8 @@ kprocchild(Proc *p, void (*entry)(void))
 void
 evenaddr(uintptr addr)
 {
+	print("evenaddr %p\n", addr);
+	panic("evenaddr");
 #ifdef XXX
 	if(addr & 3){
 		postnote(up, 1, "sys: odd address", NDebug);
@@ -128,6 +144,8 @@ evenaddr(uintptr addr)
 void
 forkchild(Proc *p, Ureg *ureg)
 {
+	print("forkchil %p %p\n", p, ureg);
+	panic("forkchild");
 #ifdef XXX
 	Ureg *cureg;
 
@@ -143,6 +161,7 @@ forkchild(Proc *p, Ureg *ureg)
 uintptr
 execregs(uintptr entry, int argc, char *argv[], Tos *tos)
 {
+	print("execregs %p %d %p %p\n", entry, argc, argv, tos);
 	panic("execregs");
 #ifdef XXX
 	uintptr *sp;
@@ -156,6 +175,6 @@ execregs(uintptr entry, int argc, char *argv[], Tos *tos)
 	ureg->pc = entry;
 	ureg->link = 0;
 	return USTKTOP-sizeof(Tos);
-#endif
 	return 0;
+#endif
 }
