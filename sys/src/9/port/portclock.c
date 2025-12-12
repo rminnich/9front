@@ -92,7 +92,7 @@ timeradd(Timer *nt)
 {
 	Timers *tt;
 	vlong when;
-
+	print("timeradd\n");
 	/* Must lock Timer struct before Timers struct */
 	ilock(nt);
 	if(tt = nt->tt){
@@ -100,13 +100,16 @@ timeradd(Timer *nt)
 		tdel(nt);
 		iunlock(tt);
 	}
+	print("m %p m->machno %d\n", m, m ? m->machno : -1);
 	tt = &timers[m->machno];
 	ilock(tt);
 	when = tadd(tt, nt);
+	print("when %lud\n", when);
 	if(when)
 		timerset(when);
 	iunlock(tt);
 	iunlock(nt);
+	print("done timeradd\n");
 }
 
 

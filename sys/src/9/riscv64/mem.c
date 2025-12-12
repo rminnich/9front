@@ -50,12 +50,17 @@ meminit(void)
 
 	if(p = getconf("*maxmem"))
 		l = strtoull(p, 0, 0);
-	conf.mem[0].base = PGROUND((uintptr)end - KZERO);
+	print("meminit: end %p, KZERO %p, PGROUND %p\n", end, KZERO, PGROUND((uintptr)end - KTZERO));
+	conf.mem[0].base = PGROUND((uintptr)end/* - KTZERO);*/) & 0xffffff;
 	conf.mem[0].limit = l;
 
+	print("l is %#lux\n", l);
 	if(l > KLIMIT)
 		l = KLIMIT;
+	print("l is now %#lux\n", l);
 	kmapram(conf.mem[0].base, l);
 
 	conf.mem[0].npage = (conf.mem[0].limit - conf.mem[0].base)/BY2PG;
+	print("fuck %lux %lux\n", (conf.mem[0].limit - conf.mem[0].base),(conf.mem[0].limit - conf.mem[0].base)/BY2PG);
+	print("base %p limit %p npage %lud\n", conf.mem[0].base,  conf.mem[0].limit,conf.mem[0].npage);
 }

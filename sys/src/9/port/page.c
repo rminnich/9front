@@ -28,7 +28,9 @@ pageinit(void)
 		for(i=0; i<nelem(conf.mem); i++){
 			cm = &conf.mem[i];
 			np += cm->npage - nkpages(cm);
+			print("%d: np %lud cm->npage %lud nkpages %lud\n", i, np, cm->npage, nkpages(cm));
 		}
+		print("np %ld\n", np);
 		palloc.pages = xalloc(np*sizeof(Page));
 		if(palloc.pages == nil)
 			panic("pageinit");

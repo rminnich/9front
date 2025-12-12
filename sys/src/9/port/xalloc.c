@@ -54,23 +54,23 @@ xinit(void)
 	xlists.flist = xlists.hole;
 
 	kpages = conf.npage - conf.upages;
-	print("xalloc: kpages %d\n", kpages);
+	print("xalloc: kpages %ludd\n", kpages);
 
 	for(i=0; i<nelem(conf.mem); i++){
 		print("for\n");
 		cm = &conf.mem[i];
 		print("%d: cm %p\n", i, cm);
 		n = cm->npage;
-		print("%d: npage %d\n", i, n);
+		print("%d: npage %ludd\n", i, n);
 		if(n > kpages)
 			n = kpages;
 		/* don't try to use non-KADDR-able memory for kernel */
 		print("call cankaddr with cm->base %p", cm->base);
 		maxpages = cankaddr(cm->base)/BY2PG;
-		print("maxpages %d\n", maxpages);
+		print("maxpages %ludd\n", maxpages);
 		if(n > maxpages)
 			n = maxpages;
-	print("maxpages and n is %d\n", n);
+	print("maxpages and n is %ludd\n", n);
 		/* give to kernel */
 		if(n > 0){
 			print("n > 0\n");
@@ -126,6 +126,7 @@ xallocz(ulong size, int zero)
 	Xhdr *p;
 	Hole *h, **l;
 
+	print("xallocz %lud %s\n", size, zero ? "zerod" : "");
 	/* add room for magix & size overhead, round up to nearest vlong */
 	size += BY2V + offsetof(Xhdr, data[0]);
 	size &= ~(BY2V-1);
@@ -133,8 +134,11 @@ xallocz(ulong size, int zero)
 	ilock(&xlists);
 	l = &xlists.table;
 	for(h = *l; h; h = h->link) {
+		print("check h %p h->size %#lux size %d\n", h, h->size, size);
 		if(h->size >= size) {
+			print("... it's good addr %p\n", h->addr);
 			p = (Xhdr*)KADDR(h->addr);
+			print("p is %p\n", p);
 			h->addr += size;
 			h->size -= size;
 			if(h->size == 0) {
@@ -142,11 +146,15 @@ xallocz(ulong size, int zero)
 				h->link = xlists.flist;
 				xlists.flist = h;
 			}
+			print("iunlock %p\n", &xlists);
 			iunlock(&xlists);
+			print("memset %p for %lud bytes\n", p, size);
+			//while(zero);
 			if(zero)
 				memset(p, 0, size);
 			p->magix = Magichole;
 			p->size = size;
+			print("return %p\n", p->data);
 			return p->data;
 		}
 		l = &h->link;
