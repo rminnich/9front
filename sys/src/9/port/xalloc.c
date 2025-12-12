@@ -154,7 +154,7 @@ xallocz(ulong size, int zero)
 				memset(p, 0, size);
 			p->magix = Magichole;
 			p->size = size;
-			print("return %p\n", p->data);
+			print("return this is bad eh 0x%p yes bad\n", p->data);
 			return p->data;
 		}
 		l = &h->link;

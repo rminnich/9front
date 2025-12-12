@@ -51,16 +51,16 @@ meminit(void)
 	if(p = getconf("*maxmem"))
 		l = strtoull(p, 0, 0);
 	print("meminit: end %p, KZERO %p, PGROUND %p\n", end, KZERO, PGROUND((uintptr)end - KTZERO));
-	conf.mem[0].base = PGROUND((uintptr)end - KTZERO) + (uintptr)0x80000000;
+	conf.mem[0].base = ROUND(PGROUND((uintptr)end - KTZERO) + (uintptr)0x804FFFFF, 0x200000);
 	conf.mem[0].limit = l;
 
-	print("base is 0x%llx is 0x%lux\n", conf.mem[0].base, l);
+	print("CONF ZERO base is 0x%llx is 0x%llx\n", conf.mem[0].base, l);
 	if(l > KLIMIT)
 		l = KLIMIT;
-	print("l is now %#lux\n", l);
+	print("l is now %#llx\n", l);
 	kmapram(conf.mem[0].base, l);
 
 	conf.mem[0].npage = (conf.mem[0].limit - conf.mem[0].base)/BY2PG;
-	print("fuck %lux %lux\n", (conf.mem[0].limit - conf.mem[0].base),(conf.mem[0].limit - conf.mem[0].base)/BY2PG);
+	print("fuck 0x%llx 0x%llx\n", (conf.mem[0].limit - conf.mem[0].base),(conf.mem[0].limit - conf.mem[0].base)/BY2PG);
 	print("base %p limit %p npage %lud\n", conf.mem[0].base,  conf.mem[0].limit,conf.mem[0].npage);
 }

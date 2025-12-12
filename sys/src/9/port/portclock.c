@@ -247,6 +247,7 @@ timersinit(void)
 	t->tns = 1000000000/HZ;
 	t->tf = nil;
 	timeradd(t);
+	print("EXIT timersinit\n");
 }
 
 Timer*
