@@ -46,15 +46,15 @@ void
 meminit(void)
 {
 	char *p;
-	uintptr l = GiB + 128 * MiB;
+	uintptr l = 3*GiB + 128 * MiB;
 
 	if(p = getconf("*maxmem"))
 		l = strtoull(p, 0, 0);
 	print("meminit: end %p, KZERO %p, PGROUND %p\n", end, KZERO, PGROUND((uintptr)end - KTZERO));
-	conf.mem[0].base = PGROUND((uintptr)end/* - KTZERO);*/) & 0xffffff;
+	conf.mem[0].base = PGROUND((uintptr)end - KTZERO) + (uintptr)0x80000000;
 	conf.mem[0].limit = l;
 
-	print("l is %#lux\n", l);
+	print("base is 0x%llx is 0x%lux\n", conf.mem[0].base, l);
 	if(l > KLIMIT)
 		l = KLIMIT;
 	print("l is now %#lux\n", l);
