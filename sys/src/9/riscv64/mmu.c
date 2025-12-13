@@ -28,7 +28,7 @@ paddr(void *va)
 uintptr
 cankaddr(uintptr pa)
 {
-	print("cankaddr %p, -KZ %p\n", pa,(uintptr)-KZERO );
+//	print("cankaddr %p, -KZ %p\n", pa,(uintptr)-KZERO );
 	if(pa < (uintptr)-KZERO)
 		return -KZERO - pa;
 	return 0;
