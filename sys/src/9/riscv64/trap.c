@@ -120,12 +120,10 @@ void
 kprocchild(Proc *p, void (*entry)(void))
 {
 	print("kprocchild %p %p\n", p, entry);
-	panic("kprocchild");
-#ifdef XXX
+//	panic("kprocchild");
 	p->sched.pc = (uintptr) entry;
 	p->sched.sp = (uintptr) p - 16;
 	*(void**)p->sched.sp = kprocchild;	/* fake */
-#endif
 }
 
 void
