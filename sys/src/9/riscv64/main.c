@@ -26,7 +26,6 @@ isaconfig(char *, int, ISAConf *)
 void
 init0(void)
 {
-#ifdef XXX
 	char buf[2*KNAMELEN], **sp;
 
 	chandevinit();
@@ -52,7 +51,6 @@ init0(void)
 	splhi();
 	fpukexit(nil, nil);
 	touser((uintptr)sp);
-#endif
 }
 
 void
