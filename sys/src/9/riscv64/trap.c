@@ -106,14 +106,11 @@ void
 callwithureg(void (*f) (Ureg *))
 {
 	print("callwithureg %p\n", f);
-	panic("callwithureg");
-#ifdef XXX
 	Ureg u;
 	
 	u.pc = getcallerpc(&f);
 	u.sp = (uintptr) &f;
 	f(&u);
-#endif
 }
 
 void
@@ -130,21 +127,20 @@ void
 evenaddr(uintptr addr)
 {
 	print("evenaddr %p\n", addr);
-	panic("evenaddr");
-#ifdef XXX
-	if(addr & 3){
-		postnote(up, 1, "sys: odd address", NDebug);
+	if(addr & 2){
+		postnote(up, 1, "sys: odd word address", NDebug);
 		error(Ebadarg);
 	}
-#endif
+	if(addr & 1){
+		postnote(up, 1, "sys: odd byte address", NDebug);
+		error(Ebadarg);
+	}
 }
 
 void
 forkchild(Proc *p, Ureg *ureg)
 {
 	print("forkchil %p %p\n", p, ureg);
-	panic("forkchild");
-#ifdef XXX
 	Ureg *cureg;
 
 	p->sched.pc = (uintptr) forkret;
@@ -152,21 +148,20 @@ forkchild(Proc *p, Ureg *ureg)
 
 	cureg = (Ureg*) (p->sched.sp + 16);
 	memmove(cureg, ureg, sizeof(Ureg));
-	cureg->r0 = 0;
-#endif
+	cureg->arg = 0;
 }
 
 uintptr
 execregs(uintptr entry, int argc, char *argv[], Tos *tos)
 {
 	print("execregs %p %d %p %p\n", entry, argc, argv, tos);
-	panic("execregs");
-#ifdef XXX
+panic("execregs");
+
 	uintptr *sp;
 	Ureg *ureg;
 
-	sp = (uintptr*)(USTKTOP - ssize);
-	*--sp = nargs;
+	sp = (uintptr*)(USTKTOP - 64); // Actually sizeof (TOS) I guess.
+	*--sp = argc;
 
 	ureg = up->dbgreg;
 	ureg->sp = (uintptr)sp;
@@ -174,5 +169,4 @@ execregs(uintptr entry, int argc, char *argv[], Tos *tos)
 	ureg->link = 0;
 	return USTKTOP-sizeof(Tos);
 	return 0;
-#endif
 }
