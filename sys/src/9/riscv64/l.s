@@ -118,11 +118,13 @@ _fail:
 	MOV	R11, R(ARG)
 	RET
 
+// This version of tas stores RA (caller PC) in the location.
+// More useful than just '1' and the code tests for it being
+// non-zero, not just '1'.
 TEXT	tas(SB), 1, $-4
 TEXT	_tas(SB), 1, $-4
-	MOV	$1, R10
 	FENCE_RW
-	AMOW(Amoswap, AQ|RL, 10, ARG, ARG)
+	AMOW(Amoswap, AQ|RL, 1, ARG, ARG)
 	FENCE_RW
 	RET
 
@@ -193,3 +195,27 @@ TEXT	idlehands(SB), 1, $-4
 	WFI
 _ready:
 	RET
+
+/*
+ * switch to user mode with stack pointer from R(ARG), at start of text.
+ * used to start process 1 (init).
+ */
+TEXT touser(SB), 1, $-4
+	FENCE
+	FENCE_I
+
+	MOV	R0, RARG
+	MOV	$(UTZERO+8*BY2WD), R12	/* skip unextended exec hdr of init */
+	MOV	R12, CSR(SEPC)		/* new pc */
+	MOV	RARG, R2		/* new sp */
+	WORD $0x10200073 //SRET
+//	SRET				/* off to rv64 user mode */
+/*
+ */
+TEXT forkret(SB), 1, $-4
+	FENCE
+	FENCE_I
+
+	MOV	R0, RARG
+	MOV	RARG, R2		/* new sp */
+	WORD $0x10200073 //SRET
