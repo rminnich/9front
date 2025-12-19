@@ -50,6 +50,7 @@ init0(void)
 
 	splhi();
 	fpukexit(nil, nil);
+	print("touser baby\n");
 	touser((uintptr)sp);
 }
 
@@ -113,8 +114,6 @@ confinit(void)
 	 * Guess how much is taken by the large permanent
 	 * datastructures. Mntcache and Mntrpc are not accounted for.
 	 */
-	// We did all that work above, and here we throw it away. Sod that.
-	if (0) {
 	kpages = conf.npage - conf.upages;
 	print("kpages to start is %lx = %lx - %lx \n", kpages, conf.npage, conf.upages);
 	kpages *= BY2PG;
@@ -123,7 +122,6 @@ confinit(void)
 		+ conf.nimage*sizeof(Image)
 		+ conf.nswap
 		+ conf.nswppo*sizeof(Page*);
-	}
 	kpages *= BY2PG;
 	print("exit with kpages %lx\n", kpages);
 	mainmem->maxsize = kpages;
@@ -348,4 +346,8 @@ dmaflush(int clean, void *p, ulong len)
 	if(s < e)
 		cachedinvse((void*)s, e - s);
 #endif
+}
+void setconfenv(void)
+{
+	print("NOT DOING setconfenv\n");
 }
