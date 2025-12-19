@@ -123,7 +123,9 @@ enum {
 
 static uchar datamagic[] = { 0xFE, 0xF1, 0xF0, 0xFA };
 
-#define Poison	((void*)-0x35014542)	/* cafebabe */
+// Don't use a value that could be a valid pointer.
+//#define Poison	((void*)-0x35014542)	/* cafebabe */
+#define Poison	((void*)( ((uintptr)0x80398761<<32) | (uintptr)0x6c6c6f63))	/* 9xalloc -> 3978616c6c6f63 -- invalid pointer with bit 63 set */
 
 #define _B2D(a)	((void*)((uchar*)a+sizeof(Bhdr)))
 #define _D2B(v)	((Alloc*)((uchar*)v-sizeof(Bhdr)))
