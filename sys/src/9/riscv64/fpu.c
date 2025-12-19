@@ -194,3 +194,7 @@ mathtrap(Ureg *ureg)
 	}
 #endif
 }
+void fpukexit(Ureg*, FPsave*)
+{
+	print("not doing anything for fpukexit yet\n");
+}
