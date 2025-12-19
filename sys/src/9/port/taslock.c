@@ -54,6 +54,7 @@ lock(Lock *l)
 #endif
 		return;
 	}
+	print("lock: locked, key %p\n", l->key);
 	if(up)
 		up->nlocks--;
 
@@ -100,6 +101,7 @@ ilock(Lock *l)
 	uintptr pc;
 
 	pc = getcallerpc(&l);
+	print("ilock %p pc %p\n", l, pc);
 
 	x = splhi();
 	if(tas(&l->key) != 0){

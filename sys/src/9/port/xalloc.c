@@ -154,7 +154,7 @@ xallocz(ulong size, int zero)
 				memset(p, 0, size);
 			p->magix = Magichole;
 			p->size = size;
-			print("return this is bad eh 0x%p yes bad\n", p->data);
+			print("XALLOC  %p 0x%x bytes called by %p\n", p->data, size, getcallerpc(&size));
 			return p->data;
 		}
 		l = &h->link;
@@ -166,7 +166,9 @@ xallocz(ulong size, int zero)
 void*
 xalloc(ulong size)
 {
-	return xallocz(size, 1);
+	void *v = xallocz(size, 1);
+	print("xalloc %p callerpc %p\n", v, getcallerpc(&size));
+	return v;
 }
 
 void

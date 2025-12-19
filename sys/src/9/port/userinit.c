@@ -26,24 +26,31 @@ proc0(void*)
 	KMap *k;
 	Page *p;
 
+	print("proc0\n");
 	spllo();
-	if(waserror())
+	if(waserror()){
+		print("it went badly: %s\n", up->errstr);
 		panic("proc0: %s", up->errstr);
+	}
 
 	up->pgrp = newpgrp();
 	up->egrp = smalloc(sizeof(Egrp));
 	up->egrp->ref = 1;
 	up->fgrp = dupfgrp(nil);
 	up->rgrp = newrgrp();
-
+	print("rgrp\n");
 	/*
 	 * These are o.k. because rootinit is null.
 	 * Then early kproc's will have a root and dot.
 	 */
 	up->slash = namec("#/", Atodir, 0, 0);
+	print("done slash\n");
 	pathclose(up->slash->path);
+	print("pathclose\n");
 	up->slash->path = newpath("/");
+	print("newpath\n");
 	up->dot = cclone(up->slash);
+	print("DONE dot\n");
 
 	/*
 	 * Setup Text and Stack segments for initcode.
@@ -53,14 +60,16 @@ proc0(void*)
 	up->seg[TSEG]->flushme = 1;
 	p = newpage(UTZERO, nil);
 	k = kmap(p);
+	print("seg and kmap done\n");
 	memmove((uchar*)VA(k), initcode, sizeof(initcode));
 	memset((uchar*)VA(k)+sizeof(initcode), 0, BY2PG-sizeof(initcode));
 	kunmap(k);
 	segpage(up->seg[TSEG], p);
-
+	print("post TSEG\n");
 	/*
 	 * Become a user process.
 	 */
+	print("become a user process\n");
 	up->kp = 0;
 	up->noswap = 0;
 	up->privatemem = 0;
