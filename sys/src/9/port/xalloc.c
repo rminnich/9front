@@ -70,7 +70,7 @@ xinit(void)
 		print("maxpages %ludd\n", maxpages);
 		if(n > maxpages)
 			n = maxpages;
-	print("maxpages and n is %ludd\n", n);
+	print("maxpages and n is %lx\n", n);
 		/* give to kernel */
 		if(n > 0){
 			print("n > 0\n");

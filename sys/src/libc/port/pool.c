@@ -1456,7 +1456,7 @@ pooldumparena(Pool *p, Arena *a)
 	Bhdr *b;
 
 	for(b=a; b->magic != ARENATAIL_MAGIC; b=B2NB(b))
-		p->print(p, "(%p %.8lux %lud)", b, b->magic, b->size);
+		p->print(p, "(%p %.8lux %lud)\n", b, b->magic, b->size);
 	p->print(p, "\n");
 }
 

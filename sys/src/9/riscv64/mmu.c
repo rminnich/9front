@@ -6,6 +6,14 @@
 
 #define INITMAP	(ROUND((uintptr)end + BY2PG, PGLSZ(1))-KZERO)
 
+/*
+static void mmemset(void *v, char val, int size) {
+	u8int *uc = v;
+	int i;
+	for(i = 0; i < size; i++) uc[i] = val;
+}
+*/
+
 void
 mmu1init(void)
 {

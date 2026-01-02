@@ -10,17 +10,19 @@ SFILES=\
 	getfcr.s\
 	main9.s\
 	main9p.s\
+	setjmp.s\
+	sqrt.s\
+	tas.s\
+
+BADSFILES=\
 	memccpy.s\
 	memchr.s\
 	memcmp.s\
 	memmove.s\
 	memset.s\
-	setjmp.s\
-	sqrt.s\
 	strchr.s\
 	strcmp.s\
 	strcpy.s\
-	tas.s\
 
 # seek.s was included by ../9syscall/mkfile
 CFILES=\

@@ -117,12 +117,19 @@ confinit(void)
 	kpages = conf.npage - conf.upages;
 	print("kpages to start is %lx = %lx - %lx \n", kpages, conf.npage, conf.upages);
 	kpages *= BY2PG;
+	print("%lx -= %lx + %lx + %lx + %lx + %lx\n", 
+		kpages,conf.upages*sizeof(Page)
+		, conf.nproc*sizeof(Proc*)
+		, conf.nimage*sizeof(Image)
+		, conf.nswap
+		, conf.nswppo*sizeof(Page*));
 	kpages -= conf.upages*sizeof(Page)
 		+ conf.nproc*sizeof(Proc*)
 		+ conf.nimage*sizeof(Image)
 		+ conf.nswap
 		+ conf.nswppo*sizeof(Page*);
-	kpages *= BY2PG;
+	print("kpages now is ... %lx\n", kpages);
+	//kpages *= BY2PG;
 	print("exit with kpages %lx\n", kpages);
 	mainmem->maxsize = kpages;
 	imagmem->maxsize = kpages;
@@ -206,6 +213,16 @@ main(void)
 	quotefmtinstall();
 	sbiputc('q');
 	print("hi there\n");
+	if (0){
+		int fail = 0;
+		static int x[512];
+		int i;
+		for(i = 0; i < 512; i++) x[i] = i;
+		for(i = 0; i < 512; i++) if (x[i] != i) print("NOT SET %d val 0x%lx\n", i, x[i]);
+		memset(x, 0, 512);
+		for(i = 0; i < 512; i++) if (x[i] != i) { fail++; print("NOT CLEAR %d val 0x%lx\n", i, x[i]);}
+		print("%d memset fails\n", fail);
+	}
 //	bootargsinit();
 	meminit();
 	print("meminit done\n");

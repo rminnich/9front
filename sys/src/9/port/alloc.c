@@ -14,7 +14,7 @@ static void punlock(Pool*);
 typedef struct Private	Private;
 struct Private {
 	Lock		lk;
-	char		msg[256];	/* a rock for messages to be printed at unlock */
+	char		msg[1024];	/* a rock for messages to be printed at unlock */
 };
 
 static Private pmainpriv;
@@ -25,7 +25,7 @@ static Pool pmainmem = {
 	.quantum=	32,
 	.alloc=	xalloc,
 	.merge=	xmerge,
-	.flags=	POOL_TOLERANCE,
+	.flags=	POOL_TOLERANCE | 0xff | POOL_NOREUSE,
 
 	.lock=	plock,
 	.unlock=	punlock,
@@ -43,7 +43,7 @@ static Pool pimagmem = {
 	.quantum=	32,
 	.alloc=	xalloc,
 	.merge=	xmerge,
-	.flags=	0,
+	.flags=	0xff,
 
 	.lock=	plock,
 	.unlock=	punlock,
@@ -61,7 +61,7 @@ static Pool psecrmem = {
 	.quantum=	32,
 	.alloc=	xalloc,
 	.merge=	xmerge,
-	.flags=	POOL_ANTAGONISM,
+	.flags=	POOL_ANTAGONISM | 0xff,
 
 	.lock=	plock,
 	.unlock=	punlock,
@@ -97,7 +97,7 @@ ppanic(Pool *p, char *fmt, ...)
 	va_list v;
 	Private *pv;
 	char msg[sizeof pv->msg];
-
+	print("ENTER POOL PANIC\n");
 	pv = p->private;
 	va_start(v, fmt);
 	vseprint(pv->msg+strlen(pv->msg), pv->msg+sizeof pv->msg, fmt, v);
@@ -122,7 +122,7 @@ static void
 punlock(Pool *p)
 {
 	Private *pv;
-	char msg[sizeof pv->msg];
+	//char msg[sizeof pv->msg];
 
 	pv = p->private;
 	if(pv->msg[0] == 0){
@@ -130,9 +130,14 @@ punlock(Pool *p)
 		return;
 	}
 
-	memmove(msg, pv->msg, sizeof msg);
+	//memmove(msg, pv->msg, sizeof msg);
 	iunlock(&pv->lk);
-	iprint("%.*s", sizeof pv->msg, msg);
+	int i;
+	for(i = 0; i < sizeof pv->msg; i++) {
+		if (pv->msg[i] == 0) break;
+		sbiputc(pv->msg[i]);
+	}
+	//iprint("%.*s", sizeof pv->msg, msg);
 }
 
 void
@@ -185,7 +190,13 @@ enum {
 	ReallocOffset = 1
 };
 
-
+/*
+static void mmemset(void *v, char val, int size) {
+	u8int *uc = v;
+	int i;
+	for(i = 0; i < size; i++) uc[i] = val;
+}
+*/
 void*
 smalloc(ulong size)
 {

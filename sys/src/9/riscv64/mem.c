@@ -46,7 +46,10 @@ void
 meminit(void)
 {
 	char *p;
+	/* note: this is the LIMIT: physical address of top of memory. 
+	 * 0xc000_0000 + 0x0800_0000 = 0xc800_0000 */
 	uintptr l = 3*GiB + 128 * MiB;
+	l = 2 * GiB + 512 * MiB;
 
 	if(p = getconf("*maxmem"))
 		l = strtoull(p, 0, 0);
@@ -54,7 +57,7 @@ meminit(void)
 	conf.mem[0].base = ROUND(PGROUND((uintptr)end - KTZERO) + (uintptr)0x804FFFFF, 0x200000);
 	conf.mem[0].limit = l;
 
-	print("CONF ZERO base is 0x%llx is 0x%llx\n", conf.mem[0].base, l);
+	print("CONF ZERO BASE is 0x%llx LIMIT is 0x%llx\n", conf.mem[0].base, l);
 	if(l > KLIMIT)
 		l = KLIMIT;
 	print("l is now %#llx\n", l);
