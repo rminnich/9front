@@ -25,7 +25,7 @@ static Pool pmainmem = {
 	.quantum=	32,
 	.alloc=	xalloc,
 	.merge=	xmerge,
-	.flags=	POOL_TOLERANCE | 0xff | POOL_NOREUSE,
+	.flags=	POOL_TOLERANCE | POOL_NOREUSE,
 
 	.lock=	plock,
 	.unlock=	punlock,
@@ -43,7 +43,7 @@ static Pool pimagmem = {
 	.quantum=	32,
 	.alloc=	xalloc,
 	.merge=	xmerge,
-	.flags=	0xff,
+	.flags=	0,
 
 	.lock=	plock,
 	.unlock=	punlock,
@@ -61,7 +61,7 @@ static Pool psecrmem = {
 	.quantum=	32,
 	.alloc=	xalloc,
 	.merge=	xmerge,
-	.flags=	POOL_ANTAGONISM | 0xff,
+	.flags=	POOL_ANTAGONISM,
 
 	.lock=	plock,
 	.unlock=	punlock,
@@ -116,12 +116,14 @@ plock(Pool *p)
 	ilock(&pv->lk);
 	pv->lk.pc = getcallerpc(&p);
 	pv->msg[0] = 0;
+	print("plocked\n");
 }
 
 static void
 punlock(Pool *p)
 {
 	Private *pv;
+	print("punlock\n");
 	//char msg[sizeof pv->msg];
 
 	pv = p->private;
@@ -220,6 +222,7 @@ void*
 malloc(ulong size)
 {
 	void *v;
+	extern int debugmemset;
 
 	v = poolalloc(mainmem, size+Npadlong*sizeof(ulong));
 	if(v == nil)
@@ -229,7 +232,17 @@ malloc(ulong size)
 		setmalloctag(v, getcallerpc(&size));
 		setrealloctag(v, 0);
 	}
+	if (0)print("memset @ %p for %d bytes\n", v, size);
+	if (0) while(debugmemset);
 	memset(v, 0, size);
+	if (0) {
+		int i;
+		for(i = 0; i < size; i++) {
+			if (((char *)v)[i] != 0) {
+				print("FAIL at index %d\n", i);
+			}
+		}
+	}
 	return v;
 }
 
