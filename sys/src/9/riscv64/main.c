@@ -62,7 +62,6 @@ confinit(void)
 	char *p;
 	int i;
 
-	memset(&conf, 0, sizeof(conf));
 	conf.nmach = 1;
 	if(p = getconf("*ncpu"))
 		conf.nmach = strtol(p, 0, 0);
