@@ -25,7 +25,8 @@ static Pool pmainmem = {
 	.quantum=	32,
 	.alloc=	xalloc,
 	.merge=	xmerge,
-	.flags=	POOL_TOLERANCE | POOL_NOREUSE,
+	.flags=	POOL_LOGGING | POOL_TOLERANCE | POOL_NOREUSE 
+			,//| POOL_DEBUGGING , //| POOL_VERBOSITY,
 
 	.lock=	plock,
 	.unlock=	punlock,
@@ -111,7 +112,7 @@ static void
 plock(Pool *p)
 {
 	Private *pv;
-
+	print("PLOCK %p mainmem %p\n", p, mainmem);
 	pv = p->private;
 	ilock(&pv->lk);
 	pv->lk.pc = getcallerpc(&p);
@@ -203,7 +204,8 @@ void*
 smalloc(ulong size)
 {
 	void *v;
-
+	print("SMALLOC %d\n", size);
+	poolcheck(mainmem);
 	while((v = poolalloc(mainmem, size+Npadlong*sizeof(ulong))) == nil){
 		if(!waserror()){
 			resrcwait("no memory for smalloc");
@@ -215,6 +217,7 @@ smalloc(ulong size)
 		setmalloctag(v, getcallerpc(&size));
 	}
 	memset(v, 0, size);
+	print("SMALLOC RETURNS %p\n", v);
 	return v;
 }
 
@@ -223,8 +226,9 @@ malloc(ulong size)
 {
 	void *v;
 	extern int debugmemset;
-
+	print("MALLOC %d\n", size);
 	v = poolalloc(mainmem, size+Npadlong*sizeof(ulong));
+	poolcheck(mainmem);
 	if(v == nil)
 		return nil;
 	if(Npadlong){
@@ -235,7 +239,7 @@ malloc(ulong size)
 	if (0)print("memset @ %p for %d bytes\n", v, size);
 	if (0) while(debugmemset);
 	memset(v, 0, size);
-	if (0) {
+	if (1) {
 		int i;
 		for(i = 0; i < size; i++) {
 			if (((char *)v)[i] != 0) {
@@ -243,6 +247,7 @@ malloc(ulong size)
 			}
 		}
 	}
+	print("MALLOC RETURNS %p\n", v);
 	return v;
 }
 
@@ -250,7 +255,7 @@ void*
 mallocz(ulong size, int clr)
 {
 	void *v;
-
+	poolcheck(mainmem);
 	v = poolalloc(mainmem, size+Npadlong*sizeof(ulong));
 	if(v == nil)
 		return nil;
@@ -284,6 +289,7 @@ mallocalign(ulong size, ulong align, long offset, ulong span)
 void
 free(void *v)
 {
+	print("Don't free %p\n", v);
 	if(v != nil)
 		poolfree(mainmem, (ulong*)v-Npadlong);
 }
@@ -292,6 +298,7 @@ void*
 realloc(void *v, ulong size)
 {
 	void *nv;
+	print("realloc %p %u\n", v, size);
 
 	if(v != nil)
 		v = (ulong*)v-Npadlong;
@@ -375,4 +382,9 @@ getrealloctag(void *v)
 	if(Npadlong <= ReallocOffset)
 		return ~0;
 	return (int)((ulong*)v)[-Npadlong+ReallocOffset];
+}
+
+void check(void) {
+	pooldump(mainmem);
+	poolcheck(mainmem);
 }
