@@ -65,6 +65,13 @@ TEXT	zoinked<>(SB), 1, $-4
 	MOV $0, R6
 	MOV $MACHADDR(0), R7
 	JAL	R1, main(SB)
+NDNR:
+	MOV $0x30, R10
+		MOV $1, R17
+		MOV $0, R16
+		ECALL
+	JMP NDNR
+
 
 TEXT	sbiputc(SB), 1, $-4
 		MOV RARG, R10
