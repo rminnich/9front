@@ -178,9 +178,12 @@ getconf(char * )
 }
 
 int i = 1;
+int once = 0;
 void
 main(void)
 {
+	if (once) panic("main entered twice");
+	once++;
 	while(i == 0); // BUG: does not reload i
 	i = 1; // in case you use GDB to bump PC, make sure i is updated.
 	while (i < 32) {
@@ -224,11 +227,14 @@ main(void)
 	}
 //	bootargsinit();
 	meminit();
+	check();
 	print("meminit done\n");
 	confinit();
 	print("confinit done\n");
 	xinit();
 	print("xinit done\n");
+	check();
+	xsummary();
 	printinit();
 	print("\nPlan 9\n");
 	print("\nPlan %d\n", 9);
@@ -240,13 +246,22 @@ main(void)
 #endif
 	clockinit(); print("DONE 	clockinit();\n"); 
 	cpuidprint(); print("DONE 	cpuidprint();\n"); 
-	timersinit(); print("DONE 	timersinit();\n"); 
+	check();
+	timersinit(); print("DONE 	timersinit();\n");
+	check(); 
+	xsummary();
 	pageinit(); print("DONE 	pageinit();\n"); 
+	check();
 	procinit0(); print("DONE 	procinit0();\n"); 
+	check();
 	initseg(); print("DONE 	initseg();\n"); 
+	check();
 	links(); print("DONE 	links();\n"); 
+	check();
 	chandevreset(); print("DONE 	chandevreset();\n"); 
+	check();
 	userinit(); print("DONE 	userinit();\n"); 
+	check();
 	mpinit(); print("DONE 	mpinit();\n"); 
 	mmu1init(); print("DONE 	mmu1init();\n"); 
 	schedinit();
