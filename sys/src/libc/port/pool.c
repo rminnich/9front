@@ -197,8 +197,10 @@ static void
 checklist(Free *t)
 {
 	Free *q;
+	print("checklist\n");
 
 	for(q=t->next; q!=t; q=q->next){
+		print("check q %p magic@%p %lx\n", q, &q->magic, q->magic);
 		assert(q->magic==FREE_MAGIC);
 		assert(q->size==t->size);
 		assert(q->left==Poison);
@@ -206,11 +208,13 @@ checklist(Free *t)
 		assert(q->next!=nil && q->next!=Poison && q->next->prev==q);
 		assert(q->prev!=nil && q->prev!=Poison && q->prev->next==q);
 	}
+	print("checklist done\n");
 }
 
 static void
 checktree(Free *t, int a, int b)
 {
+	print("checktree t %p magic@%p %lx\n", t, &t->magic, t->magic);
 	assert(t->magic==FREE_MAGIC);
 	assert(a < t->size && t->size < b);
 	assert(t->left!=Poison);
@@ -235,6 +239,7 @@ treelookupgt(Free *t, ulong size)
 	for(;;) {
 		if(t == nil)
 			return lastgood;
+		print("treelookupgt t %p magic@%p %lx\n", t, &t->magic, t->magic);
 		assert(t->magic == FREE_MAGIC);
 		if(size == t->size)
 			return t;
@@ -256,10 +261,12 @@ treesplay(Free *t, ulong size)
 	l = r = &N;
 
 	for(;;) {
+		print("treesplay t %p magic@%p %lx\n", t, &t->magic, t->magic);
 		assert(t->magic == FREE_MAGIC);
 		if(size < t->size) {
 			y = t->left;
 			if(y != nil) {
+		print("treesplay y-> %p magic@%p %lx\n", y, &y->magic, y->magic);
 				assert(y->magic == FREE_MAGIC);
 				if(size < y->size) {
 					t->left = y->right;
@@ -275,6 +282,7 @@ treesplay(Free *t, ulong size)
 		} else if(size > t->size) {
 			y = t->right;
 			if(y != nil) {
+		print("treesplay y2-> %p magic@%p %lx\n", y, &y->magic, y->magic);
 				assert(y->magic == FREE_MAGIC);
 				if(size > y->size) {
 					t->right = y->left;
@@ -310,6 +318,7 @@ pooladd(Pool *p, Alloc *anode)
 	}
 
 	node = (Free*)anode;
+	print("pooladd: set node %p magic to free magic\n", node);
 	node->magic = FREE_MAGIC;
 	node->left = node->right = nil;
 	node->next = node->prev = node;
@@ -362,6 +371,7 @@ pooldel(Pool *p, Free *node)
 			root->left = node->left;
 			root->right = node->right;
 		}
+		print("pooldel: check root %p magic %lx\n", root, root->magic);
 		assert(root->magic == FREE_MAGIC && root->size == node->size);
 		node->next->prev = node->prev;
 		node->prev->next = node->next;
