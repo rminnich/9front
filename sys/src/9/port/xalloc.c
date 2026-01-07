@@ -39,6 +39,7 @@ struct Xalloc
 
 static Xalloc	xlists;
 
+int once = 0;
 void
 xinit(void)
 {
@@ -46,41 +47,44 @@ xinit(void)
 	Hole *h, *eh;
 	Confmem *cm;
 	int i;
+	print("XINIT XINIT XINIT XINIT from %p\n", getcallerpc(&n));
+	if (once) print("XINIT OH NO CLALAED TWICE %d fro %p!!!\n", once, getcallerpc(&n));
+	once++;
 
 	eh = &xlists.hole[Nhole-1];
 	for(h = xlists.hole; h < eh; h++)
 		h->link = h+1;
-	print("hole\n");
+	print("xinit: after setting up hole links\n");
 	xlists.flist = xlists.hole;
 
 	kpages = conf.npage - conf.upages;
-	print("xalloc: kpages %ludd\n", kpages);
+	print("XINIT: kpages 0x%lx\n", kpages);
 
 	for(i=0; i<nelem(conf.mem); i++){
-		print("for\n");
+		print("xinit for\n");
 		cm = &conf.mem[i];
-		print("%d: cm %p\n", i, cm);
+		print("xinit cm #%d: cm %p\n", i, cm);
 		n = cm->npage;
-		print("%d: npage %ludd\n", i, n);
+		print("%d: npage 0x%lx\n", i, n);
 		if(n > kpages)
 			n = kpages;
 		/* don't try to use non-KADDR-able memory for kernel */
-		print("call cankaddr with cm->base %p", cm->base);
+		print("xinit:call cankaddr with cm->base %p", cm->base);
 		maxpages = cankaddr(cm->base)/BY2PG;
-		print("maxpages %ludd\n", maxpages);
+		print("xinit:maxpages 0x%lx\n", maxpages);
 		if(n > maxpages)
 			n = maxpages;
-	print("maxpages and n is %lx\n", n);
+	print("maxpages and n is 0x%lx\n", n);
 		/* give to kernel */
 		if(n > 0){
-			print("n > 0\n");
+			print("xinit: give %ld to kernel n > 0\n", n);
 			cm->kbase = (uintptr)KADDR(cm->base);
 			cm->klimit = (uintptr)cm->kbase+(uintptr)n*BY2PG;
 			if(cm->klimit == 0)
 				cm->klimit = (uintptr)-BY2PG;
-			print("call xhole\n");
+			print("xinit call xhole with %p, %llx\n", cm->base, cm->klimit - cm->kbase);
 			xhole(cm->base, cm->klimit - cm->kbase);
-			print("...ok\n");
+			print("xinit: end of ok, kpages is now 0x%lx...ok\n", kpages - n);
 			kpages -= n;
 		}
 		/*
@@ -88,9 +92,9 @@ xinit(void)
 		 * will be given to user by pageinit()
 		 */
 	}
-	print("print summary\n");
+	print("xinit: print summary\n");
 	xsummary();
-	print("done\n");
+	print("xinit: done\n");
 }
 
 void*
@@ -127,20 +131,25 @@ xallocz(ulong size, int zero)
 	Hole *h, **l;
 
 	print("xallocz %lud %s\n", size, zero ? "zerod" : "");
+	xsummary();
 	/* add room for magix & size overhead, round up to nearest vlong */
 	size += BY2V + offsetof(Xhdr, data[0]);
 	size &= ~(BY2V-1);
 
 	ilock(&xlists);
 	l = &xlists.table;
+	print("xallocz xsummary before for loop\n");
+	xsummary();
 	for(h = *l; h; h = h->link) {
-		print("check h %p h->size %#lux size %d\n", h, h->size, size);
+		print("check h %p h->addr %p h->size 0x%llx size 0x%lx\n", h, h->addr, h->size, size);
 		if(h->size >= size) {
 			print("... it's good addr %p\n", h->addr);
 			p = (Xhdr*)KADDR(h->addr);
 			print("p is %p\n", p);
 			h->addr += size;
 			h->size -= size;
+			print("xsummary after allocate using hole %p, addr %p, \n", h, p);
+			xsummary();
 			if(h->size == 0) {
 				*l = h->link;
 				h->link = xlists.flist;
@@ -154,7 +163,7 @@ xallocz(ulong size, int zero)
 				memset(p, 0, size);
 			p->magix = Magichole;
 			p->size = size;
-			print("XALLOC  %p 0x%x bytes called by %p\n", p->data, size, getcallerpc(&size));
+			print("XALLOC  %p 0x%lx bytes called by %p\n", p->data, size, getcallerpc(&size));
 			return p->data;
 		}
 		l = &h->link;
@@ -189,6 +198,7 @@ xmerge(void *vp, void *vq)
 {
 	Xhdr *p, *q;
 
+	print("XMERGE\n");
 	p = (Xhdr*)(((uintptr)vp - offsetof(Xhdr, data[0])));
 	q = (Xhdr*)(((uintptr)vq - offsetof(Xhdr, data[0])));
 	if(p->magix != Magichole || q->magix != Magichole) {
@@ -222,6 +232,7 @@ xhole(uintptr addr, uintptr size)
 	Hole *h, *c, **l;
 	uintptr top;
 
+	print("XHOLE %p 0x%llx\n", addr, size);
 	if(size == 0)
 		return;
 
