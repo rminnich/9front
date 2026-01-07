@@ -23,6 +23,7 @@
 TEXT	_start(SB), 1, $-4
 	MOV	$setSB(SB), R3
 	JAL	R1, mmudisable<>(SB)
+#ifdef XXX
 
 	MOV	$(MACHADDR(0)-KZERO), R7
 	AND	$(MAXMACH-1), R10
@@ -59,6 +60,7 @@ _zerobss:
 	JMP	(R12)
 
 TEXT	zoinked<>(SB), 1, $-4
+#endif
 	MOV $MACHADDR(1), R2
 	MOV	$setSB(SB), R3
 	// clear out UP and set MACH. 
@@ -99,7 +101,7 @@ TEXT	mmudisable<>(SB), 1, $-4
 	RET
 
 TEXT	mmuenable<>(SB), 1, $-4
-	MOV	$MAKE_SATP(L1-KZERO), R8
+//	MOV	$MAKE_SATP(L1-KZERO), R8
 	SFENCE
 	MOV	R8, CSR(SATP)
 	SFENCE

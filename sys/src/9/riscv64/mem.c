@@ -9,8 +9,9 @@
 void
 mmu0init(uintptr *l1)
 {
+	print("mmu0init l1 %p\n", l1);
+#ifdef XXX
 	uintptr va, pa, pe, attr;
-
 	/* VDRAM */
 	attr = PTEREAD | PTEWRITE | PTEEXEC;
 	pe = -KZERO;
@@ -40,6 +41,7 @@ mmu0init(uintptr *l1)
 	if(PTLEVELS > 2)
 	for(va = KSEG0; va != 0; va += PGLSZ(2))
 		l1[PTLX(va, 2)] = PA2PTE((uintptr)&l1[L1TABLEX(va, 1)]) | PTEVALID;
+#endif
 }
 
 void
@@ -48,8 +50,7 @@ meminit(void)
 	char *p;
 	/* note: this is the LIMIT: physical address of top of memory. 
 	 * 0xc000_0000 + 0x0800_0000 = 0xc800_0000 */
-	uintptr l = 3*GiB + 128 * MiB;
-	l = 2 * GiB + 512 * MiB;
+	uintptr l = 2 * GiB;
 
 	if(p = getconf("*maxmem"))
 		l = strtoull(p, 0, 0);

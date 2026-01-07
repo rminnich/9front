@@ -28,8 +28,8 @@ mmu1init(void)
 uintptr
 paddr(void *va)
 {
-	if((uintptr)va >= KZERO)
-		return (uintptr)va-KZERO;
+	if((uintptr)va < KLIMIT)
+		return (uintptr)va;
 	panic("paddr: va=%#p pc=%#p", va, getcallerpc(&va));
 }
 
@@ -37,27 +37,23 @@ uintptr
 cankaddr(uintptr pa)
 {
 //	print("cankaddr %p, -KZ %p\n", pa,(uintptr)-KZERO );
-	if(pa < (uintptr)-KZERO)
-		return -KZERO - pa;
+	if(pa < (uintptr)KLIMIT)
+		return pa;
 	return 0;
 }
 
 void*
 kaddr(uintptr pa)
 {
-	if(pa < (uintptr)-KZERO)
-		return (void*)(pa + KZERO);
+	if(pa < (uintptr)KLIMIT)
+		return (void*)(pa);
 	panic("kaddr: pa=%#p pc=%#p", pa, getcallerpc(&pa));
 }
 
 static void*
 kmapaddr(uintptr pa)
 {
-	if(pa < (uintptr)-KZERO)
-		return (void*)(pa + KZERO);
-	if(pa < (VDRAM - KZERO) || pa >= (VDRAM - KZERO) + (KMAPEND - KMAP))
-		panic("kmapaddr: pa=%#p pc=%#p", pa, getcallerpc(&pa));
-	return (void*)(pa + KMAP - (VDRAM - KZERO));
+	return kaddr(pa);
 }
 
 KMap*
@@ -90,9 +86,16 @@ rampage(void)
 	return KADDR(pa);
 }
 
+// nothing to do.
 static void
 l1map(uintptr va, uintptr pa, uintptr pe, uintptr attr)
 {
+	USED(va);
+	USED(pa);
+	USED(pe);
+	USED(attr);
+	print("l1map");
+#ifdef xxx
 	uintptr *l1, *l0;
 
 	assert(pa < pe);
@@ -123,11 +126,16 @@ l1map(uintptr va, uintptr pa, uintptr pe, uintptr attr)
 		va += BY2PG;
 		pa += BY2PG;
 	}
+#endif
 }
 
 void
 kmapram(uintptr base, uintptr limit)
 {
+// nothing to do.
+	USED(base);
+	USED(limit);
+#ifdef xxx
 	if(base < (uintptr)-KZERO && limit > (uintptr)-KZERO){
 		kmapram(base, (uintptr)-KZERO);
 		kmapram((uintptr)-KZERO, limit);
@@ -140,6 +148,7 @@ kmapram(uintptr base, uintptr limit)
 
 	l1map((uintptr)kmapaddr(base), base, limit,
 		PTEWRITE | PTEREAD);
+#endif
 }
 
 uintptr
@@ -168,6 +177,9 @@ mmukmap(uintptr va, uintptr pa, usize size)
 void*
 vmap(uvlong pa, vlong size)
 {
+	USED(pa);
+	USED(size);
+#ifdef xxx
 	static uintptr base = VMAP;
 	uvlong pe = pa + size;
 	uintptr va;
@@ -176,6 +188,8 @@ vmap(uvlong pa, vlong size)
 	base += PGROUND(pe) - (pa & -BY2PG);
 	
 	return (void*)mmukmap(va | PTEDEVICE, pa, size);
+#endif
+	return nil;
 }
 
 void

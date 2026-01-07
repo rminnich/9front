@@ -40,24 +40,11 @@
 #define STACKALIGN(sp)	((sp) & ~7)		/* bug: assure with alloc */
 #define TRAPFRAMESIZE	(38*8)
 
-#define VDRAM		(0xFFFFFFFFC0000000ULL)	/* 0x80000000 - */
+#define VDRAM		(0x0000000080000000ULL)	/* 0x80000000 - */
 #define	KTZERO		(VDRAM + 0x200000)	/* 0x80200000 - kernel text start */
 
-#define PHYSIO		0
-#define PHYSIOEND	0x20000000
-
-#define	VIRTIO		(0xFFFFFFFFA0000000ULL)
-
-#define	KZERO		(0xFFFFFFFF40000000ULL)	/* 0x00000000 - kernel address space */
-
-#define VMAP		(0xFFFFFFFF00000000ULL)	/* 0x00000000 - 0x40000000 */
-
-#define KMAPEND		(0xFFFFFFFF00000000ULL)	/* 0x140000000 */
-#define KMAP		(0xFFFFFFFE00000000ULL)	/*  0x40000000 */
-
-#define KLIMIT		(VDRAM - KZERO + KMAPEND - KMAP)	/* 0x140000000 */
-
-#define KSEG0		(0xFFFFFFFE00000000ULL)
+#define	KZERO		(0x0000000000000000ULL)	/* 0x00000000 - kernel address space */
+#define KLIMIT (0x800000000000ULL) // half of the hole.
 
 /* shared kernel page table for TTBR1 */
 #define L1		(L1TOP-L1SIZE)
@@ -109,7 +96,7 @@
 
 /*
  * Physical machine information from here on.
- *	PHYS addresses as seen from the arm cpu.
+ *	PHYS addresses as seen from the cpu.
  *	BUS  addresses as seen from peripherals
  */
 #define	PHYSDRAM	0
