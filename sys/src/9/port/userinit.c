@@ -62,8 +62,11 @@ proc0(void*)
 	k = kmap(p);
 	print("seg and kmap done\n");
 	memmove((uchar*)VA(k), initcode, sizeof(initcode));
+	print("init code installed\n");
 	memset((uchar*)VA(k)+sizeof(initcode), 0, BY2PG-sizeof(initcode));
+	print("umem zerod\n");
 	kunmap(k);
+	print("kernel unmapped\n");
 	segpage(up->seg[TSEG], p);
 	print("post TSEG\n");
 	/*
