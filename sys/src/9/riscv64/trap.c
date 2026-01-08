@@ -59,10 +59,7 @@ void
 procsetup(Proc *p)
 {
 	print("procsetup %p\n", p);
-	panic("procsetup");
 //	fpuprocsetup(p);
-//	p->tpidr = 0;
-//	syswr(TPIDR_EL0, p->tpidr);
 }
 
 void
