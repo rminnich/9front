@@ -158,8 +158,9 @@ print("%p is %p\n", sv39, sv39[0]);
 		sv39[i] = ((0x40000000*i)>>2) | 0xcf;
 		print("sv39:%p is %p\n", &sv39[i], sv39[i]);
 	}
-while(! block);
+//while(! block);
 wsatp(((uintptr)sv39>>12)|(8ULL<<60));
+return;
 	// Probe.
 	mmumode = 8ULL<<60;
 	if (! mmumode) {
