@@ -232,6 +232,7 @@ newpage(uintptr va, QLock *locked)
 	p->modref = 0;
 	inittxtflush(p);
 
+	print("newpage: page %p has pa %p va %p\n", p, p->pa, va);
 	return p;
 }
 
