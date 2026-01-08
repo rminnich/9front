@@ -89,8 +89,8 @@ confinit(void)
 
 	print("conf.npage 0x%lx\n", conf.npage);
 	kpages = conf.npage - (conf.npage*userpcnt)/100;
-	if(kpages > ((uintptr)-VDRAM)/BY2PG)
-		kpages = ((uintptr)-VDRAM)/BY2PG;
+//	if(kpages > ((uintptr)-VDRAM)/BY2PG)
+//		kpages = ((uintptr)-VDRAM)/BY2PG;
 
 	print("kpages 0x%lx\n", kpages);
 	conf.upages = conf.npage - kpages;
@@ -116,7 +116,7 @@ confinit(void)
 	kpages = conf.npage - conf.upages;
 	print("kpages to start is %lx = %lx - %lx \n", kpages, conf.npage, conf.upages);
 	kpages *= BY2PG;
-	print("%lx -= %lx + %lx + %lx + %lx + %lx\n", 
+	print("%lx -= %lx + %lx + %lx + %lx + %x\n", 
 		kpages,conf.upages*sizeof(Page)
 		, conf.nproc*sizeof(Proc*)
 		, conf.nimage*sizeof(Image)
@@ -215,7 +215,7 @@ main(void)
 	quotefmtinstall();
 	sbiputc('q');
 	print("hi there\n");
-	if (0){
+/*	if (0){
 		int fail = 0;
 		static int x[512];
 		int i;
@@ -224,7 +224,7 @@ main(void)
 		memset(x, 0, 512);
 		for(i = 0; i < 512; i++) if (x[i] != i) { fail++; print("NOT CLEAR %d val 0x%lx\n", i, x[i]);}
 		print("%d memset fails\n", fail);
-	}
+	}*/
 //	bootargsinit();
 	meminit();
 	check();

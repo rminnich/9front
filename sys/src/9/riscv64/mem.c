@@ -48,13 +48,15 @@ void
 meminit(void)
 {
 	char *p;
-	/* note: this is the LIMIT: physical address of top of memory. 
-	 * 0xc000_0000 + 0x0800_0000 = 0xc800_0000 */
-	uintptr l = 2 * GiB;
+	uintptr l = 3 * GiB;
+	extern u64int *sv57, *sv48, *sv39, *pGiB;
+	extern int block;
 
 	if(p = getconf("*maxmem"))
 		l = strtoull(p, 0, 0);
 	print("meminit: end %p, KZERO %p, PGROUND %p\n", end, KZERO, PGROUND((uintptr)end - KTZERO));
+
+	// leave a big hole after end, for now. We need it for this and that. 
 	conf.mem[0].base = ROUND(PGROUND((uintptr)end - KTZERO) + (uintptr)0x804FFFFF, 0x200000);
 	conf.mem[0].limit = l;
 
@@ -62,6 +64,13 @@ meminit(void)
 	if(l > KLIMIT)
 		l = KLIMIT;
 	print("l is now %#llx\n", l);
+	sv57 = (void *)PGROUND((uintptr)end);
+	sv48 = (void *)PGROUND((uintptr)sv57 + 1);
+	sv39 = (void *)PGROUND((uintptr)sv48 + 1);
+	pGiB = (void *)PGROUND((uintptr)sv39 + 1);
+	print("%p %p %p %p\n", sv57, sv48, sv39, pGiB);
+	memset(sv57, 0, 16384);
+	block = 0;
 	kmapram(conf.mem[0].base, l);
 
 	conf.mem[0].npage = (conf.mem[0].limit - conf.mem[0].base)/BY2PG;

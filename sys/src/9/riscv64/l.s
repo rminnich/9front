@@ -94,6 +94,17 @@ _stop:
 	WFI
 	JMP	_stop
 
+
+TEXT	rsatp(SB), 1, $-4
+	MOV	CSR(SATP), R8
+	RET
+
+TEXT	wsatp(SB), 1, $-4
+	SFENCE
+	MOV	RARG, CSR(SATP)
+	SFENCE
+	RET
+
 TEXT	mmudisable<>(SB), 1, $-4
 	SFENCE
 	MOV	R0, CSR(SATP)

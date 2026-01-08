@@ -129,12 +129,69 @@ l1map(uintptr va, uintptr pa, uintptr pe, uintptr attr)
 #endif
 }
 
+u64int *sv57, *sv48, *sv39, *pGiB;
+int mmumode;
+
+int block = 0;
+
 void
 kmapram(uintptr base, uintptr limit)
 {
-// nothing to do.
-	USED(base);
-	USED(limit);
+	u64int i;
+//	while(! block)
+//	if (0) if ((base > 0) || (limit > 4 * GiB))
+//		return;
+	sv57[0] = ((((u64int)sv48)>>2)) | 1;
+	print("%p is %p\n", sv57, sv57[0]);
+	sv48[0] = ((((u64int)sv39)>>2)) | 1;
+/*
+print("%p is %p\n", sv48, sv48[0]);
+	sv39[0] = ((((u64int)pGiB)>>2)) | 0x1;
+print("%p is %p\n", sv39, sv39[0]);
+
+	for(i = 0; i < 4; i++){
+		pGiB[i] = (i<<10) | 0xf;
+		print("%p is %p\n", &pGiB[i], pGiB[i]);
+	}
+*/
+	for(i = 0; i < 4; i++){
+		sv39[i] = ((0x40000000*i)>>2) | 0xcf;
+		print("sv39:%p is %p\n", &sv39[i], sv39[i]);
+	}
+while(! block);
+wsatp(((uintptr)sv39>>12)|(8ULL<<60));
+	// Probe.
+	mmumode = 8ULL<<60;
+	if (! mmumode) {
+	wsatp((10ULL)<<60 | 0xf);
+	if (rsatp() == (10ULL)<<60)mmumode = 10ULL<<60;
+	}
+	if (! mmumode) {
+	wsatp((9ULL)<<60 | 0xf);
+	if (rsatp() == (9ULL)<<60)mmumode = 9ULL<<60;
+	}
+	if (! mmumode) {
+	wsatp((8ULL)<<60 | 0xf);
+	if (rsatp() == (8ULL)<<60)mmumode = 8ULL<<60;
+	}
+	//print("rsatp %llx\n", rsatp());
+	while (! block);
+	switch(mmumode>>60) {
+		case 10: 
+				wsatp(((uintptr)sv57>>12)|mmumode);
+				break;
+		case 9:
+				wsatp(((uintptr)sv48>>12)|mmumode);
+				break;
+		case 8:
+				wsatp(((uintptr)sv39>>12)|mmumode);
+				break;
+		default:
+			sbiputc('!');
+			panic("rsatp is fucked");
+			break;
+	}
+	return;
 #ifdef xxx
 	if(base < (uintptr)-KZERO && limit > (uintptr)-KZERO){
 		kmapram(base, (uintptr)-KZERO);

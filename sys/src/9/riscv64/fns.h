@@ -173,3 +173,7 @@ extern void pciintrdisable(int tbdf, void (*f)(Ureg*, void*), void *a);
 
 /* bootargs */
 extern void bootargsinit(void);
+
+// new
+void wsatp(u64int);
+u64int rsatp(void);
