@@ -60,8 +60,8 @@
 
 #define	REBOOTADDR	(VDRAM-KZERO + 0x20000)	/* 0x40020000 */
 
-#define	UZERO		0ULL			/* user segment */
-#define	UTZERO		(UZERO+0x10000)		/* user text start */
+#define	UZERO		0x4000000000ULL			/* user segment */
+#define	UTZERO		(UZERO+0x200000)		/* user text start */
 #define	USTKTOP		((EVAMASK>>1)-0xFFFF)	/* user segment end +1 */
 #define	USTKSIZE	(16*1024*1024)		/* user stack size */
 
