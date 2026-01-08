@@ -55,14 +55,20 @@ proc0(void*)
 	/*
 	 * Setup Text and Stack segments for initcode.
 	 */
+	print("USTKTPO %p \n", USTKTOP);
 	up->seg[SSEG] = newseg(SG_STACK | SG_NOEXEC, USTKTOP-USTKSIZE, USTKSIZE / BY2PG);
 	up->seg[TSEG] = newseg(SG_TEXT | SG_RONLY, UTZERO, 1);
 	up->seg[TSEG]->flushme = 1;
 	p = newpage(UTZERO, nil);
+	print("newpage %p @ %p\n", p, UTZERO);
 	k = kmap(p);
+	print("kmap of %p is %p\n", p, k);
 	print("seg and kmap done\n");
+	print("init code installed, memmov to %p VA %p from %p for %d bytes\\n", k, VA(k), initcode, sizeof(initcode));
+	extern int block;
+	while(! block);
 	memmove((uchar*)VA(k), initcode, sizeof(initcode));
-	print("init code installed\n");
+	print("init code installed, memset %p VA %p for %d bytes\\n", k, VA(k), BY2PG-sizeof(initcode));
 	memset((uchar*)VA(k)+sizeof(initcode), 0, BY2PG-sizeof(initcode));
 	print("umem zerod\n");
 	kunmap(k);
