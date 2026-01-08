@@ -190,6 +190,21 @@ main(void)
 		sbiputc('b');
 		i++;
 	}
+	if (!m->machno) {
+		extern char bdata[], edata[], end[], etext[];
+		static ulong vfy = 0xcafebabe;
+	
+		if (vfy != 0xcafebabe){
+			sbiputc('Z');
+			memmove(bdata, etext, edata - bdata);
+		}
+		if (vfy != 0xcafebabe) {
+			sbiputc('?');
+			panic("misaligned data segment");
+		}
+		memset(edata, 0, end - edata);		/* zero bss */
+		vfy = 0;
+	}
 	machinit();
 	while (i < 64) {
 		sbiputc('c');
