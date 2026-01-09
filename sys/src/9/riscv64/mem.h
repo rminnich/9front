@@ -62,7 +62,7 @@
 
 #define	UZERO		0x4000000000ULL			/* user segment */
 #define	UTZERO		(UZERO+0x200000)		/* user text start */
-#define	USTKTOP		((EVAMASK>>1)-0xFFFF)	/* user segment end +1 */
+#define	USTKTOP		((UZERO<<1)-BY2PG)	/* user segment end +1 */
 #define	USTKSIZE	(16*1024*1024)		/* user stack size */
 
 #define BLOCKALIGN	64			/* only used in allocb.c */

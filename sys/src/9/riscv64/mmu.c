@@ -130,7 +130,7 @@ l1map(uintptr va, uintptr pa, uintptr pe, uintptr attr)
 }
 
 u64int *sv57, *sv48, *sv39, *pGiB;
-int mmumode;
+u64int mmumode;
 
 int block = 0;
 
@@ -138,6 +138,8 @@ void
 kmapram(uintptr base, uintptr limit)
 {
 	u64int i;
+	USED(base);
+	USED(limit);
 //	while(! block)
 //	if (0) if ((base > 0) || (limit > 4 * GiB))
 //		return;
@@ -160,7 +162,7 @@ print("%p is %p\n", sv39, sv39[0]);
 	}
 //while(! block);
 wsatp(((uintptr)sv39>>12)|(8ULL<<60));
-return;
+	if (0){
 	// Probe.
 	mmumode = 8ULL<<60;
 	if (! mmumode) {
@@ -207,6 +209,7 @@ return;
 	l1map((uintptr)kmapaddr(base), base, limit,
 		PTEWRITE | PTEREAD);
 #endif
+	}
 }
 
 uintptr
@@ -247,12 +250,24 @@ vmap(uvlong pa, vlong size)
 	
 	return (void*)mmukmap(va | PTEDEVICE, pa, size);
 #endif
+	panic("vmap");
 	return nil;
 }
 
 void
 vunmap(void *, vlong)
 {
+	panic("vunmap");
+}
+
+// That macro hackery is just too much for me to look at, and kenc should
+// inline this function anyway.
+static u64int vpn(uintptr va, int level)
+{
+	int shift = 12 + 9*level;
+	u64int val = (va>>shift)&0x1ff;
+	print("vpn(%p,%d)=%lx\n", va, level, val);
+	return val;
 }
 
 static uintptr*
@@ -261,11 +276,15 @@ mmuwalk(uintptr va, int level)
 	uintptr *table, pte;
 	Page *pg;
 	int i, x;
-
-	x = PTLX(va, PTLEVELS-1);
+// In future, PTLEVELS will be dynamic.
+	print("mmuwalk: va %p, level %d PTLEVELS %d\n", va, level, PTLEVELS);
+	x = vpn(va, PTLEVELS-1);
+	print("mmuwalk: x %d\n", x);
 	table = m->mmutop;
+	print("mmuwalk: table %p\n", table);
 	for(i = PTLEVELS-2; i >= level; i--){
 		pte = table[x];
+		print("mmuwalk:pte %llx\n", pte);
 		if(pte & PTEVALID) {
 			if(pte & (0xFFFFULL<<48))
 				iprint("strange pte %#p va %#p\n", pte, va);
@@ -276,16 +295,20 @@ mmuwalk(uintptr va, int level)
 				return nil;
 			up->mmufree = pg->next;
 			pg->va = va & -PGLSZ(i+1);
+			print("mmuwalk:pg=>va %p\n", pg->va);
 			if((pg->next = up->mmuhead[i+1]) == nil)
 				up->mmutail[i+1] = pg;
 			up->mmuhead[i+1] = pg;
 			pte = pg->pa;
+			print("mmuwalk:pte %p\n", pte);
 			memset(kmapaddr(pte), 0, BY2PG);
 			coherence();
-			table[x] = pte | PTEVALID;	// XXX: Does this need PA2PTE
+			table[x] = ((pte>>12)<<10) | PTEVALID;	// XXX: Does this need PA2PTE
+			print("mmuwalk:table[%x]=%p\n", x, table[x]);
 		}
 		table = kmapaddr(pte);
-		x = PTLX(va, (uintptr)i);
+		x = vpn(va, (uintptr)i);
+		print("mmuwalk:bottom of for, x is 0x%x\n", x);
 	}
 	return &table[x];
 }

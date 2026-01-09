@@ -28,8 +28,10 @@ init0(void)
 {
 	char buf[2*KNAMELEN], **sp;
 
+	print("chandevinit ...\n");
 	chandevinit();
 
+	print("done ...\n");
 	if(!waserror()){
 		snprint(buf, sizeof(buf), "%s %s", "ARM64", conffile);
 		ksetenv("terminal", buf, 0);
@@ -38,18 +40,27 @@ init0(void)
 			ksetenv("service", "cpu", 0);
 		else
 			ksetenv("service", "terminal", 0);
+		print("setconfenv\n");
 		setconfenv();
+		print("DONE ...\n");
 		poperror();
 	}
+	print("alarm kproc\n");
 	kproc("alarm", alarmkproc, 0);
-
+	print("done\n");
 	sp = (char**)(USTKTOP-sizeof(Tos) - 8 - sizeof(sp[0])*4);
+	print("sp is %p\n", sp);
+	extern int block;
+	while(! block);
 	sp[3] = sp[2] = sp[1] = nil;
 	strcpy(sp[1] = (char*)&sp[4], "boot");
 	sp[0] = (void*)&sp[1];
+	print("sp all set up\n");
+	print("fpukexit ...\n");
 
 	splhi();
 	fpukexit(nil, nil);
+	print("done ...\n");
 	print("touser baby\n");
 	touser((uintptr)sp);
 }
