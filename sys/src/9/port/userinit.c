@@ -78,8 +78,9 @@ proc0(void*)
 	//print("TSEG paged in, now page in  USTKTOP %p\n", USTKTOP);
 	//segpage(up->seg[SSEG], (void *)(USTKTOP));
 	print("post TSEG\n");
-	p = newpage(USTKTOP-BY2PG, nil);
-	segpage(up->seg[SSEG], p);
+	// NO. 
+	//p = newpage(USTKTOP-BY2PG, nil);
+	//segpage(up->seg[SSEG], p);
 	//putmmu(p->va, p->pa, p); (mmu is the wrong one ...)
 	/*
 	 * Become a user process.
