@@ -49,6 +49,8 @@ init0(void)
 	kproc("alarm", alarmkproc, 0);
 	print("done\n");
 	sp = (char**)(USTKTOP-sizeof(Tos) - 8 - sizeof(sp[0])*4);
+	print("call fault, up is %p\n", up);
+	fault((uvlong)sp, 0x1000, 0);
 	print("sp is %p\n", sp);
 	extern int block;
 	while(! block);
