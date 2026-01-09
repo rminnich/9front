@@ -265,8 +265,8 @@ vunmap(void *, vlong)
 static u64int vpn(uintptr va, int level)
 {
 	int shift = 12 + 9*level;
-	u64int val = (va>>shift)&0x1ff;
-	print("vpn(%p,%d)=%lx\n", va, level, val);
+	uintptr val = (va>>shift)&0x1ff;
+	print("<<<vpn(%p,%d)[shift %d]=%p>>>", va, level, shift, val);
 	return val;
 }
 
@@ -277,39 +277,44 @@ mmuwalk(uintptr va, int level)
 	Page *pg;
 	int i, x;
 // In future, PTLEVELS will be dynamic.
-	print("mmuwalk: va %p, level %d PTLEVELS %d\n", va, level, PTLEVELS);
+	print("mmuwalk: va %p, walk to level %d PTLEVELS %d,", va, level, PTLEVELS);
 	x = vpn(va, PTLEVELS-1);
-	print("mmuwalk: x %d\n", x);
 	table = m->mmutop;
-	print("mmuwalk: table %p\n", table);
+	print("level %d:%p[0x%x]=%p,", PTLEVELS-1, table, x, table[x]);
 	for(i = PTLEVELS-2; i >= level; i--){
 		pte = table[x];
-		print("mmuwalk:pte %llx\n", pte);
+		print(" %p[%x]=%p %s,", table, x, pte, pte & PTEVALID ? "valid" : "invalid");
 		if(pte & PTEVALID) {
 			if(pte & (0xFFFFULL<<48))
-				iprint("strange pte %#p va %#p\n", pte, va);
+				iprint("strange pte %#p va %#p, ", pte, va);
 			pte &= ~(0xFFFFULL<<48 | BY2PG-1);
+			pte <<= 2;
 		} else {
 			pg = up->mmufree;
-			if(pg == nil)
+			if(pg == nil){
+				print("up->mmufree is empty, return nil\n");
 				return nil;
+			}
 			up->mmufree = pg->next;
 			pg->va = va & -PGLSZ(i+1);
-			print("mmuwalk:pg=>va %p\n", pg->va);
+			print("pg=>va %p, ", pg->va);
 			if((pg->next = up->mmuhead[i+1]) == nil)
 				up->mmutail[i+1] = pg;
 			up->mmuhead[i+1] = pg;
 			pte = pg->pa;
-			print("mmuwalk:pte %p\n", pte);
+			print("pte %p, ", pte);
 			memset(kmapaddr(pte), 0, BY2PG);
 			coherence();
 			table[x] = ((pte>>12)<<10) | PTEVALID;	// XXX: Does this need PA2PTE
-			print("mmuwalk:table[%x]=%p\n", x, table[x]);
+			print("level %d:%p[%x]=%p,", i, table, x, table[x]);
 		}
 		table = kmapaddr(pte);
+		print("kmapaddr of %p is %p, ", pte, table);
 		x = vpn(va, (uintptr)i);
-		print("mmuwalk:bottom of for, x is 0x%x\n", x);
+		print("\nmmuwalk:level %d bottom of for, vpn(%p, %d)= 0x%x,", i, va, i, x);
 	}
+	print("RETURN &%p[0x%x] = ", table, x);
+	print("%p\n", &table[x]);
 	return &table[x];
 }
 
@@ -387,6 +392,7 @@ putmmu(uintptr va, uintptr pa, Page *pg)
 	while((pte = mmuwalk(va, 0)) == nil){
 		spllo();
 		up->mmufree = newpage(0, nil);
+		print("putmmu: get a page %p, try again\n", up->mmufree);
 		splhi();
 	}
 	old = *pte;
@@ -396,12 +402,14 @@ putmmu(uintptr va, uintptr pa, Page *pg)
 	else
 		flushasidva((uvlong)up->asid<<48 | va>>12);
 	*pte = PA2PTE(pa) | PTEVALID | PTEUSER;
+	print("pte %p *pte %p\n", pte, *pte);
 	if(needtxtflush(pg)){
 		cachedwbinvse(kmap(pg), BY2PG);
 		cacheiinvse((void*)va, BY2PG);
 		donetxtflush(pg);
 	}
 	splx(s);
+	print("putmmu done\n");
 }
 
 static void
