@@ -27,6 +27,7 @@ void
 init0(void)
 {
 	char buf[2*KNAMELEN], **sp;
+	Page *p;
 
 	print("chandevinit ...\n");
 	chandevinit();
@@ -48,10 +49,15 @@ init0(void)
 	print("alarm kproc\n");
 	kproc("alarm", alarmkproc, 0);
 	print("done\n");
+	p = newpage(USTKTOP-BY2PG, nil);
+	segpage(up->seg[SSEG], p);
 	sp = (char**)(USTKTOP-sizeof(Tos) - 8 - sizeof(sp[0])*4);
 	print("call fault, up is %p\n", up);
-	fault((uvlong)sp, 0x1000, 0);
+	putmmu((uintptr)sp, p->pa, p);
 	print("sp is %p\n", sp);
+	// this is a pretty good test, leave it here.
+	sp = usertokernel(sp);
+	print("sp is %p for pa %p\n", sp, p->pa);
 	extern int block;
 	while(! block);
 	sp[3] = sp[2] = sp[1] = nil;

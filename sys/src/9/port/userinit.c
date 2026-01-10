@@ -55,7 +55,7 @@ proc0(void*)
 	/*
 	 * Setup Text and Stack segments for initcode.
 	 */
-	print("USTKTPO %p base of stack %p size 0x%lx\n", USTKTOP, USTKTOP-USTKSIZE, USTKSIZE / BY2PG);
+	print("USTKTPO %p base of stack %p size 0x%llx\n", USTKTOP, USTKTOP-USTKSIZE, USTKSIZE / BY2PG);
 	up->seg[SSEG] = newseg(SG_STACK | SG_NOEXEC, USTKTOP-USTKSIZE, USTKSIZE / BY2PG);
 	up->seg[TSEG] = newseg(SG_TEXT | SG_RONLY, UTZERO, 1);
 	up->seg[TSEG]->flushme = 1;
@@ -68,7 +68,7 @@ proc0(void*)
 	extern int block;
 	if (0)while(! block);
 	memmove((uchar*)VA(k), initcode, sizeof(initcode));
-	print("init code installed, memset %p VA %p for %ld bytes\\n", k, VA(k), BY2PG-sizeof(initcode));
+	print("init code installed, memset %p VA %p for %lld bytes\\n", k, VA(k), BY2PG-sizeof(initcode));
 	memset((uchar*)VA(k)+sizeof(initcode), 0, BY2PG-sizeof(initcode));
 	print("umem zerod\n");
 	kunmap(k);

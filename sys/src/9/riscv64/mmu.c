@@ -270,6 +270,16 @@ static u64int vpn(uintptr va, int level)
 	return val;
 }
 
+static uintptr 
+ptephys(uintptr pte)
+{
+	return (pte & ~(0xFFFFULL<<48 | BY2PG-1))<<2;
+}
+
+/* there are still a few nasty assumptions in here about
+ * pte not needing left shifts etc. riscv really fucked up
+ * the pte format. Intel did better.
+ */
 static uintptr*
 mmuwalk(uintptr va, int level)
 {
@@ -303,7 +313,7 @@ mmuwalk(uintptr va, int level)
 			up->mmuhead[i+1] = pg;
 			pte = pg->pa;
 			print("pte %p, ", pte);
-			memset(kmapaddr(pte), 0, BY2PG);
+			memset(kmapaddr(pg->pa), 0, BY2PG);
 			coherence();
 			table[x] = ((pte>>12)<<10) | PTEVALID;	// XXX: Does this need PA2PTE
 			print("level %d:%p[%x]=%p,", i, table, x, table[x]);
@@ -316,6 +326,18 @@ mmuwalk(uintptr va, int level)
 	print("RETURN &%p[0x%x] = ", table, x);
 	print("%p\n", &table[x]);
 	return &table[x];
+}
+
+void *
+usertokernel(void *v)
+{
+	uintptr *pte = mmuwalk((uvlong)v, 0);
+	if (v == nil){
+		print("%p in up %p: not mapped\n", v, up);
+		error("not mapped");
+	}
+	print("usertokernel %p -> pte %p contains %p phys %p v %p\n", v, pte, *pte, ptephys(*pte), kmapaddr(ptephys(*pte)));
+	return kmapaddr((uintptr)pte);
 }
 
 static Proc *asidlist[256];
@@ -388,6 +410,7 @@ putmmu(uintptr va, uintptr pa, Page *pg)
 	uintptr *pte, old;
 	int s;
 
+	print("putmmu(%p, %p, %p)\n", va, pa, pg);
 	s = splhi();
 	while((pte = mmuwalk(va, 0)) == nil){
 		spllo();
@@ -401,7 +424,7 @@ putmmu(uintptr va, uintptr pa, Page *pg)
 		flushasidvall((uvlong)up->asid<<48 | va>>12);
 	else
 		flushasidva((uvlong)up->asid<<48 | va>>12);
-	*pte = PA2PTE(pa) | PTEVALID | PTEUSER;
+	*pte = PA2PTE(pa) | PTEVALID | PTEUSER | 0xf;
 	print("pte %p *pte %p\n", pte, *pte);
 	if(needtxtflush(pg)){
 		cachedwbinvse(kmap(pg), BY2PG);

@@ -177,3 +177,4 @@ extern void bootargsinit(void);
 // new
 void wsatp(u64int);
 u64int rsatp(void);
+void *usertokernel(void *v);
