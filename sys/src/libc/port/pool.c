@@ -239,7 +239,7 @@ treelookupgt(Free *t, ulong size)
 	for(;;) {
 		if(t == nil)
 			return lastgood;
-		print("treelookupgt t %p magic@%p %lx\n", t, &t->magic, t->magic);
+		if (0)print("treelookupgt t %p magic@%p %lx\n", t, &t->magic, t->magic);
 		assert(t->magic == FREE_MAGIC);
 		if(size == t->size)
 			return t;
@@ -261,12 +261,12 @@ treesplay(Free *t, ulong size)
 	l = r = &N;
 
 	for(;;) {
-		print("treesplay t %p magic@%p %lx\n", t, &t->magic, t->magic);
+if(0)print("treesplay t %p magic@%p %lx\n", t, &t->magic, t->magic);
 		assert(t->magic == FREE_MAGIC);
 		if(size < t->size) {
 			y = t->left;
 			if(y != nil) {
-		print("treesplay y-> %p magic@%p %lx\n", y, &y->magic, y->magic);
+if(0)print("treesplay y-> %p magic@%p %lx\n", y, &y->magic, y->magic);
 				assert(y->magic == FREE_MAGIC);
 				if(size < y->size) {
 					t->left = y->right;
@@ -282,7 +282,7 @@ treesplay(Free *t, ulong size)
 		} else if(size > t->size) {
 			y = t->right;
 			if(y != nil) {
-		print("treesplay y2-> %p magic@%p %lx\n", y, &y->magic, y->magic);
+if(0)print("treesplay y2-> %p magic@%p %lx\n", y, &y->magic, y->magic);
 				assert(y->magic == FREE_MAGIC);
 				if(size > y->size) {
 					t->right = y->left;
@@ -318,7 +318,7 @@ pooladd(Pool *p, Alloc *anode)
 	}
 
 	node = (Free*)anode;
-	print("pooladd: set node %p magic to free magic\n", node);
+if(0)print("pooladd: set node %p magic to free magic\n", node);
 	node->magic = FREE_MAGIC;
 	node->left = node->right = nil;
 	node->next = node->prev = node;
@@ -371,7 +371,7 @@ pooldel(Pool *p, Free *node)
 			root->left = node->left;
 			root->right = node->right;
 		}
-		print("pooldel: check root %p magic %lx\n", root, root->magic);
+if(0)print("pooldel: check root %p magic %lx\n", root, root->magic);
 		assert(root->magic == FREE_MAGIC && root->size == node->size);
 		node->next->prev = node->prev;
 		node->prev->next = node->next;
