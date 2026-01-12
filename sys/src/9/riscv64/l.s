@@ -219,7 +219,6 @@ TEXT touser(SB), 1, $-4
 	FENCE
 	FENCE_I
 
-	MOV	R0, RARG
 	MOV	$(UTZERO+8*BY2WD), R12	/* skip unextended exec hdr of init */
 	MOV	R12, CSR(SEPC)		/* new pc */
 	MOV	RARG, R2		/* new sp */

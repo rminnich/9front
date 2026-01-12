@@ -134,7 +134,7 @@ l1map(uintptr va, uintptr pa, uintptr pe, uintptr attr)
 u64int *sv57, *sv48, *sv39, *pGiB;
 u64int mmumode;
 
-int block = 0;
+int block = 1;
 
 void
 kmapram(uintptr base, uintptr limit)
@@ -444,7 +444,7 @@ putmmu(uintptr va, uintptr pa, Page *pg)
 		flushasidvall((uvlong)up->asid<<48 | va>>12);
 	else
 		flushasidva((uvlong)up->asid<<48 | va>>12);
-	*pte = PA2PTE(pa) | PTEVALID | PTEUSER | 0xf;
+	*pte = PA2PTE(pa) | PTEUSERWRITE; // shit. UI fail.| read ? PTEUSERREAD : PTEUSERWRITE;
 	print("pte %p *pte %p\n", pte, *pte);
 	if(needtxtflush(pg)){
 		cachedwbinvse(kmap(pg), BY2PG);

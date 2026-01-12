@@ -26,7 +26,7 @@ isaconfig(char *, int, ISAConf *)
 void
 init0(void)
 {
-	char buf[2*KNAMELEN], **sp;
+	char buf[2*KNAMELEN], **sp, **usp;
 	Page *p;
 	uintptr pc;
 
@@ -58,13 +58,12 @@ init0(void)
 	print("done\n");
 	p = newpage(USTKTOP-BY2PG, nil);
 	segpage(up->seg[SSEG], p);
-	sp = (char**)(USTKTOP-sizeof(Tos) - 8 - sizeof(sp[0])*4);
-	print("call fault, up is %p\n", up);
-	putmmu((uintptr)sp, p->pa, p);
-	print("sp is %p\n", sp);
+	usp = (char**)(USTKTOP-sizeof(Tos) - 8 - sizeof(sp[0])*4);
+	print("usp is %p\n", usp);
 	// this is a pretty good test, leave it here.
-	sp = usertokernel(sp);
-	print("sp is %p for pa %p\n", sp, p->pa);
+	print("fault %d\n", fault((uintptr)usp, UTZERO, 0));
+	sp = usertokernel(usp);
+	print("sp is %p for usp %p\n", sp, sp);
 	extern int block;
 	sp[3] = sp[2] = sp[1] = nil;
 	strcpy(sp[1] = (char*)&sp[4], "boot");
@@ -80,8 +79,9 @@ init0(void)
 	u64int* pte = userpte((void *)UTZERO);
 	print("pte is %p *pte %llx\n", pte, *pte);
 	print("touser baby\n");
+	block = 0;
 	while(! block);
-	touser((uintptr)sp);
+	touser((uintptr)usp);
 }
 
 void

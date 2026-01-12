@@ -63,7 +63,7 @@
 // Sv39 max address is 1<<38-1. Choose 1<<36. (1<<32 for now)
 // This gives kernel a lot of memory, and over time,
 // user gets even more.
-#define	UZERO		(0x100000000ULL)			/* user segment */
+#define	UZERO		(0x1000000000ULL)			/* user segment */
 #define	UTZERO		(UZERO+0x200000)		/* user text start */
 #define	USTKTOP		((UZERO<<1)-BY2PG)	/* user segment end +1 */
 #define	USTKSIZE	(16*1024*1024)		/* user stack size */
@@ -89,10 +89,17 @@
 #define PTEWRITE	(1<<2)
 #define PTEEXEC		(1<<3)
 #define PTEUSER		(1<<4)
-#define PTECACHED	0
-#define PTEUNCACHED	0
-#define PTEDEVICE	0		/* FIXME */
+#define PTEGLOBAL	(1<<5)
+#define PTEACCESSED	(1<<6)
+#define PTEDIRTY	(1<<7)
 #define PTERONLY	PTEREAD
+
+#define PTEUSERREAD (PTEVALID | PTEREAD | PTEEXEC | PTEUSER | PTEACCESSED)
+#define PTEUSERWRITE (PTEUSERREAD | PTEWRITE | PTEDIRTY)
+
+/* bogus. */
+#define PTECACHED 0
+#define PTEUNCACHED 0
 
 #define PA2PTE(pa)	((pa>>12)<<10)
 #define PTE2PA(pte)	((pte>>10)<<12)
