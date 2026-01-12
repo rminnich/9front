@@ -28,11 +28,18 @@ init0(void)
 {
 	char buf[2*KNAMELEN], **sp;
 	Page *p;
+	uintptr pc;
 
 	print("chandevinit ...\n");
 	chandevinit();
 
-	print("done ...\n");
+	
+	if (0){ 
+		print("done ...\n");
+		pc = (uintptr)usertokernel((void *)UTZERO);
+		print("pc va is %p\n", pc);
+	}
+
 	if(!waserror()){
 		snprint(buf, sizeof(buf), "%s %s", "ARM64", conffile);
 		ksetenv("terminal", buf, 0);
@@ -59,7 +66,6 @@ init0(void)
 	sp = usertokernel(sp);
 	print("sp is %p for pa %p\n", sp, p->pa);
 	extern int block;
-	while(! block);
 	sp[3] = sp[2] = sp[1] = nil;
 	strcpy(sp[1] = (char*)&sp[4], "boot");
 	sp[0] = (void*)&sp[1];
@@ -68,8 +74,13 @@ init0(void)
 
 	splhi();
 	fpukexit(nil, nil);
-	print("done ...\n");
+	print("done ... call mmuswitch\n");
+	mmuswitch(up);
+	print("fault %d\n", fault(UTZERO, UTZERO, 1));
+	u64int* pte = userpte((void *)UTZERO);
+	print("pte is %p *pte %llx\n", pte, *pte);
 	print("touser baby\n");
+	while(! block);
 	touser((uintptr)sp);
 }
 
@@ -332,7 +343,8 @@ rebootjump(void *entry, void *code, ulong size)
 	intrcpushutdown();
 
 	/* redo identity map */
-	setttbr(PADDR(L1BOT));
+	/* not needed. -- satp never changes*/
+	//setttbr(PADDR(L1BOT));
 
 	/* setup reboot trampoline function */
 	f = (void*)REBOOTADDR;

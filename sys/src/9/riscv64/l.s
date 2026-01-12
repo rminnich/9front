@@ -203,11 +203,6 @@ TEXT	vcycles(SB), 1, $-4
 TEXT	perfticks(SB), 1, $-4
 	RET
 
-	/* rename as we don't have ttbr */
-TEXT	setttbr(SB), 1, $-4
-	RET
-
-
 TEXT	idlehands(SB), 1, $-4
 	FENCE
 	MOVW	nrdy(SB), R8

@@ -17,10 +17,12 @@ static void mmemset(void *v, char val, int size) {
 void
 mmu1init(void)
 {
+	extern u64int *sv57, *sv48, *sv39, *pGiB;
 	m->mmutop = mallocalign(L1TOPSIZE, BY2PG, 0, 0);
 	if(m->mmutop == nil)
 		panic("mmu1init: no memory for mmutop");
 	memset(m->mmutop, 0, L1TOPSIZE);
+	memmove(m->mmutop, sv39, L1TOPSIZE);
 	mmuswitch(nil);
 }
 
@@ -287,18 +289,24 @@ mmuwalk(uintptr va, int level)
 	Page *pg;
 	int i, x;
 // In future, PTLEVELS will be dynamic.
-	print("mmuwalk: va %p, walk to level %d PTLEVELS %d,", va, level, PTLEVELS);
+	print("mmuwalk: va %p, walk to level %d starting from %d,", va, level, PTLEVELS);
 	x = vpn(va, PTLEVELS-1);
+	// N.B.: the assumption here is that mmutop was already set from 
+	// p->mmutop. mmutop[x] will never be non-zero. If it is, it's a bug.
 	table = m->mmutop;
-	print("level %d:%p[0x%x]=%p,", PTLEVELS-1, table, x, table[x]);
+	print("MMUWALK MMUTOP is %p\n", m->mmutop);
 	for(i = PTLEVELS-2; i >= level; i--){
+		print("%d: table %p, index %d, pte %p: ", i, table, x, table[x]);
 		pte = table[x];
-		print(" %p[%x]=%p %s,", table, x, pte, pte & PTEVALID ? "valid" : "invalid");
+		print(" %p %s, points to %p,", pte, pte & PTEVALID ? "valid" : "invalid", (pte>>10)<<12);
 		if(pte & PTEVALID) {
-			if(pte & (0xFFFFULL<<48))
-				iprint("strange pte %#p va %#p, ", pte, va);
-			pte &= ~(0xFFFFULL<<48 | BY2PG-1);
-			pte <<= 2;
+			if (0){
+				if(pte & (0xFFFFULL<<48))
+					iprint("strange pte %#p va %#p, ", pte, va);
+				pte &= ~(0xFFFFULL<<48 | BY2PG-1);
+				pte <<= 2;
+			}
+			pte = (pte >>10)<<12;
 		} else {
 			pg = up->mmufree;
 			if(pg == nil){
@@ -307,25 +315,37 @@ mmuwalk(uintptr va, int level)
 			}
 			up->mmufree = pg->next;
 			pg->va = va & -PGLSZ(i+1);
-			print("pg=>va %p, ", pg->va);
+			print("page for pte is %p, ", pg->va);
 			if((pg->next = up->mmuhead[i+1]) == nil)
 				up->mmutail[i+1] = pg;
 			up->mmuhead[i+1] = pg;
+			print("SET up->mmuhead[%d] = %p, pte@ %p\n", i+1, pg, pg->pa);
 			pte = pg->pa;
-			print("pte %p, ", pte);
 			memset(kmapaddr(pg->pa), 0, BY2PG);
 			coherence();
+			print(": SET table %p[%x]@%p = addr %p val%llx\n", table, x, &table[x], pte, ((pte>>12)<<10) | PTEVALID);
 			table[x] = ((pte>>12)<<10) | PTEVALID;	// XXX: Does this need PA2PTE
-			print("level %d:%p[%x]=%p,", i, table, x, table[x]);
 		}
 		table = kmapaddr(pte);
 		print("kmapaddr of %p is %p, ", pte, table);
 		x = vpn(va, (uintptr)i);
-		print("\nmmuwalk:level %d bottom of for, vpn(%p, %d)= 0x%x,", i, va, i, x);
+		print("\n");
 	}
 	print("RETURN &%p[0x%x] = ", table, x);
 	print("%p\n", &table[x]);
 	return &table[x];
+}
+
+u64int *
+userpte(void *v)
+{
+	uintptr *pte = mmuwalk((uvlong)v, 0);
+	if (v == nil){
+		print("%p in up %p: not mapped\n", v, up);
+		error("not mapped");
+	}
+	print("userpte %p -> pte %p contains %p phys %p v %p\n", v, pte, *pte, ptephys(*pte), kmapaddr(ptephys(*pte)));
+	return pte;
 }
 
 void *
@@ -456,12 +476,16 @@ mmuswitch(Proc *p)
 {
 	uintptr va;
 	Page *t;
-
+	extern int block;
+	print("SWITCH MMUTOP IS %p, @ 100 is %p\n", m->mmutop, m->mmutop[0x100]);
 	for(va = UZERO; va < USTKTOP; va += PGLSZ(PTLEVELS-1))
 		m->mmutop[PTLX(va, PTLEVELS-1)] = 0;
 
+	print("p %p for setting tbr?\n", p);
 	if(p == nil){
-		setttbr(PADDR(m->mmutop));
+		// maybe flush the user mode entries? probably
+		print("mmuswitch p is nil what to do?\n");
+		wsatp(((uintptr)m->mmutop>>12)|(8ULL<<60));
 		return;
 	}
 
@@ -469,16 +493,24 @@ mmuswitch(Proc *p)
 		mmufree(p);
 		p->newtlb = 0;
 	}
-
-	if(allocasid(p))
+	print("allocasid(p) %d\n", allocasid(p));
+	if(allocasid(p)){
+		print("NOT messing with ASID\n");
 		flushasid((uvlong)p->asid<<48);
+	}
 
-	setttbr((uvlong)p->asid<<48 | PADDR(m->mmutop));
+	//print("set tbr to %llx\n", (uvlong)p->asid<<48 | PADDR(m->mmutop));
+	//setttbr((uvlong)p->asid<<48 | PADDR(m->mmutop));
 
 	for(t = p->mmuhead[PTLEVELS-1]; t != nil; t = t->next){
 		va = t->va;
-		m->mmutop[PTLX(va, PTLEVELS-1)] = t->pa | PTEVALID;
+		u64int pte = ((t->pa)>>12) << 10 | PTEVALID| PTEUSER;
+		print("Set mmutop[%llxx] to %llx\n", PTLX(va, PTLEVELS-1), pte );
+		m->mmutop[PTLX(va, PTLEVELS-1)] = pte;
 	}
+	wsatp(((uintptr)m->mmutop>>12)|(8ULL<<60));
+	print("MMUSWTICH: wrote satp: block\n");
+	while (! block);
 }
 
 void

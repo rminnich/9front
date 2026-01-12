@@ -9,11 +9,14 @@
 void
 mmu1init(void)
 {
+	extern int block;
+	block = 1;
 	m->mmutop = mallocalign(L1TOPSIZE, BY2PG, 0, 0);
 	if(m->mmutop == nil)
 		panic("mmu1init: no memory for mmutop");
 	memset(m->mmutop, 0, L1TOPSIZE);
 	mmuswitch(nil);
+	block = 0;
 }
 
 /* KZERO maps the first 1GB of ram */
@@ -342,10 +345,13 @@ mmuswitch(Proc *p)
 
 	setttbr((uvlong)p->asid<<48 | PADDR(m->mmutop));
 
+	print("------->mmuswitch: Set up pointers\n");
 	for(t = p->mmuhead[PTLEVELS-1]; t != nil; t = t->next){
 		va = t->va;
+		print("m->mmutop %p[0x%llx] = %llx\n", &m->mmutop[PTLX(va, PTLEVELS-1)], PTLX(va, PTLEVELS-1), 
+			t->pa | PTEVALID | PTETABLE);
 		m->mmutop[PTLX(va, PTLEVELS-1)] = t->pa | PTEVALID | PTETABLE;
-	}
+
 }
 
 void

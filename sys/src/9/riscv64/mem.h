@@ -60,7 +60,10 @@
 
 #define	REBOOTADDR	(VDRAM-KZERO + 0x20000)	/* 0x40020000 */
 
-#define	UZERO		0x4000000000ULL			/* user segment */
+// Sv39 max address is 1<<38-1. Choose 1<<36. (1<<32 for now)
+// This gives kernel a lot of memory, and over time,
+// user gets even more.
+#define	UZERO		(0x100000000ULL)			/* user segment */
 #define	UTZERO		(UZERO+0x200000)		/* user text start */
 #define	USTKTOP		((UZERO<<1)-BY2PG)	/* user segment end +1 */
 #define	USTKSIZE	(16*1024*1024)		/* user stack size */

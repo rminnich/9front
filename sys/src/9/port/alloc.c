@@ -25,8 +25,7 @@ static Pool pmainmem = {
 	.quantum=	32,
 	.alloc=	xalloc,
 	.merge=	xmerge,
-	.flags=	POOL_LOGGING | POOL_TOLERANCE | POOL_NOREUSE 
-			,//| POOL_DEBUGGING , //| POOL_VERBOSITY,
+	.flags=	POOL_LOGGING | POOL_TOLERANCE | POOL_NOREUSE,
 
 	.lock=	plock,
 	.unlock=	punlock,
@@ -98,7 +97,7 @@ ppanic(Pool *p, char *fmt, ...)
 	va_list v;
 	Private *pv;
 	char msg[sizeof pv->msg];
-	print("ENTER POOL PANIC\n");
+if (0)print("ENTER POOL PANIC\n");
 	pv = p->private;
 	va_start(v, fmt);
 	vseprint(pv->msg+strlen(pv->msg), pv->msg+sizeof pv->msg, fmt, v);
@@ -112,19 +111,19 @@ static void
 plock(Pool *p)
 {
 	Private *pv;
-	print("PLOCK %p mainmem %p\n", p, mainmem);
+if (0)print("PLOCK %p mainmem %p\n", p, mainmem);
 	pv = p->private;
 	ilock(&pv->lk);
 	pv->lk.pc = getcallerpc(&p);
 	pv->msg[0] = 0;
-	print("plocked\n");
+if (0)print("plocked\n");
 }
 
 static void
 punlock(Pool *p)
 {
 	Private *pv;
-	print("punlock\n");
+if (0)print("punlock\n");
 	//char msg[sizeof pv->msg];
 
 	pv = p->private;
@@ -146,7 +145,7 @@ punlock(Pool *p)
 void
 poolsummary(Pool *p)
 {
-	print("%s max %llud cur %llud free %llud alloc %llud\n", p->name,
+if (0)print("%s max %llud cur %llud free %llud alloc %llud\n", p->name,
 		(uvlong)p->maxsize, (uvlong)p->cursize,
 		(uvlong)p->curfree, (uvlong)p->curalloc);
 }
@@ -204,7 +203,7 @@ void*
 smalloc(ulong size)
 {
 	void *v;
-	print("SMALLOC %d\n", size);
+if (0)print("SMALLOC %d\n", size);
 	poolcheck(mainmem);
 	while((v = poolalloc(mainmem, size+Npadlong*sizeof(ulong))) == nil){
 		if(!waserror()){
@@ -217,7 +216,7 @@ smalloc(ulong size)
 		setmalloctag(v, getcallerpc(&size));
 	}
 	memset(v, 0, size);
-	print("SMALLOC RETURNS %p\n", v);
+if (0)print("SMALLOC RETURNS %p\n", v);
 	return v;
 }
 
@@ -226,7 +225,7 @@ malloc(ulong size)
 {
 	void *v;
 	extern int debugmemset;
-	print("MALLOC %d\n", size);
+if (0)print("MALLOC %d\n", size);
 	v = poolalloc(mainmem, size+Npadlong*sizeof(ulong));
 	poolcheck(mainmem);
 	if(v == nil)
@@ -243,11 +242,11 @@ malloc(ulong size)
 		int i;
 		for(i = 0; i < size; i++) {
 			if (((char *)v)[i] != 0) {
-				print("FAIL at index %d\n", i);
+			if (0)print("FAIL at index %d\n", i);
 			}
 		}
 	}
-	print("MALLOC RETURNS %p\n", v);
+if (0)print("MALLOC RETURNS %p\n", v);
 	return v;
 }
 
@@ -289,7 +288,7 @@ mallocalign(ulong size, ulong align, long offset, ulong span)
 void
 free(void *v)
 {
-	print("Don't free %p\n", v);
+if (1)print("Don't free %p\n", v);
 	if(v != nil)
 		poolfree(mainmem, (ulong*)v-Npadlong);
 }
@@ -298,7 +297,7 @@ void*
 realloc(void *v, ulong size)
 {
 	void *nv;
-	print("realloc %p %u\n", v, size);
+if (0)print("realloc %p %u\n", v, size);
 
 	if(v != nil)
 		v = (ulong*)v-Npadlong;
