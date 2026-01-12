@@ -56,13 +56,10 @@ init0(void)
 	print("alarm kproc\n");
 	kproc("alarm", alarmkproc, 0);
 	print("done\n");
+
 	p = newpage(USTKTOP-BY2PG, nil);
 	segpage(up->seg[SSEG], p);
-	usp = (char**)(USTKTOP-sizeof(Tos) - 8 - sizeof(sp[0])*4);
-	print("usp is %p\n", usp);
-	// this is a pretty good test, leave it here.
-	print("fault %d\n", fault((uintptr)usp, UTZERO, 0));
-	sp = usertokernel(usp);
+	sp = (char**)(p->pa + BY2PG - sizeof(Tos) - 8 - sizeof(sp[0])*4);
 	print("sp is %p for usp %p\n", sp, sp);
 	extern int block;
 	sp[3] = sp[2] = sp[1] = nil;
@@ -76,12 +73,13 @@ init0(void)
 	print("done ... call mmuswitch\n");
 	mmuswitch(up);
 	print("fault %d\n", fault(UTZERO, UTZERO, 1));
+	print("fault sp %d\n", fault(p->va, UTZERO, 0));
 	u64int* pte = userpte((void *)UTZERO);
 	print("pte is %p *pte %llx\n", pte, *pte);
 	print("touser baby\n");
 	block = 0;
 	while(! block);
-	touser((uintptr)usp);
+	touser((uintptr)USTKTOP-BY2PG);
 }
 
 void
