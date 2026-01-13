@@ -23,44 +23,6 @@
 TEXT	_start(SB), 1, $-4
 	MOV	$setSB(SB), R3
 	JAL	R1, mmudisable<>(SB)
-#ifdef XXX
-
-	MOV	$(MACHADDR(0)-KZERO), R7
-	AND	$(MAXMACH-1), R10
-	MOVW	$MACHSIZE, R11
-	MULW	R10, R11, R11
-	SUB	R11, R7
-
-	ADD	$(MACHSIZE-16), R7, R11
-	MOV	R11, R2
-
-	MOV	$(L1-KZERO), R11
-	MOV	$(MACHADDR(-1)-KZERO), R12
-_zerol1:
-	MOV	R0, (R11)
-	ADD	$8, R11
-	BNE	R11, R12, _zerol1
-
-	MOV	$edata(SB), R11
-	MOV	$end(SB), R12
-_zerobss:
-	MOV	R0, (R11)
-	ADD	$8, R11
-	BNE	R11, R12, _zerobss
-
-	MOV	$(L1-KZERO), R8
-	JAL	R1, mmu0init(SB)
-
-	JAL	R1, mmuenable<>(SB)
-
-	MOV	$KTZERO, R11
-	MOV	$zoinked<>(SB), R12
-	AND	$(BY2PG-1), R12
-	ADD	R11, R12, R12
-	JMP	(R12)
-
-TEXT	zoinked<>(SB), 1, $-4
-#endif
 	MOV $MACHADDR(1), R2
 	MOV	$setSB(SB), R3
 	// clear out UP and set MACH. 
