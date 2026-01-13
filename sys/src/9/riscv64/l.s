@@ -57,6 +57,7 @@ _stop:
 	JMP	_stop
 
 
+//#define SATP 0x180
 TEXT	rsatp(SB), 1, $-4
 	MOV	CSR(SATP), R8
 	RET
@@ -125,6 +126,7 @@ _ok:	MOV	(R8), R2
 	MOV	R13, R8
 	RET
 
+//#define TIME	0xc01
 TEXT	rdtime(SB), 1, $-4
 	FENCE
 	MOV	CSR(TIME), R8
@@ -176,6 +178,7 @@ TEXT	idlehands(SB), 1, $-4
 _ready:
 	RET
 
+//#define SEPC 0x141
 /*
  * switch to user mode with stack pointer from R(ARG), at start of text.
  * used to start process 1 (init).

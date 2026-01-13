@@ -161,7 +161,7 @@ enum {				/* [ms]status bits for RV32 & RV64 */
 	Tw	= (1LL<<21),	/* timeout wfi (machine) */
 	Tsr	= (1LL<<22),	/* trap SRET in super mode */
 	Vm1_9shft = 24,
-	Vm1_9	= (VMASK(5)<<Vm1_9shft), /* paging mode (priv 1.9 only) */
+//	Vm1_9	= (VMASK(5)<<Vm1_9shft), /* paging mode (priv 1.9 only) */
 	Sd32	= (1ULL<<31),	/* dirty state in Fsst, Vsst, or Xs (RV32) */
 	Uxlshft	= 32,
 	Uxl	= (Mxlenmask<<Uxlshft), /* user xlen */
@@ -254,8 +254,8 @@ enum {					/* CSR(SATP) */
 	/* low bits are phys page table addr / PGSZ */
 	/* optional ASID is in bits 59-44 */
 	Satpasidshft	= 44,
-	Satpasidmask	= (VMASK(16)<<Satpasidshft),
-	Svmask		= (VMASK(4)<<60), /* paging enable modes */
+//	Satpasidmask	= (VMASK(16)<<Satpasidshft),
+//	Svmask		= (VMASK(4)<<60), /* paging enable modes */
 	Svshft		= 60,
 	Svnone		= (0ULL<<Svshft),
 	Sv39		= (8ULL<<Svshft),
@@ -277,7 +277,7 @@ enum {					/* PTE; see mem.h PTE* */
 	PteA		= 0x40LL,	/* Accessed */
 	PteD		= 0x80LL,	/* Dirty */
 
-	PteRSW		= (VMASK(2)<<8),/* reserved for sw use */
+//	PteRSW		= (VMASK(2)<<8),/* reserved for sw use */
 
 	PteLeaf		= (PteR|PteW|PteX), /* if 0, next level; non-0 leaf */
 	PteNonleaf0	= (PteU|PteA|PteD),	/* zero on non-leaf pte */

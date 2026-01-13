@@ -113,3 +113,6 @@
 
 #define MIN(a, b)	((a) < (b)? (a): (b))
 #define MAX(a, b)	((a) > (b)? (a): (b))
+/* from Geoff */
+#define MASK(w)	 ((1u  <<(w)) - 1)
+#define VMASK(w) ((1ull<<(w)) - 1)

@@ -72,14 +72,16 @@ static void trapsyscall(Ureg *ureg, Cause *);
 
 /* base plic context for mach (M mode). dependent upon system configuration */
 uint
-mach2context(Mach *mach)
+mach2context(Mach *)
 {
 	int ctxtoff;		/* context relative to M of first real hart */
 
-	if (mach->hartid < soc.hobbled)		/* hobbled mgmt hart? */
-		return mach->hartid;
-	ctxtoff = sys->nprivmodes * (mach->hartid - soc.hobbled);
-	return (soc.context0? soc.context0: soc.hobbled) + ctxtoff;
+//	if (mach->machno < soc.hobbled)		/* hobbled mgmt hart? */
+//		return mach->machno;
+//	ctxtoff = sys->nprivmodes * (mach->machno - soc.hobbled);
+//	return (soc.context0? soc.context0: soc.hobbled) + ctxtoff;
+	ctxtoff = 0;
+	return ctxtoff;
 }
 
 /*
@@ -117,23 +119,29 @@ newvec(void (*f)(Ureg*, void*), void* a, int tbdf, char *name)
 void
 trapsclear(void)
 {
-	clockoff();
+//	clockoff();
 	coherence();
-	clearipi();
+//	clearipi();
 }
 
 void
 trapvecs(void)
 {
+	panic("trapvecs");
+#ifdef xxx
 	putsscratch((uintptr)m);	/* high virtual */
 	putstvec(strap);		/* " */
 	setsie(Superie);		/* individual enables; still splhi */
+#endif
 }
 
 /* map cpu (machno) to plic context for Super mode */
 int
 cpu2context(uint cpu)
 {
+	USED(cpu);
+	panic("cpu2context");
+#ifdef XXX
 	Mach *mach;
 
 	if (cpu >= MACHMAX)
@@ -143,6 +151,7 @@ cpu2context(uint cpu)
 	if (mach == nil || !mach->online)
 		return -1;	/* cpu nil mach or offline; shouldn't happen */
 	return mach->plicctxt + Super;
+#endif
 }
 
 enum {
@@ -170,10 +179,13 @@ warl(ulong *addr, ulong wr)
 static int
 gotamoplic(int)
 {
+	panic("gotamoplic");
+#ifdef xxx
 	if (soc.plic)
 		amoorw((ulong *)soc.plic, 0);
 	else
 		iprint("gotamoplic: zero soc.plic\n");
+#endif
 	return 0;
 }
 
@@ -182,7 +194,9 @@ static Lock pliclock;
 int
 ismem(ulong *wd)
 {
+	USED(wd);
 	int ok;
+#ifdef xxx
 	ulong owd, nwd;
 	Mpl pl;
 
@@ -194,12 +208,15 @@ ismem(ulong *wd)
 	ok = *wd == nwd;
 	*wd = owd;			/* restore orig value */
 	splx(pl);
+#endif
+	ok = 0;
 	return ok;
 }
 
 void
 plicinit(void)
 {
+#ifdef XXX
 	uint irq, maxpri, newpri, ctxt;
 	ulong *wd;
 	Mpl s;
@@ -258,6 +275,8 @@ plicinit(void)
 			iprint(" %d", ctxt);
 	}
 	iprint("\n");
+#endif;
+	panic("plicinit");
 }
 
 /* enabits[ctxt][wd] & bit corresponds to the irq & cpu context in question */
@@ -292,7 +311,7 @@ plicenactxtirq(Plic *plic, int cpu, uint wd, uint bit)
 			*enawd |= bit;
 			unlock(&pliclock);
 		} else
-			amoorw(enawd, bit);
+			panic("amoorw(enawd, bit);");
 	}
 }
 
@@ -308,7 +327,7 @@ plicdisctxtirq(Plic *plic, int cpu, uint wd, uint bit)
 			plic->enabits[ctxt][wd] &= ~bit;
 			unlock(&pliclock);
 		} else
-			amoandnw(&plic->enabits[ctxt][wd], bit);
+	panic("			amoandnw(&plic->enabits[ctxt][wd], bit);");
 		/* leave plic->context[ctxt].priothresh alone */
 	}
 }
@@ -320,6 +339,9 @@ plicdisctxtirq(Plic *plic, int cpu, uint wd, uint bit)
 int
 plicenable(uint irq)
 {
+	USED(irq);
+	panic("plicenable");
+#ifdef xxx
 	int cpu, initcpu, wd, bit, ctxt;
 	Mpl s;
 	Plic *plic = (Plic *)soc.plic;
@@ -344,6 +366,7 @@ plicenable(uint irq)
 		iprint("plic: enabled irq %d at prio %ld context %d for cpu %d\n",
 			irq, plic->prio[irq], ctxt, initcpu);
 	USED(cpu, initcpu);
+#endif
 	return 0;
 }
 
@@ -351,6 +374,9 @@ plicenable(uint irq)
 void
 secintrs(int on)
 {
+	USED(on);
+	panic("secintrs");
+#ifdef xxx
 	int irq, cpu, wd;
 	uint bit;
 	Mpl s;
@@ -370,6 +396,7 @@ secintrs(int on)
 			(on? plicenactxtirq: plicdisctxtirq)(plic, cpu, wd, bit);
 	}
 	splx(s);
+#endif
 }
 
 void
@@ -387,6 +414,9 @@ intrcpu0(void)
 void
 plicdisable(uint irq)
 {
+	USED(irq);
+	panic("plicdisable");
+#ifdef XXX
 	int cpu, wd, bit;
 	Plic *plic = (Plic *)soc.plic;
 
@@ -397,11 +427,15 @@ plicdisable(uint irq)
 	bit = BITMAPBIT(irq);
 	for (cpu = 0; cpu < sys->nonline; cpu++)
 		plicdisctxtirq(plic, cpu, wd, bit);
+#endif
 }
 
 void
 plicnopend(uint irq)			/* unused */
 {
+	USED(irq);
+	panic("picnopend");
+#ifdef XXX
 	Plic *plic = (Plic *)soc.plic;
 
 	if (plic == nil || irq >= Ngintr)
@@ -412,11 +446,14 @@ plicnopend(uint irq)			/* unused */
 		unlock(&pliclock);
 	} else
 		amoandnw(&plic->pendbits[BITMAPWD(irq)], BITMAPBIT(irq));
+#endif
 }
 
 void
 plicoff(void)
 {
+	panic("plicoff");
+#ifdef xxx
 	int irq;
 	Plic *plic = (Plic *)soc.plic;
 
@@ -426,6 +463,7 @@ plicoff(void)
 		iprint("plic off\n");
 	for (irq = Ngintr-1; irq >= Firstirq; irq--)
 		plic->prio[irq] = Nopri;	/* don't interrupt on irq */
+#endif
 }
 
 /* returns interrupt id (irq); 0 is none */
@@ -465,7 +503,7 @@ intrenableall(void)
 }
 
 /* old 9k interface */
-void*
+void
 intrenable(int irq, void (*f)(Ureg*, void*), void* a, int tbdf, char *name)
 {
 	int vno;
@@ -474,19 +512,16 @@ intrenable(int irq, void (*f)(Ureg*, void*), void* a, int tbdf, char *name)
 	if(f == nil){
 		print("intrenable: nil handler for %d, tbdf %#ux for %s\n",
 			irq, tbdf, name);
-		return nil;
 	}
 	if (irq >= Ngintr) {
 		print("intrenable: irq %d >= Ngintr (%d) for %s\n",
 			irq, Ngintr, name);
-		return nil;
 	}
 
 	vno = vctlidx(irq, Globalintr);
 	if(vno == -1){
 		print("intrenable: couldn't enable irq %d, tbdf %#ux for %s\n",
 			irq, tbdf, name);
-		return nil;
 	}
 	if((uint)vno >= nelem(vctl))
 		panic("intrenable: vector %d out of range", vno);
@@ -512,27 +547,16 @@ intrenable(int irq, void (*f)(Ureg*, void*), void* a, int tbdf, char *name)
 		iprint("intrenable %s irq %d vector %d for cpu%d\n",
 			name, irq, vno, m->machno);
 
-	/*
-	 * Return the assigned vector so intrdisable can find
-	 * the handler.
-	 */
-	return v;
 }
 
-/* new, portable interface (between 9 and 9k) */
-int
-enableintr(Intrcommon *ic, Intrsvcret (*f)(Ureg*, void*), void *ctlr, char *name)
+void
+intrdisable(int, void (*f)(Ureg*, void*), void *a, int tbdf, char*)
 {
-	ic->vector = intrenable(ic->irq, f, ctlr,
-		(ic->pcidev? ic->pcidev->tbdf: BUSUNKNOWN), name);
-	if (ic->vector)
-		ic->intrenabled = 1;
-	return ic->vector? 0: -1;
-}
-
-int
-intrdisable(void* vector)
-{
+	USED(f);
+	USED(a);
+	USED(tbdf);
+	panic("intrdisable");
+#ifdef xxx
 	Vctl *v;
 
 	ilock(&vctllock);
@@ -544,8 +568,10 @@ intrdisable(void* vector)
 	iunlock(&vctllock);
 //	free(v);		/* can't free while poll chain exists */
 	return 0;
+#endif
 }
 
+#ifdef xxx
 /* new, portable interface (between 9 and 9k) */
 int
 disableintr(Intrcommon *ic, Intrsvcret (*)(Ureg*, void*), void *, char *)
@@ -558,6 +584,8 @@ disableintr(Intrcommon *ic, Intrsvcret (*)(Ureg*, void*), void *, char *)
 	ic->vector = nil;
 	return 0;
 }
+
+#endif
 
 static char *
 vctlseprint(char *s, char *e, Vctl *v, int vno)
@@ -647,8 +675,12 @@ enablezerotrapcnts(void)
 static void
 vecacct(Vctl *v)
 {
+	USED(v);
+	panic("vecacct");
+#ifdef xxx
 	for (; v != nil; v = v->next)
 		ainc(&v->count);
+#endif
 }
 
 void
@@ -662,13 +694,16 @@ trapclock(Ureg *ureg, void *)
 void
 clearipi(void)
 {
+panic("clearipi");
+#ifdef xxx
 	/* extinguish my ipi source */
 	if (nosbi || soc.ipiclint)
-		m->clint->msip[m->hartid] = 0;
+		m->clint->msip[m->machno] = 0;
 	else
 		sbiclearipi();		/* slow and stupid */
 	coherence();
 	clrsipbit(Ssie|Msie);
+#endif
 }
 
 /*
@@ -724,7 +759,7 @@ trapinit(void)
 	trapenable(vno, trapfpu, vctl[vno], "fpu (ill inst)");
 
 	plicinit();
-	addarchfile("irqalloc", 0444, irqallocread, nil);
+	print("	HOW? addarchfile(\"irqalloc\", 0444, irqallocread, nil);");
 }
 
 static char* excname[] = {
@@ -771,12 +806,13 @@ intrtime(Mach*, int vno)
 	if(up == nil && m->perf.inidle > diff)
 		m->perf.inidle -= diff;
 
-	diff /= m->cpumhz*100;		/* quantum = 100µsec */
+//	diff /= m->cpumhz*100;		/* quantum = 100µsec */
 	if(diff >= Ntimevec)
 		diff = Ntimevec-1;
 	if ((uint)vno >= nelem(intrtimes))
 		vno = nelem(intrtimes)-1;
 	intrtimes[vno][diff]++;
+	panic("intrtime");
 }
 
 /*
@@ -793,13 +829,13 @@ kexit(Ureg *)
 		return;
 
 	/* precise time accounting, kernel exit */
-	tos = (Tos*)TOS(USTKTOP);
+	print("not doing	tos = (Tos*)TOS(USTKTOP);");
 	cycles(&t);
 	if (t >= up->kentry)
 		tos->kcycles += t - up->kentry;
 	tos->pcycles = up->pcycles;
 	tos->pid = up->pid;
-	tos->cpucap = sys->cpucap;
+	print("NOT DOING	tos->cpucap = sys->cpucap;");
 }
 
 /*
@@ -811,9 +847,9 @@ sysrforkchild(Proc* child, Proc* parent)
 {
 	Ureg *cureg;
 
-	cureg = (Ureg*)STACKALIGN((uintptr)child->kstack+KSTACK - sizeof(Ureg));
-	child->sched.sp = PTR2UINT(cureg);
-	child->sched.pc = PTR2UINT(sysrforkret);
+	cureg = nil; //(Ureg*)STACKALIGN((uintptr)child->kstack+KSTACK - sizeof(Ureg));
+	child->sched.sp = (uintptr)(cureg);
+	child->sched.pc = (uintptr)(/*sysrforkret*/nil);
 
 	memmove(cureg, parent->dbgreg, sizeof(Ureg));
 
@@ -821,7 +857,7 @@ sysrforkchild(Proc* child, Proc* parent)
 	child->psstate = 0;
 	child->insyscall = 0;
 
-	fpusysrforkchild(child, parent);
+	panic("fpusysrforkchild(child, parent);");
 }
 
 static void
@@ -909,15 +945,17 @@ traplocalintr(Ureg *ureg, Cause *cp)
 		cause &= ~Msdiff;	/* map mach to super codes */
 	switch (cause) {
 	case Suptmrintr:
-		clockoff();
+//		clockoff();
+#ifdef xxx
 		if (++m->clockintrdepth > 1 && m->clockintrsok) {
 			/* nested clock interrupt; probably shutting down */
 			m->clockintrsok = 0;
 			// iprint("cpu%d: nested clock interrupt\n", m->machno);
 		}
+#endif
 		timerintr(ureg, 0);
-		--m->clockintrdepth;
-		clockenable();
+	//	--m->clockintrdepth;
+	//	clockenable();
 		clockintr = 1;
 		break;
 	case Supswintr:
@@ -929,7 +967,7 @@ traplocalintr(Ureg *ureg, Cause *cp)
 		 * interrupt idlehands, we would want to set mp->ipiwait=1 here
 		 * so that it wouldn't be counted both by idlehands and below.
 		 */
-		gotipi = 1;
+	//	gotipi = 1;
 		clearipi();
 		clockintr = 0;
 		break;
@@ -951,7 +989,7 @@ traplocalintr(Ureg *ureg, Cause *cp)
 	default:
 		panic("trap: unknown local interrupt %d", cp->cause);
 	}
-	clrsipbit(1<<cp->cause);
+//	clrsipbit(1<<cp->cause);
 	vecacct(vctl[cp->vno]);
 	intrtime(m, cp->vno);
 	if (!soc.plic)
@@ -1044,7 +1082,7 @@ trapillinst(Ureg *ureg, Cause *cp)
 	if (isfpinst(pc, ureg)) {
 		if (!cp->user)
 			panic("kernel fpu use at %#p: %#p", pc, ureg->tval);
-		fptrap(ureg, 0);
+	//	fptrap(ureg, 0);
 		vecacct(vctl[cp->vno]);
 		return;			/* re-execute FP but with FPU on */
 	}
@@ -1077,7 +1115,7 @@ trapillinst(Ureg *ureg, Cause *cp)
 			rd = (inst>>7) & MASK(5);
 			if (rd)
 				ureg->regs[rd] = 0;
-			m->probebad = 1;
+		//	m->probebad = 1;
 			skip = 1;
 		}
 		break;
@@ -1115,6 +1153,10 @@ trapaccess(Ureg *ureg, Cause *cp)
 vlong
 probeulong(ulong *addr, int wr)
 {
+	USED(addr);
+	USED(wr);
+	panic("probeulong");
+#ifdef xxx
 	ulong old;
 	Mpl pl;
 
@@ -1145,6 +1187,8 @@ probeulong(ulong *addr, int wr)
 		return -1;
 	} else
 		return old;
+#endif
+	return 0;
 }
 
 typedef struct Lastexcept Lastexcept;
@@ -1204,6 +1248,7 @@ trapriscv64(Ureg *ureg, Cause *cp)
 	uint cause;
 	Exchandler handler;
 
+#ifdef xxx
 	if (cp->user)
 		m->turnedfpoff = 0;
 	else if (m->probing) {
@@ -1216,6 +1261,7 @@ trapriscv64(Ureg *ureg, Cause *cp)
 		advancepc(ureg);
 		return 0;			/* not a clock interrupt */
 	}
+#endif
 
 	cause = cp->cause;
 	if (cause >= nelem(exchandlers))
@@ -1240,7 +1286,7 @@ poll(Ureg *ureg, Cause *cp)		/* desperate last resort */
 	Vctl *v;
 
 	if (cp != nil)
-		clrsipbit(1<<cp->cause);
+		panic("NOT	clrsipbit(1<<cp->cause);");
 
 	for (v = pollvecs; v != nil; v = v->pollnxt)
 		if (v->f) {
@@ -1275,9 +1321,9 @@ callintrsvc(Ureg *ureg, Vctl *vec)
 {
 	void (*isr)(Ureg *, void *);
 	Vctl *v;
-
+#ifdef xxx
 	if (vec->irq)
-		m->lastintr = vec->irq;
+		m->lastintr = vec->irq;*/
 	for(v = vec; v != nil; v = v->next) {
 		isr = v->f;
 		if (isr == nil) {
@@ -1288,6 +1334,7 @@ callintrsvc(Ureg *ureg, Vctl *vec)
 		splhi();		/* in case isr dropped PL */
 		ainc(&v->count);
 	}
+#endif
 }
 
 /*
@@ -1301,6 +1348,8 @@ intr(Ureg* ureg, Cause *cp)
 	Vctl *vec;
 
 	m->intr++;
+	panic("intr");
+#ifdef xxx
 	if (++m->intrdepth > 1)
 		iprint("cpu%d: nested intrs at depth %d\n", m->machno,
 			m->intrdepth);
@@ -1348,6 +1397,7 @@ intr(Ureg* ureg, Cause *cp)
 	 * any cpu, so wake any idling cpus.
 	 */
 	idlewake();
+#endif
 	return 0;
 }
 
@@ -1365,7 +1415,7 @@ intrclknotrap(Ureg *ureg)
 
 	m->intr++;			/* okay here; only tmr and sw intrs */
 	m->perf.intrts = perfticks();
-	clockoff();
+	print("NOT clockoff();\n");
 
 	if (++m->clockintrdepth > 1 && m->clockintrsok) {
 		/* nested clock interrupt; probably shutting down */
@@ -1390,16 +1440,16 @@ trapsyscall(Ureg *ureg, Cause *)
 	uint scallnr;
 	uintptr pc;
 
-	m->turnedfpoff = 0;
+//	m->turnedfpoff = 0;
 
 	/* syscall may change ureg->pc, so save a copy. */
 	pc = ureg->pc;
-	if (getsp() % sizeof(vlong) != 0)
-		print("trapsyscall: odd sp %#p at %#p\n", getsp(), pc);
+/*	if (getsp() % sizeof(vlong) != 0)
+		print("trapsyscall: odd sp %#p at %#p\n", getsp(), pc);*/
 	scallnr = ureg->arg;
 	/* on riscv64, ureg->ret is ureg->arg, so can't zero ureg->ret here. */
 	/* Last syscall argument is location of return value in frame. */
-	syscall(scallnr, ureg, (Ar0 *)&ureg->ret);
+	dosyscall(scallnr, (Sargs*)(ureg->sp+BY2WD), &ureg->arg);
 
 	/*
 	 * a changed pc could be the result of receiving a note, but also
@@ -1746,11 +1796,9 @@ faultriscv64(Ureg* ureg, Cause *cp)
  *  return the userpc the last exception happened at
  */
 uintptr
-userpc(Ureg* ureg)
+userpc(void)
 {
-	if(ureg == nil && up != nil)
-		ureg = up->dbgreg;
-	return ureg? ureg->pc: 0;
+	panic("userpc");
 }
 
 /*
@@ -1810,8 +1858,8 @@ vrfyuregaddrs(Ureg *nur)
  *   Return user to state before notify() or kill the process.
  *   There is an NFrame on the user's stack, below the original Ureg.
  */
-void
-noted(Ureg* cur, uintptr arg0)
+int
+noted(Ureg* cur, Ureg *, int arg0)
 {
 	NFrame *nf;
 	Note note;
@@ -1875,14 +1923,15 @@ noted(Ureg* cur, uintptr arg0)
 		pexit(note.msg, note.flag != NDebug);
 		break;
 	}
+	return 0;
 }
 
 /*
  *  Call user, if necessary, with note.
  *  Pass user the Ureg struct and the note on his stack.
  */
-int
-notify(Ureg* ureg)
+Ureg *
+notify(Ureg* ureg, char *)
 {
 	int l;
 	Mpl s;
@@ -1890,10 +1939,11 @@ notify(Ureg* ureg)
 	uintptr sp;
 	NFrame *nf;
 
+	panic("notify");
 	if(up->procctl)
 		procctl(up);
 	if(up->nnote == 0)
-		return 0;
+		return nil;
 
 	fpunotify(ureg);
 
@@ -1919,7 +1969,7 @@ notify(Ureg* ureg)
 	if(up->notified){
 		qunlock(&up->debug);
 		splhi();
-		return 0;
+		return nil;
 	}
 
 	if(up->notify == nil){
@@ -1963,5 +2013,5 @@ notify(Ureg* ureg)
 	qunlock(&up->debug);
 	splx(s);
 
-	return 1;
+	return nil;
 }

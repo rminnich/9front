@@ -42,8 +42,6 @@ PORT=\
 
 OBJ=\
 	l.$O\
-	mch.$O\
-	strap.$O\
 	main.$O\
 	mmu.$O\
 	mem.$O\

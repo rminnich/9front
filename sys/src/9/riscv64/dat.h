@@ -225,3 +225,108 @@ struct DevConf
 	int	nports;			/* Number of ports */
 	Devport	*ports;			/* The ports themselves */
 };
+
+/* from Geoff's port */
+typedef struct Soc Soc;
+typedef struct Sys Sys;
+typedef struct Syspercpu Syspercpu;
+typedef uvlong Mpl;
+typedef uvlong Mreg;
+
+struct Soc {
+	/* physical addresses, vmapped to virtual addresses during start-up */
+	uchar	*clint;		/* local intr ctlr also a timer */
+	uchar	*plic;		/* external intr ctlr */
+	uchar	*l2cache;	/* sifive l2 cache controller */
+//	uchar	*pl2caches[HARTMAX]; /* sifive per-hart l2 cache controllers */
+	uchar	*l3cache;	/* sifive l3 cache controller */
+	uchar	*wdog0;		/* watchdog timer */
+	uchar	*uart;		/* console */
+	uchar	*ether[2];
+	uchar	*pci;		/* ecam config space */
+	uchar	*pcictl;	/* bridge & ctrl regs */
+	uchar	*pciess;	/* soft reset, etc. */
+	uchar	*sdmmc;
+	uchar	*sdiosel;	/* for icicle */
+//	uchar	*kramend;	/* if non-0, max kernel ram end. */
+				/* when kern addr spc for ram < ram size */
+
+	/* hardware and firmware choices and bugs */
+	/*
+	 * plic contexts are machine-dependent, but are usually hartid*2 +
+	 * mode.  if there's a cut-down management hart at hartid 0 (i.e.,
+	 * it's hobbled), they may instead be 1 + 2*(hartid-1) + mode, as
+	 * on the icicle.
+	 */
+	uchar	hobbled; /* # puny visible mgmt harts (often only M context) */
+	uchar	context0;	/* M context of first non-mgmt hart */
+	uchar	dwuart;		/* flag: workaround synopsys 8250 */
+	uchar	xscaleuart;	/* flag: workaround xscale uart */
+	uchar	c910;		/* flag; workaround c910 bugs */
+
+	/* hardware bugs discovered by probing */
+	uchar	nodevamo;	/* flag: amo fails on device registers */
+	uchar	clintlongs;	/* flag: clint accesses can't be vlong (bug) */
+	uchar	clintlongsset;	/* flag: clintlongs is valid */
+
+	/* hardware extensions discovered by probing */
+	uchar	havesbihsm;
+	uchar	havesbisrst;
+	uchar	havecbo;	/* flag: have cache ops */
+
+	/* other hardware extensions */
+	uchar	svpbmt;		/* Svpbmt extension present */
+
+	/* software choices */
+	uchar	idlewake;	/* flag: wake idling cpus with ipis */
+	uchar	ipiclint;	/* flag: use clint (not sbi) to send ipis */
+	uchar	allintrs;	/* flag: enable all interrupts */
+	uchar	poll;		/* flag: continual polling for i/o done */
+	uchar	newmach;	/* flag: do new-machine tests & prints */
+};
+
+Soc soc;
+/*
+ * PLIC is Platform-Level Interrupt Controller.
+ * Any interrupt connected here also shows up as Seie in SIP CSR.
+ */
+
+enum {
+	Ncontexts = 31*512,
+};
+enum Cpumodes {			/* plic context offsets for priv modes */
+	Machine, Super,		/* order matters, see plic contexts */
+	Hyper, User,		/* these are optional */
+};
+typedef struct Plic Plic;
+typedef struct Plictxt Plictxt;
+struct Plic {				/* 64 MB */
+	union {
+		struct {
+			/* intr source index. WARL in priv 1.9 */
+			ulong	prio[1024];
+			ulong	pendbits[1024];	/* 1st 32: bitmap of sources */
+			/* index by context, 32 are bitmaps of sources */
+			ulong	enabits[Ncontexts][32];
+			/* 56K gap here */
+		};
+		struct {
+			/* eic7700x has plic clock disable; on by default.  */
+			uchar	_2_[2*MB - BY2PG];
+			char	eicclkdisable;
+		};
+		struct {
+			/*
+			 * c910 has privilege control at 2MB-4,
+			 * needed to allow S mode access
+			 */
+			uchar	_1_[2*MB - sizeof(ulong)];
+			ulong	c910privctl;
+		};
+	};
+	struct Plictxt {		/* at +2MB */
+		ulong	priothresh; /* (lower bound of accepted prios)-1 WARL */
+		ulong	claimcompl;	/* claim/complete */
+		uchar	_2_[4096 - 2*sizeof(ulong)];
+	} context[Ncontexts];		/* index by context */
+};
