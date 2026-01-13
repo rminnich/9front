@@ -165,6 +165,8 @@ confinit(void)
 void
 machinit(void)
 {
+	extern void strap(void);
+	wstvec((uintptr)strap);
 	m->ticks = 1;
 	m->perf.period = 1;
 	active.machs[m->machno] = 1;
@@ -344,6 +346,8 @@ rebootjump(void *entry, void *code, ulong size)
 	/* not needed. -- satp never changes*/
 	//setttbr(PADDR(L1BOT));
 
+	extern void strap(void);
+	wstvec((uintptr)strap);
 	/* setup reboot trampoline function */
 	f = (void*)REBOOTADDR;
 	memmove(f, rebootcode, sizeof(rebootcode));

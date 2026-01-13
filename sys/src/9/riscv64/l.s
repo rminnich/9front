@@ -68,6 +68,12 @@ TEXT	wsatp(SB), 1, $-4
 	SFENCE
 	RET
 
+TEXT	wstvec(SB), 1, $-4
+	SFENCE
+	MOV	RARG, CSR(STVEC)
+	SFENCE
+	RET
+
 TEXT	mmudisable<>(SB), 1, $-4
 	SFENCE
 	MOV	R0, CSR(SATP)

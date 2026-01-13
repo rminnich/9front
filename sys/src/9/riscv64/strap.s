@@ -182,7 +182,20 @@ TEXT recmtrapalign(SB), 1, $-4
 
 #define INITSTKSIZE 4096
 #define SBIALIGN 8
-#define MASK 4096
+
+	GLOBL	dummysc(SB), $4
+
+TEXT pushr2_31(SB), 1, $-4
+	S(2); S(3); S(4); S(5); S(6); S(7)
+	S(8); S(9); S(10); S(11); S(12); S(13); S(14); S(15); S(16); S(17)
+	S(18); S(19); S(20); S(21); S(22); S(23); S(24); S(25); S(26)
+	S(27); S(28); S(29); S(30); S(31)
+	RET
+TEXT popr8_31(SB), 1, $-4
+	P(8); P(9); P(10); P(11); P(12); P(13); P(14); P(15); P(16); P(17)
+	P(18); P(19); P(20); P(21); P(22); P(23); P(24); P(25); P(26)
+	P(27); P(28); P(29); P(30); P(31)
+	RET
 
 TEXT recktrap(SB), 1, $-4
 TEXT recutrap(SB), 1, $-4

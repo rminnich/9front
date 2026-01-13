@@ -18,8 +18,6 @@ TMP=26
 TMP2=27
 UART0=29
 
-	GLOBL	dummysc(SB), $4
-
 TEXT pushr2_31(SB), 1, $-4
 	S(2); S(3); S(4); S(5); S(6); S(7)
 	S(8); S(9); S(10); S(11); S(12); S(13); S(14); S(15); S(16); S(17)

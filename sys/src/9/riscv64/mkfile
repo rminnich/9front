@@ -42,10 +42,10 @@ PORT=\
 
 OBJ=\
 	l.$O\
+	strap.$O\
 	main.$O\
 	mmu.$O\
 	mem.$O\
-	gtrap.$O\
 	trap.$O\
 	clock.$O\
 	fpu.$O\

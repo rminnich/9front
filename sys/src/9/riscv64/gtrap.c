@@ -1458,9 +1458,11 @@ trapsyscall(Ureg *ureg, Cause *)
 	 */
 	if (pc == ureg->pc)
 		advancepc(ureg);
+/* laters
 	else if (Trapdebug && scallnr != EXEC)
 		iprint("syscall %s changed return ureg->pc %#p (old pc %#p)\n",
 			systab[scallnr].n, ureg->pc, pc);
+*/
 }
 
 static void
@@ -1481,7 +1483,7 @@ trapdbg(Ureg *ureg, Cause *cp, int entry)
 		if (cp->cause == Envcalluser) {
 			iprint(" pid %d", up->pid);
 			if (entry)
-				iprint(" %s", systab[ureg->arg].n);
+				iprint(" %d", ureg->arg);
 			else
 				iprint(" return %#llux", ureg->arg);
 		}
@@ -1546,6 +1548,7 @@ trap(Ureg* ureg)
 	Cause why;
 	Traphandler handler;
 
+#ifdef xxx
 	if (Trapdebug) {
 		if (ureg == nil)
 			panic("trap with nil ureg");
@@ -1553,14 +1556,15 @@ trap(Ureg* ureg)
 			iprint("early trap %#p at pc %#p\n",
 				ureg->cause, ureg->pc);
 	}
+#endif
 
 	/*
 	 * if we trapped from supervisor mode into machine mode, revert to
 	 * phys device addresses, assuming that we are about to reboot.
 	 * this is only possible if we link with mtrap.$O (e.g., tinyemu).
-	 */
 	if (ureg->curmode == Mppmach && (ureg->status & Mpp) == Mppsuper)
 		usephysdevaddrs();
+*/
 
 	type = whatcause(&why, ureg);
 	if (Trapdebug)
@@ -1578,19 +1582,19 @@ trap(Ureg* ureg)
 			panic("trap: trap type %d has no handler", type);
 		clockintr = (*handler)(ureg, &why);
 		splhi();		/* minimise harm if handler went low */
-		fpsts2ureg(ureg); /* propagate Fsst changes back to user mode */
+	//	fpsts2ureg(ureg); /* propagate Fsst changes back to user mode */
 
 		/*
 		 * delaysched set (because we held a lock or because our
 		 * quantum ended)?
 		 */
-		if(up && up->delaysched && clockintr && m->clockintrsok) {
+	/*	if(up && up->delaysched && clockintr && m->clockintrsok) {
 			sched();
 			splhi();
-		}
+		}*/
 		if(why.user) {
 			if(up->procctl || up->nnote)
-				notify(ureg);
+				notify(ureg, "h");
 			/*
 			 * kexit() bills time to whatever process was running,
 			 * so don't call it here.
@@ -1637,7 +1641,7 @@ dumpregs(Ureg* ureg)
 	/*
 	 * Processor CSRs.
 	 */
-	iprint("satp\t%#16.16llux\n", (uvlong)getsatp());
+	iprint("satp\t%#16.16llux\n", (uvlong)rsatp());
 
 //	archdumpregs();
 }

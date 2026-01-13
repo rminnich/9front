@@ -167,3 +167,10 @@ panic("execregs");
 	return USTKTOP-sizeof(Tos);
 	return 0;
 }
+
+void trap(Ureg *ureg)
+{
+	sbiputc('&');
+	print("trap");
+	panic("trap");
+}
