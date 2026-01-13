@@ -134,6 +134,9 @@ TEXT	coherence(SB), 1, $-4
 	FENCE
 	RET
 
+TEXT	wfi(SB), 1, $-4
+	RET
+
 TEXT	islo(SB), 1, $-4
 	RET
 
