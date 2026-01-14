@@ -180,7 +180,7 @@ wsatp(((uintptr)sv39>>12)|(8ULL<<60));
 	if (rsatp() == (8ULL)<<60)mmumode = 8ULL<<60;
 	}
 	//print("rsatp %llx\n", rsatp());
-	while (! block);
+	if (0)while (! block);
 	switch(mmumode>>60) {
 		case 10: 
 				wsatp(((uintptr)sv57>>12)|mmumode);
@@ -510,7 +510,7 @@ mmuswitch(Proc *p)
 	}
 	wsatp(((uintptr)m->mmutop>>12)|(8ULL<<60));
 	print("MMUSWTICH: wrote satp: block\n");
-	while (! block);
+	if (0)while (! block);
 }
 
 void

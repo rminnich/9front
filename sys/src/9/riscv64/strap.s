@@ -74,8 +74,9 @@ TEXT strap(SB), 1, $-4
 	SCW(0, 9, 0)
 
 #ifdef TRAPDEBUG
-	MOV	MCONSUART(R(MACH)), R(UART0)
-	CONSPUT($'S')
+FUCK
+//	MOV	MCONSUART(R(MACH)), R(UART0)
+//	CONSPUT($'S')
 //	JAL	R0, wfi(SB)		/* JMP only takes local labels */
 #endif
 
@@ -141,7 +142,7 @@ fromuser:
 	MOV	R9, CSR(STVEC)		/* restore trap vector */
 
 	/* sched could be called and processes switched (e.g, syscall) */
-/**/	CALLTRAP  /* C compiler is free to write regs but R2, SB, MACH, USER */
+	CALLTRAP  /* C compiler is free to write regs but R2, SB, MACH, USER */
 
 syscallret:
 	/* SP must point at our Ureg here.  up may have changed since entry. */

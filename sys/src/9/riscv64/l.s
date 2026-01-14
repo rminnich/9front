@@ -185,6 +185,8 @@ _ready:
 	RET
 
 //#define SEPC 0x141
+#define SSCRATCH	0x140
+#define MACH 7
 /*
  * switch to user mode with stack pointer from R(ARG), at start of text.
  * used to start process 1 (init).
@@ -192,7 +194,7 @@ _ready:
 TEXT touser(SB), 1, $-4
 	FENCE
 	FENCE_I
-
+	CSRRW	CSR(SSCRATCH), R(MACH), R(MACH) /* restore R7, reload saved m */
 	MOV	$(UTZERO+8*BY2WD), R12	/* skip unextended exec hdr of init */
 	MOV	R12, CSR(SEPC)		/* new pc */
 	MOV	RARG, R2		/* new sp */
