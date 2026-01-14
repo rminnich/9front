@@ -77,7 +77,7 @@ init0(void)
 	u64int* pte = userpte((void *)UTZERO);
 	print("pte is %p *pte %llx\n", pte, *pte);
 	print("touser baby\n");
-	block = 0;
+	block = 1;
 	while(! block);
 	touser((uintptr)USTKTOP-BY2PG);
 }
