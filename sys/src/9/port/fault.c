@@ -391,17 +391,22 @@ okaddr(uintptr addr, ulong len, int write)
 	if((long)len >= 0 && len <= -addr) {
 		for(;;) {
 			s = seg(up, addr, 0);
+			print("okaddr: s(%p, %p, 0) = %p\n", up, addr, s);
+			if (s != nil) print("s->type is %s\n", s->type&SG_RONLY ? "readonly" : "writeable");
 			if(s == nil || (write && (s->type&SG_RONLY)))
 				break;
 
+			print("addr %p len %lx s->top %p\n", addr, len, s->top);
 			if(addr+len > s->top) {
 				len -= s->top - addr;
 				addr = s->top;
 				continue;
 			}
+			print("okaddr: ok\n");
 			return 1;
 		}
 	}
+	print("okaddr: bad\n");
 	return 0;
 }
 
@@ -436,10 +441,11 @@ vmemchr(void *s, int c, ulong n)
 			return t;
 		a += m;
 		n -= m;
-		if(a < KZERO)
+		if(KZERO > UTZERO ? a < KZERO : a >= UTZERO)
 			validaddr(a, 1, 0);
 	}
 
+	print("vmemchr: fits in one page(%p, %d, %ld\n", a, c, n);
 	/* fits in one page */
 	return memchr((void*)a, c, n);
 }
