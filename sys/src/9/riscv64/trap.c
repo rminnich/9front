@@ -84,8 +84,7 @@ procsetup(Proc *p)
 void
 procsave(Proc *p)
 {
-	print("procsave %p\n", p);
-	panic("procsave");
+	print("procsave what is it for? %p\n", p);
 //	fpuprocsave(p);
 //	if(p->kp == 0)
 //		p->tpidr = sysrd(TPIDR_EL0);
@@ -95,8 +94,7 @@ procsave(Proc *p)
 void
 procrestore(Proc *p)
 {
-	print("procsave %p\n", p);
-	panic("procsave");
+	print("procresotre what is it for %p\n", p);
 //	fpuprocrestore(p);
 //	if(p->kp == 0)
 //		syswr(TPIDR_EL0, p->tpidr);

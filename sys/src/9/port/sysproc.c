@@ -753,12 +753,16 @@ sysexits(va_list list)
 		if(waserror())
 			status = inval;
 		else{
+			print("sysexits: ptr %p\n", status);
 			validaddr((uintptr)status, 1, 0);
+			print("got past validaddr\nj");
 			if(vmemchr(status, 0, ERRMAX) == nil){
+				print("memmove in exits, print it %s\n", status);
 				memmove(buf, status, ERRMAX);
 				buf[ERRMAX-1] = 0;
 				status = buf;
 			}
+			print("memmove done status %s\n", status);
 			poperror();
 		}
 
@@ -1465,7 +1469,7 @@ dosyscall(ulong scallnr, Sargs *args, uintptr *retp)
 		up->s = *args;
 		up->scallnr = scallnr;
 
-		if(up->procctl == Proc_tracesyscall){
+		if(0) { // || up->procctl == Proc_tracesyscall){
 			syscallfmt(scallnr, userpc(), (va_list)up->s.args);
 			splhi();
 			up->procctl = Proc_stopme;
@@ -1503,7 +1507,7 @@ dosyscall(ulong scallnr, Sargs *args, uintptr *retp)
 		panic("error stack");
 	}
 	*retp = ret;
-	if(up->procctl == Proc_tracesyscall){
+	if(0) { // || up->procctl == Proc_tracesyscall){
 		todget(nil, &stopns);
 		sysretfmt(scallnr, (va_list)up->s.args, ret, startns, stopns);
 		splhi();
