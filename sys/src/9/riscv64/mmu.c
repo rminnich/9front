@@ -294,7 +294,7 @@ mmuwalk(uintptr va, int level)
 	// N.B.: the assumption here is that mmutop was already set from 
 	// p->mmutop. mmutop[x] will never be non-zero. If it is, it's a bug.
 	table = m->mmutop;
-	print("MMUWALK MMUTOP is %p\n", m->mmutop);
+	print("MMUWALK m is %p MMUTOP is %p\n", m,  m->mmutop);
 	for(i = PTLEVELS-2; i >= level; i--){
 		print("%d: table %p, index %d, pte %p: ", i, table, x, table[x]);
 		pte = table[x];
@@ -451,6 +451,10 @@ putmmu(uintptr va, uintptr pa, Page *pg)
 		cacheiinvse((void*)va, BY2PG);
 		donetxtflush(pg);
 	}
+	flushalltlb();
+	flushvatlb(va);
+	wsatp(rsatp());
+
 	splx(s);
 	print("putmmu done\n");
 }

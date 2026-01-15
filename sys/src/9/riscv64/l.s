@@ -1,8 +1,9 @@
-#include <atom.h>
-#define ARG 8
+#include "riscv64l.h"
 
 #include "mem.h"
-#include "sysreg.h"
+
+#undef SFENCE
+#undef WFI
 
 #define SFENCE	WORD	$0x12000073
 #define WFI	WORD	$0x10500073
@@ -87,6 +88,14 @@ TEXT	mmuenable<>(SB), 1, $-4
 	SFENCE
 	RET
 
+TEXT flushalltlb(SB), 1, $-4
+	WORD $0x12000073
+	RET
+
+TEXT flushvatlb(SB), 1, $-4
+	WORD $0x12040073
+	RET
+
 TEXT	cas(SB), 1, $-4
 TEXT	cmpswap(SB), 1, $-4
 	MOVWU	ov+8(FP), R12
@@ -132,7 +141,7 @@ _ok:	MOV	(R8), R2
 	MOV	R13, R8
 	RET
 
-//#define TIME	0xc01
+#define TIME	0xc01
 TEXT	rdtime(SB), 1, $-4
 	FENCE
 	MOV	CSR(TIME), R8
@@ -184,9 +193,6 @@ TEXT	idlehands(SB), 1, $-4
 _ready:
 	RET
 
-//#define SEPC 0x141
-#define SSCRATCH	0x140
-#define MACH 7
 /*
  * switch to user mode with stack pointer from R(ARG), at start of text.
  * used to start process 1 (init).

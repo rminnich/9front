@@ -151,6 +151,21 @@ struct Mach
 	int	machno;			/* physical id of processor */
 	uintptr	splpc;			/* pc of last caller to splhi */
 	Proc*	proc;			/* current process on this processor */
+	uintptr	regsave[2*5+1];	/* 24 (super mach)×(r2 r3 r4 r6 r9), mach r5 */
+				/* saved @ trap entry */
+	/* to be safe, include other stuff Geoff thought mattered.*/
+	union {
+		uvlong	*mtimecmp; /* 112 clint's mtimecmp for this hart */
+		uvlong	*stimecmp; /* 112 clint's stimecmp for this hart */
+	};
+	int	online;		/* 120 flag: actually enabled */
+	int	hartid;		/* 124 riscv cpu id; often not machno */
+	/*Clint*/void	*clint;		/* 128 currently-valid address */
+	uintptr	_consuart;	/* 136 " */
+	uchar	bootmachmode;	/* 144 flag: machine mode at boot time */
+	uchar	probing;	/* 145 flag: probing an address */
+	uchar	probebad;	/* 146 flag: probe failed: bad address */
+
 	/* end of offsets known to asm */
 
 	MMMU;

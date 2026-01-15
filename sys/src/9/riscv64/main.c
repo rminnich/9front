@@ -76,7 +76,7 @@ init0(void)
 	print("fault sp %d\n", fault(p->va, UTZERO, 0));
 	u64int* pte = userpte((void *)UTZERO);
 	print("pte is %p *pte %llx\n", pte, *pte);
-	print("touser baby\n");
+	print("touser baby MACH m is %p mmuto p%p\n", m, m->mmutop);
 	block = 1;
 	while(! block);
 	touser((uintptr)USTKTOP-BY2PG);

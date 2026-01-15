@@ -546,7 +546,7 @@ faultriscv64(Ureg* ureg, Cause *cp)
 	up->insyscall = 1;
 	read = ureg->cause != Storepage;  /* exception, so Rv64intr must be 0 */
 	/* page fault on a kernel address is never okay. */
-	while (!block);
+	if (0)while (block != 1024);
 	if((intptr)addr < 0 || fault(addr, ureg->pc, read) < 0)
 		badpagefault(ureg, addr, read, insyscall);
 	up->insyscall = insyscall;
