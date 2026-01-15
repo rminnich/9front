@@ -29,6 +29,11 @@ TEXT	_start(SB), 1, $-4
 	// clear out UP and set MACH. 
 	MOV $0, R6
 	MOV $MACHADDR(0), R7
+	// allow kernel to read/write user memory.
+	MOV CSR(SSTATUS), R8
+	OR $0x40000, R8, R8
+	MOV R8, CSR(SSTATUS)
+	
 	JAL	R1, main(SB)
 NDNR:
 	MOV $0x30, R10

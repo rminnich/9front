@@ -72,10 +72,12 @@ init0(void)
 	fpukexit(nil, nil);
 	print("done ... call mmuswitch\n");
 	mmuswitch(up);
+	if (0) {
 	print("fault %d\n", fault(UTZERO, UTZERO, 1));
 	print("fault sp %d\n", fault(p->va, UTZERO, 0));
 	u64int* pte = userpte((void *)UTZERO);
 	print("pte is %p *pte %llx\n", pte, *pte);
+	}
 	print("touser baby MACH m is %p mmuto p%p\n", m, m->mmutop);
 	block = 1;
 	while(! block);
