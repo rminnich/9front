@@ -300,6 +300,7 @@ trapsyscall(Ureg *ureg, Cause *)
 	scallnr = ureg->arg;
 	/* on riscv64, ureg->ret is ureg->arg, so can't zero ureg->ret here. */
 	/* Last syscall argument is location of return value in frame. */
+	print("dosyscall(%d, %p, %p val %p\n", scallnr, (Sargs*)(ureg->sp+BY2WD), &ureg->arg, ureg->arg);
 	dosyscall(scallnr, (Sargs*)(ureg->sp+BY2WD), &ureg->arg);
 
 	/*

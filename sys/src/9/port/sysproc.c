@@ -1497,6 +1497,8 @@ dosyscall(ulong scallnr, Sargs *args, uintptr *retp)
 		up->syserrstr = up->errstr;
 		up->errstr = e;
 		ret = -1;
+		print("syscall failed: %s\n", up->errstr);
+		panic("let's stop here");
 	}
 	if(up->nerrlab){
 		int i;

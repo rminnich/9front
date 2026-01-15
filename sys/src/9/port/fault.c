@@ -413,6 +413,7 @@ okaddr(uintptr addr, ulong len, int write)
 void
 validaddr(uintptr addr, ulong len, int write)
 {
+	print("validaddr %p %ld %d\n", addr, len, write);
 	if(!okaddr(addr, len, write)){
 		pprint("suicide: invalid address %#p/%lud in sys call pc=%#p\n", addr, len, userpc());
 		postnote(up, 1, "sys: bad address in syscall", NDebug);
@@ -429,7 +430,7 @@ vmemchr(void *s, int c, ulong n)
 	uintptr a;
 	ulong m;
 	void *t;
-
+	print("ENTER vmemchr(%p, %d, %ld)\n", s, c, n);
 	a = (uintptr)s;
 	for(;;){
 		m = BY2PG - (a & (BY2PG-1));
@@ -437,12 +438,15 @@ vmemchr(void *s, int c, ulong n)
 			break;
 		/* spans pages; handle this page */
 		t = memchr((void*)a, c, m);
+		print("vmemchar will %s\n", t != nil ? "return" : "keep going");
 		if(t != nil)
 			return t;
 		a += m;
 		n -= m;
-		if(KZERO > UTZERO ? a < KZERO : a >= UTZERO)
+		print("KZERO > UTZERO ? a < KZERO : a >= UTZERO %d\n", KZERO > UTZERO ? a < KZERO : a >= UTZERO);
+		if(KZERO > UTZERO ? a < KZERO : a >= UTZERO) {
 			validaddr(a, 1, 0);
+		}
 	}
 
 	print("vmemchr: fits in one page(%p, %d, %ld\n", a, c, n);
