@@ -409,6 +409,8 @@ cpuinit(int cpu)
 	clockoff();
 }
 
+#ifdef NONONO
+
 /*
  * Clintlongs produces 32-bit little-endian accesses for unmodified tinyemu
  * (not ours) and xuantie.  Also implies reading the time csr instead of mtime.
@@ -1136,7 +1138,9 @@ gotvec(int)
 	putsts(getsts() & ~Vsst | Off<<Vsshft);
 	return 0;
 }
+#endif
 
+#ifdef NAH
 void
 cpuidprint(void)
 {
@@ -1227,6 +1231,7 @@ archmmu(void)
 	assert(m->npgsz >= 1);
 	return Npglvls;
 }
+#endif
 
 #ifdef xxx
 static int
@@ -1278,6 +1283,7 @@ archfmtinstall(void)
 #endif
 }
 
+#ifdef NENE
 /*
  * delay for at least microsecs, placating the watchdog if necessary.
  * sys and lowsys are set in low() at the very start.
@@ -1319,7 +1325,9 @@ millidelay(int millisecs)
 	if (millisecs)
 		microdelay(1000LL * millisecs);
 }
+#endif
 
+#ifdef MEMEME
 /* the Zbb extension provides a CLZ instruction */
 int
 portclz(Clzuint n)			/* count leading zeroes */
@@ -1351,3 +1359,4 @@ clz(Clzuint n)
 {
 	return (*archclz)(n);
 }
+#endif
