@@ -9,7 +9,6 @@
 #include "fns.h"
 #include "riscv64.h"
 #include "cpucap.h"
-#include "uncached.h"
 
 #define EXT(let) (1LL << ((let) - 'A'))
 #define EXTIMA	(EXT('I') | EXT('M') | EXT('A'))
@@ -89,6 +88,7 @@ char *hartstates[] = {
 
 extern int nrdy;			/* from proc.c */
 
+typedef ulong Clzuint;
 int	portclz(Clzuint n);
 
 uvlong pagingmode = PAGINGMODE;

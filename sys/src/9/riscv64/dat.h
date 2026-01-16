@@ -189,6 +189,10 @@ struct Mach
 	int	cputype;
 	ulong	delayloop;
 
+	/* from Geoff's port. */
+	uchar	clockintrsok;	/* flag: safe to call timerintr */
+	int	clockintrdepth;
+
 	int	stack[1];
 };
 
