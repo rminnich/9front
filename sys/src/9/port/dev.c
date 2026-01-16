@@ -68,12 +68,9 @@ devallowed(Pgrp *pgrp, int r)
 		return 0;
 
 	w = sizeof(u64int) * 8;
-	print("devallowed: lock %p\n", &pgrp->ns);
 	rlock(&pgrp->ns);
-	print("devallowed: locked\n");
 	b = !(pgrp->notallowed[t/w] & 1<<t%w);
 	runlock(&pgrp->ns);
-	print("devallowed: returning %d\n", b);
 	return b;
 }
 

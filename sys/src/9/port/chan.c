@@ -1291,19 +1291,16 @@ namec(char *aname, int amode, int omode, ulong perm)
 	Mhead *m;
 	char *err;
 	char *name;
-	print("namec %s\n", aname);
 
 	if(aname[0] == '\0')
 		error("empty file name");
 	aname = validnamedup(aname, 1);
 	if(waserror()){
-		print("namec error\n");
 		free(aname);
 		nexterror();
 	}
 	name = aname;
 
-	print("validnamedup done\n");
 	/*
 	 * Find the starting off point (the current slash, the root of
 	 * a device tree, or the current dot) as well as the name to
@@ -1317,7 +1314,6 @@ namec(char *aname, int amode, int omode, ulong perm)
 		break;
 	
 	case '#':
-		print("# ...\n");
 		nomount = 1;
 		n = 0;
 		while(*name != '\0' && (*name != '/' || n < 2)){
@@ -1326,10 +1322,8 @@ namec(char *aname, int amode, int omode, ulong perm)
 			up->genbuf[n++] = *name++;
 		}
 		up->genbuf[n] = '\0';
-		print("# genbuf is %s\n", up->genbuf);
 		n = chartorune(&r, up->genbuf+1)+1;
 		t = devno(r);
-		print("devno %d\n", t);
 		if(t == -1)
 			error(Ebadsharp);
 		/*
@@ -1338,16 +1332,11 @@ namec(char *aname, int amode, int omode, ulong perm)
 		 * Doing any walks down the device could leak information
 		 * about the existence of files.
 		 */
-		print("devallowed? \n");
 		if((amode != Aunmount || up->genbuf[n] || *name)
-		&& !devallowed(up->pgrp, r)){
-			print("error enoattach\n");
+		&& !devallowed(up->pgrp, r))
 			error(Enoattach);
-		}
 
-		print("attach %s\n", up->genbuf+n);
 		c = devtab[t]->attach(up->genbuf+n);
-		print("attach returned\n");
 		break;
 
 	default:
@@ -1364,7 +1353,6 @@ namec(char *aname, int amode, int omode, ulong perm)
 	e.nelems = 0;
 	e.nerror = 0;
 	if(waserror()){
-		print("waserror which calls cclose\n");
 		cclose(c);
 		free(e.name);
 		free(e.elems);
@@ -1387,7 +1375,6 @@ namec(char *aname, int amode, int omode, ulong perm)
 	/*
 	 * Build a list of elements in the name.
 	 */
-	print("parsename ...\n");
 	parsename(name, &e);
 
 	/*
@@ -1406,9 +1393,7 @@ namec(char *aname, int amode, int omode, ulong perm)
 		e.nelems--;
 	}
 
-	print("walk?\n");
 	if(walk(&c, e.elems, e.nelems, nomount, &e.nerror) < 0){
-		print("walk failed\n");
 		if(e.nerror < 0 || e.nerror > e.nelems){
 			print("namec %s walk error nerror=%d\n", aname, e.nerror);
 			e.nerror = 0;
@@ -1416,15 +1401,12 @@ namec(char *aname, int amode, int omode, ulong perm)
 		nexterror();
 	}
 
-	if(e.mustbedir && (c->qid.type&QTDIR) == 0){
-		print("not a directory\n");
+	if(e.mustbedir && (c->qid.type&QTDIR) == 0)
 		error("not a directory");
-	}
 
 	if(amode == Aopen && (omode&3) == OEXEC && (c->qid.type&QTDIR) != 0)
 		error("cannot exec directory");
 
-	print("switch amode %d\n", amode);
 	switch(amode){
 	case Aunmount:
 		/*
@@ -1514,7 +1496,6 @@ namec(char *aname, int amode, int omode, ulong perm)
 		 * Directories (e.g. for cd) are left before the mount point,
 		 * so one may mount on / or . and see the effect.
 		 */
-		print("Atodir...\n");
 		if((c->qid.type&QTDIR) == 0)
 			error(Enotdir);
 		break;
