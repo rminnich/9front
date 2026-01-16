@@ -206,7 +206,7 @@ TEXT touser(SB), 1, $-4
 	FENCE
 	FENCE_I
 	CSRRW	CSR(SSCRATCH), R(MACH), R(MACH) /* restore R7, reload saved m */
-	MOV	$(UTZERO+8*BY2WD), R12	/* skip unextended exec hdr of init */
+	MOV	$(UTZERO+0x28), R12	/* skip unextended exec hdr of init */
 	MOV	R12, CSR(SEPC)		/* new pc */
 	MOV	RARG, R2		/* new sp */
 	WORD $0x10200073 //SRET
