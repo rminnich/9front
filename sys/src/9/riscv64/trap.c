@@ -291,6 +291,8 @@ trapsyscall(Ureg *ureg, Cause *)
 	uint scallnr;
 	uintptr pc;
 
+	int i;
+	for(i = 0; i < 32; i++) print("%d:0x%llx\n", i, ureg->regs[i]);
 //	m->turnedfpoff = 0;
 
 	/* syscall may change ureg->pc, so save a copy. */
