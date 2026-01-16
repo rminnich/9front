@@ -40,9 +40,10 @@ PORT=\
 	xalloc.$O\
 	userinit.$O\
 
+# don't forget: l.$O must always be first
 OBJ=\
-	archrv.$O\
 	l.$O\
+	archrv.$O\
 	strap.$O\
 	main.$O\
 	mmu.$O\

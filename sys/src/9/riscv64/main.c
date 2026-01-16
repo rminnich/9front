@@ -71,7 +71,7 @@ init0(void)
 	print("pte is %p *pte %llx\n", pte, *pte);
 	}
 	print("touser baby MACH m is %p mmuto p%p\n", m, m->mmutop);
-	block = 0;
+	block = 1;
 	while(! block);
 	touser((uintptr)USTKTOP-BY2PG);
 }

@@ -139,7 +139,6 @@ kprocchild(Proc *p, void (*entry)(void))
 void
 evenaddr(uintptr addr)
 {
-	print("evenaddr %p\n", addr);
 	if(addr & 2){
 		postnote(up, 1, "sys: odd word address", NDebug);
 		error(Ebadarg);
