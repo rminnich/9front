@@ -41,6 +41,7 @@ PORT=\
 	userinit.$O\
 
 OBJ=\
+	archrv.$O\
 	l.$O\
 	strap.$O\
 	main.$O\

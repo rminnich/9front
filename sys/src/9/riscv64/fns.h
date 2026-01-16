@@ -182,3 +182,14 @@ void *usertokernel(void *v);
 u64int *userpte(void *v);
 void flushalltlb(void);
 void flushvatlb(uintptr);
+
+// not all implemented
+void	clearipi(void);
+void	clockenable(void);
+void	clockintr(Ureg* ureg, void *);
+void	clockoff(void);
+int	clocksanity(void);
+void	clrreserv(void);
+uintptr	clrsie(uintptr);
+void	clrsipbit(ulong);
+void	clrstie(void);

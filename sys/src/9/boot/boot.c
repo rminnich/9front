@@ -9,6 +9,7 @@ main(int, char *argv[])
 {
 	char buf[32];
 
+	write(1, "hi\n", 3);
 	/* setup the boot namespace */
 	bind("/boot", bin, MAFTER);
 

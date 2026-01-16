@@ -634,11 +634,74 @@ trapriscv64(Ureg *ureg, Cause *cp)
 	panic("unknown exception, cause %d from_user %d", cause, cp->user);
 }
 
+static int
+traplocalintr(Ureg *ureg, Cause *cp)
+{
+	int clockintr;
+	uint cause;
+
+	m->intr++;			/* okay here; only tmr and sw intrs */
+	m->perf.intrts = perfticks();
+	cause = cp->cause;
+	if (cause < Local0intr)
+		cause &= ~Msdiff;	/* map mach to super codes */
+	switch (cause) {
+	case Suptmrintr:
+		clockoff();
+		if (++m->clockintrdepth > 1 && m->clockintrsok) {
+			/* nested clock interrupt; probably shutting down */
+			m->clockintrsok = 0;
+			// iprint("cpu%d: nested clock interrupt\n", m->machno);
+		}
+		timerintr(ureg, 0);
+		--m->clockintrdepth;
+		clockenable();
+		clockintr = 1;
+		break;
+	case Supswintr:
+		/*
+		 * an ipi should normally pop out of wfi at splhi in idlehands,
+		 * and not end up here.  getting here means that we sent an ipi
+		 * to a cpu that stopped waiting before the ipi arrived, which
+		 * is harmless.  sending the ipi zeroed ipiwait.  if we could
+		 * interrupt idlehands, we would want to set mp->ipiwait=1 here
+		 * so that it wouldn't be counted both by idlehands and below.
+		 */
+		gotipi = 1;
+		clearipi();
+		clockintr = 0;
+		break;
+	case Supextintr:
+		/*
+		 * NB: intr is not reached here, we short-circuited the cause
+		 * to Globalintr in whatcause.
+		 */
+		// clockintr = intr(ureg, cp);
+		panic("traplocalintr: handed an external interrupt");
+	case 0:					/* probably NMI */
+		if(m->machno == 0)
+			panic("NMI @ %#p", ureg->pc);
+		else {
+			iprint("nmi: cpu%d: PC %#p\n", m->machno, ureg->pc);
+			for(;;)
+				idlehands();
+		}
+	default:
+		panic("trap: unknown local interrupt %d", cp->cause);
+	}
+	clrsipbit(1<<cp->cause);
+	vecacct(vctl[cp->vno]);
+	intrtime(m, cp->vno);
+	if (!soc.plic)
+		poll(ureg, nil);		/* frequent polling */
+	return clockintr;
+}
+
 static Traphandler traphandlers[Nfaulttypes] = {
 [Unknownflt]	nil,
 [Exception]	trapriscv64,			/* may enable fpu */
-//[Localintr]	traplocalintr,
-//[Globalintr]	intr,
+[Localintr]	traplocalintr,
+[Globalintr]	intr,
 };
 
 /*

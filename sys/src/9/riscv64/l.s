@@ -159,18 +159,6 @@ TEXT	coherence(SB), 1, $-4
 TEXT	wfi(SB), 1, $-4
 	RET
 
-TEXT	islo(SB), 1, $-4
-	RET
-
-TEXT	splhi(SB), 1, $-4
-	RET
-
-TEXT	spllo(SB), 1, $-4
-	RET
-
-TEXT	splx(SB), 1, $-4
-	RET
-
 TEXT	flushtlb(SB), 1, $-4
 	RET
 TEXT	flushasidvall(SB), 1, $-4
@@ -220,3 +208,57 @@ TEXT forkret(SB), 1, $-4
 	MOV	R0, RARG
 	MOV	RARG, R2		/* new sp */
 	WORD $0x10200073 //SRET
+
+// Courtesy of Geoff (I think?)
+/*
+ * Turn the Sie bit of SSTATUS on or off; leave the individual enables alone.
+ * NB: the spl* functions contain barriers and it is safe to rely upon that.
+ * Do we need these? Not sure yet. Leave it here for now.
+ */
+
+TEXT splhi(SB), 1, $-4
+TEXT gsplhi(SB), 1, $-4
+_splhi:
+	CSRRC	CSR(SSTATUS), $Sie, R(ARG) /* disable super intrs */
+	AND	$Sie, R(ARG)		/* return old state */
+	BEQ	R(ARG), _spldone	/* intrs were disabled? */
+	MOV	LINK, SPLPC(R(MACH)) 	/* save PC in m->splpc for kprof */
+	FENCE
+_spldone:
+	RET
+
+TEXT spllo(SB), 1, $-4
+TEXT gspllo(SB), 1, $-4			/* marker for devkprof */
+_spllo:
+	MOV	CSR(SSTATUS), R(ARG)
+	AND	$Sie, R(ARG)		/* return old state */
+	BNE	R(ARG), _spldone	/* Sie=1, intrs are enabled? */
+	/* they are disabled, so enable them */
+	FENCE
+	/*
+	 * strictly speaking, SPLLO should be after zeroing SPLPC,
+	 * but since even the profiling clock can't interrupt splhi,
+	 * we get more meaningful profiling results with SPLLO before it.
+	 */
+	SPLLO				/* enable super intrs; expect intr. */
+	MOV	R0, SPLPC(R(MACH))	/* enabling; clear m->splpc */
+	RET
+
+/* assumed between spllo and spldone by devkprof */
+TEXT gsplx(SB), 1, $-4
+TEXT splx(SB), 1, $-4
+	MOV	CSR(SSTATUS), R9
+	AND	$Sie, R9
+	AND	$Sie, R(ARG), R10
+	BEQ	R9, R10, _spldone	/* already in desired state? */
+	BEQ	R10, _splhi		/* want intrs disabled? */
+	JMP	_spllo			/* want intrs enabled */
+
+TEXT spldone(SB), 1, $-4		/* marker for devkprof */
+	RET
+
+TEXT gislo(SB), 1, $-4
+TEXT islo(SB), 1, $-4
+	MOV	CSR(SSTATUS), R(ARG)
+	AND	$Sie, R(ARG)
+	RET

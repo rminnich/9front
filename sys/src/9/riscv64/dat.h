@@ -146,6 +146,17 @@ struct PMMU
 
 #include "../port/portdat.h"
 
+/*
+ * Per processor information.
+ *
+ * The offsets of the first elements may be known
+ * to low-level assembly code, so do not re-order nor channge type:
+ *	machno, bootmachmode - rebootcode
+ *	splpc		- splhi, spllo, splx
+ *	proc, regsave	- strap, mtrap
+ *	online, hartid	- start
+ * changes here must be synchronised with byte offsets in riscv64ladd.h.
+ */
 struct Mach
 {
 	int	machno;			/* physical id of processor */
