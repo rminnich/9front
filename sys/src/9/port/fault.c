@@ -391,22 +391,22 @@ okaddr(uintptr addr, ulong len, int write)
 	if((long)len >= 0 && len <= -addr) {
 		for(;;) {
 			s = seg(up, addr, 0);
-			print("okaddr: s(%p, %p, 0) = %p\n", up, addr, s);
+if (0)print("okaddr: s(%p, %p, 0) = %p\n", up, addr, s);
 			if (s != nil) print("s->type is %s\n", s->type&SG_RONLY ? "readonly" : "writeable");
 			if(s == nil || (write && (s->type&SG_RONLY)))
 				break;
 
-			print("addr %p len %lx s->top %p\n", addr, len, s->top);
+if (0)print("addr %p len %lx s->top %p\n", addr, len, s->top);
 			if(addr+len > s->top) {
 				len -= s->top - addr;
 				addr = s->top;
 				continue;
 			}
-			print("okaddr: ok\n");
+if (0)print("okaddr: ok\n");
 			return 1;
 		}
 	}
-	print("okaddr: bad\n");
+if (0)print("okaddr: bad\n");
 	return 0;
 }
 

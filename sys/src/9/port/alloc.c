@@ -25,7 +25,7 @@ static Pool pmainmem = {
 	.quantum=	32,
 	.alloc=	xalloc,
 	.merge=	xmerge,
-	.flags=	POOL_LOGGING | POOL_TOLERANCE | POOL_NOREUSE,
+	.flags=	POOL_TOLERANCE | POOL_NOREUSE,
 
 	.lock=	plock,
 	.unlock=	punlock,
@@ -204,7 +204,7 @@ smalloc(ulong size)
 {
 	void *v;
 if (0)print("SMALLOC %d\n", size);
-	poolcheck(mainmem);
+	if (0)poolcheck(mainmem);
 	while((v = poolalloc(mainmem, size+Npadlong*sizeof(ulong))) == nil){
 		if(!waserror()){
 			resrcwait("no memory for smalloc");
@@ -227,7 +227,7 @@ malloc(ulong size)
 	extern int debugmemset;
 if (0)print("MALLOC %d\n", size);
 	v = poolalloc(mainmem, size+Npadlong*sizeof(ulong));
-	poolcheck(mainmem);
+if (0)poolcheck(mainmem);
 	if(v == nil)
 		return nil;
 	if(Npadlong){
@@ -254,7 +254,7 @@ void*
 mallocz(ulong size, int clr)
 {
 	void *v;
-	poolcheck(mainmem);
+if (0)poolcheck(mainmem);
 	v = poolalloc(mainmem, size+Npadlong*sizeof(ulong));
 	if(v == nil)
 		return nil;
@@ -288,7 +288,7 @@ mallocalign(ulong size, ulong align, long offset, ulong span)
 void
 free(void *v)
 {
-if (1)print("Don't free %p\n", v);
+if (0)print("Don't free %p\n", v);
 	if(v != nil)
 		poolfree(mainmem, (ulong*)v-Npadlong);
 }
