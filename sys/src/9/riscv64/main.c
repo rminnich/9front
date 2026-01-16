@@ -28,17 +28,9 @@ init0(void)
 {
 	char buf[2*KNAMELEN], **sp, **usp;
 	Page *p;
-	uintptr pc;
 
 	print("chandevinit ...\n");
 	chandevinit();
-
-	
-	if (0){ 
-		print("done ...\n");
-		pc = (uintptr)usertokernel((void *)UTZERO);
-		print("pc va is %p\n", pc);
-	}
 
 	if(!waserror()){
 		snprint(buf, sizeof(buf), "%s %s", "ARM64", conffile);
@@ -72,14 +64,14 @@ init0(void)
 	fpukexit(nil, nil);
 	print("done ... call mmuswitch\n");
 	mmuswitch(up);
-	if (0) {
+	if (1) {
 	print("fault %d\n", fault(UTZERO, UTZERO, 1));
 	print("fault sp %d\n", fault(p->va, UTZERO, 0));
 	u64int* pte = userpte((void *)UTZERO);
 	print("pte is %p *pte %llx\n", pte, *pte);
 	}
 	print("touser baby MACH m is %p mmuto p%p\n", m, m->mmutop);
-	block = 1;
+	block = 0;
 	while(! block);
 	touser((uintptr)USTKTOP-BY2PG);
 }
