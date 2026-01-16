@@ -877,3 +877,8 @@ dumpregs(Ureg* ureg)
 //	archdumpregs();
 }
 
+
+void clearipi(void)
+{
+	panic("clearipi");
+}

@@ -325,7 +325,7 @@ struct Soc {
 Soc soc;
 
 #define PAGINGMODE 8
-uvlong pagingmode = PAGINGMODE;
+uvlong pagingmode;
 
 int	bootmachmode; /* flag: machine mode at boot? same on all non-hobbled harts? */
 uvlong	clintsperµs;	/* needed in delay before m is set */

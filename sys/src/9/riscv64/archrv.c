@@ -325,11 +325,13 @@ USED(len);
 void
 cachedwbinvse(void *vaddr, int len)
 {
+	USED(vaddr);
+	USED(len);
+	coherence();
+#ifdef xxx
 	L2cache *l2c;
 	Mpl pl;
 
-	coherence();
-#ifdef xxx
 	if (!dmaincoherent || !ISCACHED(vaddr))
 		return;
 #endif
@@ -633,15 +635,16 @@ calibrate(void)
 	timeop("set timecmp", wrtimecmpop);
 }
 
+#endif
 /* prevent further clock interrupts */
 void
 clockoff(void)
 {
 	clrstie();
 	/* ~0ull makes sense, but looks negative on some machines */
-	setclinttmr(VMASK(63));
+	// fuck that.	setclinttmr(VMASK(63));
 }
-
+#ifdef zzz
 /*
  *  set next timer interrupt for time next, in fastticks (clint ticks).
  *  we won't go longer than 1/HZ s. without a clock interrupt.
@@ -1327,11 +1330,15 @@ millidelay(int millisecs)
 }
 #endif
 
-#ifdef MEMEME
+
 /* the Zbb extension provides a CLZ instruction */
 int
 portclz(Clzuint n)			/* count leading zeroes */
 {
+	USED(n);
+	int cnt = 0;
+	panic("portclz");
+#ifdef NOT
 	/* (u)vlong makes jc generate better code than (u)int */
 	uvlong cnt, hibits;
 	Clzuint mask;
@@ -1351,9 +1358,10 @@ portclz(Clzuint n)			/* count leading zeroes */
 		hibits /= 2;
 		mask <<= hibits;
 	}
+#endif
 	return cnt;
 }
-
+#ifdef MEMEME
 int
 clz(Clzuint n)
 {

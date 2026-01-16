@@ -168,11 +168,6 @@ TEXT	flushasidva(SB), 1, $-4
 TEXT	flushasid(SB), 1, $-4
 	RET
 
-TEXT	cachedwbinvse(SB), 1, $-4
-	RET
-TEXT	cacheiinvse(SB), 1, $-4
-	RET
-
 TEXT	vcycles(SB), 1, $-4
 	RET
 TEXT	perfticks(SB), 1, $-4
@@ -277,4 +272,22 @@ TEXT cboflush(SB), 1, $-4			/* void cboflush(uintptr) */
 /* Zicbom extension; takes virtual addresses */
 TEXT cboinval(SB), 1, $-4			/* void cboinval(uintptr) */
 	WORD $(0xf | 2<<12 | ARG<<15 | CBOINVAL<<20)
+	RET
+
+// laterz
+TEXT	cacheiinvse(SB), 1, $-4
+	RET
+
+TEXT clockenable(SB), 1, $-4
+	MOV	$Stie, R9			/* super timer intr enable */
+	CSRRS	CSR(SIE), R9, R0
+	FENCE
+	RET
+
+TEXT clrstie(SB), 1, $-4
+	MOV	$Stie, R(ARG)			/* super timer intr enable */
+	CSRRC	CSR(SIE), R(ARG), R0
+TEXT clrsipbit(SB), 1, $-4			/* clrsipbit(ulong bit) */
+	CSRRC	CSR(SIP), R(ARG), R0
+	FENCE
 	RET
