@@ -603,7 +603,7 @@ trapriscv64(Ureg *ureg, Cause *cp)
 {
 	uint cause;
 	Exchandler handler;
-
+	print("trapriscv64 ur %p cp %p\n", ureg, cp);
 #ifdef xxx
 	if (cp->user)
 		m->turnedfpoff = 0;
@@ -623,13 +623,15 @@ trapriscv64(Ureg *ureg, Cause *cp)
 	if (cause >= nelem(exchandlers))
 		panic("trapriscv64: cause %d out of range", cause);
 	handler = exchandlers[cause];
+	print("trapriscv64: handler %p\n", handler);
 	if (handler) {
 		(*handler)(ureg, cp);
 		if (Trapdebug)
 			faultstuck(ureg);
+		print("trapriscv64: done handler\n");
 		return 0;			/* not a clock interrupt */
 	}
-
+	print("trapriscv64: no handler\n");
 	/* could be a local intr */
 	panic("unknown exception, cause %d from_user %d", cause, cp->user);
 }
@@ -640,20 +642,25 @@ traplocalintr(Ureg *ureg, Cause *cp)
 	int clockintr;
 	uint cause;
 
+	print("traplocalintr ureg %p cause %p\n", ureg, cause);
 	m->intr++;			/* okay here; only tmr and sw intrs */
 	m->perf.intrts = perfticks();
 	cause = cp->cause;
 	if (cause < Local0intr)
 		cause &= ~Msdiff;	/* map mach to super codes */
+	print("case %x\n", cause);
 	switch (cause) {
 	case Suptmrintr:
+		print("clockintr\n");
 		clockoff();
+		print("clockoff\n");
 		if (++m->clockintrdepth > 1 && m->clockintrsok) {
 			/* nested clock interrupt; probably shutting down */
 			m->clockintrsok = 0;
 			// iprint("cpu%d: nested clock interrupt\n", m->machno);
 		}
 		timerintr(ureg, 0);
+		print("timerintr DONE\n");
 		--m->clockintrdepth;
 		clockenable();
 		clockintr = 1;
@@ -808,9 +815,11 @@ trap(Ureg* ureg)
 		if (type >= nelem(traphandlers))
 			panic("trap: trap type %d too large", type);
 		handler = traphandlers[type];
+		print("handler is %p\n", handler);
 		if (handler == nil)
 			panic("trap: trap type %d has no handler", type);
 		clockintr = (*handler)(ureg, &why);
+		print("back from handler\n");
 		splhi();		/* minimise harm if handler went low */
 	//	fpsts2ureg(ureg); /* propagate Fsst changes back to user mode */
 

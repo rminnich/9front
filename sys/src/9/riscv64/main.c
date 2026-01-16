@@ -302,7 +302,7 @@ main(void)
 	userinit(); print("DONE 	userinit();\n"); 
 	check();
 	mpinit(); print("DONE 	mpinit();\n"); 
-	mmu1init(); print("DONE 	mmu1init();\n"); 
+	mmu1init(); print("DONE 	mmu1init(); islo %d\n", islo()); 
 	schedinit();
 }
 
