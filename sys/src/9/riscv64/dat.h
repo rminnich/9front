@@ -40,6 +40,11 @@ typedef struct Ureg	Ureg;
 typedef uvlong		Tval;
 typedef void		KMap;
 
+typedef struct Cpu Cpu;
+#pragma incomplete Cpu
+
+typedef struct Mallocs Mallocs;
+
 #pragma incomplete Pcidev
 #pragma incomplete Ureg
 
@@ -192,6 +197,7 @@ struct Mach
 	/* from Geoff's port. */
 	uchar	clockintrsok;	/* flag: safe to call timerintr */
 	int	clockintrdepth;
+	int machmode;
 
 	int	stack[1];
 };
@@ -257,6 +263,7 @@ struct DevConf
 };
 
 /* from Geoff's port */
+typedef struct Intrstate Intrstate;
 typedef struct Soc Soc;
 typedef struct Sys Sys;
 typedef struct Syspercpu Syspercpu;
@@ -316,6 +323,32 @@ struct Soc {
 };
 
 Soc soc;
+
+#define PAGINGMODE 8
+uvlong pagingmode = PAGINGMODE;
+
+int	bootmachmode; /* flag: machine mode at boot? same on all non-hobbled harts? */
+uvlong	clintsperµs;	/* needed in delay before m is set */
+uvlong	cpuhz;		/* from kernel config */
+int	early;		/* flag: not ready for traps yet */
+uchar	ether0mac[];
+int	gotipi;
+int	hartcnt;
+uintptr	memtotal;	/* sum of all banks */
+uintptr	mideleg, medeleg;
+uintptr	misa;
+int	nosbi;
+int	nuart;	/* from kernel config; number of uarts in use in uartregs */
+void	*origmtvec;
+uvlong	pagingmode; /* set from PAGINGMODE, not really selectable at run time */
+int	probehartid;
+int	probingharts;
+void	(*prstackmax)(void);
+void	(*rvreset)(void);
+/* server soc spec. requires 1 GHz clint timer, thus timebase */
+uvlong	timebase;	/* from kernel config */
+vlong	uartfreq;	/* from kernel config */
+uintptr	uartregs[]; /* from kernel config; not yet used for anything significant */
 /*
  * PLIC is Platform-Level Interrupt Controller.
  * Any interrupt connected here also shows up as Seie in SIP CSR.
@@ -359,4 +392,25 @@ struct Plic {				/* 64 MB */
 		ulong	claimcompl;	/* claim/complete */
 		uchar	_2_[4096 - 2*sizeof(ulong)];
 	} context[Ncontexts];		/* index by context */
+};
+
+struct Mallocs {
+	void	*base;
+	void	*use;
+};
+
+struct Sbiret {
+	uvlong	status;
+	uvlong	error;
+};
+
+struct Intrstate {
+	uintptr	osts;		/* mach mode state to restore */
+	Mpl	pl;		/* super " " " " */
+	uchar	machmode;	/* flag: cpu in machine mode? */
+};
+
+enum Riscv_vendorid {
+	Vsifive	= 0x489,
+	Vthead	= 0x5b7,
 };

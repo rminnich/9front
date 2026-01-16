@@ -97,15 +97,10 @@ int (*archclz)(Clzuint) = portclz;
 static Hart harts[HARTMAX];
 
 Cpu cpus[] = {
-	{ "sifive e3/s5", Vsifive, 1, },			/* 3/5-series */
-	{ "sifive u7",	Vsifive, 0x80000007u, },		/* 7-series */
-	{ "sifive u7",	Vsifive, 0x8000000000000007ull, },	/* 7-series */
-	{ "sifive p550", Vsifive, 0x8000000000000008ull, },	/* u84 */
-	{ "sifive",	Vsifive, 0, },
 	{ "spacemit x60", 0x710, 0x8000000058000001ull, },
 	{ "spacemit",	0x710,	0, },
 //	{ "xuantie",	0x401,	0, },
-	{ "xuantie",	Vthead,	0, },				/* bugs'r'us */
+//	{ "xuantie",	Vthead,	0, },				/* bugs'r'us */
 	{ "tinyemu",	0xbe11a5d, 0x564, },
 	{ "zero vendor & arch (emulation?)", 0, 0, },
 	0
@@ -114,6 +109,8 @@ Cpu cpus[] = {
 Cpu *
 ourcpu(void)
 {
+	return nil;
+/*
 	Cpu *cpu;
 
 	if (sys->cpu)
@@ -123,13 +120,14 @@ ourcpu(void)
 		    cpu->archid == sys->archid)
 			return sys->cpu = cpu;
 	return nil;
+*/
 }
 
 Mallocs
 cachealloc(uintptr size)		/* unused */
 {
 	char *p;
-
+#define CACHELINESZ 64
 	p = malloc(size + 2*CACHELINESZ);
 	if (p == nil)
 		return (Mallocs){ nil, nil };
@@ -139,6 +137,7 @@ cachealloc(uintptr size)		/* unused */
 static uint
 umod(uint a, uint b)			/* unused */
 {
+#define		ISPOW2(i) (((i) & ((i) - 1)) == 0) /* see Hacker's Delight */
 	if (ISPOW2(b))
 		return a & (b - 1);
 	return a % b;
@@ -148,21 +147,29 @@ umod(uint a, uint b)			/* unused */
 void
 nointrs(Intrstate *is)
 {
+	USED(is);
+	panic("nointrs");
+#ifdef xxx
 	is->machmode = m->machmode;
 	if (is->machmode) {
 		is->osts = getmsts();
 		putmsts(is->osts & ~Mie);
 	} else
 		is->pl = splhi();
+#endif
 }
 
 void
 restintrs(Intrstate *is)
 {
+	USED(is);
+	panic("restintrs\n");
+#ifdef xxx
 	if (is->machmode)
 		putmsts(is->osts);
 	else
 		splx(is->pl);
+#endif
 }
 
 static void
@@ -190,17 +197,22 @@ memcacheinit(L2cache *l2c, int lvl, char *name)
 static void
 nol2cache(void)
 {
+	print("we have an l2 cache\n");
+#ifdef xxx
 	print("l2init: no cache flush mechanism ");
 	if (dmaincoherent)
 		print("and it's needed for DMA.\n");
 	else
 		print("but it's not needed.\n");
+#endif
 }
 
 /* configure l2 & l3 caches; called by each hart in case of l2 caches */
+/* don't bother until we know we need it. */
 void
 l2init(void)
 {
+#ifdef xxx
 	L2cache *l2c = (L2cache *)soc.l2cache;
 
 	if (m->machno == 0 && haveinstr(cboflush, (uvlong)bdata))
@@ -226,6 +238,7 @@ l2init(void)
 	}
 	if (m->machno == 0)
 		memcacheinit((L2cache *)soc.l3cache, 3, "shared l3");
+#endif
 }
 
 enum {
@@ -235,6 +248,12 @@ enum {
 static void
 l2cachejustflush(L2cache *l2c, uvlong cmd, void *vaddr, uintptr len)
 {
+print("l2cachejustflush FIXME\n");
+USED(l2c);
+USED(cmd);
+USED(vaddr);
+USED(len);
+#ifdef xxx
 	uintptr addr, last;
 
 	/* convert vaddr to physical unless it is already physical */
@@ -253,11 +272,18 @@ l2cachejustflush(L2cache *l2c, uvlong cmd, void *vaddr, uintptr len)
 			l2c->flush64 = addr | cmd;
 	}
 	coherence();
+#endif
 }
 
 static void
 pl2cachedwbinvse(L2cache *l2c, void *vaddr, uintptr len)
 {
+print("FIX pl2cachedwbbbla\n");
+USED(l2c);
+USED(vaddr);
+USED(len);
+#ifdef xxx
+
 	uintptr addr;
 
 	/* upper 8 bits are l2 cache op in private l2 */
@@ -266,6 +292,7 @@ pl2cachedwbinvse(L2cache *l2c, void *vaddr, uintptr len)
 	l2cachejustflush(l2c, Pacleaninv, vaddr, len);
 	while (l2c->flushcnt > 0)
 		;
+#endif
 }
 
 /*
@@ -275,10 +302,17 @@ pl2cachedwbinvse(L2cache *l2c, void *vaddr, uintptr len)
 static void
 memcacheflush(L2cache *l2c, int lvl, void *vaddr, uintptr len)
 {
+print("FIX memcacheflush\n");
+USED(l2c);
+USED(lvl);
+USED(vaddr);
+USED(len);
+#ifdef xxx
 	if (lvl == 2 && soc.pl2caches[m->hartid] != 0)
 		pl2cachedwbinvse((L2cache *)soc.pl2caches[m->hartid], vaddr, len);
 	else
 		l2cachejustflush(l2c, 0, vaddr, len);
+#endif
 }
 
 /*
@@ -295,9 +329,11 @@ cachedwbinvse(void *vaddr, int len)
 	Mpl pl;
 
 	coherence();
+#ifdef xxx
 	if (!dmaincoherent || !ISCACHED(vaddr))
 		return;
-
+#endif
+#ifdef xxx
 	l2c = (L2cache *)soc.l2cache;
 	if (!soc.havecbo && l2c == nil) {	/* no shared l2? try private */
 		/* if efficiency is an issue, could cache l2c in m->l2cache */
@@ -311,6 +347,7 @@ cachedwbinvse(void *vaddr, int len)
 	if (l2c != nil)
 		memcacheflush(l2c, 3, vaddr, len);
 	splx(pl);
+#endif
 }
 
 void
@@ -320,10 +357,12 @@ cachedinvse(void *vaddr, int len)
 	Mpl pl;
 
 	coherence();
+#ifdef xxx
 	if (!dmaincoherent || !ISCACHED(vaddr))
 		return;
 	if (!soc.havecbo)
 		return;
+#endif
 
 	pl = splhi();
 	addr = (uintptr)(iskern(vaddr)? vaddr: KADDR((uintptr)vaddr));
@@ -345,6 +384,8 @@ ishartonline(int hart)		/* unused */
 void
 cpuinit(int cpu)
 {
+	USED(cpu);
+#ifdef xxx
 	Hart *hartst;
 
 	up = nil;
@@ -364,6 +405,7 @@ cpuinit(int cpu)
 	m->boottsc = rdtsc();
 
 	m->plicctxt = mach2context(m);	/* base context without priv mode */
+#endif
 	clockoff();
 }
 
@@ -375,10 +417,13 @@ cpuinit(int cpu)
 uvlong
 rdcltime(void)
 {
+#ifdef xxx
 	if (Clintlongs || !nosbi)
 		return rdtime();		/* needs our tinyemu */
 	else
 		return m->clint->mtime;
+#endif
+	return 0;
 }
 
 static void
@@ -398,15 +443,20 @@ setcltime(ulong *p, uvlong v)
 void
 wrcltime(uvlong v)
 {
+	USED(v);
+#ifdef xxx
 	if (soc.c910)		/* on c910, mtime is a csr, not memory-mapped */
 		return;
 	if (nosbi)
 		setcltime((ulong *)&m->clint->mtime, v);
+#endif
 }
 
 uvlong
 rdcltimecmp(Mach *mp)
 {
+	USED(mp);
+#ifdef xxx
 	ulong *p;
 
 	/* sbi provides no way to read mtimecmp, so see cached value */
@@ -419,26 +469,33 @@ rdcltimecmp(Mach *mp)
 		return p[0] | (uvlong)p[1] << 32;
 	else
 		return *(uvlong *)p;
+#endif
 }
 
 void
 wrcltimecmp(uvlong v)
 {
+	USED(v);
+#ifdef XXX
 	if (m->clint == nil)
 		panic("wrcltimecmp: nil m->clint");
 	setcltime((ulong *)&m->clint->mtimecmp[m->hartid], v);
 	m->timecmp = v;		/* remember for rdcltimecmp() under sbi */
+#endif
 }
 
 void
 setclinttmr(uvlong clticks)
 {
+USED(clticks);
+#ifdef xxx
 	if (nosbi)
 		wrcltimecmp(clticks);
 	else
 		sbisettimer(clticks);	/* how long does this take? */
 	m->timecmp = clticks;	/* remember for rdcltimecmp() under sbi */
 	coherence();		/* Stip might not be extinguished immediately */
+#endif
 }
 
 static uvlong tscperclintglob;
@@ -1171,6 +1228,7 @@ archmmu(void)
 	return Npglvls;
 }
 
+#ifdef xxx
 static int
 fmtP(Fmt* f)
 {
@@ -1195,6 +1253,7 @@ fmtR(Fmt* f)
 {
 	return fmtprint(f, "%#16.16p", va_arg(f->args, Mreg));
 }
+#endif
 
 void
 archfmtinstall(void)
@@ -1210,10 +1269,13 @@ archfmtinstall(void)
 	 * on the compiler to optimise-away impossible conditions,
 	 * and/or by exploiting the innards of the fmt library.
 	 */
+	print("FIX archfmtintsall\n");
+#ifdef XXX
 	fmtinstall('P', fmtP);
 
 	fmtinstall('L', fmtL);
 	fmtinstall('R', fmtR);
+#endif
 }
 
 /*
@@ -1223,7 +1285,7 @@ archfmtinstall(void)
  * and the mmu may be off.
  */
 void
-microdelay(vlong microsecs)
+microdelay(int microsecs)
 {
 	uvlong t, now, nxtdog, dogincr;
 

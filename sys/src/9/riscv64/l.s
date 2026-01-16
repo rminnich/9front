@@ -262,3 +262,19 @@ TEXT islo(SB), 1, $-4
 	MOV	CSR(SSTATUS), R(ARG)
 	AND	$Sie, R(ARG)
 	RET
+
+#define CBOINVAL 0
+#define CBOCLEAN 1		/* write back iff dirty */
+#define CBOFLUSH 2		/* clean then invalidate */
+
+#define CBOZERO 4		/* Zicboz */
+
+/* Zicbom extension; takes virtual addresses */
+TEXT cboflush(SB), 1, $-4			/* void cboflush(uintptr) */
+	WORD $(0xf | 2<<12 | ARG<<15 | CBOFLUSH<<20)
+	RET
+
+/* Zicbom extension; takes virtual addresses */
+TEXT cboinval(SB), 1, $-4			/* void cboinval(uintptr) */
+	WORD $(0xf | 2<<12 | ARG<<15 | CBOINVAL<<20)
+	RET

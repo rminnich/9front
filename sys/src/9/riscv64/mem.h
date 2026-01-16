@@ -45,6 +45,7 @@
 
 #define	KZERO		(0x0000000000000000ULL)	/* 0x00000000 - kernel address space */
 #define KLIMIT (0x800000000000ULL) // half of the hole.
+#define iskern(v) (((uintptr)v)<=UZERO)
 
 /* shared kernel page table for TTBR1 */
 #define L1		(L1TOP-L1SIZE)
@@ -116,3 +117,4 @@
 /* from Geoff */
 #define MASK(w)	 ((1u  <<(w)) - 1)
 #define VMASK(w) ((1ull<<(w)) - 1)
+#define HARTMAX 32
