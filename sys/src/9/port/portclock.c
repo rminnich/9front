@@ -92,29 +92,21 @@ timeradd(Timer *nt)
 {
 	Timers *tt;
 	vlong when;
-	print("timeradd lock %p Lock is %p, ta %p\n", nt, &nt->Lock, &nt->ta);
+
 	/* Must lock Timer struct before Timers struct */
 	ilock(nt);
-	print("locked\n");
 	if(tt = nt->tt){
-		print("enter if, lock %p Lock is %p, twhen %p\n", nt, &nt->Lock, nt->twhen);
 		ilock(tt);
-		print("locked, tdel %p\n", nt);
 		tdel(nt);
 		iunlock(tt);
-		print("done if, ...\n");
 	}
-	print("m %p m->machno %d\n", m, m ? m->machno : -1);
 	tt = &timers[m->machno];
-	print("ilock %p\n", tt);
 	ilock(tt);
-	print("tadd %p %p\n", tt, nt);
 	when = tadd(tt, nt);
 	if(when)
 		timerset(when);
 	iunlock(tt);
 	iunlock(nt);
-	print("done timeradd\n");
 }
 
 
@@ -125,14 +117,11 @@ timerdel(Timer *dt)
 	Timers *tt;
 	uvlong when;
 
-	print("timerdel: dt %p dt->tt %p\n", dt, dt->tt);
 	/* avoid Tperiodic getting re-added */
 	dt->tmode = Trelative;
 
-	print("timerdel: ilock dt\n");
 	ilock(dt);
 	if(tt = dt->tt){
-		print("timerdel: ilock tt %p\n", tt);
 		ilock(tt);
 		when = tdel(dt);
 		if(when && tt == &timers[m->machno])
@@ -149,7 +138,6 @@ timerdel(Timer *dt)
 	while(dt->tactive == mp && dt->tt == nil)
 		if(up->state == Running && up->nlocks == 0 && islo())
 			sched();
-	print("timerdel done\n");
 }
 
 void
@@ -200,7 +188,7 @@ timerintr(Ureg *u, Tval)
 	Timers *tt;
 	uvlong when, now;
 	int callhzclock;
-	print("timerintr\n");
+
 	intrcount[m->machno]++;
 	callhzclock = 0;
 	tt = &timers[m->machno];
@@ -239,34 +227,23 @@ timerintr(Ureg *u, Tval)
 	iunlock(tt);
 }
 
-extern int debugmemset  = 0;
 void
 timersinit(void)
 {
 	Timer *t;
 
-	print("ENTER timersinnit\n");
 	/*
 	 * T->tf == nil means the HZ clock for this processor.
 	 */
 	todinit();
-	debugmemset = 1;
 	t = malloc(sizeof(*t));
 	if(t == nil)
 		panic("timersinit: no memory for Timer");
-	print("memset @%p %d bytes\n", t, sizeof(*t));
-	//memset(t, 0, sizeof(*t));
-	print("timeradd %p key %p\n", t, t->key);
 	t->tmode = Tperiodic;
 	t->tt = nil;
 	t->tns = 1000000000/HZ;
 	t->tf = nil;
-	if (t->key) panic("timeradd: key @%p is not zero; is memset broken still?\n", &t->key);
-	t->key = 0;
-	print("timeradd %p key %p\n", t, t->key);
 	timeradd(t);
-	debugmemset = 0;
-	print("EXIT timersinit\n");
 }
 
 Timer*
@@ -274,10 +251,9 @@ addclock0link(void (*f)(void), int ms)
 {
 	Timer *nt;
 	uvlong when;
-	print("addclock0link\n");
+
 	/* Synchronize to hztimer if ms is 0 */
 	nt = malloc(sizeof(Timer));
-	print("nt %p\n", nt);
 	if(nt == nil)
 		panic("addclock0link: no memory for Timer");
 	if(ms == 0)
@@ -286,16 +262,12 @@ addclock0link(void (*f)(void), int ms)
 	nt->tmode = Tperiodic;
 	nt->tt = nil;
 	nt->tf = (void (*)(Ureg*, Timer*))f;
-	print("addclock0link: lock %p\n", &timers[0]);
+
 	ilock(&timers[0]);
-	print("locked\n");
 	when = tadd(&timers[0], nt);
-	print("added\n");
 	if(when)
 		timerset(when);
-	print("timerset done\n");
 	iunlock(&timers[0]);
-	print("addclock0link done\n");
 	return nt;
 }
 

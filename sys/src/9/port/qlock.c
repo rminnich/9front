@@ -135,7 +135,7 @@ void
 rlock(RWLock *q)
 {
 	Proc *p;
-	print("rlock %p %p\n", q, getcallerpc(&q));
+if (0)print("rlock %p %p\n", q, getcallerpc(&q));
 	if(m->ilockdepth != 0)
 		print("rlock: %#p: ilockdepth %d\n", getcallerpc(&q), m->ilockdepth);
 	if(up != nil && up->nlocks)
@@ -146,7 +146,7 @@ rlock(RWLock *q)
 		/* no writer, go for it */
 		q->readers++;
 		unlock(&q->use);
-		print("locked\n");
+if (0)print("locked\n");
 		return;
 	}
 	p = q->tail;
@@ -167,7 +167,7 @@ void
 runlock(RWLock *q)
 {
 	Proc *p;
-	print("runlock %p pc %p\n", q, getcallerpc(&q));
+if (0)print("runlock %p pc %p\n", q, getcallerpc(&q));
 	lock(&q->use);
 	p = q->head;
 	if(--(q->readers) > 0 || p == nil){
