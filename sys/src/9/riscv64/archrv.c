@@ -403,8 +403,6 @@ cpuinit(int cpu)
 	clockoff();
 }
 
-#ifdef NONONO
-
 /*
  * Clintlongs produces 32-bit little-endian accesses for unmodified tinyemu
  * (not ours) and xuantie.  Also implies reading the time csr instead of mtime.
@@ -413,12 +411,10 @@ cpuinit(int cpu)
 uvlong
 rdcltime(void)
 {
-#ifdef xxx
 	if (Clintlongs || !nosbi)
 		return rdtime();		/* needs our tinyemu */
 	else
 		return m->clint->mtime;
-#endif
 	return 0;
 }
 
@@ -439,20 +435,15 @@ setcltime(ulong *p, uvlong v)
 void
 wrcltime(uvlong v)
 {
-	USED(v);
-#ifdef xxx
 	if (soc.c910)		/* on c910, mtime is a csr, not memory-mapped */
 		return;
 	if (nosbi)
 		setcltime((ulong *)&m->clint->mtime, v);
-#endif
 }
 
 uvlong
 rdcltimecmp(Mach *mp)
 {
-	USED(mp);
-#ifdef xxx
 	ulong *p;
 
 	/* sbi provides no way to read mtimecmp, so see cached value */
@@ -465,33 +456,26 @@ rdcltimecmp(Mach *mp)
 		return p[0] | (uvlong)p[1] << 32;
 	else
 		return *(uvlong *)p;
-#endif
 }
 
 void
 wrcltimecmp(uvlong v)
 {
-	USED(v);
-#ifdef XXX
 	if (m->clint == nil)
 		panic("wrcltimecmp: nil m->clint");
 	setcltime((ulong *)&m->clint->mtimecmp[m->hartid], v);
 	m->timecmp = v;		/* remember for rdcltimecmp() under sbi */
-#endif
 }
 
 void
 setclinttmr(uvlong clticks)
 {
-USED(clticks);
-#ifdef xxx
 	if (nosbi)
 		wrcltimecmp(clticks);
 	else
 		sbisettimer(clticks);	/* how long does this take? */
 	m->timecmp = clticks;	/* remember for rdcltimecmp() under sbi */
 	coherence();		/* Stip might not be extinguished immediately */
-#endif
 }
 
 static uvlong tscperclintglob;
@@ -627,7 +611,6 @@ calibrate(void)
 	timeop("set timecmp", wrtimecmpop);
 }
 
-#endif
 /* prevent further clock interrupts */
 void
 clockoff(void)

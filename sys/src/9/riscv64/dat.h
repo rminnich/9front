@@ -18,6 +18,7 @@ enum {
 	GpioEdge,
 };
 
+typedef struct Clint Clint;
 typedef struct Conf	Conf;
 typedef struct Confmem	Confmem;
 typedef struct FPsave	FPsave;
@@ -126,6 +127,34 @@ struct Conf
 };
 
 /*
+ * CLINT is Core-Local INTerrupt controller
+ */
+
+/* Clint arrays are indexed by hart (cpu) id */
+struct Clint {
+	/* non-zero lsb generates sw intr. unless SBI has neutered it */
+	ulong	msip[4096];		/* aclint mswi */
+	/* aclint mtimer */
+	uvlong	mtimecmp[4095];		/* < mtime generates clock intr. */
+
+	/*
+	 * the XuanTie duplicates the above for supervisor mode access when the
+	 * Clintee bit is set, which it is initially on the c910.
+	 * also, mtime is missing and one has to instead read CSR(TIMELO).
+	 */
+	uvlong	mtime;
+
+#ifdef C910
+	/* S mode clint extension */
+	/* aclint sswi */
+	ulong	ssip[1024];		/* 4K long says the manual */
+	uvlong	stimecmp[4095];		/* < mtime generates clock intr. */
+#define mtimecmp	stimecmp	/* also renames Mach->mtimecmp */
+#define msip		ssip
+#endif
+};
+
+/*
  *  MMU stuff in Mach.
  */
 struct MMMU
@@ -176,7 +205,7 @@ struct Mach
 	};
 	int	online;		/* 120 flag: actually enabled */
 	int	hartid;		/* 124 riscv cpu id; often not machno */
-	/*Clint*/void	*clint;		/* 128 currently-valid address */
+	Clint	*clint;		/* 128 currently-valid address */
 	uintptr	_consuart;	/* 136 " */
 	uchar	bootmachmode;	/* 144 flag: machine mode at boot time */
 	uchar	probing;	/* 145 flag: probing an address */
@@ -198,6 +227,8 @@ struct Mach
 	uchar	clockintrsok;	/* flag: safe to call timerintr */
 	int	clockintrdepth;
 	int machmode;
+	/* current value of this hart's clint->mtimecmp, in case unreadable */
+	uvlong	timecmp;
 
 	int	stack[1];
 };
@@ -269,6 +300,8 @@ typedef struct Sys Sys;
 typedef struct Syspercpu Syspercpu;
 typedef uvlong Mpl;
 typedef uvlong Mreg;
+typedef struct Clint Clint;
+
 
 struct Soc {
 	/* physical addresses, vmapped to virtual addresses during start-up */
@@ -349,6 +382,7 @@ void	(*rvreset)(void);
 uvlong	timebase;	/* from kernel config */
 vlong	uartfreq;	/* from kernel config */
 uintptr	uartregs[]; /* from kernel config; not yet used for anything significant */
+
 /*
  * PLIC is Platform-Level Interrupt Controller.
  * Any interrupt connected here also shows up as Seie in SIP CSR.

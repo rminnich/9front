@@ -207,3 +207,6 @@ void	putmie(uintptr);
 void	putmip(uintptr);
 void	putmsts(uintptr);
 void*	putmtvec(void *);
+uvlong	rdtime(void);
+uvlong	rdtsc(void);
+void	sbisettimer(uvlong);

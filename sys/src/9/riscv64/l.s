@@ -304,3 +304,12 @@ TEXT putmsts(SB), 1, $-4
 	FENCE
 	FENCE_I
 	RET
+/*
+ * the cycle counters are per core (not per hart) and may stop during WFI;
+ * avoid them when measuring elapsed time.
+ */
+TEXT rdtsc(SB), 1, $-4				/* Time Stamp Counter */
+	FENCE
+	MOV	CSR(CYCLO), R(ARG)
+	RET
+
