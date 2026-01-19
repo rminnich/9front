@@ -291,3 +291,16 @@ TEXT clrsipbit(SB), 1, $-4			/* clrsipbit(ulong bit) */
 	CSRRC	CSR(SIP), R(ARG), R0
 	FENCE
 	RET
+
+// The 9k port is amazing, it supports M mode. 
+
+TEXT getmsts(SB), 1, $-4
+	MOV	CSR(MSTATUS), R(ARG)
+	RET
+TEXT putmsts(SB), 1, $-4
+	BARR_SFENCE_VMA(0, 0)
+	MOV	R(ARG), CSR(MSTATUS)
+	BARR_SFENCE_VMA(0, 0)
+	FENCE
+	FENCE_I
+	RET

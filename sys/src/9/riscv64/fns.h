@@ -195,3 +195,15 @@ void	clrsipbit(ulong);
 void	clrstie(void);
 void	cboinval(void *);
 void	cboflush(void *);
+
+// more good 9k stuff: m mode bits. 
+// Let's keep them until we're sure we don't want them.
+ulong	getfcsr(void);
+uintptr	getmie(void);
+uintptr	getmip(void);
+uintptr	getmsts(void);
+void*	getmtvec(void);
+void	putmie(uintptr);
+void	putmip(uintptr);
+void	putmsts(uintptr);
+void*	putmtvec(void *);

@@ -202,6 +202,7 @@ timerintr(Ureg *u, Tval)
 		 * wait until we're done
 		 */
 		when = t->twhen;
+		//when += 0x40000;
 		if(when > now){
 			timerset(when);
 			iunlock(tt);

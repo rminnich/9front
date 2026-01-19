@@ -147,29 +147,21 @@ umod(uint a, uint b)			/* unused */
 void
 nointrs(Intrstate *is)
 {
-	USED(is);
-	panic("nointrs");
-#ifdef xxx
 	is->machmode = m->machmode;
 	if (is->machmode) {
 		is->osts = getmsts();
 		putmsts(is->osts & ~Mie);
 	} else
 		is->pl = splhi();
-#endif
 }
 
 void
 restintrs(Intrstate *is)
 {
-	USED(is);
-	panic("restintrs\n");
-#ifdef xxx
 	if (is->machmode)
 		putmsts(is->osts);
 	else
 		splx(is->pl);
-#endif
 }
 
 static void
