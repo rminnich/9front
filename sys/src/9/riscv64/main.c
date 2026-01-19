@@ -71,8 +71,12 @@ init0(void)
 	print("pte is %p *pte %llx\n", pte, *pte);
 	}
 	print("touser baby MACH m is %p mmuto p%p\n", m, m->mmutop);
-	block = 1;
+
+	print("islo %d, now enable clock\n", islo());
+	block = 0;
 	while(! block);
+	clockenable();
+	//print("now to user\n");
 	touser((uintptr)USTKTOP-BY2PG);
 }
 
