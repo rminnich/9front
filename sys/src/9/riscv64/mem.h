@@ -118,3 +118,4 @@
 #define MASK(w)	 ((1u  <<(w)) - 1)
 #define VMASK(w) ((1ull<<(w)) - 1)
 #define HARTMAX 32
+#define SBIALIGN	16LL		/* stack alignment for SBI calls */

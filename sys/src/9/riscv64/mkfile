@@ -51,6 +51,9 @@ OBJ=\
 	trap.$O\
 	clock.$O\
 	fpu.$O\
+	sbi.$O\
+	sbicall.$O\
+	sbiecall.$O\
 	$CONF.root.$O\
 	$CONF.rootc.$O\
 	$DEVS\

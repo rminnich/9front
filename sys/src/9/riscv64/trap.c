@@ -890,3 +890,18 @@ void clearipi(void)
 {
 	panic("clearipi");
 }
+
+/* base plic context for mach (M mode). dependent upon system configuration */
+/* TODO: do we want this? */
+uint
+mach2context(Mach *)
+{
+	int ctxtoff;		/* context relative to M of first real hart */
+
+//	if (mach->machno < soc.hobbled)		/* hobbled mgmt hart? */
+//		return mach->machno;
+//	ctxtoff = sys->nprivmodes * (mach->machno - soc.hobbled);
+//	return (soc.context0? soc.context0: soc.hobbled) + ctxtoff;
+	ctxtoff = 0;
+	return ctxtoff;
+}

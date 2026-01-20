@@ -5,6 +5,7 @@
  * 100, 125, 200, 250 and 333 are okay.
  */
 #define	HZ		100			/* clock frequency */
+#define MHZ		(1000*1000)
 #define	MS2HZ		(1000/HZ)		/* millisec per clock tick */
 #define	TK2SEC(t)	((t)/HZ)		/* ticks to seconds */
 
@@ -224,6 +225,8 @@ struct Mach
 	ulong	delayloop;
 
 	/* from Geoff's port. */
+	uvlong boottsc;
+	uint plicctxt;
 	uchar	clockintrsok;	/* flag: safe to call timerintr */
 	int	clockintrdepth;
 	int machmode;
@@ -301,7 +304,7 @@ typedef struct Syspercpu Syspercpu;
 typedef uvlong Mpl;
 typedef uvlong Mreg;
 typedef struct Clint Clint;
-
+typedef struct Sbiret Sbiret;
 
 struct Soc {
 	/* physical addresses, vmapped to virtual addresses during start-up */
@@ -448,3 +451,14 @@ enum Riscv_vendorid {
 	Vsifive	= 0x489,
 	Vthead	= 0x5b7,
 };
+
+struct Sys {
+			/* computed constants to avoid mult. & div. */
+			uvlong	clintsperµs;
+			uvlong	clintsperhz;	/* clint ticks per HZ */
+			uvlong	nsthresh;  /* ipi: min ns to next clock intr */
+			uvlong	minclints;	/* min. interval until intr */
+};
+
+Sys asys;
+Sys *sys;

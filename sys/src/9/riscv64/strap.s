@@ -182,7 +182,6 @@ TEXT recmtrapalign(SB), 1, $-4
 	JAL	R0, trapcomm(SB)
 
 #define INITSTKSIZE 4096
-#define SBIALIGN 8
 
 	GLOBL	dummysc(SB), $4
 

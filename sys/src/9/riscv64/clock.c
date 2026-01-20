@@ -17,13 +17,6 @@ clockinit(void)
 {
 }
 
-void
-timerset(uvlong next)
-{
-	print("timerset: next %p\n", next);
-
-}
-
 uvlong
 fastticks(uvlong *hz)
 {

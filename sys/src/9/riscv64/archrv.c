@@ -15,6 +15,8 @@
 #define EXTFD	(EXT('F') | EXT('D'))
 #define EXTSU	(EXT('S') | EXT('U'))
 
+#define DBG print
+
 /* until soc.clintlongs is set by probing, always use longs for clint */
 #define Clintlongs (!soc.clintlongsset || soc.clintlongs)
 
@@ -395,11 +397,11 @@ cpuinit(int cpu)
 	coherence();
 	hartst->havestate = 1;
 	coherence();
+#endif
 	DBG("[cpu%d hart%d]\n", cpu, m->hartid);
 	m->boottsc = rdtsc();
 
 	m->plicctxt = mach2context(m);	/* base context without priv mode */
-#endif
 	clockoff();
 }
 
@@ -555,12 +557,14 @@ calibrate(void)
 {
 	vlong tsc, mtime, tsc2, mtime2, tscperclint, clintpertsc;
 
-	if (sys->clintsperhz != 0)
+	if (0)	if (sys->clintsperhz != 0)
 		return;
 	RDTIMES(tsc, mtime);
 	delay(100);
 	RDTIMES(tsc2, mtime2);
 
+	print("calibrate: mtime %lld, mtime2 %lld\n", mtime, mtime2);
+	print("calibrate: tsc %lld, tsc2 %lld\n", tsc, tsc2);
 	clintpertsc = tscperclint = 1;
 	mtime2 -= mtime;
 	tsc2 -= tsc;
@@ -575,7 +579,7 @@ calibrate(void)
 			clintpertsc = 1;
 	}
 	tscperclintglob = tscperclint;
-	if (soc.newmach) {
+	if (1 || soc.newmach) {
 		print("%,llud clint ticks is %,llud rdtsc cycs, or ",
 			mtime2, tsc2);
 		if (tscperclint > clintpertsc)
@@ -586,11 +590,14 @@ calibrate(void)
 	USED(clintpertsc);
 	areclockswonky(tsc2, mtime2);
 
-	if (soc.newmach)
+	if (1 || soc.newmach)
 		print("timebase given as %,llud Hz\n", timebase);
 
 	/* compute constants for use by timerset & idle code */
-	assert(timebase >= MHZ);
+	if (timebase < MHZ) {
+		print("timebase %d is < MHZ %d, just set it to 2*MHZ\n", timebase, MHZ);
+		panic("fix your timebase");
+	}
 	sys->clintsperhz = timebase / HZ;	/* clint ticks per HZ */
 	sys->clintsperµs = timebase / MHZ;
 	sys->nsthresh = (Minns * sys->clintsperµs) / 1000;
@@ -619,7 +626,7 @@ clockoff(void)
 	/* ~0ull makes sense, but looks negative on some machines */
 	// fuck that.	setclinttmr(VMASK(63));
 }
-#ifdef zzz
+
 /*
  *  set next timer interrupt for time next, in fastticks (clint ticks).
  *  we won't go longer than 1/HZ s. without a clock interrupt.
@@ -657,6 +664,7 @@ timerset(uvlong next)
 }
 
 long ticktock;				/* set by M clock intr */
+#ifdef xxx
 
 int
 clocksanity(void)

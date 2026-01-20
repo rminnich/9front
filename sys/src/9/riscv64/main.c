@@ -87,6 +87,8 @@ confinit(void)
 	ulong kpages;
 	char *p;
 	int i;
+	
+	sys = &asys;
 
 	conf.nmach = 1;
 	if(p = getconf("*ncpu"))
@@ -288,6 +290,8 @@ main(void)
 	intrinit(); print("DONE 	intrinit();\n"); 
 #endif
 	clockinit(); print("DONE 	clockinit();\n"); 
+	timebase = 10*Mhz;
+	calibrate(); print("DONE calibrate\n");
 	cpuidprint(); print("DONE 	cpuidprint();\n"); 
 	check();
 	timersinit(); print("DONE 	timersinit();\n");
@@ -306,7 +310,7 @@ main(void)
 	userinit(); print("DONE 	userinit();\n"); 
 	check();
 	mpinit(); print("DONE 	mpinit();\n"); 
-	mmu1init(); print("DONE 	mmu1init(); islo %d\n", islo()); 
+	mmu1init(); print("DONE 	mmu1init(); islo %d m %p\n", islo(), m); 
 	schedinit();
 }
 

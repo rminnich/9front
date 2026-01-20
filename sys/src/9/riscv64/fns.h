@@ -38,7 +38,7 @@ extern void tlbivmalle1(void);
 extern void flushlocaltlb(void);
 extern void tlbivmalle1(void);
 
-extern void sbiputc(char);
+extern void sbiputc(uvlong);
 extern int sbigetc();
 
 /* cache */
@@ -210,3 +210,35 @@ void*	putmtvec(void *);
 uvlong	rdtime(void);
 uvlong	rdtsc(void);
 void	sbisettimer(uvlong);
+
+/* SBI */
+vlong	sbicall(uvlong, uvlong, uvlong, Sbiret *, uvlong *);
+vlong	sbiclearipi(void);
+vlong	sbiecall(uvlong, uvlong, uvlong, Sbiret *, uvlong *);
+vlong	sbigetimplid(void);
+vlong	sbigetimplvers(void);
+vlong	sbigetmarchid(void);
+vlong	sbigetmvendorid(void);
+vlong	sbihartstart(uvlong hartid, uvlong phys_start, uvlong private);
+vlong	sbihartstatus(uvlong hartid);
+vlong	sbihartsuspend(void);
+vlong	sbiprobeext(uvlong);
+void	sbireset(ulong type, ulong reason);
+vlong	sbisendipi(uvlong map[]);
+void	sbisettimer(uvlong);
+void	sbishutdown(void);
+
+uintptr	getsie(void);
+uintptr	getsip(void);
+uintptr	getsp(void);
+uintptr	getsts(void);
+void*	getstvec(void);
+void	putsie(uintptr);
+void	putsip(uintptr);
+void	putsscratch(uintptr);
+void	putsts(uintptr);
+void*	putstvec(void *);
+
+/* archrv */
+void calibrate(void);
+uint mach2context(Mach *);

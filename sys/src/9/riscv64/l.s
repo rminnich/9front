@@ -42,14 +42,6 @@ NDNR:
 		ECALL
 	JMP NDNR
 
-
-TEXT	sbiputc(SB), 1, $-4
-		MOV RARG, R10
-		MOV $1, R17
-		MOV $0, R16
-		ECALL
-		RET
-
 TEXT	sbigetc(SB), 1, $-4
 		MOV $2, R17
 		MOV $0, R16
@@ -236,7 +228,7 @@ _spllo:
 	 * we get more meaningful profiling results with SPLLO before it.
 	 */
 	SPLLO				/* enable super intrs; expect intr. */
-	MOV	R0, SPLPC(R(MACH))	/* enabling; clear m->splpc */
+	//MOV	R0, SPLPC(R(MACH))	/* enabling; clear m->splpc */
 	RET
 
 /* assumed between spllo and spldone by devkprof */
@@ -304,6 +296,21 @@ TEXT putmsts(SB), 1, $-4
 	FENCE
 	FENCE_I
 	RET
+
+TEXT getsie(SB), 1, $-4
+	MOV	CSR(SIE), R(ARG)
+	RET
+TEXT putsie(SB), 1, $-4
+	MOV	R(ARG), CSR(SIE)
+	FENCE
+	RET
+TEXT clrsie(SB), 1, $-4				/* returns old SIE */
+	CSRRC	CSR(SIE), R(ARG), R(ARG)
+	RET
+TEXT setsie(SB), 1, $-4				/* returns old SIE */
+	CSRRS	CSR(SIE), R(ARG), R(ARG)
+	RET
+
 /*
  * the cycle counters are per core (not per hart) and may stop during WFI;
  * avoid them when measuring elapsed time.
@@ -312,4 +319,3 @@ TEXT rdtsc(SB), 1, $-4				/* Time Stamp Counter */
 	FENCE
 	MOV	CSR(CYCLO), R(ARG)
 	RET
-
