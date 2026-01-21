@@ -353,6 +353,8 @@ cachedinvse(void *vaddr, int len)
 	Mpl pl;
 
 	coherence();
+	print("skip all this cache inval in cachdinvse\n");
+	return;
 #ifdef xxx
 	if (!dmaincoherent || !ISCACHED(vaddr))
 		return;

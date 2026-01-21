@@ -73,7 +73,7 @@ init0(void)
 	print("touser baby MACH m is %p mmuto p%p\n", m, m->mmutop);
 
 	print("islo %d, now enable clock\n", islo());
-	block = 0;
+	block = 1;
 	while(! block);
 	clockenable();
 	//print("now to user\n");

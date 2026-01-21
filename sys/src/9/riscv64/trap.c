@@ -111,8 +111,12 @@ setkernur(Ureg *ureg, Proc *p)
 int
 userureg(Ureg* ureg)
 {
-	print("userureg %p\n", ureg);
-	return 1;
+	switch (ureg->curmode) {
+	default:
+		return (ureg->status & Spp) == 0;
+	case Mppmach:
+		return (ureg->status & Mpp) == Mppuser;
+	}
 }
 
 void
@@ -234,6 +238,7 @@ static char* excname[] = {
 static void
 trapdbg(Ureg *ureg, Cause *cp, int entry)
 {
+	extern int block;
 	int type;
 
 	type = cp->type;
@@ -255,6 +260,11 @@ trapdbg(Ureg *ureg, Cause *cp, int entry)
 			else
 				iprint(" return %#llux", ureg->arg);
 		}
+	}
+	if ((type == 2) && (ureg->tval == 0)){
+		block = 0;
+		print("BLOCK\n");
+		while(! block);
 	}
 	iprint(" from %s pc %#p tval %#p up %#p\n",
 		cp->user? "user": "kernel", ureg->pc, ureg->tval, up);
@@ -710,11 +720,7 @@ traplocalintr(Ureg *ureg, Cause *cp)
 int
 intr(Ureg* ureg, Cause *cp)
 {
-	USED(ureg);
-	USED(cp);
 	m->intr++;
-	panic("intr");
-#ifdef xxx
 	int id, ctxt, vno, trips;
 	Vctl *vec;
 
@@ -765,7 +771,6 @@ intr(Ureg* ureg, Cause *cp)
 	 * any cpu, so wake any idling cpus.
 	 */
 	idlewake();
-#endif
 	return 0;
 }
 
@@ -804,6 +809,7 @@ trap(Ureg* ureg)
 */
 
 	type = whatcause(&why, ureg);
+	print("trapentry: type %d\n", type);
 	if (Trapdebug)
 		trapdbg(ureg, &why, 1);
 

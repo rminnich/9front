@@ -143,6 +143,7 @@ timerdel(Timer *dt)
 void
 hzclock(Ureg *ur)
 {
+	print("Ehzclock\n");
 	m->ticks++;
 	if(m->proc)
 		m->proc->pc = ur->pc;
@@ -160,6 +161,7 @@ hzclock(Ureg *ur)
 	if(kproftimer != nil)
 		kproftimer(ur->pc);
 
+	print("active.machs[%d]=%d\n", m->machno , active.machs[m->machno]);
 	if(active.machs[m->machno] == 0)
 		return;
 
@@ -170,15 +172,17 @@ hzclock(Ureg *ur)
 		checkalarms();
 
 	if(up && up->state == Running){
-		if(userureg(ur)){
+		if(0)if(userureg(ur)){
 			/* user profiling clock */
 			Tos *tos = (Tos*)(USTKTOP-sizeof(Tos));
 			tos->clock += TK2MS(1);
+			print("tos was set to %llx\n", tos->clock);
 			segclock(ur->pc);
 		}
-
+		print("clal hzsched\n");
 		hzsched();	/* in proc.c */
 	}
+	print("Xhzclock\n");
 }
 
 void
@@ -189,12 +193,15 @@ timerintr(Ureg *u, Tval)
 	uvlong when, now;
 	int callhzclock;
 
+	sbiputc('T');
 	intrcount[m->machno]++;
 	callhzclock = 0;
 	tt = &timers[m->machno];
 	now = fastticks(nil);
+	sbiputc('I');
 	ilock(tt);
 	while(t = tt->head){
+		sbiputc('M');
 		/*
 		 * No need to ilock t here: any manipulation of t
 		 * requires tdel(t) and this must be done with a
@@ -204,18 +211,22 @@ timerintr(Ureg *u, Tval)
 		when = t->twhen;
 		//when += 0x40000;
 		if(when > now){
+			sbiputc('E');
 			timerset(when);
 			iunlock(tt);
 			if(callhzclock)
 				hzclock(u);
 			return;
 		}
+		sbiputc('R');
 		tt->head = t->tnext;
 		assert(t->tt == tt);
 		t->tt = nil;
+		sbiputc('i');
 		t->tactive = MACHP(m->machno);
 		fcallcount[m->machno]++;
 		iunlock(tt);
+		sbiputc('n');
 		if(t->tf)
 			(*t->tf)(u, t);
 		else
@@ -225,6 +236,7 @@ timerintr(Ureg *u, Tval)
 		if(t->tmode == Tperiodic)
 			tadd(tt, t);
 	}
+	sbiputc('t');
 	iunlock(tt);
 }
 

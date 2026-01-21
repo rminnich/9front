@@ -65,6 +65,7 @@ schedinit(void)
 {
 	Edf *e;
 
+	print("schedinit: m is %p\n", m);
 	setlabel(&m->sched);
 	if(up != nil) {
 		if((e = up->edf) != nil && (e->flags & Admitted))
@@ -212,6 +213,7 @@ sched(void)
 	up->affinity = m->machno;
 	up->state = Running;
 	mmuswitch(up);
+	print("gotolabel: sp %p, pc %p\n", up->sched.sp, up->sched.pc);
 	gotolabel(&up->sched);
 }
 
@@ -1574,7 +1576,11 @@ procflushothers(void)
 static void
 linkproc(void)
 {
+	extern int block;
+	block = 0;
 	spllo();
+	print("up->kfun %p up->karg %p\n", up->kpfun, up->kparg);
+	//while (! block);
 	(*up->kpfun)(up->kparg);
 	pexit("kproc exiting", 0);
 }

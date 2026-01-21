@@ -228,7 +228,7 @@ _spllo:
 	 * we get more meaningful profiling results with SPLLO before it.
 	 */
 	SPLLO				/* enable super intrs; expect intr. */
-	//MOV	R0, SPLPC(R(MACH))	/* enabling; clear m->splpc */
+	MOV	R0, SPLPC(R(MACH))	/* enabling; clear m->splpc */
 	RET
 
 /* assumed between spllo and spldone by devkprof */
