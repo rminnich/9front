@@ -16,10 +16,11 @@
 #define BASEOP(inst)	((inst) & MASK(7))
 
 enum {
-	Trapdebug	= 1,
+	Trapdebug	= 0,
 	Probedebug	= 0,
 	Intrdebug	= 0,
 	Tryallcpus	= 0,
+	TrapSpew	= 0,
 
 	Ntimevec = 20,		/* number of time buckets for each intr */
 	Ncauses = Ngintr + Nlintr + Nexc,	/* # of Vctls */
@@ -190,6 +191,7 @@ panic("execregs");
 
 static void panictrap(Ureg *ureg)
 {
+	USED(ureg);
 	sbiputc('&');
 	print("trap");
 	panic("trap");
@@ -261,11 +263,6 @@ trapdbg(Ureg *ureg, Cause *cp, int entry)
 				iprint(" return %#llux", ureg->arg);
 		}
 	}
-	if (0)if ((type == 2) && (ureg->tval == 0)){
-		block = 0;
-		print("BLOCK\n");
-		while(! block);
-	}
 	iprint(" from %s pc %#p tval %#p up %#p\n",
 		cp->user? "user": "kernel", ureg->pc, ureg->tval, up);
 }
@@ -312,7 +309,7 @@ trapsyscall(Ureg *ureg, Cause *)
 	scallnr = ureg->arg;
 	/* on riscv64, ureg->ret is ureg->arg, so can't zero ureg->ret here. */
 	/* Last syscall argument is location of return value in frame. */
-	print("dosyscall(%d, %p, %p val %p\n", scallnr, (Sargs*)(ureg->sp+BY2WD), &ureg->arg, ureg->arg);
+	if (TrapSpew) print("dosyscall(%d, %p, %p val %p\n", scallnr, (Sargs*)(ureg->sp+BY2WD), &ureg->arg, ureg->arg);
 	dosyscall(scallnr, (Sargs*)(ureg->sp+BY2WD), &ureg->arg);
 
 	/*
@@ -393,7 +390,7 @@ whatcause(Cause *cp, Ureg *ureg)
 	    ++trapcnt[cp->vno] % (1024*1024) == 0)	/* tweak to taste */
 		iprint("trap: vector %d trapping lots\n", cp->vno);
 #endif
-	print("type %d\n", type);
+	if (TrapSpew) print("type %d\n", type);
 	return type;
 }
 
@@ -613,7 +610,7 @@ trapriscv64(Ureg *ureg, Cause *cp)
 {
 	uint cause;
 	Exchandler handler;
-	print("trapriscv64 ur %p cp %p\n", ureg, cp);
+	if (TrapSpew) print("trapriscv64 ur %p cp %p\n", ureg, cp);
 #ifdef xxx
 	if (cp->user)
 		m->turnedfpoff = 0;
@@ -633,15 +630,15 @@ trapriscv64(Ureg *ureg, Cause *cp)
 	if (cause >= nelem(exchandlers))
 		panic("trapriscv64: cause %d out of range", cause);
 	handler = exchandlers[cause];
-	print("trapriscv64: handler %p\n", handler);
+	if (TrapSpew) print("trapriscv64: handler %p\n", handler);
 	if (handler) {
 		(*handler)(ureg, cp);
 		if (Trapdebug)
 			faultstuck(ureg);
-		print("trapriscv64: done handler\n");
+		if (TrapSpew) print("trapriscv64: done handler\n");
 		return 0;			/* not a clock interrupt */
 	}
-	print("trapriscv64: no handler\n");
+	if (TrapSpew) print("trapriscv64: no handler\n");
 	/* could be a local intr */
 	panic("unknown exception, cause %d from_user %d", cause, cp->user);
 }
@@ -652,25 +649,25 @@ traplocalintr(Ureg *ureg, Cause *cp)
 	int clockintr;
 	uint cause;
 
-	print("traplocalintr ureg %p cause %p\n", ureg, cause);
+	if (TrapSpew) print("traplocalintr ureg %p cause %p\n", ureg, cause);
 	m->intr++;			/* okay here; only tmr and sw intrs */
 	m->perf.intrts = perfticks();
 	cause = cp->cause;
 	if (cause < Local0intr)
 		cause &= ~Msdiff;	/* map mach to super codes */
-	print("case %x\n", cause);
+	if (TrapSpew) print("case %x\n", cause);
 	switch (cause) {
 	case Suptmrintr:
-		print("clockintr\n");
+		if (TrapSpew) print("clockintr\n");
 		clockoff();
-		print("clockoff\n");
+		if (TrapSpew) print("clockoff\n");
 		if (++m->clockintrdepth > 1 && m->clockintrsok) {
 			/* nested clock interrupt; probably shutting down */
 			m->clockintrsok = 0;
 			// iprint("cpu%d: nested clock interrupt\n", m->machno);
 		}
 		timerintr(ureg, 0);
-		print("timerintr DONE\n");
+		if (TrapSpew) print("timerintr DONE\n");
 		--m->clockintrdepth;
 		clockenable();
 		clockintr = 1;
@@ -706,11 +703,17 @@ traplocalintr(Ureg *ureg, Cause *cp)
 	default:
 		panic("trap: unknown local interrupt %d", cp->cause);
 	}
-	clrsipbit(1<<cp->cause);
-	print("IMPLEMENT vecacct(vctl[cp->vno]);\n");
-	print("IMPLEMENENT intrtime(m, cp->vno);\n");
+	// NOTE: this does not work for interrupt 0x20 (STIP); that only gets reset
+	// by advancing the timer. Somehow that's not getting done correctly elsewhere.
+	if ((clrsipbit(1<<cp->cause) & (1<<cause)) != 0) {
+		print("clrsipbit(%llx): did not clear bit\n", 1<<cp->cause);
+		sbisettimer((uvlong)-1);
+		print("clrsipbit is now %llx\n", clrsipbit(1<<cp->cause));
+	}
+	if (TrapSpew) print("IMPLEMENT vecacct(vctl[cp->vno]);\n");
+	if (TrapSpew) print("IMPLEMENENT intrtime(m, cp->vno);\n");
 	if (!soc.plic)
-		print("implement poll(ureg, nil);		/* frequent polling */\n");
+		if (TrapSpew) print("implement poll(ureg, nil);		/* frequent polling */\n");
 	return clockintr;
 }
 /*
@@ -812,7 +815,7 @@ trap(Ureg* ureg)
 */
 
 	type = whatcause(&why, ureg);
-	print("trapentry: type %d\n", type);
+	if (TrapSpew) print("trapentry: type %d\n", type);
 	if (Trapdebug)
 		trapdbg(ureg, &why, 1);
 
@@ -824,11 +827,11 @@ trap(Ureg* ureg)
 		if (type >= nelem(traphandlers))
 			panic("trap: trap type %d too large", type);
 		handler = traphandlers[type];
-		print("handler is %p\n", handler);
+		if (TrapSpew) print("handler is %p\n", handler);
 		if (handler == nil)
 			panic("trap: trap type %d has no handler", type);
 		clockintr = (*handler)(ureg, &why);
-		print("back from handler\n");
+		if (TrapSpew) print("back from handler\n");
 		splhi();		/* minimise harm if handler went low */
 	//	fpsts2ureg(ureg); /* propagate Fsst changes back to user mode */
 
@@ -852,7 +855,7 @@ trap(Ureg* ureg)
 
 	if (0)if (Trapdebug)
 		trapdbg(ureg, &why, 0);
-	print("all done trap()\n");
+	if (TrapSpew) print("all done trap()\n");
 }
 
 /*

@@ -271,7 +271,6 @@ TEXT	cacheiinvse(SB), 1, $-4
 	RET
 
 TEXT clockenable(SB), 1, $-4
-	RET
 	MOV	$Stie, R9			/* super timer intr enable */
 	CSRRS	CSR(SIE), R9, R0
 	FENCE
@@ -280,9 +279,10 @@ TEXT clockenable(SB), 1, $-4
 TEXT clrstie(SB), 1, $-4
 	MOV	$Stie, R(ARG)			/* super timer intr enable */
 	CSRRC	CSR(SIE), R(ARG), R0
-TEXT clrsipbit(SB), 1, $-4			/* clrsipbit(ulong bit) */
+TEXT clrsipbit(SB), 1, $-4			/* uvlong clrsipbit(ulong bit) */
 	CSRRC	CSR(SIP), R(ARG), R0
 	FENCE
+	MOV	CSR(SIP), R(ARG)
 	RET
 
 // The 9k port is amazing, it supports M mode. 

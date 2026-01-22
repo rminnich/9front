@@ -191,7 +191,7 @@ void	clockoff(void);
 int	clocksanity(void);
 void	clrreserv(void);
 uintptr	clrsie(uintptr);
-void	clrsipbit(ulong);
+ulong	clrsipbit(ulong);
 void	clrstie(void);
 void	cboinval(void *);
 void	cboflush(void *);
