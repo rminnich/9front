@@ -261,7 +261,7 @@ trapdbg(Ureg *ureg, Cause *cp, int entry)
 				iprint(" return %#llux", ureg->arg);
 		}
 	}
-	if ((type == 2) && (ureg->tval == 0)){
+	if (0)if ((type == 2) && (ureg->tval == 0)){
 		block = 0;
 		print("BLOCK\n");
 		while(! block);
@@ -720,6 +720,8 @@ traplocalintr(Ureg *ureg, Cause *cp)
 int
 intr(Ureg* ureg, Cause *cp)
 {
+	USED(ureg); USED(cp); panic("implement intr");
+#ifdef x
 	m->intr++;
 	int id, ctxt, vno, trips;
 	Vctl *vec;
@@ -771,6 +773,7 @@ intr(Ureg* ureg, Cause *cp)
 	 * any cpu, so wake any idling cpus.
 	 */
 	idlewake();
+#endif
 	return 0;
 }
 
@@ -847,8 +850,9 @@ trap(Ureg* ureg)
 		}
 	}
 
-	if (Trapdebug)
+	if (0)if (Trapdebug)
 		trapdbg(ureg, &why, 0);
+	print("all done trap()\n");
 }
 
 /*

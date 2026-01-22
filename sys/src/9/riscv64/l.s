@@ -271,6 +271,7 @@ TEXT	cacheiinvse(SB), 1, $-4
 	RET
 
 TEXT clockenable(SB), 1, $-4
+	RET
 	MOV	$Stie, R9			/* super timer intr enable */
 	CSRRS	CSR(SIE), R9, R0
 	FENCE

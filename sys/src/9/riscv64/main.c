@@ -74,8 +74,8 @@ init0(void)
 
 	print("islo %d, now enable clock\n", islo());
 	block = 1;
-	while(! block);
-	clockenable();
+	if (0)while(! block);
+	if(0)clockenable();
 	//print("now to user\n");
 	touser((uintptr)USTKTOP-BY2PG);
 }
@@ -291,6 +291,7 @@ main(void)
 #endif
 	clockinit(); print("DONE 	clockinit();\n"); 
 	timebase = 10*Mhz;
+	timebase * 100; // XXX XXX XXX
 	calibrate(); print("DONE calibrate\n");
 	cpuidprint(); print("DONE 	cpuidprint();\n"); 
 	check();
