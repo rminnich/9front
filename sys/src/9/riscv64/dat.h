@@ -55,7 +55,7 @@ typedef struct Mallocs Mallocs;
 /*
  *  parameters for sysproc.c
  */
-#define AOUT_MAGIC	(R_MAGIC)
+#define AOUT_MAGIC	(Y_MAGIC)
 
 struct Lock
 {
