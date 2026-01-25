@@ -16,7 +16,7 @@
 #define BASEOP(inst)	((inst) & MASK(7))
 
 enum {
-	Trapdebug	= 0,
+	Trapdebug	= 1,
 	Probedebug	= 0,
 	Intrdebug	= 0,
 	Tryallcpus	= 0,
@@ -706,8 +706,9 @@ traplocalintr(Ureg *ureg, Cause *cp)
 	// NOTE: this does not work for interrupt 0x20 (STIP); that only gets reset
 	// by advancing the timer. Somehow that's not getting done correctly elsewhere.
 	if ((clrsipbit(1<<cp->cause) & (1<<cause)) != 0) {
+		uvlong next = rdtsc();
 		print("clrsipbit(%llx): did not clear bit\n", 1<<cp->cause);
-		sbisettimer((uvlong)-1);
+		sbisettimer(next + 0x100000);
 		print("clrsipbit is now %llx\n", clrsipbit(1<<cp->cause));
 	}
 	if (TrapSpew) print("IMPLEMENT vecacct(vctl[cp->vno]);\n");
