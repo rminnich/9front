@@ -55,7 +55,10 @@ typedef struct Mallocs Mallocs;
 /*
  *  parameters for sysproc.c
  */
-#define AOUT_MAGIC	(Y_MAGIC)
+// This does not seem to work. 
+//#define AOUT_MAGIC	(Y_MAGIC)
+// as a friend from BL once said: give it a fucking rest
+#define AOUT_MAGIC (0x8e17)
 
 struct Lock
 {
