@@ -65,7 +65,7 @@
 // This gives kernel a lot of memory, and over time,
 // user gets even more.
 #define	UZERO		(0x1000000000ULL)			/* user segment */
-#define	UTZERO		(UZERO+0x200000)		/* user text start */
+#define	UTZERO		(UZERO)		/* user text start */
 #define	USTKTOP		((UZERO<<1)-BY2PG)	/* user segment end +1 */
 #define	USTKSIZE	(16*1024*1024)		/* user stack size */
 
