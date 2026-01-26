@@ -319,14 +319,20 @@ sysexec(va_list list)
 	Chan *tc;
 	Fgrp *f;
 
+	print("sysexec: here we are\n");
 	file = va_arg(list, char*);
+	print("file is %p\n", file);
 	validaddr((uintptr)file, 1, 0);
+	print("file is %s\n", file);
 	argp = va_arg(list, char**);
+	print("argp is %p\n", argp);
 	evenaddr((uintptr)argp);
 	validaddr((uintptr)argp, 2*BY2WD, 0);
+	print("it is valid\n");
 	if(*argp == nil)
 		error(Ebadarg);
 
+	print("file is %s\n", file);
 	if(waserror()){
 		/* Disaster after commit */
 		if(up->seg[SSEG] == nil)
@@ -348,8 +354,10 @@ sysexec(va_list list)
 		nexterror();
 	}
 
+	print("after validnamedup %s\n", file);
 	tc = namec(file, Aopen, OEXEC, 0);
 
+	print("tc is %p\n", tc);
 	/* Last path element becomes up->text (and argv[0] for script) */
 	elem = nil;
 	kstrdup(&elem, up->genbuf);
@@ -392,8 +400,12 @@ sysexec(va_list list)
 
 	/* Read a.out(6) header */
 	for(indir=0;;indir++){
+		int i;
 		n = devtab[tc->type]->read(tc, u.buf, sizeof(u.buf), 0);
+		print("Read from %c: %d\n", tc->type, n);
+		for(i = 0; i < n; i++) print("%d:%#x,", i, (unsigned int)u.buf[i]);
 		if(n >= sizeof(Exec)) {
+			print("magic in and out: %#lx %#lx want %#lx\n", (ushort)magic, (ushort)beswal(u.ehdr.magic), AOUT_MAGIC);
 			magic = beswal(u.ehdr.magic);
 			if(magic == AOUT_MAGIC)
 				break; /* for binary */
@@ -401,8 +413,10 @@ sysexec(va_list list)
 
 		/* Process #! /bin/sh args ... */
 		if(n <= 2 || u.buf[0] != '#' || u.buf[1] != '!'
-		|| (a = memchr(u.buf+2, '\n', n-2)) == nil)
+		|| (a = memchr(u.buf+2, '\n', n-2)) == nil){
+			print("bad exec: first two bytes are %#x %#x, need #! or %#x\n", u.buf[0], u.buf[1], beswal(u.ehdr.magic));
 			error(Ebadexec);
+		}
 		*a = '\0';
 
 		/* First arg becomes complete file name */
@@ -441,6 +455,7 @@ sysexec(va_list list)
 		}
 	}
 
+	print("process a.out ...\n");
 	/* Process a.out(6) header */
 	if(magic & HDR_MAGIC) {
 		if(n < sizeof(u.ehdr))
@@ -451,8 +466,12 @@ sysexec(va_list list)
 		entry = beswal(u.ehdr.entry);
 		text = UTZERO+sizeof(Exec);
 	}
-	if(entry < text)
+	print("entry %p text %p\n", entry, text);
+	if(entry < text) {
+		print("sysexec: entry %p < text %p\n", entry, text);
+		//entry = text;
 		error(Ebadexec);
+	}
 	text += beswal(u.ehdr.text);
 	if(text <= entry || text >= (USTKTOP-USTKSIZE))
 		error(Ebadexec);
@@ -533,6 +552,7 @@ sysexec(va_list list)
 	 */
 	argv = (char**)(tstk - ssize);
 	charp = (char*)tstk - nbytes;
+	print("argv %p charp %p\n", argv, charp);
 
 	i = 0;
 	if(indir)	/* move interpreter args down before user args */
@@ -567,6 +587,7 @@ sysexec(va_list list)
 		free(args);
 		nexterror();
 	}
+	print("memmoeve %p, %p, %d\n", args, a, nargs);
 	memmove(args, a, nargs);
 	if(nargs>0 && args[nargs-1]!='\0'){
 		/* make sure last arg is NUL-terminated */
@@ -1498,7 +1519,6 @@ dosyscall(ulong scallnr, Sargs *args, uintptr *retp)
 		up->errstr = e;
 		ret = -1;
 		print("syscall failed: %s\n", up->errstr);
-		panic("let's stop here");
 	}
 	if(up->nerrlab){
 		int i;
