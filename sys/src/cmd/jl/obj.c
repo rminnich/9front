@@ -133,7 +133,7 @@ main(int argc, char *argv[])
 		if (thechar == 'j')
 			HEADR += sizeof(vlong);	/* for virtual entry addr. */
 		if(INITTEXT == -1)
-			INITTEXT = 4096 + HEADR;
+			INITTEXT = 0x1000000000ULL + HEADR;
 		if(INITDAT == -1)
 			INITDAT = 0;
 		if(INITRND == -1)
