@@ -27,7 +27,8 @@ void
 startboot(char*, char **argv)
 {
 	char buf[200];	/* keep this fairly large to capture error details */
-
+	static char *backup[2] = {"boot", 0};
+	argv = argv ? argv : backup;
 	bind(c, dev, MAFTER);
 	bind(d, fd, MREPL);
 	bind(e, env, MREPL|MCREATE);
