@@ -171,22 +171,17 @@ forkchild(Proc *p, Ureg *ureg)
 uintptr
 execregs(uintptr entry, int argc, char *argv[], Tos *tos)
 {
-	print("execregs %p %d %p %p\n", entry, argc, argv, tos);
-panic("execregs");
-#ifdef xxx
-	uintptr *sp;
+	uintptr *sp = (void*)argv;
 	Ureg *ureg;
 
-	sp = (uintptr*)(USTKTOP - 64); // Actually sizeof (TOS) I guess.
+	print("execregs %p %d %p %p\n", entry, argc, argv, tos);
 	*--sp = argc;
 
 	ureg = up->dbgreg;
 	ureg->sp = (uintptr)sp;
 	ureg->pc = entry;
-	ureg->link = 0;
-	return USTKTOP-sizeof(Tos);
-#endif
-	return 0;
+	ureg->arg = argc;
+	return (uintptr)tos;
 }
 
 static void panictrap(Ureg *ureg)
