@@ -230,7 +230,7 @@ sched(void)
 	extern int block;
 	block = 0;
 	print("block? %d\n", up->pid != 1 && ! block);
-	while(up->pid != 1 && ! block);
+	if (0)while(up->pid != 1 && ! block);
 	gotolabel(&up->sched);
 }
 
