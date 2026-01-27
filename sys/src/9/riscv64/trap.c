@@ -157,12 +157,12 @@ forkchild(Proc *p, Ureg *ureg)
 {
 	print("forkchild p %p ureg %p stack ? %p\n", p, ureg, (uintptr) p - TRAPFRAMESIZE);
 	Ureg *cureg;
-
+	print("ureg sp %p pc %p\n", ureg->sp, ureg->pc);
 	p->sched.pc = (uintptr) sysrforkret;
-	p->sched.sp = (uintptr) p - sizeof(Ureg) - 16;
+	p->sched.sp = (uintptr) p - sizeof(Ureg);
 	print("forkchild: sp %p pc %p\n", p->sched.sp, p->sched.pc);
 
-	cureg = (Ureg*) (p->sched.sp + 16);
+	cureg = (Ureg*) (p->sched.sp);
 	print("forkchild: memmove(%p, %p, %p)\n", cureg, ureg, sizeof(Ureg)-16);
 	memmove(cureg, ureg, sizeof(Ureg));
 	print("forkchild: sp %p pc %p\n", p->sched.sp, p->sched.pc);

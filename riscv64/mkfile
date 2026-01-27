@@ -4,3 +4,4 @@ O=j
 CC=jc
 AS=ja
 LD=jl
+LDFLAGS=-T 0x1000000000

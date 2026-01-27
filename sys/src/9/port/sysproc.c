@@ -178,6 +178,7 @@ sysrfork(va_list list)
 	p->pcycles = -p->kentry;
 
 	pid = pidalloc(p);
+	print("sysrfork: allocated pid %d\n", pid);
 
 	qunlock(&p->debug);
 	qunlock(&up->debug);
