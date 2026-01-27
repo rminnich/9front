@@ -70,7 +70,7 @@ void
 procfork(Proc *p)
 {
 	print("procrfork %p\n", p);
-	panic("procfork");
+	print("fix fpuprocfork\n");
 //	fpuprocfork(p);
 //	p->tpidr = up->tpidr;
 }
@@ -89,7 +89,7 @@ procsave(Proc *p)
 //	fpuprocsave(p);
 //	if(p->kp == 0)
 //		p->tpidr = sysrd(TPIDR_EL0);
-//	putasid(p);	// release asid
+	putasid(p);	// release asid
 }
 
 void
@@ -97,8 +97,6 @@ procrestore(Proc *p)
 {
 	print("procresotre what is it for %p\n", p);
 //	fpuprocrestore(p);
-//	if(p->kp == 0)
-//		syswr(TPIDR_EL0, p->tpidr);
 }
 
 void
@@ -157,14 +155,17 @@ evenaddr(uintptr addr)
 void
 forkchild(Proc *p, Ureg *ureg)
 {
-	print("forkchil %p %p\n", p, ureg);
+	print("forkchild p %p ureg %p stack ? %p\n", p, ureg, (uintptr) p - TRAPFRAMESIZE);
 	Ureg *cureg;
 
-	p->sched.pc = (uintptr) forkret;
-	p->sched.sp = (uintptr) p - TRAPFRAMESIZE;
+	p->sched.pc = (uintptr) sysrforkret;
+	p->sched.sp = (uintptr) p - sizeof(Ureg) - 16;
+	print("forkchild: sp %p pc %p\n", p->sched.sp, p->sched.pc);
 
 	cureg = (Ureg*) (p->sched.sp + 16);
+	print("forkchild: memmove(%p, %p, %p)\n", cureg, ureg, sizeof(Ureg)-16);
 	memmove(cureg, ureg, sizeof(Ureg));
+	print("forkchild: sp %p pc %p\n", p->sched.sp, p->sched.pc);
 	cureg->arg = 0;
 }
 

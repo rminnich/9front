@@ -124,18 +124,17 @@ TEXT	_tas(SB), 1, $-4
 	RET
 
 TEXT	setlabel(SB), 1, $-4
-	MOV	R2, (R8)
+	MOV	R2, 0(R8)
 	MOV	R1, 8(R8)
 	MOV	R0, R8
 	RET
 
-TEXT	gotolabel(SB), 1, $-4
-	MOVW	r+8(FP), R13
-	BNE	R13, _ok
-	MOV	$1, R13
-_ok:	MOV	(R8), R2
-	MOV	8(R8), R1
-	MOV	R13, R8
+// There is a spurious u64int pushed here, not sure why?
+// only on forkret. goddam it.
+TEXT	gotolabel(SB), 1, $-4			/* gotolabel(Label *) */
+	MOV	0(R(ARG)), R2			/* restore sp */
+	MOV	XLEN(R(ARG)), R1		/* restore return pc */
+	MOV	$1, R(ARG)
 	RET
 
 #define TIME	0xc01
@@ -183,16 +182,6 @@ TEXT touser(SB), 1, $-4
 	CSRRW	CSR(SSCRATCH), R(MACH), R(MACH) /* restore R7, reload saved m */
 	MOV	$(UTZERO+0x28), R12	/* skip unextended exec hdr of init */
 	MOV	R12, CSR(SEPC)		/* new pc */
-	MOV	RARG, R2		/* new sp */
-	WORD $0x10200073 //SRET
-//	SRET				/* off to rv64 user mode */
-/*
- */
-TEXT forkret(SB), 1, $-4
-	FENCE
-	FENCE_I
-
-	MOV	R0, RARG
 	MOV	RARG, R2		/* new sp */
 	WORD $0x10200073 //SRET
 

@@ -11,7 +11,7 @@ extern uvlong vcycles(void);
 extern int splfhi(void);
 extern void splflo(void);
 extern void touser(uintptr sp);
-extern void forkret(void);
+extern void sysrforkret(void);
 extern void noteret(void);
 extern void returnto(void*);
 extern void fpon(void);
