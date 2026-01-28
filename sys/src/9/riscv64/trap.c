@@ -16,7 +16,7 @@
 #define BASEOP(inst)	((inst) & MASK(7))
 
 enum {
-	Trapdebug	= 1,
+	Trapdebug	= 0,
 	Probedebug	= 0,
 	Intrdebug	= 0,
 	Tryallcpus	= 0,
@@ -295,7 +295,7 @@ trapsyscall(Ureg *ureg, Cause *)
 	uintptr pc;
 
 	int i;
-	for(i = 0; i < 32; i++) print("%d:0x%llx\n", i, ureg->regs[i]);
+if (0)	for(i = 0; i < 32; i++) print("%d:0x%llx\n", i, ureg->regs[i]);
 //	m->turnedfpoff = 0;
 
 	/* syscall may change ureg->pc, so save a copy. */

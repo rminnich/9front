@@ -372,7 +372,7 @@ fault(uintptr addr, uintptr pc, int read)
 		}
 	}
 
-	print("I guess fixfault went well\n");
+	if (0)print("I guess fixfault went well\n");
 	up->psstate = sps;
 	up->insyscall = ins;
 	up->notepending |= pnd;

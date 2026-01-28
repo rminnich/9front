@@ -63,9 +63,14 @@ randomseed(void*)
 	while(s->nbuf < sizeof(s->buf)){
 		if(++s->randomcount <= 100000)
 			continue;
-		if(anyhigher())
+		print("randomseed: check for anyhigher, if so sched\n");
+		if(anyhigher()){
+			print("randomseed: call sched\n");
 			sched();
+		}
+		print("randomseed:loop\n");
 	}
+	print("ALL done seed loop\n");
 	timerdel(up);
 
 	sha2_512(s->buf, sizeof(s->buf), s->buf, &s->ds);
@@ -74,15 +79,18 @@ randomseed(void*)
 
 	secfree(s);
 
+	print("randomseed: all done\n");
 	pexit("", 1);
 }
 
 void
 randominit(void)
 {
+	print("randominit\n");
 	rs = secalloc(sizeof(*rs));
 	qlock(rs);	/* randomseed() unlocks once seeded */
 	kproc("randomseed", randomseed, nil);
+	print("randominit: done\n");
 }
 
 ulong
@@ -96,8 +104,10 @@ randomread(void *p, ulong n)
 	if(hwrandbuf != nil)
 		(*hwrandbuf)(p, n);
 
+	print("randomread\n");
 	/* copy chacha state, rekey and increment iv */
 	qlock(rs);
+	print("randomread: past rs lock\n");
 	c = *rs;
 	chacha_encrypt((uchar*)&rs->input[4], 32, &c);
 	if(++rs->input[13] == 0)
@@ -110,6 +120,7 @@ randomread(void *p, ulong n)
 
 	/* prevent state leakage */
 	memset(&c, 0, sizeof(c));
+	print("randomread returns %d bytes\n", n);
 
 	return n;
 }

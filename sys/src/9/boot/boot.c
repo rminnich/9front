@@ -30,9 +30,14 @@ main(int, char *argv[])
 	buf[1+read(open("/env/cputype", OREAD|OCEXEC), buf+1, sizeof buf - 6)] = '\0';
 	strcat(buf, bin);
 	bind(buf, bin, MAFTER);
+	
 	bind("/root/rc", "/rc", MREPL);
 	bind("/rc/bin", bin, MAFTER);
-
+static uchar x[4096];
+int i;
+i = stat("/bin/bootrc", x, 4096);
+print("---------->>>>>>>>>>>>>>>>>>stat of /bin/bootrc is %d\n", i);
+for(i = 0; i < 16384; i++) write(1, "hi\n", 3);
 	exec("/bin/bootrc", argv);
 Err:
 	print("WE ARE FUCKED\n");
