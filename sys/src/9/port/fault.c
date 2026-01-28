@@ -392,7 +392,7 @@ okaddr(uintptr addr, ulong len, int write)
 		for(;;) {
 			s = seg(up, addr, 0);
 if (0)print("okaddr: s(%p, %p, 0) = %p\n", up, addr, s);
-			if (s != nil) print("s->type is %s\n", s->type&SG_RONLY ? "readonly" : "writeable");
+			if (0 && s != nil) print("s->type is %s\n", s->type&SG_RONLY ? "readonly" : "writeable");
 			if(s == nil || (write && (s->type&SG_RONLY)))
 				break;
 
@@ -413,7 +413,7 @@ if (0)print("okaddr: bad\n");
 void
 validaddr(uintptr addr, ulong len, int write)
 {
-	print("validaddr %p %ld %d\n", addr, len, write);
+	if (0)print("validaddr %p %ld %d\n", addr, len, write);
 	if(!okaddr(addr, len, write)){
 		pprint("suicide: invalid address %#p/%lud in sys call pc=%#p\n", addr, len, userpc());
 		postnote(up, 1, "sys: bad address in syscall", NDebug);

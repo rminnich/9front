@@ -96,7 +96,7 @@ l1map(uintptr va, uintptr pa, uintptr pe, uintptr attr)
 	USED(pa);
 	USED(pe);
 	USED(attr);
-	print("l1map");
+	if (0)print("l1map");
 #ifdef xxx
 	uintptr *l1, *l0;
 
@@ -268,7 +268,7 @@ static u64int vpn(uintptr va, int level)
 {
 	int shift = 12 + 9*level;
 	uintptr val = (va>>shift)&0x1ff;
-	print("<<<vpn(%p,%d)[shift %d]=%p>>>", va, level, shift, val);
+	if (0)print("<<<vpn(%p,%d)[shift %d]=%p>>>", va, level, shift, val);
 	return val;
 }
 
@@ -289,16 +289,16 @@ mmuwalk(uintptr va, int level)
 	Page *pg;
 	int i, x;
 // In future, PTLEVELS will be dynamic.
-	print("mmuwalk: va %p, walk to level %d starting from %d,", va, level, PTLEVELS);
+	if (0)print("mmuwalk: va %p, walk to level %d starting from %d,", va, level, PTLEVELS);
 	x = vpn(va, PTLEVELS-1);
 	// N.B.: the assumption here is that mmutop was already set from 
 	// p->mmutop. mmutop[x] will never be non-zero. If it is, it's a bug.
 	table = m->mmutop;
-	print("MMUWALK m is %p MMUTOP is %p\n", m,  m->mmutop);
+	if (0)print("MMUWALK m is %p MMUTOP is %p\n", m,  m->mmutop);
 	for(i = PTLEVELS-2; i >= level; i--){
-		print("%d: table %p, index %d, pte %p: ", i, table, x, table[x]);
+		if (0)print("%d: table %p, index %d, pte %p: ", i, table, x, table[x]);
 		pte = table[x];
-		print(" %p %s, points to %p,", pte, pte & PTEVALID ? "valid" : "invalid", (pte>>10)<<12);
+		if (0)print(" %p %s, points to %p,", pte, pte & PTEVALID ? "valid" : "invalid", (pte>>10)<<12);
 		if(pte & PTEVALID) {
 			if (0){
 				if(pte & (0xFFFFULL<<48))
@@ -310,26 +310,26 @@ mmuwalk(uintptr va, int level)
 		} else {
 			pg = up->mmufree;
 			if(pg == nil){
-				print("up->mmufree is empty, return nil\n");
+				if (0)print("up->mmufree is empty, return nil\n");
 				return nil;
 			}
 			up->mmufree = pg->next;
 			pg->va = va & -PGLSZ(i+1);
-			print("page for pte is %p, ", pg->va);
+			if (0)print("page for pte is %p, ", pg->va);
 			if((pg->next = up->mmuhead[i+1]) == nil)
 				up->mmutail[i+1] = pg;
 			up->mmuhead[i+1] = pg;
-			print("SET up->mmuhead[%d] = %p, pte@ %p\n", i+1, pg, pg->pa);
+			if (0)print("SET up->mmuhead[%d] = %p, pte@ %p\n", i+1, pg, pg->pa);
 			pte = pg->pa;
 			memset(kmapaddr(pg->pa), 0, BY2PG);
 			coherence();
-			print(": SET table %p[%x]@%p = addr %p val%llx\n", table, x, &table[x], pte, ((pte>>12)<<10) | PTEVALID);
+			if (0)print(": SET table %p[%x]@%p = addr %p val%llx\n", table, x, &table[x], pte, ((pte>>12)<<10) | PTEVALID);
 			table[x] = ((pte>>12)<<10) | PTEVALID;	// XXX: Does this need PA2PTE
 		}
 		table = kmapaddr(pte);
-		print("kmapaddr of %p is %p, ", pte, table);
+		if (0)print("kmapaddr of %p is %p, ", pte, table);
 		x = vpn(va, (uintptr)i);
-		print("\n");
+		if (0)print("\n");
 	}
 	print("RETURN &%p[0x%x] = ", table, x);
 	print("%p\n", &table[x]);
@@ -430,12 +430,12 @@ putmmu(uintptr va, uintptr pa, Page *pg)
 	uintptr *pte, old;
 	int s;
 
-	print("putmmu(%p, %p, %p)\n", va, pa, pg);
+	print("pid %d putmmu(%p, %p, %p)\n", up ? up->pid : 0, va, pa, pg);
 	s = splhi();
 	while((pte = mmuwalk(va, 0)) == nil){
 		spllo();
 		up->mmufree = newpage(0, nil);
-		print("putmmu: get a page %p, try again\n", up->mmufree);
+		if (0)print("putmmu: get a page %p, try again\n", up->mmufree);
 		splhi();
 	}
 	old = *pte;
@@ -445,7 +445,7 @@ putmmu(uintptr va, uintptr pa, Page *pg)
 	else
 		flushasidva((uvlong)up->asid<<48 | va>>12);
 	*pte = PA2PTE(pa) | PTEUSERWRITE; // shit. UI fail.| read ? PTEUSERREAD : PTEUSERWRITE;
-	print("pte %p *pte %p\n", pte, *pte);
+	if (0)print("pte %p *pte %p\n", pte, *pte);
 	if(needtxtflush(pg)){
 		cachedwbinvse(kmap(pg), BY2PG);
 		cacheiinvse((void*)va, BY2PG);
@@ -456,7 +456,7 @@ putmmu(uintptr va, uintptr pa, Page *pg)
 	wsatp(rsatp());
 
 	splx(s);
-	print("putmmu done\n");
+	if (0)print("putmmu done\n");
 }
 
 static void
