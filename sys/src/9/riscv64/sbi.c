@@ -105,6 +105,8 @@ sbisendipi(uvlong *hart)
 void
 sbisettimer(uvlong tm)
 {
+	panic("sbisettimer");
+	print("sbisettimer %#llx\n", tm);
 	sbicall(0, 0, tm, nil, nil);
 }
 

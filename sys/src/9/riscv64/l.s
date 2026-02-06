@@ -137,12 +137,25 @@ TEXT	gotolabel(SB), 1, $-4			/* gotolabel(Label *) */
 	MOV	$1, R(ARG)
 	RET
 
+// NOTE: this is the SHADOW register of the memory-mapped
+// MTIME register. We will now use STIMECMP for interrupts.
 #define TIME	0xc01
 TEXT	rdtime(SB), 1, $-4
 	FENCE
 	MOV	CSR(TIME), R8
 	RET
 
+#define STIMECMP 0x14D
+TEXT wrstimecmp(SB), 1, $-4
+	FENCE
+	MOV R(ARG), CSR(STIMECMP)
+	RET
+
+TEXT rdstimecmp(SB), 1, $-4
+	FENCE
+	MOV CSR(STIMECMP), R(ARG)
+	RET
+	
 TEXT	coherence(SB), 1, $-4
 	FENCE
 	RET
@@ -309,3 +322,17 @@ TEXT rdtsc(SB), 1, $-4				/* Time Stamp Counter */
 	FENCE
 	MOV	CSR(CYCLO), R(ARG)
 	RET
+
+/* from Geoff */
+TEXT getsip(SB), 1, $-4
+	MOV	CSR(SIP), R(ARG)
+	RET
+TEXT putsip(SB), 1, $-4
+	MOV	R(ARG), CSR(SIP)
+	FENCE
+	RET
+TEXT getsp(SB), 1, $-4
+	MOV	R2, R(ARG)
+	RET
+TEXT setsp(SB), 1,  $-4
+	MOV	R(ARG), R2

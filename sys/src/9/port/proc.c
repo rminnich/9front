@@ -217,7 +217,7 @@ sched(void)
 	}
 	if (up)print("proc %d calls runproc\n", up->pid);
 	up = runproc();
-	if (up)print("proc %d returns from runproc sp %p pc %p\n", up->pid, up->sched.sp, up->sched.pc);
+	if (up)print("proc %p(%d) returns from runproc sp %p pc %p\n", up, up->pid, up->sched.sp, up->sched.pc);
 	if(up != m->readied)
 		m->schedticks = m->ticks + HZ/10;
 	m->readied = nil;
@@ -1663,6 +1663,8 @@ kproc(char *name, void (*func)(void *), void *arg)
 
 	procpriority(p, PriKproc, 0);
 
+if (1)	print("kproc: %s p %p, pid %d\n", name, p, p->pid);
+
 	ready(p);
 }
 
@@ -2091,6 +2093,7 @@ pidalloc(Proc *p)
 	} else
 		pidadd(p->noteid);
 
+	print("PID pid added %d\n", i->pid);
 	return p->pid = i->pid;
 }
 

@@ -143,6 +143,7 @@ timerdel(Timer *dt)
 void
 hzclock(Ureg *ur)
 {
+	sbiputc('H');
 	if (0)print("Ehzclock\n");
 	m->ticks++;
 	if(m->proc)

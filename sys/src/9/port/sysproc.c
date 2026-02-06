@@ -178,7 +178,7 @@ sysrfork(va_list list)
 	p->pcycles = -p->kentry;
 
 	pid = pidalloc(p);
-	print("sysrfork: allocated pid %d\n", pid);
+	print("sysrfork: allocated pid up %p pid %d\n", p, pid);
 
 	qunlock(&p->debug);
 	qunlock(&up->debug);
@@ -1490,7 +1490,8 @@ dosyscall(ulong scallnr, Sargs *args, uintptr *retp)
 
 		up->s = *args;
 		up->scallnr = scallnr;
-
+syscallfmt(scallnr, userpc(), (va_list)up->s.args);
+print("dosyscall: %s\n", up->syscalltrace);
 		if(0) { // || up->procctl == Proc_tracesyscall){
 			syscallfmt(scallnr, userpc(), (va_list)up->s.args);
 			splhi();
@@ -1530,6 +1531,8 @@ dosyscall(ulong scallnr, Sargs *args, uintptr *retp)
 		panic("error stack");
 	}
 	*retp = ret;
+sysretfmt(scallnr, (va_list)up->s.args, ret, startns, stopns);
+print("syscallret:%s\n", up->syscalltrace);
 	if(0) { // || up->procctl == Proc_tracesyscall){
 		todget(nil, &stopns);
 		sysretfmt(scallnr, (va_list)up->s.args, ret, startns, stopns);

@@ -242,3 +242,7 @@ void*	putstvec(void *);
 /* archrv */
 void calibrate(void);
 uint mach2context(Mach *);
+
+/* rva23 */
+void wrstimecmp(u64int);
+u64int rdstimecmp(void);

@@ -32,7 +32,7 @@ static void
 randomsample(Ureg*, Timer *t)
 {
 	Seedbuf *s = t->ta;
-
+	print("R");
 	if(s->randomcount == 0 || s->nbuf >= sizeof(s->buf))
 		return;
 	s->bits = (s->bits<<2) ^ s->randomcount;
@@ -48,6 +48,7 @@ randomseed(void*)
 {
 	Seedbuf *s;
 
+	if (! islo()) panic("randomseed: not islo()");
 	s = secalloc(sizeof(Seedbuf));
 
 	if(hwrandbuf != nil)
@@ -63,12 +64,13 @@ randomseed(void*)
 	while(s->nbuf < sizeof(s->buf)){
 		if(++s->randomcount <= 100000)
 			continue;
-		print("randomseed: check for anyhigher, if so sched\n");
+		if (0)print("randomseed: check for anyhigher, if so sched\n");
 		if(anyhigher()){
 			print("randomseed: call sched\n");
 			sched();
 		}
-		print("randomseed:loop\n");
+		if (0)print("randomseed:loop\n");
+		 if (! islo()) panic("randomseed in for loop: not islo()");
 	}
 	print("ALL done seed loop\n");
 	timerdel(up);

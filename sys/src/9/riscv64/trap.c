@@ -20,7 +20,7 @@ enum {
 	Probedebug	= 0,
 	Intrdebug	= 0,
 	Tryallcpus	= 0,
-	TrapSpew	= 0,
+	TrapSpew	= 1,
 
 	Ntimevec = 20,		/* number of time buckets for each intr */
 	Ncauses = Ngintr + Nlintr + Nexc,	/* # of Vctls */
@@ -163,7 +163,7 @@ forkchild(Proc *p, Ureg *ureg)
 	print("forkchild: sp %p pc %p\n", p->sched.sp, p->sched.pc);
 
 	cureg = (Ureg*) (p->sched.sp);
-	print("forkchild: memmove(%p, %p, %p)\n", cureg, ureg, sizeof(Ureg)-16);
+	print("forkchild: memmove(%p, %p, %d)\n", cureg, ureg, sizeof(Ureg)-16);
 	memmove(cureg, ureg, sizeof(Ureg));
 	print("forkchild: sp %p pc %p\n", p->sched.sp, p->sched.pc);
 	cureg->arg = 0;
@@ -252,9 +252,9 @@ trapdbg(Ureg *ureg, Cause *cp, int entry)
 	else {
 		iprint("%s", excname[cp->cause]);
 		if (cp->cause == Envcalluser) {
-			iprint(" pid %d", up->pid);
+			iprint(" pid %ld", up->pid);
 			if (entry)
-				iprint(" %d", ureg->arg);
+				iprint(" %ld", ureg->arg);
 			else
 				iprint(" return %#llux", ureg->arg);
 		}
@@ -305,7 +305,7 @@ if (0)	for(i = 0; i < 32; i++) print("%d:0x%llx\n", i, ureg->regs[i]);
 	scallnr = ureg->arg;
 	/* on riscv64, ureg->ret is ureg->arg, so can't zero ureg->ret here. */
 	/* Last syscall argument is location of return value in frame. */
-	if (TrapSpew) print("dosyscall(%d, %p, %p val %p\n", scallnr, (Sargs*)(ureg->sp+BY2WD), &ureg->arg, ureg->arg);
+	if (1) print("dosyscall(%d, %p, %p val %p\n", scallnr, (Sargs*)(ureg->sp+BY2WD), &ureg->arg, ureg->arg);
 	dosyscall(scallnr, (Sargs*)(ureg->sp+BY2WD), &ureg->arg);
 
 	/*
@@ -621,7 +621,7 @@ trapriscv64(Ureg *ureg, Cause *cp)
 		return 0;			/* not a clock interrupt */
 	}
 #endif
-
+	sbiputc('.');
 	cause = cp->cause;
 	if (cause >= nelem(exchandlers))
 		panic("trapriscv64: cause %d out of range", cause);
@@ -644,6 +644,7 @@ traplocalintr(Ureg *ureg, Cause *cp)
 {
 	int clockintr;
 	uint cause;
+	sbiputc('-');
 
 	if (TrapSpew) print("traplocalintr ureg %p cause %p\n", ureg, cause);
 	m->intr++;			/* okay here; only tmr and sw intrs */
@@ -667,6 +668,9 @@ traplocalintr(Ureg *ureg, Cause *cp)
 		--m->clockintrdepth;
 		clockenable();
 		clockintr = 1;
+		extern int block;
+		block = 0;
+		while(! block);
 		break;
 	case Supswintr:
 		/*
@@ -701,11 +705,13 @@ traplocalintr(Ureg *ureg, Cause *cp)
 	}
 	// NOTE: this does not work for interrupt 0x20 (STIP); that only gets reset
 	// by advancing the timer. Somehow that's not getting done correctly elsewhere.
-	if ((clrsipbit(1<<cp->cause) & (1<<cause)) != 0) {
+	if (1 || (clrsipbit(1<<cp->cause) & (1<<cause)) != 0) {
 		uvlong next = rdtsc();
-		print("clrsipbit(%llx): did not clear bit\n", 1<<cp->cause);
+		if (0)print("clrsipbit(%llx): did not clear bit\n", 1<<cp->cause);
+		print("rdtsc %p and %p\n", next, rdtsc());
 		sbisettimer(next + 0x100000);
-		print("clrsipbit is now %llx\n", clrsipbit(1<<cp->cause));
+		if (0)panic("set timer");
+		if (0)print("clrsipbit is now %llx\n", clrsipbit(1<<cp->cause));
 	}
 	if (TrapSpew) print("IMPLEMENT vecacct(vctl[cp->vno]);\n");
 	if (TrapSpew) print("IMPLEMENENT intrtime(m, cp->vno);\n");
@@ -797,7 +803,7 @@ trap(Ureg* ureg)
 	uint type;
 	Cause why;
 	Traphandler handler;
-
+sbiputc('T');
 	if (Trapdebug) {
 		if (ureg == nil)
 			panic("trap with nil ureg");
@@ -836,10 +842,10 @@ trap(Ureg* ureg)
 		 * delaysched set (because we held a lock or because our
 		 * quantum ended)?
 		 */
-	/*	if(up && up->delaysched && clockintr && m->clockintrsok) {
+		if(up && up->delaysched && clockintr && m->clockintrsok) {
 			sched();
 			splhi();
-		}*/
+		}
 		if(why.user) {
 			if(up->procctl || up->nnote)
 				notify(ureg, "h");

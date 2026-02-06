@@ -21,7 +21,7 @@
 #define Clintlongs (!soc.clintlongsset || soc.clintlongs)
 
 /* so far, only SBI lies, CSR(MHARTID) doesn't */
-#define RDTIMES(tsc, mtime) coherence(); mtime = rdcltime(); /* ticks */ \
+#define RDTIMES(tsc, mtime) coherence(); mtime = rdtime(); /* ticks */ \
 	tsc = rdtsc()			/* cycles */
 
 enum {
@@ -407,81 +407,6 @@ cpuinit(int cpu)
 	clockoff();
 }
 
-/*
- * Clintlongs produces 32-bit little-endian accesses for unmodified tinyemu
- * (not ours) and xuantie.  Also implies reading the time csr instead of mtime.
- */
-
-uvlong
-rdcltime(void)
-{
-	if (Clintlongs || !nosbi)
-		return rdtime();		/* needs our tinyemu */
-	else
-		return m->clint->mtime;
-	return 0;
-}
-
-static void
-setcltime(ulong *p, uvlong v)
-{
-	if (Clintlongs) {
-		p[1] = VMASK(31);	/* don't trigger premature clock intr */
-		p[0] = ~0ul;
-		coherence();
-		p[1] = v>>32;
-		p[0] = v;
-	} else
-		*(uvlong *)p = v;
-	coherence();
-}
-
-void
-wrcltime(uvlong v)
-{
-	if (soc.c910)		/* on c910, mtime is a csr, not memory-mapped */
-		return;
-	if (nosbi)
-		setcltime((ulong *)&m->clint->mtime, v);
-}
-
-uvlong
-rdcltimecmp(Mach *mp)
-{
-	ulong *p;
-
-	/* sbi provides no way to read mtimecmp, so see cached value */
-	if (!nosbi)
-		return mp->timecmp;
-
-	/* seems not to work under OpenSBI, though undocumented */
-	p = (ulong *)&m->clint->mtimecmp[mp->hartid];
-	if (Clintlongs)
-		return p[0] | (uvlong)p[1] << 32;
-	else
-		return *(uvlong *)p;
-}
-
-void
-wrcltimecmp(uvlong v)
-{
-	if (m->clint == nil)
-		panic("wrcltimecmp: nil m->clint");
-	setcltime((ulong *)&m->clint->mtimecmp[m->hartid], v);
-	m->timecmp = v;		/* remember for rdcltimecmp() under sbi */
-}
-
-void
-setclinttmr(uvlong clticks)
-{
-	if (nosbi)
-		wrcltimecmp(clticks);
-	else
-		sbisettimer(clticks);	/* how long does this take? */
-	m->timecmp = clticks;	/* remember for rdcltimecmp() under sbi */
-	coherence();		/* Stip might not be extinguished immediately */
-}
-
 static uvlong tscperclintglob;
 
 /* are cycles for an interval consistent with clint ticks? */
@@ -516,39 +441,11 @@ timeop(char *name, void (*op)(void))
 	diffsumtsc = tsc2 - tsc;
 	diffsumclint = mtime2 - mtime;
 
-	if (soc.newmach)
+	if (1 || soc.newmach)
 		print("op %s:\t%d took %,lld tsc cycles and %,lld clint ticks\n",
 			name, i, diffsumtsc, diffsumclint);
 	USED(name);
 	areclockswonky(diffsumtsc, diffsumclint);
-}
-
-static void
-nullop(void)
-{
-}
-
-static void
-rdtimeop(void)
-{
-	vlong junk;
-
-	junk = rdcltime();
-	USED(junk);
-}
-
-static void
-wrtimeop(void)
-{
-	if (nosbi)
-		wrcltime(rdcltime());
-}
-
-static void
-wrtimecmpop(void)
-{
-	if (nosbi)
-		wrcltimecmp(VMASK(63));
 }
 
 /*
@@ -613,11 +510,6 @@ calibrate(void)
 	 */
 	sys->minclints = timebase / (5*HZ);
 
-	/* time various clock-related operations.  primarily debugging. */
-	timeop("null", nullop);
-	timeop("read time", rdtimeop);
-	timeop("set time", wrtimeop);
-	timeop("set timecmp", wrtimecmpop);
 }
 
 /* prevent further clock interrupts */
@@ -656,17 +548,16 @@ timerset(uvlong next)
 	}
 	/* extinguish current intr source and set new deadline */
 	/* don't delay past already scheduled time */
-	newticks = rdcltime() + fticks;
-	curticks = rdcltimecmp(m);
+	newticks = rdtime() + fticks;
+	curticks = rdstimecmp();
 	if (newticks < curticks)
-		setclinttmr(newticks);
+		wrstimecmp(newticks);
 	clrsipbit(Stie);		/* dismiss current intr */
 	clockenable();
 	splx(pl);
 }
 
 long ticktock;				/* set by M clock intr */
-#ifdef xxx
 
 int
 clocksanity(void)
@@ -678,11 +569,11 @@ clocksanity(void)
 	clockoff();
 	m->clockintrsok = 1;
 
-	omtime = now = rdcltime();
+	omtime = now = rdtime();
 	clockenable();
-	setclinttmr(omtime + 20*(timebase/1000000));
+	wrstimecmp(omtime + 20*(timebase/1000000));
 
-	for (i = 0; i < 1000 && (now = rdcltime()) == omtime; i++)
+	for (i = 0; i < 1000 && (now = rdtime()) == omtime; i++)
 		delay(1);
 	if (now <= omtime)
 		panic("clint clock is not advancing (was %llud is %llud)",
@@ -701,7 +592,7 @@ clocksanity(void)
 			print("clint timebase: %,lld Hz\n", timebase);
 	return 1;
 }
-
+#ifdef xxx
 static int mwords[1];
 static int *mwaitwd = mwords;		/* make safe from the start */
 
