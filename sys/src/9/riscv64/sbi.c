@@ -103,7 +103,7 @@ sbisendipi(uvlong *hart)
 }
 
 void
-sbisettimer(uvlong tm)
+_sbisettimer(uvlong tm)
 {
 	panic("sbisettimer");
 	print("sbisettimer %#llx\n", tm);

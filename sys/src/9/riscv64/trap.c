@@ -669,7 +669,7 @@ traplocalintr(Ureg *ureg, Cause *cp)
 		clockenable();
 		clockintr = 1;
 		extern int block;
-		block = 0;
+		block = 1;
 		while(! block);
 		break;
 	case Supswintr:
@@ -709,7 +709,7 @@ traplocalintr(Ureg *ureg, Cause *cp)
 		uvlong next = rdtsc();
 		if (0)print("clrsipbit(%llx): did not clear bit\n", 1<<cp->cause);
 		print("rdtsc %p and %p\n", next, rdtsc());
-		sbisettimer(next + 0x100000);
+		wrstimecmp(next + 0x100000);
 		if (0)panic("set timer");
 		if (0)print("clrsipbit is now %llx\n", clrsipbit(1<<cp->cause));
 	}
@@ -859,6 +859,7 @@ sbiputc('T');
 	if (0)if (Trapdebug)
 		trapdbg(ureg, &why, 0);
 	if (TrapSpew) print("all done trap()\n");
+	if (1) print("time %p cmp %p, SIP %#lx\n", rdtime(), rdstimecmp(), getsip());
 }
 
 /*
