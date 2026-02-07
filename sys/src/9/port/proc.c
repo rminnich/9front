@@ -1278,6 +1278,8 @@ pexit(char *exitstr, int freemem)
 	Segment *s;
 	int i;
 
+	print("pexit:%d\n", up->pid);
+
 	up->alarm = 0;
 	timerdel(up);
 	pt = proctrace;
@@ -1608,6 +1610,7 @@ kproc(char *name, void (*func)(void *), void *arg)
 	static Pgrp *kpgrp;
 	Proc *p;
 
+	print("kproc: %s, func %p, arg %p\n", name, func, arg);
 	while((p = newproc()) == nil){
 		freebroken();
 		resrcwait("no procs for kproc");
