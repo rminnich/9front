@@ -532,6 +532,7 @@ timerset(uvlong next)
 	Mpl pl;
 	vlong fticks, curticks, newticks;
 
+	print("tinmerset %#llx clinstprehz %#llx\n", next,sys->clintsperhz);
 	pl = splhi();
 	if (sys->clintsperhz == 0)
 		panic("timerset: sys->clintsperhz not yet set");
@@ -548,10 +549,13 @@ timerset(uvlong next)
 	}
 	/* extinguish current intr source and set new deadline */
 	/* don't delay past already scheduled time */
-	newticks = rdtime() + fticks;
-	curticks = rdstimecmp();
+	newticks = rdstimecmp() + fticks;
+	curticks = rdtime();
+	print("timerset: fticks %#llx newticks %#llx curticks %#llx\n", fticks, newticks, curticks);
 	if (newticks < curticks)
 		wrstimecmp(newticks);
+	if (newticks > curticks + 0x1000000)
+		wrstimecmp(curticks + 0x1000000);
 	clrsipbit(Stie);		/* dismiss current intr */
 	clockenable();
 	splx(pl);

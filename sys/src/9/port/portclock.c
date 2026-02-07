@@ -212,7 +212,8 @@ timerintr(Ureg *u, Tval)
 		when = t->twhen;
 		//when += 0x40000;
 		if(when > now){
-			if(0)sbiputc('E');
+			if(1)sbiputc('E');
+			print("timerintr, timerset %#llx\n", when);
 			timerset(when);
 			iunlock(tt);
 			if(callhzclock)

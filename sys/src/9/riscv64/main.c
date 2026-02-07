@@ -312,6 +312,10 @@ main(void)
 	userinit(); print("DONE 	userinit();\n"); 
 	check();
 	mpinit(); print("DONE 	mpinit();\n"); 
+	u64int tm = rdtime();
+	print("tm is %#llx\n", tm);
+	u64int cm = rdstimecmp();
+	print("cm is %#llx\n", cm);
 	mmu1init(); print("DONE 	mmu1init(); islo %d m %p\n", islo(), m); 
 	schedinit();
 }
