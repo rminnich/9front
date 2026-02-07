@@ -706,7 +706,7 @@ traplocalintr(Ureg *ureg, Cause *cp)
 	// NOTE: this does not work for interrupt 0x20 (STIP); that only gets reset
 	// by advancing the timer. Somehow that's not getting done correctly elsewhere.
 	if (1 || (clrsipbit(1<<cp->cause) & (1<<cause)) != 0) {
-		uvlong next = rdtsc();
+		uvlong next = rdtime();
 		if (0)print("clrsipbit(%llx): did not clear bit\n", 1<<cp->cause);
 		print("rdtsc %p and %p\n", next, rdtsc());
 		wrstimecmp(next + 0x100000);
