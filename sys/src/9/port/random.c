@@ -70,7 +70,7 @@ randomseed(void*)
 			sched();
 		}
 		if (0)print("randomseed:loop\n");
-if (1) print("time %p cmp %p, SIP %#llx SIE %#llx\n", rdtime(), rdstimecmp(), getsip(), getsie());
+if (0) print("time %p cmp %p, SIP %#llx SIE %#llx\n", rdtime(), rdstimecmp(), getsip(), getsie());
 		 if (! islo()) panic("randomseed in for loop: not islo()");
 	}
 	print("ALL done seed loop\n");

@@ -551,7 +551,7 @@ timerset(uvlong next)
 	/* don't delay past already scheduled time */
 	newticks = rdstimecmp() + fticks;
 	curticks = rdtime();
-	print("timerset: fticks %#llx newticks %#llx curticks %#llx\n", fticks, newticks, curticks);
+	if (0)print("timerset: fticks %#llx newticks %#llx curticks %#llx\n", fticks, newticks, curticks);
 	if (newticks < curticks)
 		wrstimecmp(newticks);
 	if (newticks > curticks + 0x1000000)

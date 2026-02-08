@@ -20,7 +20,7 @@ enum {
 	Probedebug	= 0,
 	Intrdebug	= 0,
 	Tryallcpus	= 0,
-	TrapSpew	= 1,
+	TrapSpew	= 0,
 
 	Ntimevec = 20,		/* number of time buckets for each intr */
 	Ncauses = Ngintr + Nlintr + Nexc,	/* # of Vctls */
@@ -705,10 +705,10 @@ traplocalintr(Ureg *ureg, Cause *cp)
 	}
 	// NOTE: this does not work for interrupt 0x20 (STIP); that only gets reset
 	// by advancing the timer. Somehow that's not getting done correctly elsewhere.
-	if (1 || (clrsipbit(1<<cp->cause) & (1<<cause)) != 0) {
+	if (0 || (clrsipbit(1<<cp->cause) & (1<<cause)) != 0) {
 		uvlong next = rdtime();
 		if (0)print("clrsipbit(%llx): did not clear bit\n", 1<<cp->cause);
-		print("rdtsc %p and %p\n", next, rdtsc());
+		if (0)print("rdtsc %p and %p\n", next, rdtsc());
 		wrstimecmp(next + 0x100000);
 		if (0)panic("set timer");
 		if (0)print("clrsipbit is now %llx\n", clrsipbit(1<<cp->cause));
@@ -859,7 +859,7 @@ sbiputc('T');
 	if (0)if (Trapdebug)
 		trapdbg(ureg, &why, 0);
 	if (TrapSpew) print("all done trap()\n");
-	if (1) print("time %p cmp %p, SIP %#lx\n", rdtime(), rdstimecmp(), getsip());
+	if (0) print("time %p cmp %p, SIP %#lx\n", rdtime(), rdstimecmp(), getsip());
 }
 
 /*
