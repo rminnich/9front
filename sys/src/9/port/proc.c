@@ -65,25 +65,25 @@ schedinit(void)
 {
 	Edf *e;
 
-	print("schedinit: m is %p\n", m);
+if (0)	print("schedinit: m is %p\n", m);
 	setlabel(&m->sched);
-	print("schedinit: up %p pid %d\n", up, up ? up->pid : -1);
+if (0)print("schedinit: up %p pid %d\n", up, up ? up->pid : -1);
 	if(up != nil) {
 		if((e = up->edf) != nil && (e->flags & Admitted))
 			edfrecord(up);
 		m->proc = nil;
 		switch(up->state) {
 		default:
-			print("updatecpu then break\n");
+if (0)print("updatecpu then break\n");
 			updatecpu(up);
 			break;
 		case Running:
-			print("running\n");
+if (0)print("running\n");
 			up->state = Scheding;
 			ready(up);
 			break;
 		case Moribund:
-			print("schedinit: moribund\n");
+if (0)print("schedinit: moribund\n");
 			mmurelease(up);
 			lock(&procalloc);
 			up->state = Dead;
@@ -100,7 +100,7 @@ schedinit(void)
 		up = nil;
 	}
 out:
-	print("schedinit: out: sched\n");
+if (0)print("schedinit: out: sched\n");
 	sched();
 	panic("schedinit");
 }
@@ -159,13 +159,13 @@ procswitch(void)
 	up->pcycles += t;
 
 	procsave(up);
-	print("procswitch: p %p, pid %d, sp %p, pc %p\n", up, up->pid, up->sched.sp, up->sched.pc);
+if (0)print("procswitch: p %p, pid %d, sp %p, pc %p\n", up, up->pid, up->sched.sp, up->sched.pc);
 	if(!setlabel(&up->sched)) {
-		print("procswitch: heading out to gotolabel after setlabel; m sp %p s pc %p\n", m->sched.sp, m->sched.pc);
+if (0)print("procswitch: heading out to gotolabel after setlabel; m sp %p s pc %p\n", m->sched.sp, m->sched.pc);
 		gotolabel(&m->sched);
 	}
 
-	print("back to kernel from %d\n", up->pid);
+if (0)print("back to kernel from %d\n", up->pid);
 	procrestore(up);
 
 	cycles(&t);
@@ -184,7 +184,7 @@ sched(void)
 			m->ilockdepth,
 			up != nil ? up->lastilock: nil,
 			(up != nil && up->lastilock != nil) ? up->lastilock->pc: 0);
-	print("sched: up is %p pid %d\n", up, up ? up->pid : 0);
+if (0)print("sched: up is %p pid %d\n", up, up ? up->pid : 0);
 	if(up != nil) {
 		/*
 		 * Delay the sched until the process gives up the locks
@@ -209,15 +209,15 @@ sched(void)
 		}
 		s = splhi();
  		up->delaysched = 0;
-		print("sched: call procswitch pid %d\n", up->pid);
+if (0)print("sched: call procswitch pid %d\n", up->pid);
 		procswitch();
-		print("sched: back from procswitch %d\n", up->pid);
+if (0)print("sched: back from procswitch %d\n", up->pid);
 		splx(s);
 		return;
 	}
-	if (up)print("proc %d calls runproc\n", up->pid);
+if (0)if (up)print("proc %d calls runproc\n", up->pid);
 	up = runproc();
-	if (up)print("proc %p(%d) returns from runproc sp %p pc %p\n", up, up->pid, up->sched.sp, up->sched.pc);
+if (0)if (up)print("proc %p(%d) returns from runproc sp %p pc %p\n", up, up->pid, up->sched.sp, up->sched.pc);
 	if(up != m->readied)
 		m->schedticks = m->ticks + HZ/10;
 	m->readied = nil;
@@ -226,10 +226,10 @@ sched(void)
 	up->affinity = m->machno;
 	up->state = Running;
 	mmuswitch(up);
-	print("gotolabel: pid %d sp %p, pc %p\n", up->pid, up->sched.sp, up->sched.pc);
+if (0)print("gotolabel: pid %d sp %p, pc %p\n", up->pid, up->sched.sp, up->sched.pc);
 	extern int block;
 	block = 0;
-	print("block? %d\n", up->pid != 1 && ! block);
+if (0)print("block? %d\n", up->pid != 1 && ! block);
 	if (0)while(up->pid != 1 && ! block);
 	gotolabel(&up->sched);
 }

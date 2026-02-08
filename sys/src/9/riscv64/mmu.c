@@ -331,8 +331,8 @@ mmuwalk(uintptr va, int level)
 		x = vpn(va, (uintptr)i);
 		if (0)print("\n");
 	}
-	print("RETURN &%p[0x%x] = ", table, x);
-	print("%p\n", &table[x]);
+if (0)print("RETURN &%p[0x%x] = ", table, x);
+if (0)print("%p\n", &table[x]);
 	return &table[x];
 }
 
@@ -430,7 +430,7 @@ putmmu(uintptr va, uintptr pa, Page *pg)
 	uintptr *pte, old;
 	int s;
 
-	print("pid %d putmmu(%p, %p, %p)\n", up ? up->pid : 0, va, pa, pg);
+if (0)print("pid %d putmmu(%p, %p, %p)\n", up ? up->pid : 0, va, pa, pg);
 	s = splhi();
 	while((pte = mmuwalk(va, 0)) == nil){
 		spllo();
@@ -513,7 +513,7 @@ mmuswitch(Proc *p)
 		m->mmutop[PTLX(va, PTLEVELS-1)] = pte;
 	}
 	wsatp(((uintptr)m->mmutop>>12)|(8ULL<<60));
-	print("MMUSWTICH: wrote satp: block\n");
+	if (0)print("MMUSWTICH: wrote satp: block\n");
 	if (0)while (! block);
 }
 
