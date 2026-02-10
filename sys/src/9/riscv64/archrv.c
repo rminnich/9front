@@ -532,7 +532,7 @@ timerset(uvlong next)
 	Mpl pl;
 	vlong fticks, curticks, newticks;
 
-	print("tinmerset %#llx clinstprehz %#llx\n", next,sys->clintsperhz);
+if (0)	print("tinmerset %#llx clinstprehz %#llx\n", next,sys->clintsperhz);
 	pl = splhi();
 	if (sys->clintsperhz == 0)
 		panic("timerset: sys->clintsperhz not yet set");

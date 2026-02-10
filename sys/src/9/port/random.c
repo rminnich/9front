@@ -32,7 +32,7 @@ static void
 randomsample(Ureg*, Timer *t)
 {
 	Seedbuf *s = t->ta;
-	print("R");
+if (0)print("R");
 	if(s->randomcount == 0 || s->nbuf >= sizeof(s->buf))
 		return;
 	s->bits = (s->bits<<2) ^ s->randomcount;

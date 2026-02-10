@@ -85,7 +85,7 @@ procsetup(Proc *p)
 void
 procsave(Proc *p)
 {
-	print("procsave what is it for? %p\n", p);
+if (0)	print("procsave what is it for? %p\n", p);
 //	fpuprocsave(p);
 //	if(p->kp == 0)
 //		p->tpidr = sysrd(TPIDR_EL0);
@@ -95,7 +95,7 @@ procsave(Proc *p)
 void
 procrestore(Proc *p)
 {
-	print("procresotre what is it for %p\n", p);
+if (0)	print("procresotre what is it for %p\n", p);
 //	fpuprocrestore(p);
 }
 
@@ -621,7 +621,7 @@ trapriscv64(Ureg *ureg, Cause *cp)
 		return 0;			/* not a clock interrupt */
 	}
 #endif
-	sbiputc('.');
+if (0)sbiputc('.');
 	cause = cp->cause;
 	if (cause >= nelem(exchandlers))
 		panic("trapriscv64: cause %d out of range", cause);
@@ -644,7 +644,7 @@ traplocalintr(Ureg *ureg, Cause *cp)
 {
 	int clockintr;
 	uint cause;
-	sbiputc('-');
+if (0)sbiputc('-');
 
 	if (TrapSpew) print("traplocalintr ureg %p cause %p\n", ureg, cause);
 	m->intr++;			/* okay here; only tmr and sw intrs */
@@ -803,7 +803,7 @@ trap(Ureg* ureg)
 	uint type;
 	Cause why;
 	Traphandler handler;
-sbiputc('T');
+if (0)sbiputc('T');
 	if (Trapdebug) {
 		if (ureg == nil)
 			panic("trap with nil ureg");
