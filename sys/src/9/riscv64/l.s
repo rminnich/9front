@@ -61,9 +61,7 @@ TEXT	rsatp(SB), 1, $-4
 	RET
 
 TEXT	wsatp(SB), 1, $-4
-	SFENCE
-	MOV	RARG, CSR(SATP)
-	SFENCE
+	LOADSATP(RARG)
 	RET
 
 TEXT	wstvec(SB), 1, $-4
