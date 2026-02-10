@@ -445,7 +445,7 @@ if (0)print("pid %d putmmu(%p, %p, %p)\n", up ? up->pid : 0, va, pa, pg);
 	else
 		flushasidva((uvlong)up->asid<<48 | va>>12);
 	*pte = PA2PTE(pa) | PTEUSERWRITE; // shit. UI fail.| read ? PTEUSERREAD : PTEUSERWRITE;
-	if (0)print("pte %p *pte %p\n", pte, *pte);
+	if (1)print("va %p pa %p pte %p *pte %p\n", va, pa, pte, *pte);
 	if(needtxtflush(pg)){
 		cachedwbinvse(kmap(pg), BY2PG);
 		cacheiinvse((void*)va, BY2PG);
@@ -481,11 +481,11 @@ mmuswitch(Proc *p)
 	uintptr va;
 	Page *t;
 	extern int block;
-	print("SWITCH MMUTOP IS %p, @ 100 is %p\n", m->mmutop, m->mmutop[0x100]);
+if (0)	print("SWITCH MMUTOP IS %p, @ 100 is %p\n", m->mmutop, m->mmutop[0x100]);
 	for(va = UZERO; va < USTKTOP; va += PGLSZ(PTLEVELS-1))
 		m->mmutop[PTLX(va, PTLEVELS-1)] = 0;
 
-	print("p %p for setting tbr?\n", p);
+if (0)	print("p %p for setting tbr?\n", p);
 	if(p == nil){
 		// maybe flush the user mode entries? probably
 		print("mmuswitch p is nil what to do?\n");
@@ -497,7 +497,7 @@ mmuswitch(Proc *p)
 		mmufree(p);
 		p->newtlb = 0;
 	}
-	print("allocasid(p) %d\n", allocasid(p));
+if (0)	print("allocasid(p) %d\n", allocasid(p));
 	if(allocasid(p)){
 		print("NOT messing with ASID\n");
 		flushasid((uvlong)p->asid<<48);
@@ -508,8 +508,8 @@ mmuswitch(Proc *p)
 
 	for(t = p->mmuhead[PTLEVELS-1]; t != nil; t = t->next){
 		va = t->va;
-		u64int pte = ((t->pa)>>12) << 10 | PTEVALID| PTEUSER;
-		print("Set mmutop[%llxx] to %llx\n", PTLX(va, PTLEVELS-1), pte );
+		u64int pte = ((t->pa)>>12) << 10 | PTEVALID; //| PTEUSER;
+if (0)		print("Set mmutop[%llxx] to %llx\n", PTLX(va, PTLEVELS-1), pte );
 		m->mmutop[PTLX(va, PTLEVELS-1)] = pte;
 	}
 	wsatp(((uintptr)m->mmutop>>12)|(8ULL<<60));
