@@ -6,13 +6,9 @@
 
 #define INITMAP	(ROUND((uintptr)end + BY2PG, PGLSZ(1))-KZERO)
 
-/*
-static void mmemset(void *v, char val, int size) {
-	u8int *uc = v;
-	int i;
-	for(i = 0; i < size; i++) uc[i] = val;
-}
-*/
+// kmax will be computed dynamically in future; for now it is
+// UZERO.
+uintptr klimit = UZERO;
 
 void
 mmu1init(void)
@@ -26,7 +22,6 @@ mmu1init(void)
 	mmuswitch(nil);
 }
 
-/* KZERO maps the first 1GB of ram */
 uintptr
 paddr(void *va)
 {
@@ -429,8 +424,12 @@ putmmu(uintptr va, uintptr pa, Page *pg)
 {
 	uintptr *pte, old;
 	int s;
+	uintptr pteattr = PTE2ATTR(pa) | PTEUSER | PTEACCESSED; // hack.
 
-if (0)print("pid %d putmmu(%p, %p, %p)\n", up ? up->pid : 0, va, pa, pg);
+	if (pteattr & PTEWRITE)
+		pteattr |= PTEDIRTY | PTEREAD;
+
+if (1)print("pid %d putmmu(%p, %p, %p)\n", up ? up->pid : 0, va, pa, pg);
 	s = splhi();
 	while((pte = mmuwalk(va, 0)) == nil){
 		spllo();
@@ -438,13 +437,14 @@ if (0)print("pid %d putmmu(%p, %p, %p)\n", up ? up->pid : 0, va, pa, pg);
 		if (0)print("putmmu: get a page %p, try again\n", up->mmufree);
 		splhi();
 	}
+	if (up->pid == 5) soft();
 	old = *pte;
 	*pte = 0;
 	if((old & PTEVALID) != 0)
 		flushasidvall((uvlong)up->asid<<48 | va>>12);
 	else
 		flushasidva((uvlong)up->asid<<48 | va>>12);
-	*pte = PA2PTE(pa) | PTEUSERWRITE; // shit. UI fail.| read ? PTEUSERREAD : PTEUSERWRITE;
+	*pte = PA2PTE(pa) | pteattr;
 	if (1)print("va %p pa %p pte %p *pte %p\n", va, pa, pte, *pte);
 	if(needtxtflush(pg)){
 		cachedwbinvse(kmap(pg), BY2PG);
@@ -454,7 +454,7 @@ if (0)print("pid %d putmmu(%p, %p, %p)\n", up ? up->pid : 0, va, pa, pg);
 	flushalltlb();
 	flushvatlb(va);
 	wsatp(rsatp());
-
+	if (up->pid == 5) soft();
 	splx(s);
 	if (0)print("putmmu done\n");
 }

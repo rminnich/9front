@@ -193,7 +193,7 @@ fixfault(Segment *s, uintptr addr, int read)
 			if(pio(s, addr, soff, pg) < 0)
 				return -1;
 		}
-		mmuphys = PPN((*pg)->pa) | PTERONLY | PTECACHED | PTEVALID;
+		mmuphys = PPN((*pg)->pa) | PTEEXEC | PTERONLY | PTECACHED | PTEVALID;
 		(*pg)->modref = PG_REF;
 		break;
 
@@ -254,9 +254,10 @@ fixfault(Segment *s, uintptr addr, int read)
 #endif
 
 	qunlock(s);
-
+	print("fixfault: pid %d, call putmmu(%p, %p, %p)\n", up->pid, addr, mmuphys, pg);
 	putmmu(addr, mmuphys, *pg);
 
+	if (up->pid == 5) soft();
 	return 0;
 }
 

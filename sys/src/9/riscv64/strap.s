@@ -30,6 +30,11 @@ EXCPC=14
 	MOV	$Mppsuper, R9;		MOV R9, (36*XLEN)(R2); /* curmode */ \
 	MOV	CSR(SSCRATCH), R9;	MOV R9, (37*XLEN)(R2)
 
+
+TEXT softsoft(SB), 1, $-4
+_softsoft:
+	RET
+
 /*
  * strap copes with supervisor-mode faults, from user or kernel mode
  * (e.g., interrupt, system call, page fault during system call).
@@ -127,8 +132,8 @@ fromuser:
 	/*
 	 * can't use user-mode stack.  switch to up->kstack.
 	 */
-	MOV	(2*XLEN)(R(USER)), R2	/* switch to empty up->kstack */
-	ADD	$KSTACK, R2		/* must be multiple of sizeof(vlong) */
+	MOV	R(USER), R2	/* switch to empty up->kstack */
+	CALL	_softsoft
 
 	PUSHALLS			/* patches R2 from regsave into Ureg */
 	MOV	SAVESR3(R(MACH)), R9
@@ -167,7 +172,10 @@ return:
 /* rfork return for child processes */
 TEXT sysrforkret(SB), 1, $-4
 	SPLHI
-
+	// stack now points to a new physical, maybe we need this.
+	SFENCE_VMA(0,0)
+	//flushalltlb
+	WORD $0x12000073
 	/* SP must point at our Ureg here.  up may have changed since entry. */
 	MOV	R0, (ARG*XLEN)(R2)	/* zero saved R(ARG) in ureg */
 	JMP	syscallret
@@ -274,18 +282,5 @@ TEXT excalign(SB), 1, $-4
 
 	JAL	R0, wfi(SB)		/* JMP only takes local labels */
 
-/*
- * switch to user mode with stack pointer from R(ARG), at start of text.
- * used to start process 1 (init).
- */
-TEXT gtouser(SB), 1, $-4
-	FENCE
-	FENCE_I
-
-	MOV	R0, LINK
-	MOV	$(UTZERO+8*BY2WD), R12	/* skip unextended exec hdr of init */
-	MOV	R12, CSR(SEPC)		/* new pc */
-	MOV	R(ARG), R2		/* new sp */
-	SRET				/* off to rv64 user mode */
 
 GLOBL	panicstk(SB), $INITSTKSIZE

@@ -69,7 +69,7 @@ dbgpc(Proc *)
 void
 procfork(Proc *p)
 {
-	print("procrfork %p\n", p);
+	print("procfork %p\n", p);
 	print("fix fpuprocfork\n");
 //	fpuprocfork(p);
 //	p->tpidr = up->tpidr;
@@ -155,7 +155,7 @@ evenaddr(uintptr addr)
 void
 forkchild(Proc *p, Ureg *ureg)
 {
-	print("forkchild p %p ureg %p stack ? %p\n", p, ureg, (uintptr) p - TRAPFRAMESIZE);
+	print("forkchild parent %d kid %d p %p ureg %p stack ? %p\n", up->pid, p->pid, p, ureg, (uintptr) p - TRAPFRAMESIZE);
 	Ureg *cureg;
 	print("ureg sp %p pc %p\n", ureg->sp, ureg->pc);
 	p->sched.pc = (uintptr) sysrforkret;
@@ -163,6 +163,7 @@ forkchild(Proc *p, Ureg *ureg)
 	print("forkchild: sp %p pc %p\n", p->sched.sp, p->sched.pc);
 
 	cureg = (Ureg*) (p->sched.sp);
+	print("fork child: ureg -> r1 is %p\n", ureg->r1);
 	print("forkchild: memmove(%p, %p, %d)\n", cureg, ureg, sizeof(Ureg)-16);
 	memmove(cureg, ureg, sizeof(Ureg));
 	print("forkchild: sp %p pc %p\n", p->sched.sp, p->sched.pc);
@@ -318,6 +319,13 @@ if (0)	for(i = 0; i < 32; i++) print("%d:0x%llx\n", i, ureg->regs[i]);
 	else if (Trapdebug && scallnr != EXEC)
 		iprint("syscall %d changed return ureg->pc %#p (old pc %#p)\n",
 			scallnr, ureg->pc, pc);
+	print("SYSCALL return: up->pid %d scallnr %d RFORK %d\n", up->pid, scallnr, RFORK);
+	if ((up->pid == 1) && (scallnr == RFORK)) {
+		extern int block;
+		block = 0;
+		print("block pid is 1 and we're back from fork\n");
+		while(! block);
+	}
 
 }
 
@@ -538,6 +546,13 @@ faultriscv64(Ureg* ureg, Cause *cp)
 	 * initialisation before the system is fully up.
 	 */
 	addr = ureg->tval;
+	// It handles this just fine. false alarm.
+	// I thought the problem was the page fault it was taking when parent
+	// resumed after sysrfork(). Nope. 
+	if (0)	if (iskern(ureg->pc))
+		panic("fault in kernel mode (pc %p)\n", ureg->pc);
+	print("faultriscv64 pid %d\n", up->pid);
+	if (up->pid == 5) soft();
 	if(up == nil)
 		panic("fault %#lld with up == nil; pc %#p addr %#p",
 			ureg->cause, ureg->pc, addr);
@@ -551,8 +566,14 @@ faultriscv64(Ureg* ureg, Cause *cp)
 	read = ureg->cause != Storepage;  /* exception, so Rv64intr must be 0 */
 	/* page fault on a kernel address is never okay. */
 	if (0)while (block != 1024);
-	if((intptr)addr < 0 || fault(addr, ureg->pc, read) < 0)
+	print("fault %p read pc %p %d < uzero(%p) %d\n", addr, ureg->pc ,read, UZERO, addr < UZERO);
+	if(addr < UZERO || fault(addr, ureg->pc, read) < 0)
 		badpagefault(ureg, addr, read, insyscall);
+	if (up->pid == 5) soft();
+	if(addr<UZERO+0x28) {
+		dumpregs(ureg);
+		panic("fault: bad user address addr %#p pc %#p", addr, ureg->pc);
+	}
 	up->insyscall = insyscall;
 }
 
@@ -803,6 +824,7 @@ trap(Ureg* ureg)
 	uint type;
 	Cause why;
 	Traphandler handler;
+	print("trap ureg %p up %p up->pid %d\n", ureg, up, up ? up->pid : -1);
 if (0)sbiputc('T');
 	if (Trapdebug) {
 		if (ureg == nil)
@@ -855,7 +877,7 @@ if (0)sbiputc('T');
 			 */
 		}
 	}
-
+	if (up->pid == 5) {print("soft at end of trap\n"); soft();}
 	if (0)if (Trapdebug)
 		trapdbg(ureg, &why, 0);
 	if (TrapSpew) print("all done trap()\n");

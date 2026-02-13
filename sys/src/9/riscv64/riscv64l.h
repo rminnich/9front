@@ -350,9 +350,9 @@
 
 #define CALLTRAP \
 	MOV	R2, R(ARG);		/* Ureg* */ \
-	SUB	$(2*XLEN), R2; /* leave needed room (return PC & dummy arg?) */\
+	SUB	$(8*XLEN), R2; /* leave needed room (return PC & dummy arg?) */\
 	JAL	LINK, trap(SB);		/* to C: trap(sp) */ \
-	ADD	$(2*XLEN), R2; \
+	ADD	$(8*XLEN), R2; \
 	SPLHI
 
 /*

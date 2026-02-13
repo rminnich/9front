@@ -55,6 +55,9 @@ _stop:
 	JMP	_stop
 
 
+TEXT 	soft(SB), 1, $-4
+	RET
+
 //#define SATP 0x180
 TEXT	rsatp(SB), 1, $-4
 	MOV	CSR(SATP), R8

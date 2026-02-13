@@ -9,6 +9,29 @@ main(int, char *argv[])
 {
 	char buf[32];
 
+	while (1) {
+		print("hit the any key");
+		print("let's go\n");
+		switch(fork()) {
+			case 0:
+				print("KID ... return\n");
+				exits("all done");
+				break;
+			case -1:
+				print("FORK:%r\n");
+				break;
+			default:
+				memset(buf, 0, sizeof(buf));
+				if(await(buf, sizeof(buf)-1) < 0) {
+					print("await:%r\n");
+				}
+				print("returned ... %s\n", buf);
+				break;
+		}
+		print("read stdin\n");
+		read(0, buf, 1);
+		print("you typed %c\n", buf[0]);
+	}
 	for(int i = 0; i < 32; i++) write(1, "hi\n", 3);
 	/* setup the boot namespace */
 	bind("/boot", bin, MAFTER);

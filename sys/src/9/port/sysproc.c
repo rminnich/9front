@@ -273,8 +273,11 @@ sysrfork(va_list list)
 	if(up->wired)
 		procwired(p, up->affinity);
 
+	print("up %p %d up->sched.sp %p @ dbgreg %p pc is %p\n", up, up->pid, up->sched.sp, up->dbgreg, up->dbgreg->pc);
 	ready(p);
+	print("sysrfork: %d call sched\n", up->pid);
 	sched();
+	print("sysrfork: pid %d returns from sched\n", up->pid);
 	return pid;
 }
 

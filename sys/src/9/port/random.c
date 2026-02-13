@@ -92,7 +92,8 @@ randominit(void)
 	print("randominit\n");
 	rs = secalloc(sizeof(*rs));
 	qlock(rs);	/* randomseed() unlocks once seeded */
-	kproc("randomseed", randomseed, nil);
+	if (0) kproc("randomseed", randomseed, nil);
+	print("BE SURE TO TURN RANDOMINIT BACK ON\n");
 	print("randominit: done\n");
 }
 

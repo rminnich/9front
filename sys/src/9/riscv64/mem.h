@@ -44,7 +44,8 @@
 #define	KTZERO		(VDRAM + 0x200000)	/* 0x80200000 - kernel text start */
 
 #define	KZERO		(0x0000000000000000ULL)	/* 0x00000000 - kernel address space */
-#define KLIMIT (0x800000000000ULL) // half of the hole.
+#define KLIMIT 		klimit
+//#define KLIMIT			(0x800000000000ULL) // half of the hole.
 #define iskern(v) (((uintptr)v)<=UZERO)
 
 /* shared kernel page table for TTBR1 */
@@ -94,6 +95,7 @@
 #define PTEACCESSED	(1<<6)
 #define PTEDIRTY	(1<<7)
 #define PTERONLY	PTEREAD
+#define PTEATTR		((uintptr)0xf)
 
 #define PTEUSERREAD (PTEVALID | PTEREAD | PTEEXEC | PTEUSER | PTEACCESSED)
 #define PTEUSERWRITE (PTEUSERREAD | PTEWRITE | PTEDIRTY)
@@ -104,6 +106,7 @@
 
 #define PA2PTE(pa)	((pa>>12)<<10)
 #define PTE2PA(pte)	((pte>>10)<<12)
+#define PTE2ATTR(pa)	((pa)&PTEATTR)
 
 /*
  * Physical machine information from here on.

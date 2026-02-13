@@ -51,6 +51,7 @@ meminit(void)
 	uintptr l = 3 * GiB;
 	extern u64int *sv57, *sv48, *sv39, *pGiB;
 	extern int block;
+	extern uintptr klimit;
 
 	if(p = getconf("*maxmem"))
 		l = strtoull(p, 0, 0);
