@@ -9,7 +9,7 @@ main(int, char *argv[])
 {
 	char buf[32];
 
-	while (1) {
+	while (0) {
 		print("hit the any key");
 		print("let's go\n");
 		switch(fork()) {
