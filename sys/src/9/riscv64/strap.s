@@ -100,7 +100,7 @@ FUCK
 	/* if we fault here, it's probably due to a bad SP or SB */
 	MOV	SAVESR4(R(MACH)), R4
 	MOV	SAVESR9(R(MACH)), R9
-	MOV R(USER), R2
+	//MOV R(USER), R2
 	PUSHALLS			/* patches R2 from regsave into Ureg */
 
 	MOV	$strap(SB), R9
