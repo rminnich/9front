@@ -16,11 +16,11 @@
 #define BASEOP(inst)	((inst) & MASK(7))
 
 enum {
-	Trapdebug	= 0,
+	Trapdebug	= 1,
 	Probedebug	= 0,
 	Intrdebug	= 0,
 	Tryallcpus	= 0,
-	TrapSpew	= 0,
+	TrapSpew	= 1,
 
 	Ntimevec = 20,		/* number of time buckets for each intr */
 	Ncauses = Ngintr + Nlintr + Nexc,	/* # of Vctls */
@@ -824,7 +824,7 @@ trap(Ureg* ureg)
 	uint type;
 	Cause why;
 	Traphandler handler;
-	print("trap ureg %p up %p up->pid %d\n", ureg, up, up ? up->pid : -1);
+	print("trap ureg %p pc %p up %p up->pid %d\n", ureg, up, ureg->pc, up ? up->pid : -1);
 if (0)sbiputc('T');
 	if (Trapdebug) {
 		if (ureg == nil)
@@ -880,8 +880,9 @@ if (0)sbiputc('T');
 	if (up->pid == 5) {print("soft at end of trap\n"); soft();}
 	if (0)if (Trapdebug)
 		trapdbg(ureg, &why, 0);
-	if (TrapSpew) print("all done trap()\n");
+	if (TrapSpew) print("all done trap(), ur is %p, pc %p\n", ureg, ureg->pc);
 	if (0) print("time %p cmp %p, SIP %#lx\n", rdtime(), rdstimecmp(), getsip());
+soft();
 }
 
 /*

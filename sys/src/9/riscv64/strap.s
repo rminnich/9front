@@ -100,6 +100,7 @@ FUCK
 	/* if we fault here, it's probably due to a bad SP or SB */
 	MOV	SAVESR4(R(MACH)), R4
 	MOV	SAVESR9(R(MACH)), R9
+	MOV R(USER), R2
 	PUSHALLS			/* patches R2 from regsave into Ureg */
 
 	MOV	$strap(SB), R9
@@ -133,8 +134,6 @@ fromuser:
 	 * can't use user-mode stack.  switch to up->kstack.
 	 */
 	MOV	R(USER), R2	/* switch to empty up->kstack */
-	CALL	_softsoft
-
 	PUSHALLS			/* patches R2 from regsave into Ureg */
 	MOV	SAVESR3(R(MACH)), R9
 	MOV	R9, (3*XLEN)(R2)	/* patch old R3 into Ureg */
@@ -160,6 +159,8 @@ syscallret:
 	 *
 	 * Of course, other user traps need to have all registers restored.
 	 */
+	MOV	R(USER), R2
+	SUB $UREGSIZE, R2
 	POPCSR_MOSTREGS(SEPC, SSTATUS)
 	MOV	(3*XLEN)(R2), R3	/* restore user's SB */
 	MOV	(6*XLEN)(R2), R6
