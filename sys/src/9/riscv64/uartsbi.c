@@ -41,6 +41,8 @@ static int
 getc(Uart *)
 {
 	int sbigetc(void);
+	print("\nG\n");
+	int c = sbigetc();
 	return sbigetc();
 }
 
@@ -57,10 +59,36 @@ uartconsinit(void)
 	for(int i = 0; i < 15; i++) putc(consuart, "SBI USART HERE\n"[i]);
 }
 
+static void
+interrupt(void)
+{
+	int c;
+	print("SI\n");
+	while ((c = getc(nil)) != -1) {
+		sbiputc('U');
+		uartrecv(&sbiuart, (u8int)c);
+		sbiputc('V');
+	}
+	
+}
+
+static void
+enable(Uart *uart, int ie)
+{
+	print("SBI UART ENABLE\n");
+	addclock0link(interrupt, 100);
+}
+
+void
+sbihzclock(void)
+{
+	interrupt();
+}
+
 PhysUart sbiphysuart = {
 	.name		= "sbi",
 	.pnp		= nil,
-	.enable		= nil,
+	.enable		= enable,
 	.disable	= nil,
 	.kick		= nil,
 	.dobreak	= donothing,
