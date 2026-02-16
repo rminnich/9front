@@ -47,6 +47,7 @@ port
 	int cpuserver = 0;
 bootdir
 	/$objtype/bin/paqfs
+	/$objtype/bin/rc
 	/$objtype/bin/auth/factotum
 	bootfs.paq
 	boot
