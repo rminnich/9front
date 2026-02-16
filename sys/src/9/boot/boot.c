@@ -51,6 +51,7 @@ main(int, char *argv[])
 
 	buf[0] = '/';
 	buf[1+read(open("/env/cputype", OREAD|OCEXEC), buf+1, sizeof buf - 6)] = '\0';
+	print("cputype is %s", buf);
 	strcat(buf, bin);
 	bind(buf, bin, MAFTER);
 	
