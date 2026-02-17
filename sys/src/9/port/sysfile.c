@@ -659,7 +659,7 @@ read(int fd, uchar *p, long n, vlong *offp)
 	Chan *c;
 	vlong off;
 
-	print("READ pid %p %d (%d,%p,%ld,%p)\n", up, up ? up->pid : 0, fd, p, n, p);
+	if (0)print("READ pid %p %d (%d,%p,%ld,%p)\n", up, up ? up->pid : 0, fd, p, n, p);
 	validaddr((uintptr)p, n, 1);
 	c = fdtochan(fd, OREAD, 1, 1);
 

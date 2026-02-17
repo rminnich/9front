@@ -1493,8 +1493,9 @@ dosyscall(ulong scallnr, Sargs *args, uintptr *retp)
 
 		up->s = *args;
 		up->scallnr = scallnr;
-syscallfmt(scallnr, userpc(), (va_list)up->s.args);
+if (0) {syscallfmt(scallnr, userpc(), (va_list)up->s.args);
 print("dosyscall: %s\n", up->syscalltrace);
+}
 		if(0) { // || up->procctl == Proc_tracesyscall){
 			syscallfmt(scallnr, userpc(), (va_list)up->s.args);
 			splhi();
@@ -1534,8 +1535,8 @@ print("dosyscall: %s\n", up->syscalltrace);
 		panic("error stack");
 	}
 	*retp = ret;
-sysretfmt(scallnr, (va_list)up->s.args, ret, startns, stopns);
-print("syscallret:%s\n", up->syscalltrace);
+if (0) {sysretfmt(scallnr, (va_list)up->s.args, ret, startns, stopns);
+print("syscallret:%s\n", up->syscalltrace);}
 	if(0) { // || up->procctl == Proc_tracesyscall){
 		todget(nil, &stopns);
 		sysretfmt(scallnr, (va_list)up->s.args, ret, startns, stopns);
