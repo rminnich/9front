@@ -551,8 +551,8 @@ faultriscv64(Ureg* ureg, Cause *cp)
 	// resumed after sysrfork(). Nope. 
 	if (0)	if (iskern(ureg->pc))
 		panic("fault in kernel mode (pc %p)\n", ureg->pc);
-	print("faultriscv64 pid %d\n", up->pid);
-	if (up->pid == 5) soft();
+	if (0)print("faultriscv64 pid %d\n", up->pid);
+	if (0)if (up->pid == 5) soft();
 	if(up == nil)
 		panic("fault %#lld with up == nil; pc %#p addr %#p",
 			ureg->cause, ureg->pc, addr);
@@ -569,7 +569,7 @@ faultriscv64(Ureg* ureg, Cause *cp)
 	print("fault %p read pc %p %d < uzero(%p) %d\n", addr, ureg->pc ,read, UZERO, addr < UZERO);
 	if(addr < UZERO || fault(addr, ureg->pc, read) < 0)
 		badpagefault(ureg, addr, read, insyscall);
-	if (up->pid == 5) soft();
+	if (0) if (up->pid == 5) soft();
 	if(addr<UZERO+0x28) {
 		dumpregs(ureg);
 		panic("fault: bad user address addr %#p pc %#p", addr, ureg->pc);
@@ -877,7 +877,7 @@ if (0)sbiputc('T');
 			 */
 		}
 	}
-	if (up->pid == 5) {print("soft at end of trap\n"); soft();}
+	if (0) if (up->pid == 5) {print("soft at end of trap\n"); soft();}
 	if (0)if (Trapdebug)
 		trapdbg(ureg, &why, 0);
 	if (TrapSpew) print("all done trap(), ur is %p, pc %p\n", ureg, ureg->pc);

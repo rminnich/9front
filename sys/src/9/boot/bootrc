@@ -1,5 +1,8 @@
 #!/bin/rc
 
+/riscv64/bin/echo run rc
+/riscv64/bin/rc -i
+
 # mount points
 mntgen -s slashn /n && chmod 666 /srv/slashn
 mntgen -s slashmnt /mnt && chmod 666 /srv/slashmnt

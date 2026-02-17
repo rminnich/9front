@@ -20,6 +20,12 @@ static Uart sbiuart = {
 	.phys	= &sbiphysuart,
 };
 
+static Uart*
+pnp(void)
+{
+	return &sbiuart;
+}
+
 static void
 donothing(Uart*, int)
 {
@@ -41,9 +47,8 @@ static int
 getc(Uart *)
 {
 	int sbigetc(void);
-	print("\nG\n");
 	int c = sbigetc();
-	return sbigetc();
+	return c;
 }
 
 void
@@ -63,34 +68,45 @@ static void
 interrupt(void)
 {
 	int c;
-	print("SI\n");
 	while ((c = getc(nil)) != -1) {
-		sbiputc('U');
+		sbiputc('I');
 		uartrecv(&sbiuart, (u8int)c);
-		sbiputc('V');
 	}
 	
 }
 
+static int sbiready = 0;
 static void
-enable(Uart *uart, int ie)
+enable(Uart *, int)
 {
 	print("SBI UART ENABLE\n");
 	addclock0link(interrupt, 100);
+	sbiready = 1;
 }
 
-void
-sbihzclock(void)
+static void
+kick(Uart *uart)
 {
-	interrupt();
+	sbiputc('1');
+	sbiputc('2');
+	coherence();
+	sbiputc('3');
+	while(1) {
+	sbiputc('4');		if(uart->op >= uart->oe && uartstageoutput(uart) == 0)
+			break;
+	sbiputc('5');		sbiputc(*(uart->op++));
+	}
+	sbiputc('6');
+	coherence();
 }
+
 
 PhysUart sbiphysuart = {
 	.name		= "sbi",
-	.pnp		= nil,
+	.pnp		= pnp,
 	.enable		= enable,
 	.disable	= nil,
-	.kick		= nil,
+	.kick		= kick,
 	.dobreak	= donothing,
 	.baud		= ureturn0,
 	.bits		= ureturn0,

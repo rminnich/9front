@@ -42,6 +42,7 @@ dev
 misc
 #	gic
 	uartsbi
+#	uartqemu
 #	sdvirtio10	pci sdscsi
 port
 	int cpuserver = 0;

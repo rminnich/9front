@@ -9,6 +9,18 @@ main(int, char *argv[])
 {
 	char buf[32];
 
+	print("HI!\n");
+	while (1) {
+		print("read from stdin, 1 byte\n");
+		int rc = read(0, buf, 1);
+		if (rc < 1) {
+			print("shit, no stdin: %r");
+			exits("shit. no stdin;%r");
+		}
+		print("rc is %d\n", rc);
+		if (rc > 0) print("byte is %c\n", buf[0]);
+	}
+
 	while (0) {
 		print("hit the any key");
 		print("let's go\n");
@@ -39,6 +51,7 @@ main(int, char *argv[])
 	if(fork() == 0){
 		print("HEY LET'S RUN PAQFS\n");
 		execl("/bin/paqfs", "-qa", "-c", "8", "-m", root, "/boot/bootfs.paq", nil);
+		//("/bin/rc", "-m", "/lib/rcmain");
 		print("FUCK IT FAILED: %r\n");
 		goto Err;
 	}
@@ -61,7 +74,6 @@ static uchar x[4096];
 int i;
 i = stat("/bin/bootrc", x, 4096);
 print("---------->>>>>>>>>>>>>>>>>>stat of /bin/bootrc is %d\n", i);
-for(i = 0; i < 16384; i++) write(1, "hi\n", 3);
 	exec("/bin/bootrc", argv);
 Err:
 	print("WE ARE FUCKED\n");

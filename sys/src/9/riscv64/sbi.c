@@ -89,6 +89,19 @@ sbiputc(uvlong c)
 	sbicall(1, 0, c, nil, nil);
 }
 
+int
+sbigetc(void)
+{
+	Sbiret c;
+	int ret;
+	c.status = 0;
+	c.error = 0;
+	ret = sbicall(2, 0, 0, &c, nil);
+	//print("getchar: ret %x, status %x, error %x\n", ret, c.status, c.error);
+	// sbi seems not to set anything in ret. oh well.
+	return ret;
+}
+
 vlong
 sbiclearipi(void)
 {

@@ -42,13 +42,6 @@ NDNR:
 		ECALL
 	JMP NDNR
 
-TEXT	sbigetc(SB), 1, $-4
-		MOV $2, R17
-		MOV $0, R16
-		MOV R10, R8
-		ECALL
-		RET
-
 TEXT	stop<>(SB), 1, $-4
 _stop:
 	WFI

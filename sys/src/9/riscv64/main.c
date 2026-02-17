@@ -35,7 +35,7 @@ init0(void)
 	if(!waserror()){
 		snprint(buf, sizeof(buf), "%s %s", "ARM64", conffile);
 		ksetenv("terminal", buf, 0);
-		ksetenv("cputype", "arm64", 0);
+		ksetenv("cputype", "riscv64", 0);
 		if(cpuserver)
 			ksetenv("service", "cpu", 0);
 		else
@@ -260,6 +260,15 @@ main(void)
 	quotefmtinstall();
 	sbiputc('q');
 	print("hi there\n");
+	print("let's try an sbigetc()\n");
+	for(int i = 0; i < 16; i++) {
+		int c;
+		int tries;
+		sbiputc('=');
+		for(c = sbigetc(), tries = 0; tries < 1<<16 && c < 0; tries++, c = sbigetc())
+			;
+		print("Got %#x, tries %d\n", c, tries);
+	}
 /*	if (0){
 		int fail = 0;
 		static int x[512];

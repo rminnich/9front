@@ -137,7 +137,7 @@ char	Erdonly[] = 	"read only file system";
 char	Ebadblock[] = 	"bad block";
 char	Edirtoobig[] = 	"directory entry too big";
 
-int debug = 0;
+int debug = 1;
 
 #pragma varargck	type	"V"	uchar*
 
