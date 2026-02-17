@@ -19,6 +19,7 @@ main(int, char *argv[])
 		}
 		print("rc is %d\n", rc);
 		if (rc > 0) print("byte is %c\n", buf[0]);
+		if ((rc > 0) && (buf[0] == 'x')) break;
 	}
 
 	while (0) {

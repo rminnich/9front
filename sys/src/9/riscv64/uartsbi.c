@@ -74,7 +74,10 @@ interrupt(void)
 	int c;
 	while ((c = getc(nil)) != -1) {
 		if (Spew) sbiputc('I');
+		if (c == '\r')
+			c = '\n';
 		uartrecv(&sbiuart, (u8int)c);
+		sbiputc(c);
 	}
 	
 }

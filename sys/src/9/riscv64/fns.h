@@ -87,7 +87,6 @@ extern void meminit(void);
 /* clock */
 extern void clockinit(void);
 extern void synccycles(void);
-extern void armtimerset(int);
 extern void clockshutdown(void);
 
 /* fpu */
@@ -111,7 +110,6 @@ extern void procsave(Proc*);
 extern void procrestore(Proc *);
 extern void trap(Ureg*);
 extern void syscall(Ureg*);
-extern void faultarm64(Ureg*);
 extern void dumpstack(void);
 extern void dumpregs(Ureg*);
 

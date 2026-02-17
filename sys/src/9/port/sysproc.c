@@ -10,6 +10,10 @@
 
 #include	<a.out.h>
 
+enum {
+	Spew = 1,
+};
+
 uintptr
 sysr1(va_list)
 {
@@ -1493,7 +1497,7 @@ dosyscall(ulong scallnr, Sargs *args, uintptr *retp)
 
 		up->s = *args;
 		up->scallnr = scallnr;
-if (0) {syscallfmt(scallnr, userpc(), (va_list)up->s.args);
+if (Spew) {syscallfmt(scallnr, userpc(), (va_list)up->s.args);
 print("dosyscall: %s\n", up->syscalltrace);
 }
 		if(0) { // || up->procctl == Proc_tracesyscall){
@@ -1535,7 +1539,7 @@ print("dosyscall: %s\n", up->syscalltrace);
 		panic("error stack");
 	}
 	*retp = ret;
-if (0) {sysretfmt(scallnr, (va_list)up->s.args, ret, startns, stopns);
+if (Spew) {sysretfmt(scallnr, (va_list)up->s.args, ret, startns, stopns);
 print("syscallret:%s\n", up->syscalltrace);}
 	if(0) { // || up->procctl == Proc_tracesyscall){
 		todget(nil, &stopns);

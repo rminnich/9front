@@ -261,7 +261,7 @@ main(void)
 	sbiputc('q');
 	print("hi there\n");
 	print("let's try an sbigetc()\n");
-	for(int i = 0; i < 16; i++) {
+	if (0)for(int i = 0; i < 16; i++) {
 		int c;
 		int tries;
 		sbiputc('=');
