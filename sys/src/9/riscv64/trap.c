@@ -20,7 +20,7 @@ enum {
 	Probedebug	= 0,
 	Intrdebug	= 0,
 	Tryallcpus	= 0,
-	TrapSpew	= 1,
+	TrapSpew	= 0,
 
 	Ntimevec = 20,		/* number of time buckets for each intr */
 	Ncauses = Ngintr + Nlintr + Nexc,	/* # of Vctls */

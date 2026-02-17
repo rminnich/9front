@@ -11,6 +11,7 @@
 
 enum {
 	Scaling = 2,
+	Spew = 0,
 };
 
 int	schedgain = 30;	/* units in seconds */
@@ -74,16 +75,16 @@ if (0)print("schedinit: up %p pid %d\n", up, up ? up->pid : -1);
 		m->proc = nil;
 		switch(up->state) {
 		default:
-if (1)print("updatecpu then break\n");
+if (Spew)print("updatecpu then break\n");
 			updatecpu(up);
 			break;
 		case Running:
-if (1)print("running\n");
+if (Spew)print("running\n");
 			up->state = Scheding;
 			ready(up);
 			break;
 		case Moribund:
-if (1)print("schedinit: moribund\n");
+if (Spew)print("schedinit: moribund\n");
 			mmurelease(up);
 			lock(&procalloc);
 			up->state = Dead;
@@ -159,14 +160,14 @@ procswitch(void)
 	up->pcycles += t;
 
 	procsave(up);
-if (1)print("procswitch: p %p, pid %d, sp %p, pc %p\n", up, up->pid, up->sched.sp, up->sched.pc);
+if (Spew)print("procswitch: p %p, pid %d, sp %p, pc %p\n", up, up->pid, up->sched.sp, up->sched.pc);
 	if(!setlabel(&up->sched)) {
-if (1)print("procswitch: heading out to gotolabel after setlabel; m sp %p s pc %p\n", m->sched.sp, m->sched.pc);
+if (Spew)print("procswitch: heading out to gotolabel after setlabel; m sp %p s pc %p\n", m->sched.sp, m->sched.pc);
 		gotolabel(&m->sched);
-if (1)print("procswitch: back from gotolabel\n");
+if (Spew)print("procswitch: back from gotolabel\n");
 	}
 
-if (0)print("back to kernel from %d\n", up->pid);
+if (Spew)print("back to kernel from %d\n", up->pid);
 	procrestore(up);
 
 	cycles(&t);
@@ -185,7 +186,7 @@ sched(void)
 			m->ilockdepth,
 			up != nil ? up->lastilock: nil,
 			(up != nil && up->lastilock != nil) ? up->lastilock->pc: 0);
-if (1)print("sched: up is %p pid %d\n", up, up ? up->pid : 0);
+if (Spew)print("sched: up is %p pid %d\n", up, up ? up->pid : 0);
 	if(up != nil) {
 		/*
 		 * Delay the sched until the process gives up the locks
@@ -210,16 +211,16 @@ if (1)print("sched: up is %p pid %d\n", up, up ? up->pid : 0);
 		}
 		s = splhi();
  		up->delaysched = 0;
-if (1)print("sched: call procswitch pid %d\n", up->pid);
-if (1) for(int i = 0; i < 32; i++) print("%p: %p\n", &((u64int*)up->sched.sp)[i], ((u64int*)up->sched.sp)[i]);
+if (Spew)print("sched: call procswitch pid %d\n", up->pid);
+if (Spew) for(int i = 0; i < 32; i++) print("%p: %p\n", &((u64int*)up->sched.sp)[i], ((u64int*)up->sched.sp)[i]);
 		procswitch();
-if (1)print("sched: back from procswitch %d\n", up->pid);
+if (Spew)print("sched: back from procswitch %d\n", up->pid);
 		splx(s);
 		return;
 	}
-if (1)if (up)print("proc %d calls runproc\n", up->pid);
+if (Spew)if (up)print("proc %d calls runproc\n", up->pid);
 	up = runproc();
-if (1)if (up)print("proc %p(%d) returns from runproc sp %p pc %p\n", up, up->pid, up->sched.sp, up->sched.pc);
+if (Spew)if (up)print("proc %p(%d) returns from runproc sp %p pc %p\n", up, up->pid, up->sched.sp, up->sched.pc);
 
 	if(up != m->readied)
 		m->schedticks = m->ticks + HZ/10;
@@ -229,13 +230,13 @@ if (1)if (up)print("proc %p(%d) returns from runproc sp %p pc %p\n", up, up->pid
 	up->affinity = m->machno;
 	up->state = Running;
 	mmuswitch(up);
-if (1)print("gotolabel: pid %d sp %p, pc %p\n", up->pid, up->sched.sp, up->sched.pc, up->dbgreg ? up->dbgreg->r1 : 0);
+if (Spew)print("gotolabel: pid %d sp %p, pc %p\n", up->pid, up->sched.sp, up->sched.pc, up->dbgreg ? up->dbgreg->r1 : 0);
 	extern int block;
 	block = up->pid != 1;
 if (0)print("block? %d\n", up->pid == 1 && ! block);
 	if (0)while(up->pid == 1 && ! block && up->dbgreg ? up->dbgreg->r1 > UZERO : 0);
-	print("gotolabe; sp %p pc %p\n", up->sched.sp, up->sched.pc);
-if (1) for(int i = 0; i < 32; i++) print("%p: %p\n", &((u64int*)up->sched.sp)[i], ((u64int*)up->sched.sp)[i]);
+	if (Spew)print("gotolabe; sp %p pc %p\n", up->sched.sp, up->sched.pc);
+if (Spew) for(int i = 0; i < 32; i++) print("%p: %p\n", &((u64int*)up->sched.sp)[i], ((u64int*)up->sched.sp)[i]);
 	gotolabel(&up->sched);
 }
 
@@ -1671,7 +1672,7 @@ kproc(char *name, void (*func)(void *), void *arg)
 
 	procpriority(p, PriKproc, 0);
 
-if (1)	print("kproc: %s p %p, pid %d\n", name, p, p->pid);
+if (Spew)	print("kproc: %s p %p, pid %d\n", name, p, p->pid);
 
 	ready(p);
 }
