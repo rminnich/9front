@@ -10,6 +10,10 @@
 #include "fns.h"
 #include "io.h"
 
+enum {
+	Spew = 0,
+};
+
 extern PhysUart sbiphysuart;
 
 static Uart sbiuart = {
@@ -54,14 +58,14 @@ getc(Uart *)
 void
 uartconsinit(void)
 {
-	sbiputc('u');
+	if (Spew) sbiputc('u');
 	consuart = &sbiuart;
-	sbiputc('V');
+	if (Spew) sbiputc('V');
 	consuart->console = 1;
-	sbiputc('X');
+	if (Spew) sbiputc('X');
 	uartctl(consuart, "l8 pn s1");
-	sbiputc('Y');
-	for(int i = 0; i < 15; i++) putc(consuart, "SBI USART HERE\n"[i]);
+	if (Spew) sbiputc('Y');
+	if (Spew) for(int i = 0; i < 15; i++) putc(consuart, "SBI USART HERE\n"[i]);
 }
 
 static void
@@ -69,7 +73,7 @@ interrupt(void)
 {
 	int c;
 	while ((c = getc(nil)) != -1) {
-		sbiputc('I');
+		if (Spew) sbiputc('I');
 		uartrecv(&sbiuart, (u8int)c);
 	}
 	
@@ -87,16 +91,17 @@ enable(Uart *, int)
 static void
 kick(Uart *uart)
 {
-	sbiputc('1');
-	sbiputc('2');
+	if (Spew) sbiputc('1');
+	if (Spew) sbiputc('2');
 	coherence();
-	sbiputc('3');
+	if (Spew) sbiputc('3');
 	while(1) {
-	sbiputc('4');		if(uart->op >= uart->oe && uartstageoutput(uart) == 0)
+		if (Spew) sbiputc('4');
+		if(uart->op >= uart->oe && uartstageoutput(uart) == 0)
 			break;
-	sbiputc('5');		sbiputc(*(uart->op++));
+		if (Spew) sbiputc('5');		sbiputc(*(uart->op++));
 	}
-	sbiputc('6');
+	if (Spew) sbiputc('6');
 	coherence();
 }
 
