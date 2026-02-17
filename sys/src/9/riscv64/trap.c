@@ -16,11 +16,12 @@
 #define BASEOP(inst)	((inst) & MASK(7))
 
 enum {
-	Trapdebug	= 1,
+	Trapdebug	= 0,
 	Probedebug	= 0,
 	Intrdebug	= 0,
 	Tryallcpus	= 0,
 	TrapSpew	= 0,
+	TrapOhShit  = 0,
 
 	Ntimevec = 20,		/* number of time buckets for each intr */
 	Ncauses = Ngintr + Nlintr + Nexc,	/* # of Vctls */
@@ -824,7 +825,7 @@ trap(Ureg* ureg)
 	uint type;
 	Cause why;
 	Traphandler handler;
-	print("trap ureg %p pc %p up %p up->pid %d\n", ureg, up, ureg->pc, up ? up->pid : -1);
+	if (TrapOhShit) print("trap ureg %p pc %p up %p up->pid %d\n", ureg, up, ureg->pc, up ? up->pid : -1);
 if (0)sbiputc('T');
 	if (Trapdebug) {
 		if (ureg == nil)
