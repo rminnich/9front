@@ -254,7 +254,7 @@ fixfault(Segment *s, uintptr addr, int read)
 #endif
 
 	qunlock(s);
-	print("fixfault: pid %d, call putmmu(%p, %p, %p)\n", up->pid, addr, mmuphys, pg);
+	if (0)print("fixfault: pid %d, call putmmu(%p, %p, %p)\n", up->pid, addr, mmuphys, pg);
 	putmmu(addr, mmuphys, *pg);
 
 	if (up->pid == 5) soft();
@@ -431,7 +431,7 @@ vmemchr(void *s, int c, ulong n)
 	uintptr a;
 	ulong m;
 	void *t;
-	print("ENTER vmemchr(%p, %d, %ld)\n", s, c, n);
+	if (0)print("ENTER vmemchr(%p, %d, %ld)\n", s, c, n);
 	a = (uintptr)s;
 	for(;;){
 		m = BY2PG - (a & (BY2PG-1));
@@ -439,18 +439,18 @@ vmemchr(void *s, int c, ulong n)
 			break;
 		/* spans pages; handle this page */
 		t = memchr((void*)a, c, m);
-		print("vmemchar will %s\n", t != nil ? "return" : "keep going");
+		if (0)print("vmemchar will %s\n", t != nil ? "return" : "keep going");
 		if(t != nil)
 			return t;
 		a += m;
 		n -= m;
-		print("KZERO > UTZERO ? a < KZERO : a >= UTZERO %d\n", KZERO > UTZERO ? a < KZERO : a >= UTZERO);
+		if (0)print("KZERO > UTZERO ? a < KZERO : a >= UTZERO %d\n", KZERO > UTZERO ? a < KZERO : a >= UTZERO);
 		if(KZERO > UTZERO ? a < KZERO : a >= UTZERO) {
 			validaddr(a, 1, 0);
 		}
 	}
 
-	print("vmemchr: fits in one page(%p, %d, %ld\n", a, c, n);
+	if (0)print("vmemchr: fits in one page(%p, %d, %ld\n", a, c, n);
 	/* fits in one page */
 	return memchr((void*)a, c, n);
 }

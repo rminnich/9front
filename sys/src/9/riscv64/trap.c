@@ -568,7 +568,7 @@ faultriscv64(Ureg* ureg, Cause *cp)
 	read = ureg->cause != Storepage;  /* exception, so Rv64intr must be 0 */
 	/* page fault on a kernel address is never okay. */
 	if (0)while (block != 1024);
-	print("fault %p read pc %p %d < uzero(%p) %d\n", addr, ureg->pc ,read, UZERO, addr < UZERO);
+	if (TrapSpew)print("fault %p read pc %p %d < uzero(%p) %d\n", addr, ureg->pc ,read, UZERO, addr < UZERO);
 	if(addr < UZERO || fault(addr, ureg->pc, read) < 0)
 		badpagefault(ureg, addr, read, insyscall);
 	if (0) if (up->pid == 5) soft();

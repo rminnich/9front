@@ -1,7 +1,8 @@
 #!/bin/rc
 
-/riscv64/bin/echo run rc
+/riscv64/bin/echo HI HI
 /riscv64/bin/rc -i
+
 
 # mount points
 mntgen -s slashn /n && chmod 666 /srv/slashn
@@ -22,6 +23,9 @@ bind -qa '#a' /net
 
 # usually better than 1970
 cat '#r/rtc' >/dev/time >[2]/dev/null
+
+/riscv64/bin/echo HI HI
+/riscv64/bin/rc -i
 
 # reparse variables
 for(i in `{ls -Qp /env}){
@@ -69,6 +73,8 @@ mt=()
 
 fn main{
 	mp=()
+	/bin/echo "HI HI HI HI HI HIHI HI"
+	/riscv64/bin/rc -i
 	while(~ $#mp 0){
 		if(! ~ $#bootloop 0){
 			nobootprompt=$bootloop
@@ -172,19 +178,19 @@ fn main{
 }
 
 # keyboard and serial console
-if(test -x /bin/aux/kbdfs){
-	a=$console(1)
-	if(! ~ $#a 0)
-		a=/dev/eia^$a
-	aux/kbdfs -q -s cons $a
-
-	if(! ~$#kbmap 0){
-		if(test -f /sys/lib/kbmap/$kbmap){
-			echo 'setting kbmap to' $kbmap
-			cat /sys/lib/kbmap/$kbmap >/dev/kbmap
-		}
-	}
-}
+#if(test -x /bin/aux/kbdfs){
+#	a=$console(1)
+#	if(! ~ $#a 0)
+#		a=/dev/eia^$a
+#	aux/kbdfs -q -s cons $a
+#
+#	if(! ~$#kbmap 0){
+#		if(test -f /sys/lib/kbmap/$kbmap){
+#			echo 'setting kbmap to' $kbmap
+#			cat /sys/lib/kbmap/$kbmap >/dev/kbmap
+#		}
+#	}
+#}
 
 # usb devices
 if(test -x /bin/nusbrc && ! test -e /env/nousbrc)

@@ -10,7 +10,7 @@ main(int, char *argv[])
 	char buf[32];
 
 	print("HI!\n");
-	while (1) {
+	while (0) {
 		print("read from stdin, 1 byte\n");
 		int rc = read(0, buf, 1);
 		if (rc < 1) {

@@ -4,6 +4,10 @@
 #include "dat.h"
 #include "fns.h"
 
+enum {
+	Spew = 0,
+};
+
 #define INITMAP	(ROUND((uintptr)end + BY2PG, PGLSZ(1))-KZERO)
 
 // kmax will be computed dynamically in future; for now it is
@@ -91,39 +95,6 @@ l1map(uintptr va, uintptr pa, uintptr pe, uintptr attr)
 	USED(pa);
 	USED(pe);
 	USED(attr);
-	if (0)print("l1map");
-#ifdef xxx
-	uintptr *l1, *l0;
-
-	assert(pa < pe);
-
-	va &= -BY2PG;
-	pa &= -BY2PG;
-	pe = PGROUND(pe);
-
-	l1 = (uintptr*)L1;
-
-	while(pa < pe){
-		if(l1[PTL1X(va, 1)] == 0 && (pe-pa) >= PGLSZ(1) && ((va|pa) & PGLSZ(1)-1) == 0){
-			l1[PTL1X(va, 1)] = PTEVALID | PA2PTE(pa) | attr;
-			va += PGLSZ(1);
-			pa += PGLSZ(1);
-			continue;
-		}
-		if(l1[PTL1X(va, 1)] & PTEVALID) {
-//			assert((l1[PTL1X(va, 1)] & PTETABLE) == PTETABLE);
-			l0 = KADDR(l1[PTL1X(va, 1)] & -PGLSZ(0));
-		} else {
-			l0 = rampage();
-			memset(l0, 0, BY2PG);
-			l1[PTL1X(va, 1)] = PTEVALID | PA2PTE(PADDR(l0));
-		}
-		assert(l0[PTLX(va, 0)] == 0);
-		l0[PTLX(va, 0)] = PTEVALID | PA2PTE(pa) | attr;
-		va += BY2PG;
-		pa += BY2PG;
-	}
-#endif
 }
 
 u64int *sv57, *sv48, *sv39, *pGiB;
@@ -141,7 +112,7 @@ kmapram(uintptr base, uintptr limit)
 //	if (0) if ((base > 0) || (limit > 4 * GiB))
 //		return;
 	sv57[0] = ((((u64int)sv48)>>2)) | 1;
-	print("%p is %p\n", sv57, sv57[0]);
+	if (Spew)print("%p is %p\n", sv57, sv57[0]);
 	sv48[0] = ((((u64int)sv39)>>2)) | 1;
 /*
 print("%p is %p\n", sv48, sv48[0]);
@@ -339,7 +310,7 @@ userpte(void *v)
 		print("%p in up %p: not mapped\n", v, up);
 		error("not mapped");
 	}
-	print("userpte %p -> pte %p contains %p phys %p v %p\n", v, pte, *pte, ptephys(*pte), kmapaddr(ptephys(*pte)));
+	if (Spew)print("userpte %p -> pte %p contains %p phys %p v %p\n", v, pte, *pte, ptephys(*pte), kmapaddr(ptephys(*pte)));
 	return pte;
 }
 
@@ -351,7 +322,7 @@ usertokernel(void *v)
 		print("%p in up %p: not mapped\n", v, up);
 		error("not mapped");
 	}
-	print("usertokernel %p -> pte %p contains %p phys %p v %p\n", v, pte, *pte, ptephys(*pte), kmapaddr(ptephys(*pte)));
+	if (Spew)print("usertokernel %p -> pte %p contains %p phys %p v %p\n", v, pte, *pte, ptephys(*pte), kmapaddr(ptephys(*pte)));
 	return kmapaddr((uintptr)pte);
 }
 
@@ -429,7 +400,7 @@ putmmu(uintptr va, uintptr pa, Page *pg)
 	if (pteattr & PTEWRITE)
 		pteattr |= PTEDIRTY | PTEREAD;
 
-if (1)print("pid %d putmmu(%p, %p, %p)\n", up ? up->pid : 0, va, pa, pg);
+if (Spew)print("pid %d putmmu(%p, %p, %p)\n", up ? up->pid : 0, va, pa, pg);
 	s = splhi();
 	while((pte = mmuwalk(va, 0)) == nil){
 		spllo();
@@ -445,7 +416,7 @@ if (1)print("pid %d putmmu(%p, %p, %p)\n", up ? up->pid : 0, va, pa, pg);
 	else
 		flushasidva((uvlong)up->asid<<48 | va>>12);
 	*pte = PA2PTE(pa) | pteattr;
-	if (1)print("va %p pa %p pte %p *pte %p\n", va, pa, pte, *pte);
+	if (Spew)print("va %p pa %p pte %p *pte %p\n", va, pa, pte, *pte);
 	if(needtxtflush(pg)){
 		cachedwbinvse(kmap(pg), BY2PG);
 		cacheiinvse((void*)va, BY2PG);
@@ -499,7 +470,7 @@ if (0)	print("p %p for setting tbr?\n", p);
 	}
 if (0)	print("allocasid(p) %d\n", allocasid(p));
 	if(allocasid(p)){
-		print("NOT messing with ASID\n");
+		if (Spew)print("NOT messing with ASID\n");
 		flushasid((uvlong)p->asid<<48);
 	}
 

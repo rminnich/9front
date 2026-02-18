@@ -22,6 +22,8 @@ $objtype
 		mv
 		ndb
 			dnsgetip
+		ns
+		ps
 		rc
 		rm
 		sed
