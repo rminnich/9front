@@ -182,7 +182,7 @@ sysrfork(va_list list)
 	p->pcycles = -p->kentry;
 
 	pid = pidalloc(p);
-	print("sysrfork: allocated pid up %p pid %d\n", p, pid);
+	if (Spew)print("sysrfork: allocated pid up %p pid %d\n", p, pid);
 
 	qunlock(&p->debug);
 	qunlock(&up->debug);
@@ -277,11 +277,11 @@ sysrfork(va_list list)
 	if(up->wired)
 		procwired(p, up->affinity);
 
-	print("up %p %d up->sched.sp %p @ dbgreg %p pc is %p\n", up, up->pid, up->sched.sp, up->dbgreg, up->dbgreg->pc);
+	if (Spew)print("up %p %d up->sched.sp %p @ dbgreg %p pc is %p\n", up, up->pid, up->sched.sp, up->dbgreg, up->dbgreg->pc);
 	ready(p);
-	print("sysrfork: %d call sched\n", up->pid);
+	if (Spew)print("sysrfork: %d call sched\n", up->pid);
 	sched();
-	print("sysrfork: pid %d returns from sched\n", up->pid);
+	if (Spew)print("sysrfork: pid %d returns from sched\n", up->pid);
 	return pid;
 }
 

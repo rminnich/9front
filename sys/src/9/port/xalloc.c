@@ -8,6 +8,7 @@ enum
 {
 	Nhole		= 128,
 	Magichole	= 0x484F4C45,			/* HOLE */
+	Spew 		= 0,
 };
 
 typedef struct Hole Hole;
@@ -47,44 +48,44 @@ xinit(void)
 	Hole *h, *eh;
 	Confmem *cm;
 	int i;
-	print("XINIT XINIT XINIT XINIT from %p\n", getcallerpc(&n));
-	if (once) print("XINIT OH NO CLALAED TWICE %d fro %p!!!\n", once, getcallerpc(&n));
+	if (Spew)print("XINIT XINIT XINIT XINIT from %p\n", getcallerpc(&n));
+	if (once) if (Spew)print("XINIT OH NO CLALAED TWICE %d fro %p!!!\n", once, getcallerpc(&n));
 	once++;
 
 	eh = &xlists.hole[Nhole-1];
 	for(h = xlists.hole; h < eh; h++)
 		h->link = h+1;
-	print("xinit: after setting up hole links\n");
+	if (Spew)print("xinit: after setting up hole links\n");
 	xlists.flist = xlists.hole;
 
 	kpages = conf.npage - conf.upages;
-	print("XINIT: kpages 0x%lx\n", kpages);
+	if (Spew)print("XINIT: kpages 0x%lx\n", kpages);
 
 	for(i=0; i<nelem(conf.mem); i++){
-		print("xinit for\n");
+		if (Spew)print("xinit for\n");
 		cm = &conf.mem[i];
-		print("xinit cm #%d: cm %p\n", i, cm);
+		if (Spew)print("xinit cm #%d: cm %p\n", i, cm);
 		n = cm->npage;
-		print("%d: npage 0x%lx\n", i, n);
+		if (Spew)print("%d: npage 0x%lx\n", i, n);
 		if(n > kpages)
 			n = kpages;
 		/* don't try to use non-KADDR-able memory for kernel */
-		print("xinit:call cankaddr with cm->base %p", cm->base);
+		if (Spew)print("xinit:call cankaddr with cm->base %p", cm->base);
 		maxpages = cankaddr(cm->base)/BY2PG;
-		print("xinit:maxpages 0x%lx\n", maxpages);
+		if (Spew)print("xinit:maxpages 0x%lx\n", maxpages);
 		if(n > maxpages)
 			n = maxpages;
-	print("maxpages and n is 0x%lx\n", n);
+	if (Spew)print("maxpages and n is 0x%lx\n", n);
 		/* give to kernel */
 		if(n > 0){
-			print("xinit: give %ld to kernel n > 0\n", n);
+			if (Spew)print("xinit: give %ld to kernel n > 0\n", n);
 			cm->kbase = (uintptr)KADDR(cm->base);
 			cm->klimit = (uintptr)cm->kbase+(uintptr)n*BY2PG;
 			if(cm->klimit == 0)
 				cm->klimit = (uintptr)-BY2PG;
-			print("xinit call xhole with %p, %llx\n", cm->base, cm->klimit - cm->kbase);
+			if (Spew)print("xinit call xhole with %p, %llx\n", cm->base, cm->klimit - cm->kbase);
 			xhole(cm->base, cm->klimit - cm->kbase);
-			print("xinit: end of ok, kpages is now 0x%lx...ok\n", kpages - n);
+			if (Spew)print("xinit: end of ok, kpages is now 0x%lx...ok\n", kpages - n);
 			kpages -= n;
 		}
 		/*
@@ -92,9 +93,9 @@ xinit(void)
 		 * will be given to user by pageinit()
 		 */
 	}
-	print("xinit: print summary\n");
+	if (Spew)print("xinit: if (Spew)print summary\n");
 	xsummary();
-	print("xinit: done\n");
+	if (Spew)print("xinit: done\n");
 }
 
 void*
@@ -130,40 +131,40 @@ xallocz(ulong size, int zero)
 	Xhdr *p;
 	Hole *h, **l;
 
-	print("xallocz %lud %s\n", size, zero ? "zerod" : "");
-	xsummary();
+	if (Spew)print("xallocz %lud %s\n", size, zero ? "zerod" : "");
+	if (Spew)xsummary();
 	/* add room for magix & size overhead, round up to nearest vlong */
 	size += BY2V + offsetof(Xhdr, data[0]);
 	size &= ~(BY2V-1);
 
 	ilock(&xlists);
 	l = &xlists.table;
-	print("xallocz xsummary before for loop\n");
-	xsummary();
+	if (Spew)print("xallocz xsummary before for loop\n");
+	if (Spew)xsummary();
 	for(h = *l; h; h = h->link) {
-		print("check h %p h->addr %p h->size 0x%llx size 0x%lx\n", h, h->addr, h->size, size);
+		if (Spew)print("check h %p h->addr %p h->size 0x%llx size 0x%lx\n", h, h->addr, h->size, size);
 		if(h->size >= size) {
-			print("... it's good addr %p\n", h->addr);
+			if (Spew)print("... it's good addr %p\n", h->addr);
 			p = (Xhdr*)KADDR(h->addr);
-			print("p is %p\n", p);
+			if (Spew)print("p is %p\n", p);
 			h->addr += size;
 			h->size -= size;
-			print("xsummary after allocate using hole %p, addr %p, \n", h, p);
-			xsummary();
+			if (Spew)print("xsummary after allocate using hole %p, addr %p, \n", h, p);
+			if (Spew)xsummary();
 			if(h->size == 0) {
 				*l = h->link;
 				h->link = xlists.flist;
 				xlists.flist = h;
 			}
-			print("iunlock %p\n", &xlists);
+			if (Spew)print("iunlock %p\n", &xlists);
 			iunlock(&xlists);
-			print("memset %p for %lud bytes\n", p, size);
+			if (Spew)print("memset %p for %lud bytes\n", p, size);
 			//while(zero);
 			if(zero)
 				memset(p, 0, size);
 			p->magix = Magichole;
 			p->size = size;
-			print("XALLOC  %p 0x%lx bytes called by %p\n", p->data, size, getcallerpc(&size));
+			if (Spew)print("XALLOC  %p 0x%lx bytes called by %p\n", p->data, size, getcallerpc(&size));
 			return p->data;
 		}
 		l = &h->link;
@@ -176,7 +177,7 @@ void*
 xalloc(ulong size)
 {
 	void *v = xallocz(size, 1);
-	print("xalloc %p callerpc %p\n", v, getcallerpc(&size));
+	if (Spew)print("xalloc %p callerpc %p\n", v, getcallerpc(&size));
 	return v;
 }
 
@@ -187,7 +188,7 @@ xfree(void *p)
 
 	x = (Xhdr*)((uintptr)p - offsetof(Xhdr, data[0]));
 	if(x->magix != Magichole) {
-		xsummary();
+		if (Spew)xsummary();
 		panic("xfree(%#p) %#ux != %#lux", p, Magichole, x->magix);
 	}
 	xhole(PADDR((uintptr)x), x->size);
@@ -198,7 +199,7 @@ xmerge(void *vp, void *vq)
 {
 	Xhdr *p, *q;
 
-	print("XMERGE\n");
+	if (Spew)print("XMERGE\n");
 	p = (Xhdr*)(((uintptr)vp - offsetof(Xhdr, data[0])));
 	q = (Xhdr*)(((uintptr)vq - offsetof(Xhdr, data[0])));
 	if(p->magix != Magichole || q->magix != Magichole) {
@@ -206,7 +207,7 @@ xmerge(void *vp, void *vq)
 		ulong *wd;
 		void *badp;
 
-		xsummary();
+		if (Spew)xsummary();
 		badp = (p->magix != Magichole? p: q);
 		wd = (ulong *)badp - 12;
 		for (i = 24; i-- > 0; ) {
@@ -232,7 +233,7 @@ xhole(uintptr addr, uintptr size)
 	Hole *h, *c, **l;
 	uintptr top;
 
-	print("XHOLE %p 0x%llx\n", addr, size);
+	if (Spew)print("XHOLE %p 0x%llx\n", addr, size);
 	if(size == 0)
 		return;
 
@@ -267,7 +268,7 @@ xhole(uintptr addr, uintptr size)
 
 	if(xlists.flist == nil) {
 		iunlock(&xlists);
-		print("xfree: no free holes, leaked %llud bytes\n", (uvlong)size);
+		if (Spew)print("xfree: no free holes, leaked %llud bytes\n", (uvlong)size);
 		return;
 	}
 

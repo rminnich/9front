@@ -157,18 +157,18 @@ evenaddr(uintptr addr)
 void
 forkchild(Proc *p, Ureg *ureg)
 {
-	print("forkchild parent %d kid %d p %p ureg %p stack ? %p\n", up->pid, p->pid, p, ureg, (uintptr) p - TRAPFRAMESIZE);
+	if(0)print("forkchild parent %d kid %d p %p ureg %p stack ? %p\n", up->pid, p->pid, p, ureg, (uintptr) p - TRAPFRAMESIZE);
 	Ureg *cureg;
-	print("ureg sp %p pc %p\n", ureg->sp, ureg->pc);
+	if(0)print("ureg sp %p pc %p\n", ureg->sp, ureg->pc);
 	p->sched.pc = (uintptr) sysrforkret;
 	p->sched.sp = (uintptr) p - sizeof(Ureg);
-	print("forkchild: sp %p pc %p\n", p->sched.sp, p->sched.pc);
+	if(0)print("forkchild: sp %p pc %p\n", p->sched.sp, p->sched.pc);
 
 	cureg = (Ureg*) (p->sched.sp);
-	print("fork child: ureg -> r1 is %p\n", ureg->r1);
-	print("forkchild: memmove(%p, %p, %d)\n", cureg, ureg, sizeof(Ureg)-16);
+	if(0)print("fork child: ureg -> r1 is %p\n", ureg->r1);
+	if(0)print("forkchild: memmove(%p, %p, %d)\n", cureg, ureg, sizeof(Ureg)-16);
 	memmove(cureg, ureg, sizeof(Ureg));
-	print("forkchild: sp %p pc %p\n", p->sched.sp, p->sched.pc);
+	if(0)print("forkchild: sp %p pc %p\n", p->sched.sp, p->sched.pc);
 	cureg->arg = 0;
 }
 

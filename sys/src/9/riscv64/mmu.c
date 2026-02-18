@@ -319,7 +319,7 @@ usertokernel(void *v)
 {
 	uintptr *pte = mmuwalk((uvlong)v, 0);
 	if (v == nil){
-		print("%p in up %p: not mapped\n", v, up);
+		if (Spew)print("%p in up %p: not mapped\n", v, up);
 		error("not mapped");
 	}
 	if (Spew)print("usertokernel %p -> pte %p contains %p phys %p v %p\n", v, pte, *pte, ptephys(*pte), kmapaddr(ptephys(*pte)));
@@ -459,7 +459,7 @@ if (0)	print("SWITCH MMUTOP IS %p, @ 100 is %p\n", m->mmutop, m->mmutop[0x100]);
 if (0)	print("p %p for setting tbr?\n", p);
 	if(p == nil){
 		// maybe flush the user mode entries? probably
-		print("mmuswitch p is nil what to do?\n");
+		if(Spew)print("mmuswitch p is nil what to do?\n");
 		wsatp(((uintptr)m->mmutop>>12)|(8ULL<<60));
 		return;
 	}

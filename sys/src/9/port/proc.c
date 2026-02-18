@@ -1284,7 +1284,7 @@ pexit(char *exitstr, int freemem)
 	Segment *s;
 	int i;
 
-	print("pexit:%d\n", up->pid);
+	if (0)print("pexit:%d\n", up->pid);
 
 	up->alarm = 0;
 	timerdel(up);
@@ -1604,8 +1604,6 @@ linkproc(void)
 	extern int block;
 	block = 0;
 	spllo();
-	print("up->kfun %p up->karg %p\n", up->kpfun, up->kparg);
-	//while (! block);
 	(*up->kpfun)(up->kparg);
 	pexit("kproc exiting", 0);
 }
@@ -1616,7 +1614,6 @@ kproc(char *name, void (*func)(void *), void *arg)
 	static Pgrp *kpgrp;
 	Proc *p;
 
-	print("kproc: %s, func %p, arg %p\n", name, func, arg);
 	while((p = newproc()) == nil){
 		freebroken();
 		resrcwait("no procs for kproc");
@@ -2102,7 +2099,7 @@ pidalloc(Proc *p)
 	} else
 		pidadd(p->noteid);
 
-	print("PID pid added %d\n", i->pid);
+	if (0)print("PID pid added %d\n", i->pid);
 	return p->pid = i->pid;
 }
 
