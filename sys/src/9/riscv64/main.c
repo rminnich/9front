@@ -316,6 +316,7 @@ main(void)
 	u64int cm = rdstimecmp();
 	print("cm is %#llx\n", cm);
 	mmu1init(); print("DONE 	mmu1init(); islo %d m %p\n", islo(), m); 
+	cpuinit(0); print("DONE cpuinit(0) -- FIXME\n");
 	schedinit();
 }
 

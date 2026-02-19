@@ -378,10 +378,35 @@ ishartonline(int hart)		/* unused */
 	return harts[hart].running;
 }
 
+/* it's a shame they did not plan for a fallback if hardware RNG broke ... */
+void
+hwrand(void *v, ulong n)
+{
+	ulong amt = 0;
+	u8int *vp = v;
+	while(amt < n) {
+		u64int s = rseed();
+		switch(s&3) {
+			case 0:
+				break;
+			case 1:
+				memmove(&vp[amt], &s, sizeof(s));
+				amt += sizeof(s);
+				break;
+			case 2:
+				break;
+			case 3:
+				panic("HWRNG broke");				
+				break;	
+		}
+	}
+	return;
+}
 /* cpu-specific setup for this cpu */
 void
 cpuinit(int cpu)
 {
+	extern void (*hwrandbuf)(void*, ulong);
 	USED(cpu);
 #ifdef xxx
 	Hart *hartst;
@@ -405,6 +430,25 @@ cpuinit(int cpu)
 
 	m->plicctxt = mach2context(m);	/* base context without priv mode */
 	clockoff();
+	/* start the entropy */
+	for(int i = 0; i < 1000; i++) {
+		u64int s = rseed();
+		switch(s&3) {
+			case 0:
+				print("got 16 bits, let's hang on\n");
+				break;
+			case 1:
+				print("got 32 bits, we have hardware RNG\n");
+				hwrandbuf = hwrand;
+				break;
+			case 2:
+				print("not ready ... wait\n");
+				break;
+			case 3:
+				print("HWRNG broken ...\n");				
+				break;	
+		}
+	}
 }
 
 static uvlong tscperclintglob;

@@ -36,6 +36,7 @@
 #define STVAL	0x143
 #define SIP	0x144
 #define SATP	0x180	/* page table root, paging mode (was sptbr) */
+#define SEED	0x015
 
 #define MCHBASE	0x300
 #define MSTATUS	0x300

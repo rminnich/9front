@@ -176,6 +176,7 @@ extern void bootargsinit(void);
 void wsatp(u64int);
 void wstvec(u64int);
 u64int rsatp(void);
+u64int rseed(void);
 void *usertokernel(void *v);
 u64int *userpte(void *v);
 void flushalltlb(void);
@@ -240,6 +241,7 @@ void*	putstvec(void *);
 /* archrv */
 void calibrate(void);
 uint mach2context(Mach *);
+void cpuinit(int);
 
 /* rva23 */
 void wrstimecmp(u64int);

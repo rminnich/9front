@@ -60,6 +60,10 @@ TEXT	wsatp(SB), 1, $-4
 	LOADSATP(RARG)
 	RET
 
+TEXT	rseed(SB), 1, $-4
+	MOV	CSR(SEED), R8
+	RET
+
 TEXT	wstvec(SB), 1, $-4
 	SFENCE
 	MOV	RARG, CSR(STVEC)
