@@ -27,6 +27,7 @@ cat '#r/rtc' >/dev/time >[2]/dev/null
 /riscv64/bin/echo HI HI
 /riscv64/bin/rc -i
 
+echo reparse variables
 # reparse variables
 for(i in `{ls -Qp /env}){
 	switch($i){
@@ -36,6 +37,9 @@ for(i in `{ls -Qp /env}){
 		$i=`{echo $$i}
 	}
 }
+
+/riscv64/bin/echo HI HI
+/riscv64/bin/rc -i
 
 fn sigint {
 	status=interrupted
@@ -70,6 +74,9 @@ fn ask {
 }
 
 mt=()
+
+echo main baby
+rc -i
 
 fn main{
 	mp=()
@@ -204,7 +211,7 @@ for(i in /rc/lib/*.rc){
 }
 
 # add partitions and binds
-configlocal
+#configlocal
 
 while(){
 	@{main}

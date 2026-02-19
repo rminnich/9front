@@ -1017,7 +1017,7 @@ procread(Chan *c, void *va, long n, vlong off)
 			"%-27s %-27s %-11s "
 			"%11lud %11lud %11lud "
 			"%11lud %11lud %11lud "
-			"%11lud %11lud %11lud\n",
+			"%11lud %11lud %11lud %11lud\n",
 			p->text, p->user, sps,
 			tk2ms(p->time[TUser]),
 			tk2ms(p->time[TSys]),
@@ -1026,7 +1026,7 @@ procread(Chan *c, void *va, long n, vlong off)
 			tk2ms(p->time[TCSys]),
 			tk2ms(p->time[TCReal]),
 			(ulong)(procpagecount(p)*BY2PG/1024),
-			p->basepri, p->priority);
+			p->basepri, p->priority, p->priority);
 	statbufread:
 		if(offset >= j)
 			return 0;

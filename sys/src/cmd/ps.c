@@ -34,15 +34,12 @@ main(int argc, char *argv[])
 		break;
 	} ARGEND;
 	Binit(&bout, 1, OWRITE);
-	print("PS opens proc\n");
 	if(chdir("/proc")==-1)
 		error("/proc");
-	print("PS opens .");
 	fd=open(".", OREAD);
 	if(fd<0)
 		error("/proc");
 	tot = dirreadall(fd, &dir);
-	print("ps reads %d entries", tot);
 	if(tot <= 0){
 		fprint(2, "ps: empty directory /proc\n");
 		exits("empty");
@@ -53,7 +50,6 @@ main(int argc, char *argv[])
 
 	qsort(mem, tot, sizeof(Dir*), cmp);
 	for(i=0; i<tot; i++){
-		print("%d:%s\n", i, mem[i]->name);
 		ps(mem[i]->name);
 		none = 0;
 	}
@@ -70,25 +66,21 @@ ps(char *s)
 	int argc, basepri, fd, i, n, pri;
 	char args[256], *argv[16], buf[64], nbuf[13], pbuf[8], rbuf[20], rbuf1[20], status[4096];
 
-	print("ps %s\n", s);
 	sprint(buf, "%s/status", s);
 	fd = open(buf, OREAD);
 	if(fd<0){
-		print("%s:%r\n", s);
 		return;
 	}
 	n = read(fd, status, sizeof status-1);
-	print("%s got %d bytes\n", buf, n);
 	close(fd);
 	if(n <= 0){
 		print("read:%r\n");
 		return;
 	}
 	status[n] = '\0';
-	print("status %s\n", status);
 
 	if((argc = tokenize(status, argv, nelem(argv)-1)) < 12){
-		print("argc is %d\n", argc);
+		print("argc is %d, needs to be 12\n", argc);
 		return;
 	}
 	argv[argc] = 0;
