@@ -96,6 +96,8 @@ install:V: /$objtype/$p$CONF
 
 pciqemu.$O: ../port/pci.h
 
+ethervirtio10.$O:		../port/virtio10.h
+
 initcode.out:		init9.$O initcode.$O /$objtype/lib/libc.a
 	$LD -l -R1  -o $target $prereq
 
