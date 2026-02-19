@@ -24,6 +24,7 @@ $objtype
 			dnsgetip
 		ns
 		ps
+		ratrace
 		rc
 		rm
 		sed

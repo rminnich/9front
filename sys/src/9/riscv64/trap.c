@@ -71,7 +71,7 @@ dbgpc(Proc *)
 void
 procfork(Proc *p)
 {
-	print("procfork %p\n", p);
+//	print("procfork %p\n", p);
 	print("fix fpuprocfork\n");
 //	fpuprocfork(p);
 //	p->tpidr = up->tpidr;
@@ -322,12 +322,7 @@ if (0)	for(i = 0; i < 32; i++) print("%d:0x%llx\n", i, ureg->regs[i]);
 		iprint("syscall %d changed return ureg->pc %#p (old pc %#p)\n",
 			scallnr, ureg->pc, pc);
 	if (TrapSys) print("SYSCALL return: up->pid %d scallnr %d RFORK %d\n", up->pid, scallnr, RFORK);
-	if ((up->pid == 1) && (scallnr == RFORK)) {
-		extern int block;
-		block = 1;
-		print("block pid is 1 and we're back from fork\n");
-		while(! block);
-	}
+	kexit(ureg);
 
 }
 

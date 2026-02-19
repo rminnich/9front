@@ -137,7 +137,7 @@ char	Erdonly[] = 	"read only file system";
 char	Ebadblock[] = 	"bad block";
 char	Edirtoobig[] = 	"directory entry too big";
 
-int debug = 1;
+int debug = 0;
 
 #pragma varargck	type	"V"	uchar*
 
@@ -352,7 +352,6 @@ rwalk(Fid *f)
 	err = nil;
 
 	for(nqid = 0; nqid < nwname; nqid++){
-		print("nqid %d: name %s\n", nqid, rhdr.wname[nqid]);
 		if((qid.type & QTDIR) == 0){
 			err = Enotdir;
 			break;
@@ -362,7 +361,6 @@ rwalk(Fid *f)
 			break;
 		}
 		npaq = paqWalk(paq, rhdr.wname[nqid]);
-		print("that walk is %p\n", npaq);
 		if(npaq == nil) {
 			err = Enotexist;
 			break;
