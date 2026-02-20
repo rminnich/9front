@@ -218,14 +218,13 @@ vmap(uvlong pa, vlong size)
 	
 	return (void*)mmukmap(va | PTEDEVICE, pa, size);
 #endif
-	panic("vmap");
-	return nil;
+	return (void *)pa;
 }
 
 void
 vunmap(void *, vlong)
 {
-	panic("vunmap");
+	//panic("vunmap");
 }
 
 // That macro hackery is just too much for me to look at, and kenc should

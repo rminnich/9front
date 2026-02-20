@@ -39,6 +39,7 @@ PORT=\
 	tod.$O\
 	xalloc.$O\
 	userinit.$O\
+	virtio10mem.$O\
 
 # don't forget: l.$O must always be first
 OBJ=\

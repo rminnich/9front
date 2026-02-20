@@ -431,7 +431,7 @@ cpuinit(int cpu)
 	m->plicctxt = mach2context(m);	/* base context without priv mode */
 	clockoff();
 	/* start the entropy */
-	for(int i = 0; i < 1000; i++) {
+	for(int i = 0; i < 32; i++) {
 		u64int s = rseed();
 		switch(s&3) {
 			case 0:

@@ -156,6 +156,7 @@ TEXT rdstimecmp(SB), 1, $-4
 	
 TEXT	coherence(SB), 1, $-4
 	FENCE
+	FENCE_RW
 	RET
 
 TEXT	wfi(SB), 1, $-4

@@ -565,6 +565,7 @@ pciprobe(void)
 	uvlong mask;
 
 	h = t = nil;
+	print("virtio10 pciprobe\n");
 
 	/* §4.1.2 PCI Device Discovery */
 	for(p = nil; p = pcimatch(p, 0x1AF4, 0x1041);){
@@ -594,28 +595,49 @@ pciprobe(void)
 		if(virtiomapregs(p, cap, 0, &c->notify) == nil)
 			goto Baddev;
 		c->notifyoffmult = pcicfgr32(p, cap+16);
-
+		pcicfgw8(p, 4, 6);
+		print("cmd %04x status %04x\n", pcicfgr16(p, 4), pcicfgr16(p, 6));
 		/* device reset */
 		coherence();
 		vout8(&cfg, Vconf_status, 0);
 		while(vin8(&cfg, Vconf_status) != 0)
 			delay(1);
-		vout8(&cfg, Vconf_status, Sacknowledge|Sdriver);
+		/* acknowledge the reset */
+		vout8(&cfg, Vconf_status, Sacknowledge);
+		int tries;
+		while(vin8(&cfg, Vconf_status) == 0) {
+			print("waiting for reset ack\n");
+			if (tries++ > 16)
+				goto Baddev;
+			delay(1);
+		}
+		vout8(&cfg, Vconf_status, Sacknowledge | Sdriver);
+		print("status is no %#x\n", vin8(&cfg, Vconf_status));
+
 
 		/* negotiate feature bits */
+		/* modern features */
 		vout32(&cfg, Vconf_devfeatsel, 1);
 		c->feat[1] = vin32(&cfg, Vconf_devfeat);
+		print("features: %x\n", c->feat[1]);
 
+		/* slot 0 -- network features */
 		vout32(&cfg, Vconf_devfeatsel, 0);
 		c->feat[0] = vin32(&cfg, Vconf_devfeat);
 
+		/* now we must write the features we accept. */
+		/* accept modern features */
 		vout32(&cfg, Vconf_drvfeatsel, 1);
 		vout32(&cfg, Vconf_drvfeat, c->feat[1] & Fversion1);
 
+		/* accept network features */
 		vout32(&cfg, Vconf_drvfeatsel, 0);
-		vout32(&cfg, Vconf_drvfeat, c->feat[0] & (Fmac|Fctrlvq|Fctrlrx));
+		vout32(&cfg, Vconf_drvfeat, c->feat[0] /*& (Fmac|Fctrlvq|Fctrlrx)*/);
 
-		vout8(&cfg, Vconf_status, vin8(&cfg, Vconf_status) | Sfeaturesok);
+		/* set features ok */
+		print("negot features got %#x and %#x final value %#x\n", c->feat[0], c->feat[1],vin8(&cfg, Vconf_status) );
+		vout8(&cfg, Vconf_status, vin8(&cfg, Vconf_status) | Sfeaturesok | Sdriver | Sdriverok);
+		print("negot features got %#x and %#x final value %#x\n", c->feat[0], c->feat[1],vin8(&cfg, Vconf_status) );
 
 		for(i=0; i<nelem(c->queue); i++){
 			vout16(&cfg, Vconf_queuesel, i);
@@ -664,7 +686,7 @@ reset(Ether* edev)
 	static uchar zeros[Eaddrlen];
 	Ctlr *ctlr;
 	int i;
-
+	print("VIORTIO10 reset\n");
 	if(ctlrhead == nil)
 		ctlrhead = pciprobe();
 
@@ -676,7 +698,7 @@ reset(Ether* edev)
 			break;
 		}
 	}
-
+	if(ctlr == nil) print("fuck. no card\n");
 	if(ctlr == nil)
 		return -1;
 
@@ -704,7 +726,7 @@ reset(Ether* edev)
 	edev->promiscuous = promiscuous;
 
 	pcisetbme(ctlr->pcidev);
-	intrenable(edev->irq, interrupt, edev, edev->tbdf, edev->name);
+	//intrenable(edev->irq, interrupt, edev, edev->tbdf, edev->name);
 
 	return 0;
 }
@@ -712,5 +734,6 @@ reset(Ether* edev)
 void
 ethervirtio10link(void)
 {
+	print("addethercard\n");
 	addethercard("virtio10", reset);
 }

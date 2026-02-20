@@ -12,31 +12,46 @@
 u8int
 vin8(Vio *r, int p)
 {
+	u8int i;
 	assert(r->type == Vio_mem);
-	return *(u8int *)(r->mem+p);
+	coherence();
+	i = *(u8int *)(r->mem+p);
+	print("read8@%p:%02x\n", r->mem+p, i);
+	return i;
 }
 
 
 u16int
 vin16(Vio *r, int p)
 {
+	u16int i;
 	assert(r->type == Vio_mem);
-	return *(u16int *)(r->mem+p);
+	coherence();
+	i = *(u16int *)(r->mem+p);
+	print("read16@%p:%04x\n", r->mem+p, i);
+	return i;
 }
 
 u32int
 vin32(Vio *r, int p)
 {
+	u32int i;
 	assert(r->type == Vio_mem);
-	return *(u32int *)(r->mem+p);
+	coherence();
+	i = *(u32int *)(r->mem+p);
+	print("read32@%p:%08x\n", r->mem+p, i);
+	return i;
 }
 
 u64int
 vin64(Vio *r, int p)
 {
+	u64int i;
 	assert(r->type == Vio_mem);
-	return *(u64int*)(r->mem+p);
-	
+	coherence();
+	i = *(u64int*)(r->mem+p);
+	print("read64@%p:%llx\n", r->mem+p, i);
+	return i;	
 }
 
 void
@@ -44,6 +59,8 @@ vout8(Vio *r, int p, u8int v)
 {
 	assert(r->type == Vio_mem);
 	*(uchar *)(r->mem+p) = v;
+	print("write8@%p:%#02x\n", (r->mem+p), v);
+	coherence();
 }
 
 void
@@ -51,6 +68,8 @@ vout16(Vio *r, int p, u16int v)
 {
 	assert(r->type == Vio_mem);
 	*(u16int *)(r->mem+p) = v;
+	print("write16@%p:%#04x\n", (r->mem+p), v);
+	coherence();
 }
 
 void
@@ -58,6 +77,8 @@ vout32(Vio *r, int p, u32int v)
 {
 	assert(r->type == Vio_mem);
 	*(u32int *)(r->mem+p) = v;
+	print("write32@%p:%#08x\n", (r->mem+p), v);
+	coherence();
 }
 
 void
@@ -65,6 +86,8 @@ vout64(Vio *r, int p, u64int v)
 {
 	assert(r->type == Vio_mem);
 	*(u64int *)(r->mem+p) = v;
+	print("write64@%p:%#llx\n", (r->mem+p), v);
+	coherence();
 }
 
 void
@@ -72,6 +95,7 @@ virtiounmap(Vio *r, usize sz)
 {
 	assert(r->type == Vio_mem);
 	vunmap(r->mem, sz);	
+	coherence();
 }
 
 Vio*

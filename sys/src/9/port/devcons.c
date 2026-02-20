@@ -243,6 +243,7 @@ panic(char *fmt, ...)
 	vseprint(buf+strlen(buf), buf+sizeof(buf), fmt, arg);
 	va_end(arg);
 	iprint("%s\n", buf);
+	for(int i = 0; buf[i] != 0; i++) sbiputc(buf[i]);
 	if(consdebug)
 		(*consdebug)();
 	splx(s);
