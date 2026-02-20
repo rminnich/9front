@@ -4,6 +4,7 @@ $objtype
 		auth
 			secstore
 		aux
+			getflags
 			kbdfs
 			wpa
 		bind
@@ -43,6 +44,7 @@ rc
 		ethermultilink
 		srvtls
 		bootrc 555 sys sys ../boot/bootrc
+		pci
 tmp
 sys
 	lib
@@ -50,3 +52,5 @@ sys
 			+
 lib
 	firmware
+	pci
+

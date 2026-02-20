@@ -18,7 +18,7 @@ dev
 	uart
 #	usb
 #	rtc
-#	pci	pci
+	pci	pci
 	sd
 
 link
@@ -28,7 +28,7 @@ link
 #	ethermedium
 	loopbackmedium
 #	netdevmedium
-#	pciqemu		pci
+	pciqemu		pci
 
 ip
 	tcp
