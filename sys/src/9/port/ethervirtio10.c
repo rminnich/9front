@@ -231,6 +231,7 @@ txproc(void *v)
 		q->desc[j].len = BLEN(b);
 		coherence();
 		q->avail->idx++;
+		print("tx vqnotify\n");
 		vqnotify(ctlr, Vtxq);
 	}
 
@@ -308,6 +309,7 @@ rxproc(void *v)
 
 			blocks[i] = nil;
 			b->wp = b->rp + u->len - VheaderSize;
+			print("etheriq\n");
 			etheriq(edev, b);
 			q->lastused++;
 		}
@@ -388,10 +390,20 @@ interrupt(Ureg*, void* arg)
 			q = &ctlr->queue[i];
 			if(vhasroom(q)){
 				q->nintr++;
+				print("wakeup q %d nintr %d\n", i, q->nintr);
 				wakeup(q);
 			}
 		}
 	}
+}
+
+static Ether *e;
+
+static void
+poll()
+{
+	if (e != nil)
+		interrupt(nil, e);
 }
 
 static void
@@ -425,6 +437,8 @@ attach(Ether* edev)
 	kproc(name, rxproc, edev);
 	snprint(name, sizeof name, "#l%dtx", edev->ctlrno);
 	kproc(name, txproc, edev);
+	e = edev;
+	addclock0link(poll, 100);
 }
 
 static char*
@@ -563,6 +577,7 @@ pciprobe(void)
 	Vio cfg;
 	int bar,cap, n, i;
 	uvlong mask;
+	int unit = 0;
 
 	h = t = nil;
 	print("virtio10 pciprobe\n");
@@ -570,13 +585,20 @@ pciprobe(void)
 	/* §4.1.2 PCI Device Discovery */
 	for(p = nil; p = pcimatch(p, 0x1AF4, 0x1041);){
 		/* non-transitional devices will have a revision > 0 */
-		if(p->rid == 0)
+		print("FOUND 0x1aF4/1041\n");
+		if(p->rid == 0) {
+			print("no good. 0 rid\n");
 			continue;
-		if((cap = virtiocap(p, 1)) < 0)
+		}
+		if((cap = virtiocap(p, 1)) < 0) {
+			print("no good. cap %#x < 0\n", cap);
 			continue;
+		}
 		bar = pcicfgr8(p, cap+4) % nelem(p->mem);
-		if(virtiomapregs(p, cap, Vconf_sz, &cfg) == nil)
+		if(virtiomapregs(p, cap, Vconf_sz, &cfg) == nil){
+			print("no good. virtiomapregs is nil\n");
 			continue;
+		}
 		if((c = mallocz(sizeof(Ctlr), 1)) == nil){
 			print("ethervirtio: no memory for Ctlr\n");
 			break;
@@ -587,13 +609,19 @@ pciprobe(void)
 		c->port = p->mem[bar].bar & mask;
 
 		pcienable(p);
-		if(virtiomapregs(p, virtiocap(p, 4), Vnet_sz, &c->dev) == nil)
+		if(virtiomapregs(p, virtiocap(p, 4), Vnet_sz, &c->dev) == nil){
+			print("no good. virtiomapgs of pcap is nil\n");
 			goto Baddev;
-		if(virtiomapregs(p, virtiocap(p, 3), 0, &c->isr) == nil)
+		}
+		if(virtiomapregs(p, virtiocap(p, 3), 0, &c->isr) == nil){
+			print("no good. second virtiocap mapregs fails\n");
 			goto Baddev;
+		}
 		cap = virtiocap(p, 2);
-		if(virtiomapregs(p, cap, 0, &c->notify) == nil)
+		if(virtiomapregs(p, cap, 0, &c->notify) == nil){
+			print("no good. third mapregs fails\n");
 			goto Baddev;
+		}
 		c->notifyoffmult = pcicfgr32(p, cap+16);
 		pcicfgw8(p, 4, 6);
 		print("cmd %04x status %04x\n", pcicfgr16(p, 4), pcicfgr16(p, 6));
@@ -607,7 +635,7 @@ pciprobe(void)
 		int tries;
 		while(vin8(&cfg, Vconf_status) == 0) {
 			print("waiting for reset ack\n");
-			if (tries++ > 16)
+			if (tries++ > 1024)
 				goto Baddev;
 			delay(1);
 		}
@@ -668,6 +696,12 @@ Baddev:
 			continue;
 		}
 		c->nqueue = i;		
+
+		pcisetbme(p);
+		char buf[32];
+		snprint(buf, sizeof(buf), "ethervirtio%d", unit);
+		unit++; 
+		//intrenable(p->intl, interrupt, p, p->tbdf, buf);
 
 		if(h == nil)
 			h = c;

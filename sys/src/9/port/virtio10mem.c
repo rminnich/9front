@@ -9,6 +9,10 @@
 #include "../port/error.h"
 #include "../port/virtio10.h"
 
+enum {
+	Spew = 0,
+};
+
 u8int
 vin8(Vio *r, int p)
 {
@@ -16,7 +20,7 @@ vin8(Vio *r, int p)
 	assert(r->type == Vio_mem);
 	coherence();
 	i = *(u8int *)(r->mem+p);
-	print("read8@%p:%02x\n", r->mem+p, i);
+	if (Spew)print("read8@%p:%02x\n", r->mem+p, i);
 	return i;
 }
 
@@ -28,7 +32,7 @@ vin16(Vio *r, int p)
 	assert(r->type == Vio_mem);
 	coherence();
 	i = *(u16int *)(r->mem+p);
-	print("read16@%p:%04x\n", r->mem+p, i);
+	if (Spew)print("read16@%p:%04x\n", r->mem+p, i);
 	return i;
 }
 
@@ -39,7 +43,7 @@ vin32(Vio *r, int p)
 	assert(r->type == Vio_mem);
 	coherence();
 	i = *(u32int *)(r->mem+p);
-	print("read32@%p:%08x\n", r->mem+p, i);
+	if (Spew)print("read32@%p:%08x\n", r->mem+p, i);
 	return i;
 }
 
@@ -50,7 +54,7 @@ vin64(Vio *r, int p)
 	assert(r->type == Vio_mem);
 	coherence();
 	i = *(u64int*)(r->mem+p);
-	print("read64@%p:%llx\n", r->mem+p, i);
+	if (Spew)print("read64@%p:%llx\n", r->mem+p, i);
 	return i;	
 }
 
@@ -59,7 +63,7 @@ vout8(Vio *r, int p, u8int v)
 {
 	assert(r->type == Vio_mem);
 	*(uchar *)(r->mem+p) = v;
-	print("write8@%p:%#02x\n", (r->mem+p), v);
+	if (Spew)print("write8@%p:%#02x\n", (r->mem+p), v);
 	coherence();
 }
 
@@ -68,7 +72,7 @@ vout16(Vio *r, int p, u16int v)
 {
 	assert(r->type == Vio_mem);
 	*(u16int *)(r->mem+p) = v;
-	print("write16@%p:%#04x\n", (r->mem+p), v);
+	if (Spew)print("write16@%p:%#04x\n", (r->mem+p), v);
 	coherence();
 }
 
@@ -77,7 +81,7 @@ vout32(Vio *r, int p, u32int v)
 {
 	assert(r->type == Vio_mem);
 	*(u32int *)(r->mem+p) = v;
-	print("write32@%p:%#08x\n", (r->mem+p), v);
+	if (Spew)print("write32@%p:%#08x\n", (r->mem+p), v);
 	coherence();
 }
 
@@ -86,7 +90,7 @@ vout64(Vio *r, int p, u64int v)
 {
 	assert(r->type == Vio_mem);
 	*(u64int *)(r->mem+p) = v;
-	print("write64@%p:%#llx\n", (r->mem+p), v);
+	if (Spew)print("write64@%p:%#llx\n", (r->mem+p), v);
 	coherence();
 }
 
