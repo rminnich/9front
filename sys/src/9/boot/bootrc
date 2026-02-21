@@ -24,6 +24,8 @@ bind -qa '#a' /net
 # usually better than 1970
 cat '#r/rtc' >/dev/time >[2]/dev/null
 
+net/cs&
+ip/ipconfig ether /net/ether0 10.0.2.15 255.255.255.0
 /riscv64/bin/echo SHIT SHOULD BE BOUND GIVE IT A LOOK
 /riscv64/bin/rc -i
 

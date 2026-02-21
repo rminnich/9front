@@ -29,6 +29,7 @@ typedef struct Vheader Vheader;
 typedef struct Vqueue Vqueue;
 
 typedef struct Ctlr Ctlr;
+static void poll(void);
 
 enum {
 	/* flags in Qnetstatus */
@@ -233,6 +234,7 @@ txproc(void *v)
 		q->avail->idx++;
 		print("tx vqnotify\n");
 		vqnotify(ctlr, Vtxq);
+		poll();
 	}
 
 	pexit("ether out queue closed", 1);
@@ -275,6 +277,7 @@ rxproc(void *v)
 	}
 
 	q->avail->flags &= ~Rnointerrupt;
+	coherence();
 
 	while(waserror())
 		;
@@ -282,6 +285,7 @@ rxproc(void *v)
 	for(;;){
 		/* replenish receive ring */
 		do {
+			coherence();
 			i = q->avail->idx & (q->qmask >> 1);
 			if(blocks[i] != nil)
 				break;
@@ -293,7 +297,9 @@ rxproc(void *v)
 			q->desc[j].len = BALLOC(b);
 			coherence();
 			q->avail->idx++;
+			coherence();
 		} while(q->avail->idx != q->used->idx);
+		coherence();
 		vqnotify(ctlr, Vrxq);
 
 		/* wait for any packets to complete */
@@ -301,7 +307,9 @@ rxproc(void *v)
 			sleep(q, vhasroom, q);
 
 		/* retire completed packets */
+		coherence();
 		while((i = q->lastused) != q->used->idx) {
+			coherence();
 			u = &q->usedent[i & q->qmask];
 			i = (u->id & q->qmask) >> 1;
 			if((b = blocks[i]) == nil)
@@ -312,6 +320,7 @@ rxproc(void *v)
 			print("etheriq\n");
 			etheriq(edev, b);
 			q->lastused++;
+			coherence();
 		}
 	}
 }
