@@ -148,6 +148,8 @@ static int
 vhasroom(void *v)
 {
 	Vqueue *q = v;
+	coherence();
+	if (0)if (q->lastused != q->used->idx) sbiputc('1'); else sbiputc('0');
 	return q->lastused != q->used->idx;
 }
 
@@ -162,6 +164,7 @@ vqnotify(Ctlr *ctlr, int x)
 		return;
 	q->nnote++;
 	vout16(&q->notify, 0, x);
+	coherence();
 }
 
 static void
@@ -221,8 +224,14 @@ txproc(void *v)
 				break;
 
 			/* ring full, wait and retry */
-			if(!vhasroom(q))
+			if(!vhasroom(q)){
+				static int once;
+				if (! once) {
+					print("txproc: hassroom checks q %p q->lastused %p != %p q->used->idx\n", q, &q->lastused,  &q->used->idx);
+					once = 1;
+				}
 				sleep(q, vhasroom, q);
+			}
 		}
 
 		/* slot is free, fill in descriptor */
@@ -232,7 +241,8 @@ txproc(void *v)
 		q->desc[j].len = BLEN(b);
 		coherence();
 		q->avail->idx++;
-		print("tx vqnotify\n");
+		print("tx vqnotify idx %d\n", q->avail->idx);
+		coherence();
 		vqnotify(ctlr, Vtxq);
 		poll();
 	}
@@ -303,8 +313,15 @@ rxproc(void *v)
 		vqnotify(ctlr, Vrxq);
 
 		/* wait for any packets to complete */
-		if(!vhasroom(q))
+		if(!vhasroom(q)){
+				static int once;
+				if (! once) {
+					print("rxproc: hassroom checks q %p q->lastused %p != %p q->used->idx\n", q, &q->lastused,  &q->used->idx);
+					once = 1;
+				}
+
 			sleep(q, vhasroom, q);
+		}
 
 		/* retire completed packets */
 		coherence();
@@ -394,16 +411,17 @@ interrupt(Ureg*, void* arg)
 
 	edev = arg;
 	ctlr = edev->ctlr;
-	if(vin8(&ctlr->isr, 0) & 1){
+	if(1 || (vin8(&ctlr->isr, 0) & 1)){
+		if (0)sbiputc('I');
 		for(i = 0; i < ctlr->nqueue; i++){
 			q = &ctlr->queue[i];
-			if(vhasroom(q)){
+			if(1 || vhasroom(q)){
 				q->nintr++;
-				print("wakeup q %d nintr %d\n", i, q->nintr);
+				if (q->nintr % 1000 == 0)print("wakeup q %d nintr %d\n", i, q->nintr);
 				wakeup(q);
 			}
 		}
-	}
+	} else if (0)sbiputc('i');
 }
 
 static Ether *e;
