@@ -461,6 +461,7 @@ struct Sys {
 			uvlong	clintsperhz;	/* clint ticks per HZ */
 			uvlong	nsthresh;  /* ipi: min ns to next clock intr */
 			uvlong	minclints;	/* min. interval until intr */
+			int maxplicpri;
 };
 
 Sys asys;

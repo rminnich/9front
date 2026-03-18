@@ -335,3 +335,49 @@ TEXT getsp(SB), 1, $-4
 	RET
 TEXT setsp(SB), 1,  $-4
 	MOV	R(ARG), R2
+
+/* more from Geoff. Thanks Geoff. */
+/*
+ * atomic operations
+ */
+
+/*
+ * AQ and RL AMO bits act as fences for the memory operand.
+ * sifive e51 rock-3 erratum requires AQ and RL for correct operation.
+ */
+
+/* see libc/riscv64/atom.s for ainc & adec */
+TEXT aadd(SB), 1, $-4			/* int aadd(int*, int addend); */
+	MOVW	addend+XLEN(FP), R9
+	AMOW(Amoadd, AQ|RL, 9, ARG, 10) /* *R(ARG) += R9; old *R(ARG) -> R10 */
+	ADDW	R9, R10, R(ARG)		/* old value + addend */
+	SEXT_W(R(ARG))
+	RET
+
+TEXT amoswapw(SB), 0, $(2*XLEN)	/* ulong amoswapw(ulong *a, ulong nv) */
+	MOVWU	nv+XLEN(FP), R9	/* new value */
+	AMOW(Amoswap, AQ|RL, 9, ARG, ARG) /* *R(ARG)=R9; old *R(ARG) ->R(ARG) */
+	RET
+
+TEXT amoorw(SB), 0, $(2*XLEN)	/* ulong amoorw(ulong *a, ulong bits) */
+	MOVWU	bits+XLEN(FP), R9
+	AMOW(Amoor, AQ|RL, 9, ARG, ARG) /* *R(ARG)|=R9; old *R(ARG) -> R(ARG) */
+	RET
+
+TEXT amoandw(SB), 0, $(2*XLEN)	/* ulong amoandw(ulong *a, ulong bits) */
+	MOV	R0, R10
+	JMP	xor
+TEXT amoandnw(SB), 0, $(2*XLEN)	/* ulong amoandnw(ulong *a, ulong bits) */
+	MOV	$-1, R10
+xor:
+	MOVWU	bits+XLEN(FP), R9
+	XOR	R10, R9
+	AMOW(Amoand, AQ|RL, 9, ARG, ARG) /* *R(ARG)&=R9; old *R(ARG) ->R(ARG) */
+	RET
+
+/*
+ * oddball instruction.
+ */
+TEXT ecall(SB), 0, $-4
+	ECALL
+	RET

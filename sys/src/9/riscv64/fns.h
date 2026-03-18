@@ -248,3 +248,9 @@ void wrstimecmp(u64int);
 u64int rdstimecmp(void);
 
 void soft(void);
+
+/* stuff */
+vlong probeulong(ulong *addr, int wr);
+
+/* AMO */
+ulong amoorw(ulong *a, ulong bits);

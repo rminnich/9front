@@ -17,7 +17,7 @@
 
 enum {
 	Trapdebug	= 0,
-	Probedebug	= 0,
+	Probedebug	= 1,
 	Intrdebug	= 0,
 	Tryallcpus	= 0,
 	TrapSpew	= 0,
@@ -403,6 +403,49 @@ trapaccess(Ureg *ureg, Cause *cp)
 	else
 		panic("trap: illegal access to %#p at %#p", ureg->tval,
 			ureg->pc);
+}
+
+/*
+ * returns contents of *addr, if it exists, otherwise -1.
+ * will atttempt to write *addr if wr is true.
+ * even if the memory exists, it must be mapped before calling this.
+ * may only work in machine mode if sbi intercepts access traps.
+ */
+vlong
+probeulong(ulong *addr, int wr)
+{
+	ulong old;
+	Mpl pl;
+
+	pl = splhi();
+	if (Probedebug) {
+		iprint("probing %#p...", addr);
+		delay(100);
+	}
+	m->probing = 1;		/* set probebad on any exception */
+	m->probebad = 0;
+	old = 0x01020304;
+	USED(old);
+	coherence();
+
+	old = *addr;
+	if (wr)
+		*addr = old;	/* rewrite word, in hopes of doing no harm */
+	coherence();		/* should fault by now if addr is bad */
+
+	m->probing = 0;
+	if (Probedebug) {
+		iprint(m->probebad? "missing\n": "present\n");
+		delay(100);
+	}
+	splx(pl);
+	if (m->probebad) {
+		m->probebad = 0;
+		return -1;
+	} else
+		return old;
+
+	return 0;
 }
 
 static void
