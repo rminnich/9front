@@ -3,6 +3,7 @@
 #include "mem.h"
 #include "dat.h"
 #include "fns.h"
+#include "io.h"
 #include "../port/error.h"
 
 #include <tos.h>
@@ -35,6 +36,11 @@ enum {
 /* instruction decoding */
 #define UNCOMPINST(pc)	(*(ushort *)(pc) | *(ushort *)((pc) + 2) << 16)
 #define BASEOP(inst)	((inst) & MASK(7))
+
+static Lock vctllock;
+static Vctl *vctl[Ncauses];
+static Vctl *pollvecs;
+static ulong trapcnt[Ncauses];
 
 void
 setupwatchpts(Proc*, Watchpt*, int)
@@ -1157,15 +1163,6 @@ plicoff(void)
 		plic->prio[irq] = Nopri;	/* don't interrupt on irq */
 }
 
-/* returns interrupt id (irq); 0 is none */
-uint
-plicclaim(uint ctxt)
-{
-	Plic *plic = (Plic *)soc.plic;
-
-	return (plic? plic->context[ctxt].claimcompl: 0);
-}
-
 void
 plicinit(void)
 {
@@ -1266,23 +1263,6 @@ plicenactxtirq(Plic *plic, int cpu, uint wd, uint bit)
 	}
 }
 
-static void
-plicdisctxtirq(Plic *plic, int cpu, uint wd, uint bit)
-{
-	int ctxt;
-
-	ctxt = cpu2context(cpu);
-	if (ctxt >= 0) {
-		if (soc.nodevamo) {
-			lock(&pliclock);
-			plic->enabits[ctxt][wd] &= ~bit;
-			unlock(&pliclock);
-		} else
-	panic("			amoandnw(&plic->enabits[ctxt][wd], bit);");
-		/* leave plic->context[ctxt].priothresh alone */
-	}
-}
-
 /*
  * we had enabled the interrupt in all S contexts, and let the fastest cpu
  * service it, but routing them all to cpu0 seems to be about the same speed.
@@ -1360,25 +1340,6 @@ intrcpu0(void)
 }
 
 void
-plicdisable(uint irq)
-{
-	USED(irq);
-	panic("plicdisable");
-#ifdef XXX
-	int cpu, wd, bit;
-	Plic *plic = (Plic *)soc.plic;
-
-	if (plic == nil || irq >= Ngintr)
-		return;
-	plic->prio[irq] = Nopri;
-	wd = BITMAPWD(irq);
-	bit = BITMAPBIT(irq);
-	for (cpu = 0; cpu < sys->nonline; cpu++)
-		plicdisctxtirq(plic, cpu, wd, bit);
-#endif
-}
-
-void
 plicnopend(uint irq)			/* unused */
 {
 	USED(irq);
@@ -1394,23 +1355,6 @@ plicnopend(uint irq)			/* unused */
 		unlock(&pliclock);
 	} else
 		amoandnw(&plic->pendbits[BITMAPWD(irq)], BITMAPBIT(irq));
-#endif
-}
-
-void
-plicoff(void)
-{
-	panic("plicoff");
-#ifdef xxx
-	int irq;
-	Plic *plic = (Plic *)soc.plic;
-
-	if (plic == nil)
-		return;
-	if (Intrdebug)
-		iprint("plic off\n");
-	for (irq = Ngintr-1; irq >= Firstirq; irq--)
-		plic->prio[irq] = Nopri;	/* don't interrupt on irq */
 #endif
 }
 
