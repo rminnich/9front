@@ -1446,9 +1446,9 @@ intrdisable(int, void (*f)(Ureg*, void*), void *a, int tbdf, char*)
 {
 	USED(f);
 	USED(a);
-	USED(tbdf);
-	panic("intrdisable");
-#ifdef xxx
+	USED(tbdf);	
+	panic("intrdisable -- fix me");
+#ifdef xx
 	Vctl *v;
 
 	ilock(&vctllock);
