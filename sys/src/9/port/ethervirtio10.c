@@ -728,7 +728,7 @@ Baddev:
 		char buf[32];
 		snprint(buf, sizeof(buf), "ethervirtio%d", unit);
 		unit++; 
-		//intrenable(p->intl, interrupt, p, p->tbdf, buf);
+		intrenable(p->intl, interrupt, p, p->tbdf, buf);
 
 		if(h == nil)
 			h = c;
@@ -787,7 +787,7 @@ reset(Ether* edev)
 	edev->promiscuous = promiscuous;
 
 	pcisetbme(ctlr->pcidev);
-	//intrenable(edev->irq, interrupt, edev, edev->tbdf, edev->name);
+	intrenable(edev->irq, interrupt, edev, edev->tbdf, edev->name);
 
 	return 0;
 }
