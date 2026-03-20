@@ -235,6 +235,7 @@ struct Mach
 	int machmode;
 	/* current value of this hart's clint->mtimecmp, in case unreadable */
 	uvlong	timecmp;
+	long cpumhz;
 
 	int	stack[1];
 };
@@ -462,6 +463,8 @@ struct Sys {
 			uvlong	nsthresh;  /* ipi: min ns to next clock intr */
 			uvlong	minclints;	/* min. interval until intr */
 			int maxplicpri;
+			int epoch;
+			int nonline;
 };
 
 Sys asys;

@@ -9,6 +9,7 @@ dev
 	srv
 	shr
 	dup
+	arch
 	tls
 	cap
 	fs

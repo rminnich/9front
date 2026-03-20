@@ -100,6 +100,7 @@ extern void fpukexit(Ureg*, FPsave*);
 extern void mathtrap(Ureg*);
 
 /* trap */
+void plicinit(void);
 extern void trapinit(void);
 extern int userureg(Ureg*);
 extern void evenaddr(uintptr);
@@ -131,6 +132,9 @@ extern void uartconsinit(void);
 
 /* dma */
 extern void dmaflush(int, void*, ulong);
+
+/* devarch */
+Dirtab*	addarchfile(char*, int, long(*)(Chan*, void*, long, vlong), long(*)(Chan*, void*, long, vlong));
 
 /* main */
 extern char *getconf(char *name);
@@ -254,3 +258,10 @@ vlong probeulong(ulong *addr, int wr);
 
 /* AMO */
 ulong amoorw(ulong *a, ulong bits);
+
+/* unclassified as of yet */
+int clzzbb(Clzuint);
+
+/* more ...*/
+void cacheflush(void);
+void halt(void);

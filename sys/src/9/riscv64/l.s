@@ -381,3 +381,26 @@ xor:
 TEXT ecall(SB), 0, $-4
 	ECALL
 	RET
+
+/* should we do this? */
+/* Zbb extension, as found in sifive u74 */
+TEXT clzzbb(SB), 1, $-4				/* int clzzbb(Clzuint) */
+	//CLZ(ARG, ARG)
+	//CALL panic
+	RET
+
+/* wait for loads & stores (including instruction writes) to finish */
+TEXT cacheflush(SB), 1, $-4
+	FENCE
+	FENCE_I
+	RET
+
+/*
+ * idle until an interrupt.  call it splhi().
+ *
+ * WFI will be awakened by an intr, even if disabled.
+ # WFI may pause the core cycle counter.
+ */
+TEXT halt(SB), 0, $-4
+	WFI			/* WFI may be a no-op or hint */
+	RET

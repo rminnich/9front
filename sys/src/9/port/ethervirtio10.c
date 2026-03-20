@@ -408,10 +408,13 @@ interrupt(Ureg*, void* arg)
 	Ctlr *ctlr;
 	Vqueue *q;
 	int i;
+	u8int b;
 
 	edev = arg;
 	ctlr = edev->ctlr;
-	if(1 || (vin8(&ctlr->isr, 0) & 1)){
+	b = vin8(&ctlr->isr, 0);
+	if (b & 1) print("GOT IRQ FROM Ethervirt10\n");
+	if(1 || (b & 1)){
 		if (0)sbiputc('I');
 		for(i = 0; i < ctlr->nqueue; i++){
 			q = &ctlr->queue[i];
@@ -728,7 +731,7 @@ Baddev:
 		char buf[32];
 		snprint(buf, sizeof(buf), "ethervirtio%d", unit);
 		unit++; 
-		intrenable(p->intl, interrupt, p, p->tbdf, buf);
+	//	intrenable(p->intl, interrupt, p, p->tbdf, buf);
 
 		if(h == nil)
 			h = c;

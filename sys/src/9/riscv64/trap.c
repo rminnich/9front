@@ -33,6 +33,25 @@ enum {
 	Write = 1,
 };
 
+/*
+ * these are potential constant expressions.  local clock & ipi
+ * interrupts are most frequent, then exceptions (page faults & system
+ * calls), then global interrupts.
+ *
+ * these are not safe macros; args may be evaluated multiple times.
+ */
+#define vctlidx(intrno, type) ( \
+	(type) == Localintr? Ngintr+(intrno): \
+	(type) == Exception? Ngintr+Nlintr+(intrno): \
+	(type) == Globalintr? (intrno): -1)
+
+#define intrtype(vno) ( \
+	((uint)vno) < Ngintr? Globalintr: \
+	((uint)vno) < Ngintr + Nlintr? Localintr: \
+	((uint)vno) < Ngintr + Nlintr + Nexc? Exception: Unknownflt)
+
+int	printenables = 1;		/* debugging control */
+
 /* instruction decoding */
 #define UNCOMPINST(pc)	(*(ushort *)(pc) | *(ushort *)((pc) + 2) << 16)
 #define BASEOP(inst)	((inst) & MASK(7))
@@ -217,6 +236,174 @@ typedef struct {
 } Cause;
 typedef int (*Traphandler)(Ureg *, Cause *);
 typedef void (*Exchandler)(Ureg *, Cause *);
+
+static char *
+vctlseprint(char *s, char *e, Vctl *v, int vno)
+{
+	s = seprint(s, e, "%3d %3d %10llud %3s %.*s", vno, v->irq, v->count,
+		v->ismsi? "msi": "- ", KNAMELEN, v->name);
+	if (v->unclaimed || v->intrunknown)
+		s = seprint(s, e, " unclaimed %lud unknown %lud", v->unclaimed,
+			v->intrunknown);
+	if(v->cpu >= 0)
+		s = seprint(s, e, " cpu%d", v->cpu);
+	return seprint(s, e, "\n");
+}
+
+static long
+irqallocread(Chan*, void *vbuf, long n, vlong offset)
+{
+	char *buf, *p, *e, str[90];
+	int ns, vno;
+	long oldn;
+	Vctl *v;
+
+	if(n < 0 || offset < 0)
+		error(Ebadarg);
+
+	oldn = n;
+	buf = vbuf;
+	e = str + sizeof str;
+	for(vno=0; vno<nelem(vctl); vno++)
+		for(v=vctl[vno]; v; v=v->next){
+			/* v is a trap, not yet seen?  adjust to taste */
+			if (v->isintr == 0 && v->count == 0)
+				continue;
+			ns = vctlseprint(str, e, v, vno) - str;
+			if(ns <= offset) { /* if do not want this, skip entry */
+				offset -= ns;
+				continue;
+			}
+			/* skip offset bytes */
+			ns -= offset;
+			p = str+offset;
+			offset = 0;
+
+			/* write at most min(n,ns) bytes */
+			if(ns > n)
+				ns = n;
+			memmove(buf, p, ns);
+			n -= ns;
+			buf += ns;
+
+			if(n == 0)
+				return oldn;
+		}
+	return oldn - n;
+}
+
+void
+trapenable(int vno, void (*f)(Ureg*, void*), void* a, char *name)
+{
+	Vctl *v;
+	Vctl *newvec(void (*f)(Ureg*, void*), void* a, int tbdf, char *name);
+
+	if((uint)vno >= nelem(vctl))
+		panic("trapenable: vector %d too big", vno);
+	v = newvec(f, a, BUSUNKNOWN, name);
+	v->isintr = 0;
+
+	ilock(&vctllock);
+	v->next = vctl[vno];
+	v->type = Exception;
+	vctl[vno] = v;
+	iunlock(&vctllock);
+}
+
+void
+zerotrapcnts(void)
+{
+	memset(trapcnt, 0, sizeof trapcnt);
+}
+
+void
+enablezerotrapcnts(void)
+{
+	if (Trapdebug)
+		addclock0link(zerotrapcnts, 1000);
+}
+
+static void
+vecacct(Vctl *v)
+{
+	for (; v != nil; v = v->next)
+		v->count++; //ainc(&v->count);
+}
+
+void
+trapclock(Ureg *ureg, void *)
+{
+	timerintr(ureg, 0);
+	iprint("trapclock called\n");
+}
+
+/* clear any ipi to this cpu */
+void
+clearipi(void)
+{
+	/* extinguish my ipi source */
+	if (nosbi || soc.ipiclint)
+		m->clint->msip[m->hartid] = 0;
+	else
+		sbiclearipi();		/* slow and stupid */
+	coherence();
+	clrsipbit(Ssie|Msie);
+}
+
+/*
+ * IPI: a wakeup from another cpu.
+ * will break out of interruptible wfi if resumed.
+ * if wfi is not interruptible, the ipi will resume it and we won't get here.
+ * thus these ipis are probably due to races: we thought the target wanted
+ * an ipi, but it then changed that signal.
+ */
+void
+trapipi(Ureg *, void *v)
+{
+	iprint("trapipi called\n");
+	m->intr++;
+	clearipi();
+	vecacct(v);
+}
+
+void
+trapfpu(Ureg *, void *)
+{
+	panic("trapfpu called");
+}
+
+void
+countipi(void)
+{
+	vecacct(vctl[vctlidx(Supswintr, Localintr)]);
+}
+#define CLCLK	"clint clock"
+#define PF	"page faults "
+
+void
+trapinit(void)
+{
+	int vno;
+
+	/* allocate these vectors for irqalloc counters at least */
+	trapenable(vctlidx(Suptmrintr, Localintr), trapclock, nil, CLCLK);
+	trapenable(vctlidx(Mchtmrintr, Localintr), trapclock, nil,
+		CLCLK " (mach)");
+	vno = vctlidx(Supswintr, Localintr);
+	/* vctl[vno] may be nil, but that's okay */
+	trapenable(vno, trapipi, vctl[vno], "ipi");
+
+	/* use trapclock as we don't expect it to be called via trapenable */
+	trapenable(vctlidx(Instpage, Exception), trapclock, nil, PF "(instr)");
+	trapenable(vctlidx(Loadpage, Exception), trapclock, nil, PF "(load)");
+	trapenable(vctlidx(Storepage, Exception), trapclock, nil, PF "(store)");
+	vno = vctlidx(Illinst, Exception);
+	/* vctl[vno] may be nil, but that's okay */
+	trapenable(vno, trapfpu, vctl[vno], "fpu (ill inst)");
+
+	plicinit();
+	addarchfile("irqalloc", 0444, irqallocread, nil);
+}
 
 static char* excname[] = {
 	"instruction address alignment",
@@ -997,24 +1184,6 @@ mach2context(Mach *)
 	return ctxtoff;
 }
 
-/*
- * these are potential constant expressions.  local clock & ipi
- * interrupts are most frequent, then exceptions (page faults & system
- * calls), then global interrupts.
- *
- * these are not safe macros; args may be evaluated multiple times.
- */
-#define vctlidx(intrno, type) ( \
-	(type) == Localintr? Ngintr+(intrno): \
-	(type) == Exception? Ngintr+Nlintr+(intrno): \
-	(type) == Globalintr? (intrno): -1)
-
-#define intrtype(vno) ( \
-	((uint)vno) < Ngintr? Globalintr: \
-	((uint)vno) < Ngintr + Nlintr? Localintr: \
-	((uint)vno) < Ngintr + Nlintr + Nexc? Exception: Unknownflt)
-
-int	printenables = 1;		/* debugging control */
 
 Vctl *
 newvec(void (*f)(Ureg*, void*), void* a, int tbdf, char *name)
