@@ -1163,12 +1163,6 @@ dumpregs(Ureg* ureg)
 //	archdumpregs();
 }
 
-
-void clearipi(void)
-{
-	panic("clearipi");
-}
-
 /* base plic context for mach (M mode). dependent upon system configuration */
 /* TODO: do we want this? */
 uint

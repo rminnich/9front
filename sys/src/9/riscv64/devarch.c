@@ -165,18 +165,13 @@ vlabs(vlong vl)				/* unused */
 	return vl >= 0? vl: -vl;
 }
 
-static int clzzpanic(Clzuint) {
-	panic("clzz");
-}
-
-int (*archclz)(Clzuint) = clzzpanic;
-
 int cputype = 0xf16beef;
 
 static long
 cputyperead(Chan*, void *a, long n, vlong off)
 {
 	char str[100];
+	extern int (*archclz)(Clzuint);
 
 	snprint(str, sizeof str, "%s %ud\next %s\n"
 		"idle %s %ssending IPIs over %lld ns\n",
@@ -344,6 +339,7 @@ mpshutdown(void)
  * something like 1 or 10 MHz and the cpu clock 600 - 1800 MHz.
  */
 
+#ifdef NO
 /*
  *  return value and frequency of timer (via hz)
  */
@@ -365,9 +361,12 @@ fastticks(uvlong* hz)
 			m->machno, clticks, sys->epoch);
 	return clticks;
 }
+#endif
 
+#ifdef WHICHONETHISORCLOCKC
 ulong
 µs(void)
 {
 	return fastticks2us(fastticks(nil));
 }
+#endif
