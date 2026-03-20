@@ -134,6 +134,7 @@ extern void uartconsinit(void);
 extern void dmaflush(int, void*, ulong);
 
 /* devarch */
+void archinit(void);
 Dirtab*	addarchfile(char*, int, long(*)(Chan*, void*, long, vlong), long(*)(Chan*, void*, long, vlong));
 
 /* main */

@@ -165,7 +165,7 @@ vlabs(vlong vl)				/* unused */
 	return vl >= 0? vl: -vl;
 }
 
-int cputype = 0xf16beef;
+static char *cputype = "riscv64";
 
 static long
 cputyperead(Chan*, void *a, long n, vlong off)

@@ -284,6 +284,7 @@ main(void)
 	print("\nPlan %d\n", 9);
 	print("conf.mem[0].base %p, conf.mem[0].limit %p, conf.mem[0].npage %lud\n", conf.mem[0].base, conf.mem[0].limit, conf.mem[0].npage);
 	trapinit(); print("DONE 	trapinit();\n"); 
+	archinit(); print("DONE archinit();\n");
 //	fpuinit(); print("DONE 	fpuinit();\n"); 
 //	intrinit(); print("DONE 	intrinit();\n"); 
 	clockinit(); print("DONE 	clockinit();\n"); 
