@@ -1,17 +1,6 @@
 /*
- * virtio 1.0 ethernet driver
+ * virtio ethernet driver implementing the legacy interface:
  * http://docs.oasis-open.org/virtio/virtio/v1.0/virtio-v1.0.html
- *
- * In contrast to ethervirtio.c, this driver handles the non-legacy
- * interface for virtio ethernet which uses mmio for all register accesses
- * and requires a laborate pci capability structure dance to get working.
- *
- * It is kind of pointless as it is most likely slower than
- * port i/o (harder to emulate on the pc platform).
- * 
- * The reason why this driver is needed it is that vultr set the
- * disable-legacy=on option in the -device parameter for qemu
- * on their hypervisor.
  */
 #include "u.h"
 #include "../port/lib.h"
@@ -23,24 +12,43 @@
 #include "../port/error.h"
 #include "../port/netif.h"
 #include "../port/etherif.h"
-#include "../port/virtio10.h"
 
+typedef struct Vring Vring;
+typedef struct Vdesc Vdesc;
+typedef struct Vused Vused;
 typedef struct Vheader Vheader;
 typedef struct Vqueue Vqueue;
-
 typedef struct Ctlr Ctlr;
-static void poll(void);
 
 enum {
+	/* §2.1 Device Status Field */
+	Sacknowledge = 1,
+	Sdriver = 2,
+	Sdriverok = 4,
+	Sfeatureok = 8,
+	Sfailed = 128,
+
+	/* §4.1.4.8 Legacy Interfaces: A Note on PCI Device Layout */
+	Qdevfeat = 0,
+	Qdrvfeat = 4,
+	Qaddr = 8,
+	Qsize = 12,
+	Qselect = 14,
+	Qnotify = 16,
+	Qstatus = 18,
+	Qisr = 19,
+	Qmac = 20,
+	Qnetstatus = 26,
+
 	/* flags in Qnetstatus */
 	Nlinkup = (1<<0),
 	Nannounce = (1<<1),
 
-	/* feat[0] bits */
-	Fmac = 1<<5,
-	Fstatus = 1<<16,
-	Fctrlvq = 1<<17,
-	Fctrlrx = 1<<18,
+	/* feature bits */
+	Fmac = (1<<5),
+	Fstatus = (1<<16),
+	Fctrlvq = (1<<17),
+	Fctrlrx = (1<<18),
 
 	/* vring used flags */
 	Unonotify = 1,
@@ -56,7 +64,13 @@ enum {
 	VringSize = 4,
 	VdescSize = 16,
 	VusedSize = 8,
-	VheaderSize = 12,
+	VheaderSize = 10,
+
+	/* §4.1.5.1.4.1 says pages are 4096 bytes
+	 * for the purposes of the driver.
+	 */
+	VBY2PG	= 4096,
+#define VPGROUND(s)	ROUND(s, VBY2PG)
 
 	Vrxq	= 0,
 	Vtxq	= 1,
@@ -73,11 +87,24 @@ enum {
 		CmdVlanDel	= 0x01,
 };
 
-enum
+struct Vring
 {
-	Vnet_mac0 = 0,
-	Vnet_status = 6,
-	Vnet_sz = 8
+	u16int	flags;
+	u16int	idx;
+};
+
+struct Vdesc
+{
+	u64int	addr;
+	u32int	len;
+	u16int	flags;
+	u16int	next;
+};
+
+struct Vused
+{
+	u32int	id;
+	u32int	len;
 };
 
 struct Vheader
@@ -90,6 +117,7 @@ struct Vheader
 	u16int	csumend;
 };
 
+/* §2.4 Virtqueues */
 struct Vqueue
 {
 	Rendez;
@@ -110,9 +138,6 @@ struct Vqueue
 
 	uint	nintr;
 	uint	nnote;
-
-	/* notify register */
-	Vio	notify;
 };
 
 struct Ctlr {
@@ -122,18 +147,13 @@ struct Ctlr {
 
 	int	attached;
 
-	/* registers */
-	Vio	cfg;
-	Vio 	dev;
-	Vio	isr;
-	Vio	notify;
-	u32int	notifyoffmult;
-
-	uvlong	port;
+	uintptr	port;
 	Pcidev	*pcidev;
 	Ctlr	*next;
 	int	active;
-	ulong	feat[2];
+	int	id;
+	int	typ;
+	ulong	feat;
 	int	nqueue;
 
 	Bpool	pool;
@@ -144,12 +164,34 @@ struct Ctlr {
 
 static Ctlr *ctlrhead;
 
+static void
+outl(uintptr addr, u32int val)
+{
+	coherence();
+	*(u32int*)addr = val;
+	coherence();
+}
+
+static void
+outs(uintptr addr, u16int val)
+{
+	coherence();
+	*(u16int*)addr = val;
+	coherence();
+}
+
+static void
+outb(uintptr addr, u8int val)
+{
+	coherence();
+	*(u8int*)addr = val;
+	coherence();
+}
+
 static int
 vhasroom(void *v)
 {
 	Vqueue *q = v;
-	coherence();
-	if (0)if (q->lastused != q->used->idx) sbiputc('1'); else sbiputc('0');
 	return q->lastused != q->used->idx;
 }
 
@@ -163,8 +205,7 @@ vqnotify(Ctlr *ctlr, int x)
 	if(q->used->flags & Unonotify)
 		return;
 	q->nnote++;
-	vout16(&q->notify, 0, x);
-	coherence();
+	outs(ctlr->port+Qnotify, x);
 }
 
 static void
@@ -224,14 +265,8 @@ txproc(void *v)
 				break;
 
 			/* ring full, wait and retry */
-			if(!vhasroom(q)){
-				static int once;
-				if (! once) {
-					print("txproc: hassroom checks q %p q->lastused %p != %p q->used->idx\n", q, &q->lastused,  &q->used->idx);
-					once = 1;
-				}
+			if(!vhasroom(q))
 				sleep(q, vhasroom, q);
-			}
 		}
 
 		/* slot is free, fill in descriptor */
@@ -241,10 +276,7 @@ txproc(void *v)
 		q->desc[j].len = BLEN(b);
 		coherence();
 		q->avail->idx++;
-		print("tx vqnotify idx %d\n", q->avail->idx);
-		coherence();
 		vqnotify(ctlr, Vtxq);
-		poll();
 	}
 
 	pexit("ether out queue closed", 1);
@@ -287,7 +319,6 @@ rxproc(void *v)
 	}
 
 	q->avail->flags &= ~Rnointerrupt;
-	coherence();
 
 	while(waserror())
 		;
@@ -295,7 +326,6 @@ rxproc(void *v)
 	for(;;){
 		/* replenish receive ring */
 		do {
-			coherence();
 			i = q->avail->idx & (q->qmask >> 1);
 			if(blocks[i] != nil)
 				break;
@@ -307,37 +337,25 @@ rxproc(void *v)
 			q->desc[j].len = BALLOC(b);
 			coherence();
 			q->avail->idx++;
-			coherence();
 		} while(q->avail->idx != q->used->idx);
-		coherence();
 		vqnotify(ctlr, Vrxq);
 
 		/* wait for any packets to complete */
-		if(!vhasroom(q)){
-				static int once;
-				if (! once) {
-					print("rxproc: hassroom checks q %p q->lastused %p != %p q->used->idx\n", q, &q->lastused,  &q->used->idx);
-					once = 1;
-				}
-
+		if(!vhasroom(q))
 			sleep(q, vhasroom, q);
-		}
 
 		/* retire completed packets */
-		coherence();
 		while((i = q->lastused) != q->used->idx) {
-			coherence();
 			u = &q->usedent[i & q->qmask];
 			i = (u->id & q->qmask) >> 1;
 			if((b = blocks[i]) == nil)
 				break;
 
 			blocks[i] = nil;
+
 			b->wp = b->rp + u->len - VheaderSize;
-			print("etheriq\n");
 			etheriq(edev, b);
 			q->lastused++;
-			coherence();
 		}
 	}
 }
@@ -401,6 +419,36 @@ vctlcmd(Ether *edev, uchar class, uchar cmd, uchar *data, int ndata)
 	return ack[0];
 }
 
+static u8int
+inb(uintptr addr)
+{
+	u8int b;
+	coherence();
+	b = *(u8int*)addr;
+	coherence();
+	return b;
+}
+
+static u16int
+ins(uintptr addr)
+{
+	u16int b;
+	coherence();
+	b = *(u16int*)addr;
+	coherence();
+	return b;
+}
+
+static u32int
+inl(uintptr addr)
+{
+	u32int b;
+	coherence();
+	b = *(u32int*)addr;
+	coherence();
+	return b;
+}
+
 static void
 interrupt(Ureg*, void* arg)
 {
@@ -408,32 +456,18 @@ interrupt(Ureg*, void* arg)
 	Ctlr *ctlr;
 	Vqueue *q;
 	int i;
-	u8int b;
 
 	edev = arg;
 	ctlr = edev->ctlr;
-	b = vin8(&ctlr->isr, 0);
-	if (b & 1) print("GOT IRQ FROM Ethervirt10\n");
-	if(1 || (b & 1)){
-		if (0)sbiputc('I');
+	if(inb(ctlr->port+Qisr) & 1){
 		for(i = 0; i < ctlr->nqueue; i++){
 			q = &ctlr->queue[i];
-			if(1 || vhasroom(q)){
+			if(vhasroom(q)){
 				q->nintr++;
-				if (q->nintr % 1000 == 0)print("wakeup q %d nintr %d\n", i, q->nintr);
 				wakeup(q);
 			}
 		}
-	} else if (0)sbiputc('i');
-}
-
-static Ether *e;
-
-static void
-poll()
-{
-	if (e != nil)
-		interrupt(nil, e);
+	}
 }
 
 static void
@@ -441,68 +475,61 @@ attach(Ether* edev)
 {
 	char name[KNAMELEN];
 	Ctlr* ctlr;
-	int i;
 
 	ctlr = edev->ctlr;
-	ilock(ctlr);
+	lock(ctlr);
 	if(ctlr->attached){
-		iunlock(ctlr);
+		unlock(ctlr);
 		return;
 	}
 	ctlr->attached = 1;
+	unlock(ctlr);
 
-	/* enable the queues */
-	for(i = 0; i < ctlr->nqueue; i++){
-		vout16(&ctlr->cfg, Vconf_queuesel, i);
-		vout16(&ctlr->cfg, Vconf_queueenable, 1);
-	}
-
-	/* driver is ready */
-	vout8(&ctlr->cfg, Vconf_status, vin8(&ctlr->cfg, Vconf_status) | Sdriverok);
-
-	iunlock(ctlr);
+	/* ready to go */
+	outb(ctlr->port+Qstatus, inb(ctlr->port+Qstatus) | Sdriverok);
 
 	/* start kprocs */
 	snprint(name, sizeof name, "#l%drx", edev->ctlrno);
 	kproc(name, rxproc, edev);
 	snprint(name, sizeof name, "#l%dtx", edev->ctlrno);
 	kproc(name, txproc, edev);
-	e = edev;
-	addclock0link(poll, 100);
 }
 
 static char*
-ifstat(void *a, char *s, char *e)
+ifstat(void *a, char *p, char *e)
 {
+	int i;
 	Ether *edev;
 	Ctlr *ctlr;
 	Vqueue *q;
-	int i;
 
-	if(s >= e)
-		return s;
+	if(p >= e)
+		return p;
+
 	edev = a;
 	ctlr = edev->ctlr;
-	s = seprint(s, e, "devfeat %32.32lub %32.32lub\n", ctlr->feat[1], ctlr->feat[0]);
-	s = seprint(s, e, "devstatus %8.8ub\n", vin8(&ctlr->cfg, Vconf_status));
+
+	p = seprint(p, e, "devfeat %32.32lub\n", ctlr->feat);
+	p = seprint(p, e, "drvfeat %32.32lub\n", inl(ctlr->port+Qdrvfeat));
+	p = seprint(p, e, "devstatus %8.8ub\n", inb(ctlr->port+Qstatus));
+	if(ctlr->feat & Fstatus)
+		p = seprint(p, e, "netstatus %8.8ub\n",  inb(ctlr->port+Qnetstatus));
+
 	for(i = 0; i < ctlr->nqueue; i++){
 		q = &ctlr->queue[i];
-		s = seprint(s, e,
+		p = seprint(p, e,
 			"vq%d %#p size %d avail->idx %d used->idx %d lastused %hud nintr %ud nnote %ud\n",
 			i, q, q->qsize, q->avail->idx, q->used->idx, q->lastused, q->nintr, q->nnote);
 	}
-	return s;
+
+	return p;
 }
 
 static void
 shutdown(Ether* edev)
 {
 	Ctlr *ctlr = edev->ctlr;
-
-	coherence();
-	vout8(&ctlr->cfg, Vconf_status, 0);
-	coherence();
-
+	outb(ctlr->port+Qstatus, 0);
 	pciclrbme(ctlr->pcidev);
 }
 
@@ -513,7 +540,7 @@ promiscuous(void *arg, int on)
 	Ctlr *ctlr = edev->ctlr;
 	uchar b[1];
 
-	if((ctlr->feat[0] & (Fctrlvq|Fctrlrx)) != (Fctrlvq|Fctrlrx))
+	if((ctlr->feat & (Fctrlvq|Fctrlrx)) != (Fctrlvq|Fctrlrx))
 		return;
 
 	b[0] = on != 0;
@@ -527,11 +554,19 @@ multicast(void *arg, uchar*, int)
 	Ctlr *ctlr = edev->ctlr;
 	uchar b[1];
 
-    if((ctlr->feat[0] & (Fctrlvq|Fctrlrx)) != (Fctrlvq|Fctrlrx))
+	if((ctlr->feat & (Fctrlvq|Fctrlrx)) != (Fctrlvq|Fctrlrx))
 		return;
 
 	b[0] = edev->nmaddr > 0;
 	vctlcmd(edev, CtrlRx, CmdAllmulti, b, sizeof(b));
+}
+
+/* §2.4.2 Legacy Interfaces: A Note on Virtqueue Layout */
+static ulong
+queuesize(ulong size)
+{
+	return VPGROUND(VdescSize*size + sizeof(u16int)*(3+size))
+		+ VPGROUND(sizeof(u16int)*3 + VusedSize*size);
 }
 
 static int
@@ -539,27 +574,26 @@ initqueue(Vqueue *q, int size)
 {
 	uchar *p;
 
-	q->desc = mallocalign(VdescSize*size, 16, 0, 0);
-	if(q->desc == nil)
-		return -1;
-	p = mallocalign(VringSize + 2*size + 2, 2, 0, 0);
+	/* §2.4: Queue Size value is always a power of 2 and <= 32768 */
+	assert(!(size & (size - 1)) && size <= 32768);
+
+	p = mallocalign(queuesize(size), VBY2PG, 0, 0);
 	if(p == nil){
-FreeDesc:
-		free(q->desc);
-		q->desc = nil;
+		print("ethervirtio: no memory for Vqueue\n");
+		free(p);
 		return -1;
 	}
+
+	q->desc = (void*)p;
+	p += VdescSize*size;
 	q->avail = (void*)p;
 	p += VringSize;
 	q->availent = (void*)p;
 	p += sizeof(u16int)*size;
 	q->availevent = (void*)p;
-	p = mallocalign(VringSize + VusedSize*size + 2, 4, 0, 0);
-	if(p == nil){
-		free(q->avail);
-		q->avail = nil;
-		goto FreeDesc;
-	}
+	p += sizeof(u16int);
+
+	p = (uchar*)VPGROUND((uintptr)p);
 	q->used = (void*)p;
 	p += VringSize;
 	q->usedent = (void*)p;
@@ -576,130 +610,68 @@ FreeDesc:
 	return 0;
 }
 
-static int
-matchvirtiocfgcap(Pcidev *p, int cap, int off, int typ)
-{
-	int bar;
-
-	if(cap != 9 || pcicfgr8(p, off+3) != typ)
-		return 1;
-
-	/* skip invalid or non memory bars */
-	bar = pcicfgr8(p, off+4);
-	if(bar < 0 || bar >= nelem(p->mem) 
-	|| p->mem[bar].size == 0)
-		return 1;
-
-	return 0;
-}
-
-static int
-virtiocap(Pcidev *p, int typ)
-{
-	return pcienumcaps(p, matchvirtiocfgcap, typ);
-}
-
 static Ctlr*
-pciprobe(void)
+pciprobe(int typ)
 {
 	Ctlr *c, *h, *t;
 	Pcidev *p;
-	Vio cfg;
-	int bar,cap, n, i;
-	uvlong mask;
-	int unit = 0;
+	int n, i;
 
 	h = t = nil;
-	print("virtio10 pciprobe\n");
 
 	/* §4.1.2 PCI Device Discovery */
-	for(p = nil; p = pcimatch(p, 0x1AF4, 0x1041);){
-		/* non-transitional devices will have a revision > 0 */
-		print("FOUND 0x1aF4/1041\n");
-		if(p->rid == 0) {
-			print("no good. 0 rid\n");
+	for(p = nil; p = pcimatch(p, 0x1AF4, 0);){
+		/* the two possible DIDs for virtio-net */
+		if(p->did != 0x1000 && p->did != 0x1041)
 			continue;
-		}
-		if((cap = virtiocap(p, 1)) < 0) {
-			print("no good. cap %#x < 0\n", cap);
+		/*
+		 * non-transitional devices will have a revision > 0,
+		 * these are handled by ethervirtio10 driver.
+		 */
+		if(p->rid != 0)
 			continue;
-		}
-		bar = pcicfgr8(p, cap+4) % nelem(p->mem);
-		if(virtiomapregs(p, cap, Vconf_sz, &cfg) == nil){
-			print("no good. virtiomapregs is nil\n");
+		/* first membar needs to be I/O */
+		print("bar 0 %p\n", p->mem[0].bar);
+		if((p->mem[0].bar & 1) == 0)
 			continue;
-		}
+		/* non-transitional device will have typ+0x40 */
+		if(pcicfgr16(p, 0x2E) != typ)
+			continue;
 		if((c = mallocz(sizeof(Ctlr), 1)) == nil){
 			print("ethervirtio: no memory for Ctlr\n");
 			break;
 		}
-		c->cfg = cfg;
+		c->port = p->mem[0].bar & ~3;
+		print("c->port is %p\n", c->port);
+		if (c->port == 0) {
+			print("bar 0 is 0 size is %pgot no use for that guy", p->mem[0].size);
+			print("oh well too bad\n");
+			c->port = (uintptr)vmap(c->port, p->mem[0].size);
+			print("c->port is now %p\n", c->port);
+			/* ridiculous code */
+			pcisetbar(p, PciBAR0, c->port);
+		}
+		
+
+		c->typ = typ;
 		c->pcidev = p;
-		mask = p->mem[bar].bar&1?~0x3ULL:~0xFULL;
-		c->port = p->mem[bar].bar & mask;
-
 		pcienable(p);
-		if(virtiomapregs(p, virtiocap(p, 4), Vnet_sz, &c->dev) == nil){
-			print("no good. virtiomapgs of pcap is nil\n");
-			goto Baddev;
-		}
-		if(virtiomapregs(p, virtiocap(p, 3), 0, &c->isr) == nil){
-			print("no good. second virtiocap mapregs fails\n");
-			goto Baddev;
-		}
-		cap = virtiocap(p, 2);
-		if(virtiomapregs(p, cap, 0, &c->notify) == nil){
-			print("no good. third mapregs fails\n");
-			goto Baddev;
-		}
-		c->notifyoffmult = pcicfgr32(p, cap+16);
-		pcicfgw8(p, 4, 6);
-		print("cmd %04x status %04x\n", pcicfgr16(p, 4), pcicfgr16(p, 6));
-		/* device reset */
-		coherence();
-		vout8(&cfg, Vconf_status, 0);
-		while(vin8(&cfg, Vconf_status) != 0)
-			delay(1);
-		/* acknowledge the reset */
-		vout8(&cfg, Vconf_status, Sacknowledge);
-		int tries;
-		while(vin8(&cfg, Vconf_status) == 0) {
-			print("waiting for reset ack\n");
-			if (tries++ > 1024)
-				goto Baddev;
-			delay(1);
-		}
-		vout8(&cfg, Vconf_status, Sacknowledge | Sdriver);
-		print("status is no %#x\n", vin8(&cfg, Vconf_status));
+		c->id = (p->did<<16)|p->vid;
 
+		/* §3.1.2 Legacy Device Initialization */
+		outb(c->port+Qstatus, 0);
+		while(inb(c->port+Qstatus) != 0)
+			delay(1);
+		outb(c->port+Qstatus, Sacknowledge|Sdriver);
 
 		/* negotiate feature bits */
-		/* modern features */
-		vout32(&cfg, Vconf_devfeatsel, 1);
-		c->feat[1] = vin32(&cfg, Vconf_devfeat);
-		print("features: %x\n", c->feat[1]);
+		c->feat = inl(c->port+Qdevfeat);
+		outl(c->port+Qdrvfeat, c->feat & (Fmac|Fstatus|Fctrlvq|Fctrlrx));
 
-		/* slot 0 -- network features */
-		vout32(&cfg, Vconf_devfeatsel, 0);
-		c->feat[0] = vin32(&cfg, Vconf_devfeat);
-
-		/* now we must write the features we accept. */
-		/* accept modern features */
-		vout32(&cfg, Vconf_drvfeatsel, 1);
-		vout32(&cfg, Vconf_drvfeat, c->feat[1] & Fversion1);
-
-		/* accept network features */
-		vout32(&cfg, Vconf_drvfeatsel, 0);
-		vout32(&cfg, Vconf_drvfeat, c->feat[0] /*& (Fmac|Fctrlvq|Fctrlrx)*/);
-
-		/* set features ok */
-		print("negot features got %#x and %#x final value %#x\n", c->feat[0], c->feat[1],vin8(&cfg, Vconf_status) );
-		vout8(&cfg, Vconf_status, vin8(&cfg, Vconf_status) | Sfeaturesok | Sdriver | Sdriverok);
-		print("negot features got %#x and %#x final value %#x\n", c->feat[0], c->feat[1],vin8(&cfg, Vconf_status) );
-
+		/* §4.1.5.1.4 Virtqueue Configuration */
 		for(i=0; i<nelem(c->queue); i++){
-			vout16(&cfg, Vconf_queuesel, i);
-			n = vin16(&cfg, Vconf_queuesize);
+			outs(c->port+Qselect, i);
+			n = ins(c->port+Qsize);
 			if(n == 0 || (n & (n-1)) != 0){
 				if(i < 2)
 					print("ethervirtio: queue %d has invalid size %d\n", i, n);
@@ -707,33 +679,17 @@ pciprobe(void)
 			}
 			if(initqueue(&c->queue[i], n) < 0)
 				break;
-			c->queue[i].notify = c->notify;
-			if(c->queue[i].notify.type == Vio_port)
-				c->queue[i].notify.port+= c->notifyoffmult * vin16(&cfg, Vconf_queuenotifyoff);
-			else
-				c->queue[i].notify.mem+= c->notifyoffmult * vin16(&cfg, Vconf_queuenotifyoff);
 			coherence();
-			vout64(&cfg, Vconf_queuedesc, PADDR(c->queue[i].desc));
-			vout64(&cfg, Vconf_queueavail, PADDR(c->queue[i].avail));
-			vout64(&cfg, Vconf_queueused, PADDR(c->queue[i].used));
+			outl(c->port+Qaddr, PADDR(c->queue[i].desc)/VBY2PG);
 		}
 		if(i < 2){
 			print("ethervirtio: no queues\n");
-Baddev:
 			pcidisable(p);
-			/* TODO, vunmap */
 			free(c);
 			continue;
 		}
 		c->nqueue = i;		
-
-		pcisetbme(p);
-		char buf[32];
-		snprint(buf, sizeof(buf), "ethervirtio%d", unit);
-		unit++; 
-		print("p->intl is %d, p->tbdf is %08x\n", p->intl, p->tbdf);
-	//	intrenable(p->intl, interrupt, p, p->tbdf, buf);
-
+	
 		if(h == nil)
 			h = c;
 		else
@@ -751,9 +707,9 @@ reset(Ether* edev)
 	static uchar zeros[Eaddrlen];
 	Ctlr *ctlr;
 	int i;
-	print("VIORTIO10 reset\n");
+
 	if(ctlrhead == nil)
-		ctlrhead = pciprobe();
+		ctlrhead = pciprobe(1);
 
 	for(ctlr = ctlrhead; ctlr != nil; ctlr = ctlr->next){
 		if(ctlr->active)
@@ -763,7 +719,7 @@ reset(Ether* edev)
 			break;
 		}
 	}
-	if(ctlr == nil) print("fuck. no card\n");
+
 	if(ctlr == nil)
 		return -1;
 
@@ -774,12 +730,12 @@ reset(Ether* edev)
 	edev->mbps = 1000;
 	edev->link = 1;
 
-	if((ctlr->feat[0] & Fmac) != 0 && memcmp(edev->ea, zeros, Eaddrlen) == 0){
+	if((ctlr->feat & Fmac) != 0 && memcmp(edev->ea, zeros, Eaddrlen) == 0){
 		for(i = 0; i < Eaddrlen; i++)
-			edev->ea[i] = vin8(&ctlr->dev, Vnet_mac0+i);
+			edev->ea[i] = inb(ctlr->port+Qmac+i);
 	} else {
-		for(i = 0; i < Eaddrlen; i++);
-			vout8(&ctlr->dev, Vnet_mac0+i, edev->ea[i]);
+		for(i = 0; i < Eaddrlen; i++)
+			outb(ctlr->port+Qmac+i, edev->ea[i]);
 	}
 
 	edev->arg = edev;
@@ -797,8 +753,8 @@ reset(Ether* edev)
 }
 
 void
-ethervirtio10link(void)
+ethervirtiolink(void)
 {
-	print("addethercard\n");
-	addethercard("virtio10", reset);
+	addethercard("virtio", reset);
 }
+

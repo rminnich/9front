@@ -24,7 +24,8 @@ dev
 
 link
 #	usbxhcipci	pci usbxhci
-	ethervirtio10	pci
+#	ethervirtio10	pci
+	ethervirtio pci
 	ethersink
 	ethermedium
 	loopbackmedium
