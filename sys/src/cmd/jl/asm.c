@@ -155,7 +155,7 @@ asmb(void)
 		break;
 	case 5:
 		strnput("\177ELF", 4);		/* e_ident */
-		cput(1);			/* class = 32 bit */
+		cput(2);			/* class = 32 bit */
 		cput(1);			/* data = LSB */
 		cput(1);			/* version = CURRENT */
 		strnput("", 9);
@@ -163,7 +163,7 @@ asmb(void)
 		if(debug['8'])
 			wputl(3);		/* machine = 386 */
 		else
-			wputl(62);		/* machine = AMD64 */
+			wputl(0xf3);		/* machine = AMD64 */
 		lputl(1L);			/* version = CURRENT */
 #define PADDR(x) ((u32int)x)
 		lputl(PADDR(entryvalue()));	/* entry vaddr */
