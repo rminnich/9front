@@ -119,7 +119,7 @@ print("%p is %p\n", sv48, sv48[0]);
 	sv39[0] = ((((u64int)pGiB)>>2)) | 0x1;
 print("%p is %p\n", sv39, sv39[0]);
 
-	for(i = 0; i < 8; i++){
+	for(i = 0; i < 4; i++){
 		pGiB[i] = (i<<10) | 0xf;
 		print("%p is %p\n", &pGiB[i], pGiB[i]);
 	}
@@ -203,17 +203,22 @@ mmukmap(uintptr va, uintptr pa, usize size)
 	return va + off;
 }
 
-/* va is pa, so this works if pa is 0, whatevers */
 void*
 vmap(uvlong pa, vlong size)
 {
-	static uintptr base = 1ULL<<32;
+	USED(pa);
+	USED(size);
+#ifdef xxx
+	static uintptr base = VMAP;
 	uvlong pe = pa + size;
 	uintptr va;
 
 	va = base;
 	base += PGROUND(pe) - (pa & -BY2PG);
-	return (void *)va;
+	
+	return (void*)mmukmap(va | PTEDEVICE, pa, size);
+#endif
+	return (void *)pa;
 }
 
 void
@@ -224,7 +229,6 @@ vunmap(void *, vlong)
 
 // That macro hackery is just too much for me to look at, and kenc should
 // inline this function anyway.
-// oh shit it does no real inlining at all. Too bad.
 static u64int vpn(uintptr va, int level)
 {
 	int shift = 12 + 9*level;
