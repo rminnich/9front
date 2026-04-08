@@ -76,7 +76,7 @@ LIB=\
 
 $p$CONF:D:	$OBJ $CONF.$O $LIB
 	$LD -s -l -o $target -H6 -R0x1000 -T$loadaddr $prereq
-	$LD -s -l -o $target.elf -H5 -T4128 -R4 -T$loadaddr $prereq
+	$LD -s -l -o $target.elf -H5  -R2097152 -T$loadaddr $prereq
 
 s$p$CONF:D:	$OBJ $CONF.$O $LIB
 	$LD -l -o $target -R0x1000 -T$loadaddr $prereq
