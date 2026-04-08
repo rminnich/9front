@@ -160,10 +160,7 @@ asmb(void)
 		cput(1);			/* version = CURRENT */
 		strnput("", 9);
 		wputl(2);			/* type = EXEC */
-		if(debug['8'])
-			wputl(3);		/* machine = 386 */
-		else
-			wputl(0xf3);		/* machine = riscv64 */
+		wputl(0xf3);		/* machine = riscv64 */
 		lputl(1L);			/* version = CURRENT */
 #define PADDR(x) ((u32int)x)
 		llputl(PADDR(entryvalue()));	/* entry vaddr */
@@ -207,12 +204,12 @@ asmb(void)
 		llputl(INITRND);			/* alignment */
 
 		lputl(0L);			/* symbols - type = PT_NULL */
-		lputl(0x04L);			/* protections = R */
+		lputl(0);			/* protections = R */
 		llputl(HEADR+textsize+datsize);	/* file offset */
 		llputl(0L);
 		llputl(0L);
-		llputl(symsize);			/* symbol table size */
-		llputl(lcsize);			/* line number size */
+		llputl(0);			/* symbol table size */
+		llputl(0);			/* line number size */
 		llputl(0x04L);			/* alignment */
 		break;
 	}

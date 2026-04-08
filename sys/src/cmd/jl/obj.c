@@ -141,7 +141,7 @@ main(int argc, char *argv[])
 		break;
  	case 5:	/* elf executable */
 		/* 4 headers: PHDR itself, then text, data, symbols */
-		HEADR = rnd(64L+4*56L, 16);
+		HEADR = 0x200000; // rnd(64L+4*56L, 16);
 		if(INITTEXT == -1)
 			INITTEXT = 0;
 		if(INITDAT == -1)
