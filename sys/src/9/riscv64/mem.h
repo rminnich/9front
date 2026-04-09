@@ -40,12 +40,11 @@
 #define STACKALIGN(sp)	((sp) & ~7)		/* bug: assure with alloc */
 #define TRAPFRAMESIZE	(38*8)
 
-#define VDRAM		(0x0000000080000000ULL)	/* 0x80000000 - */
-#define	KTZERO		(VDRAM + 0x200000)	/* 0x80200000 - kernel text start */
+#define VDRAM		(0x0000000100000000ULL)	/* 0x100000000 - */
+#define	KTZERO		(VDRAM + 0x200000)	/* VDRAM - kernel text start */
 
 #define	KZERO		(0x0000000000000000ULL)	/* 0x00000000 - kernel address space */
 #define KLIMIT 		klimit
-//#define KLIMIT			(0x800000000000ULL) // half of the hole.
 #define iskern(v) (((uintptr)v)<=UZERO)
 
 /* shared kernel page table for TTBR1 */
