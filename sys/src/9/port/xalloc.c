@@ -40,15 +40,34 @@ struct Xalloc
 
 static Xalloc	xlists;
 
-int once = 0;
+static int once = 0;
+static int sentinal = 0xcafebabe;
+
+static void
+xdump(char* pref, void *qh)
+{
+	int i;
+	ulong *u;
+
+	u = qh;
+	print("%s %#p:", pref, u);
+	for(i = 0; i < 16; i++)
+		if((i%4) == 0)
+			print("\n %#8.8ulx", u[i]);
+		else
+			print(" %#8.8ulx", u[i]);
+	print("\n");
+}
+
 void
 xinit(void)
 {
 	ulong maxpages, kpages, n;
 	Hole *h, *eh;
 	Confmem *cm;
+	if (sentinal != 0xcafebabe) print("FUCK: sentinal is %x, not cafebabe\n", sentinal);
 	int i;
-	if (Spew)print("XINIT XINIT XINIT XINIT from %p\n", getcallerpc(&n));
+	if (Spew)print("XINIT XINIT XINIT XINIT from %p xlists %p\n", getcallerpc(&n), &xlists);
 	if (once) if (Spew)print("XINIT OH NO CLALAED TWICE %d fro %p!!!\n", once, getcallerpc(&n));
 	once++;
 
@@ -233,14 +252,20 @@ xhole(uintptr addr, uintptr size)
 	Hole *h, *c, **l;
 	uintptr top;
 
-	if (Spew)print("XHOLE %p 0x%llx\n", addr, size);
+	if (Spew)print("XHOLE %p 0x%llx &top %p\n", addr, size, &top);
 	if(size == 0)
 		return;
 
 	top = addr + size;
+	if (Spew)print("ilock %p ...\n", &xlists);
+	if (Spew)print("before val is val is %x\n", *(int *)(&xlists));
+	if (0)if (Spew)print("canlock %p ? %d\n", &xlists, canlock(&xlists));
+	if (Spew)print("val is %x\n", *(int *)(&xlists));
 	ilock(&xlists);
+	if (Spew)print("locked ...\n");
 	l = &xlists.table;
 	for(h = *l; h; h = h->link) {
+		if (Spew)print("XHOLE h %p\n", h);
 		if(h->top == addr) {
 			h->size += size;
 			h->top = h->addr+h->size;
@@ -253,16 +278,19 @@ xhole(uintptr addr, uintptr size)
 				xlists.flist = c;
 			}
 			iunlock(&xlists);
+			if (Spew)print("XHOLE return\n");
 			return;
 		}
 		if(h->addr > addr)
 			break;
 		l = &h->link;
 	}
+	if (Spew)print("XHOLE the back fell off\n");
 	if(h && top == h->addr) {
 		h->addr -= size;
 		h->size += size;
 		iunlock(&xlists);
+		if (Spew)print("XHOLE return outside for\n");
 		return;
 	}
 
@@ -280,6 +308,7 @@ xhole(uintptr addr, uintptr size)
 	h->link = *l;
 	*l = h;
 	iunlock(&xlists);
+	if (Spew)print("XHOLE all done\n");
 }
 
 void
