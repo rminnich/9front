@@ -101,7 +101,7 @@ ilock(Lock *l)
 	uintptr pc;
 
 	pc = getcallerpc(&l);
-if (0)	print("ilock %p pc %p key %p\n", l, pc, l->key);
+if (1)	print("ilock %p pc %p key %p\n", l, pc, l->key);
 
 	x = splhi();
 	if(tas(&l->key) != 0){
@@ -120,6 +120,7 @@ if (0)	print("ilock %p pc %p key %p\n", l, pc, l->key);
 		}
 	}
 acquire:
+	print("acquired\n");
 	m->ilockdepth++;
 	if(up)
 		up->lastilock = l;
