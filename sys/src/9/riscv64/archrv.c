@@ -384,6 +384,7 @@ hwrand(void *v, ulong n)
 {
 	ulong amt = 0;
 	u8int *vp = v;
+	return;
 	while(amt < n) {
 		u64int s = rseed();
 		switch(s&3) {
@@ -431,7 +432,7 @@ cpuinit(int cpu)
 	m->plicctxt = mach2context(m);	/* base context without priv mode */
 	clockoff();
 	/* start the entropy */
-	for(int i = 0; i < 32; i++) {
+	if (0)for(int i = 0; i < 32; i++) {
 		u64int s = rseed();
 		switch(s&3) {
 			case 0:
