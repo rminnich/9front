@@ -109,7 +109,7 @@ kmapram(uintptr base, uintptr limit)
 	USED(base);
 	USED(limit);
 //	while(! block)
-//	if (0) if ((base > 0) || (limit > 4 * GiB))
+//	if (MMUSpew) if ((base > 0) || (limit > 4 * GiB))
 //		return;
 	sv57[0] = ((((u64int)sv48)>>2)) | 1;
 	if (Spew)print("%p is %p\n", sv57, sv57[0]);
@@ -124,7 +124,7 @@ print("%p is %p\n", sv39, sv39[0]);
 		print("%p is %p\n", &pGiB[i], pGiB[i]);
 	}
 */
-	for(i = 0; i < 4; i++){
+	for(i = 0; i < 16; i++){
 		sv39[i] = ((0x40000000*i)>>2) | 0xcf;
 		print("sv39:%p is %p\n", &sv39[i], sv39[i]);
 	}
@@ -227,13 +227,17 @@ vunmap(void *, vlong)
 	//panic("vunmap");
 }
 
+enum {
+	MMUSpew = 1,
+};
+
 // That macro hackery is just too much for me to look at, and kenc should
 // inline this function anyway.
 static u64int vpn(uintptr va, int level)
 {
 	int shift = 12 + 9*level;
 	uintptr val = (va>>shift)&0x1ff;
-	if (0)print("<<<vpn(%p,%d)[shift %d]=%p>>>", va, level, shift, val);
+	if (MMUSpew)print("<<<vpn(%p,%d)[shift %d]=%p>>>", va, level, shift, val);
 	return val;
 }
 
@@ -242,6 +246,8 @@ ptephys(uintptr pte)
 {
 	return (pte & ~(0xFFFFULL<<48 | BY2PG-1))<<2;
 }
+
+
 
 /* there are still a few nasty assumptions in here about
  * pte not needing left shifts etc. riscv really fucked up
@@ -254,18 +260,18 @@ mmuwalk(uintptr va, int level)
 	Page *pg;
 	int i, x;
 // In future, PTLEVELS will be dynamic.
-	if (0)print("mmuwalk: va %p, walk to level %d starting from %d,", va, level, PTLEVELS);
+	if (MMUSpew)print("mmuwalk: va %p, walk to level %d starting from %d,", va, level, PTLEVELS);
 	x = vpn(va, PTLEVELS-1);
 	// N.B.: the assumption here is that mmutop was already set from 
 	// p->mmutop. mmutop[x] will never be non-zero. If it is, it's a bug.
 	table = m->mmutop;
-	if (0)print("MMUWALK m is %p MMUTOP is %p\n", m,  m->mmutop);
+	if (MMUSpew)print("MMUWALK m is %p MMUTOP is %p\n", m,  m->mmutop);
 	for(i = PTLEVELS-2; i >= level; i--){
-		if (0)print("%d: table %p, index %d, pte %p: ", i, table, x, table[x]);
+		if (MMUSpew)print("%d: table %p, index %d, pte %p: ", i, table, x, table[x]);
 		pte = table[x];
-		if (0)print(" %p %s, points to %p,", pte, pte & PTEVALID ? "valid" : "invalid", (pte>>10)<<12);
+		if (MMUSpew)print(" %p %s, points to %p,", pte, pte & PTEVALID ? "valid" : "invalid", (pte>>10)<<12);
 		if(pte & PTEVALID) {
-			if (0){
+			if (MMUSpew){
 				if(pte & (0xFFFFULL<<48))
 					iprint("strange pte %#p va %#p, ", pte, va);
 				pte &= ~(0xFFFFULL<<48 | BY2PG-1);
@@ -275,29 +281,29 @@ mmuwalk(uintptr va, int level)
 		} else {
 			pg = up->mmufree;
 			if(pg == nil){
-				if (0)print("up->mmufree is empty, return nil\n");
+				if (MMUSpew)print("up->mmufree is empty, return nil\n");
 				return nil;
 			}
 			up->mmufree = pg->next;
 			pg->va = va & -PGLSZ(i+1);
-			if (0)print("page for pte is %p, ", pg->va);
+			if (MMUSpew)print("page for pte is %p, ", pg->va);
 			if((pg->next = up->mmuhead[i+1]) == nil)
 				up->mmutail[i+1] = pg;
 			up->mmuhead[i+1] = pg;
-			if (0)print("SET up->mmuhead[%d] = %p, pte@ %p\n", i+1, pg, pg->pa);
+			if (MMUSpew)print("SET up->mmuhead[%d] = %p, pte@ %p\n", i+1, pg, pg->pa);
 			pte = pg->pa;
 			memset(kmapaddr(pg->pa), 0, BY2PG);
 			coherence();
-			if (0)print(": SET table %p[%x]@%p = addr %p val%llx\n", table, x, &table[x], pte, ((pte>>12)<<10) | PTEVALID);
+			if (MMUSpew)print(": SET table %p[%x]@%p = addr %p val%llx\n", table, x, &table[x], pte, ((pte>>12)<<10) | PTEVALID);
 			table[x] = ((pte>>12)<<10) | PTEVALID;	// XXX: Does this need PA2PTE
 		}
 		table = kmapaddr(pte);
-		if (0)print("kmapaddr of %p is %p, ", pte, table);
+		if (MMUSpew)print("kmapaddr of %p is %p, ", pte, table);
 		x = vpn(va, (uintptr)i);
-		if (0)print("\n");
+		if (MMUSpew)print("\n");
 	}
-if (0)print("RETURN &%p[0x%x] = ", table, x);
-if (0)print("%p\n", &table[x]);
+if (MMUSpew)print("RETURN &%p[0x%x] = ", table, x);
+if (MMUSpew)print("%p\n", &table[x]);
 	return &table[x];
 }
 
@@ -404,7 +410,7 @@ if (Spew)print("pid %d putmmu(%p, %p, %p)\n", up ? up->pid : 0, va, pa, pg);
 	while((pte = mmuwalk(va, 0)) == nil){
 		spllo();
 		up->mmufree = newpage(0, nil);
-		if (0)print("putmmu: get a page %p, try again\n", up->mmufree);
+		if (MMUSpew)print("putmmu: get a page %p, try again\n", up->mmufree);
 		splhi();
 	}
 	if (up->pid == 5) soft();
@@ -426,7 +432,7 @@ if (Spew)print("pid %d putmmu(%p, %p, %p)\n", up ? up->pid : 0, va, pa, pg);
 	wsatp(rsatp());
 	if (up->pid == 5) soft();
 	splx(s);
-	if (0)print("putmmu done\n");
+	if (MMUSpew)print("putmmu done\n");
 }
 
 static void
@@ -451,11 +457,11 @@ mmuswitch(Proc *p)
 	uintptr va;
 	Page *t;
 	extern int block;
-if (0)	print("SWITCH MMUTOP IS %p, @ 100 is %p\n", m->mmutop, m->mmutop[0x100]);
+if (MMUSpew)	print("SWITCH MMUTOP IS %p, @ 100 is %p\n", m->mmutop, m->mmutop[0x100]);
 	for(va = UZERO; va < USTKTOP; va += PGLSZ(PTLEVELS-1))
 		m->mmutop[PTLX(va, PTLEVELS-1)] = 0;
 
-if (0)	print("p %p for setting tbr?\n", p);
+if (MMUSpew)	print("p %p for setting tbr?\n", p);
 	if(p == nil){
 		// maybe flush the user mode entries? probably
 		if(Spew)print("mmuswitch p is nil what to do?\n");
@@ -467,7 +473,7 @@ if (0)	print("p %p for setting tbr?\n", p);
 		mmufree(p);
 		p->newtlb = 0;
 	}
-if (0)	print("allocasid(p) %d\n", allocasid(p));
+if (MMUSpew)	print("allocasid(p) %d\n", allocasid(p));
 	if(allocasid(p)){
 		if (Spew)print("NOT messing with ASID\n");
 		flushasid((uvlong)p->asid<<48);
@@ -479,11 +485,11 @@ if (0)	print("allocasid(p) %d\n", allocasid(p));
 	for(t = p->mmuhead[PTLEVELS-1]; t != nil; t = t->next){
 		va = t->va;
 		u64int pte = ((t->pa)>>12) << 10 | PTEVALID; //| PTEUSER;
-if (0)		print("Set mmutop[%llxx] to %llx\n", PTLX(va, PTLEVELS-1), pte );
+if (MMUSpew)		print("Set mmutop[%llxx] to %llx\n", PTLX(va, PTLEVELS-1), pte );
 		m->mmutop[PTLX(va, PTLEVELS-1)] = pte;
 	}
 	wsatp(((uintptr)m->mmutop>>12)|(8ULL<<60));
-	if (0)print("MMUSWTICH: wrote satp: block\n");
+	if (MMUSpew)print("MMUSWTICH: wrote satp: block\n");
 	if (0)while (! block);
 }
 
