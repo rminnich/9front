@@ -48,20 +48,20 @@ void
 meminit(void)
 {
 	char *p;
-	uintptr l = 3 * GiB;
+	uintptr l = VDRAM + 4ULL * GiB;
 	extern u64int *sv57, *sv48, *sv39, *pGiB;
 	extern int block;
 	extern uintptr klimit;
 
 	if(p = getconf("*maxmem"))
 		l = strtoull(p, 0, 0);
-	print("meminit: end %p, KZERO %p, PGROUND %p\n", end, KZERO, PGROUND((uintptr)end - KTZERO));
+	print("meminit: end %p, KZERO %p, PGROUND %p, l %p\n", end, KZERO, PGROUND((uintptr)end - KTZERO), l);
 
 	// leave a big hole after end, for now. We need it for this and that. 
-	conf.mem[0].base = ROUND(PGROUND((uintptr)end - KTZERO) + (uintptr)0x804FFFFF, 0x200000);
+	conf.mem[0].base = ROUND(PGROUND((uintptr)end - KTZERO) + (uintptr)(VDRAM+0x2fffff), 0x200000);
 	conf.mem[0].limit = l;
 
-	print("CONF ZERO BASE is 0x%llx LIMIT is 0x%llx\n", conf.mem[0].base, l);
+	print("CONF ZERO BASE is 0x%p LIMIT is 0x%p\n", conf.mem[0].base, l);
 	if(l > KLIMIT)
 		l = KLIMIT;
 	print("l is now %#llx\n", l);
