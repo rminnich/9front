@@ -70,7 +70,7 @@ init0(void)
 	u64int* pte = userpte((void *)UTZERO);
 	print("pte is %p *pte %llx\n", pte, *pte);
 	}
-	print("touser baby MACH m is %p mmuto p%p\n", m, m->mmutop);
+	print("touser baby MACH m is %p mmutop %p\n", m, m->mmutop);
 
 	print("islo %d, now enable clock\n", islo());
 	block = 1;
@@ -169,6 +169,7 @@ machinit(void)
 	wstvec((uintptr)strap);
 	m->ticks = 1;
 	m->perf.period = 1;
+	m->hartid = 0; // FIX ME
 	active.machs[m->machno] = 1;
 }
 
@@ -210,9 +211,14 @@ getconf(char * )
 int i = 1;
 int once = 0;
 void
-main(void)
+main(uintptr from)
 {
-	if (once) panic("main entered twice");
+	void *b;
+	uintptr e;
+	
+	if (! once) {
+		memset((void*)VDRAM, 0, KTZERO-VDRAM);
+	}
 	once++;
 	while(i == 0); // BUG: does not reload i
 	i = 1; // in case you use GDB to bump PC, make sure i is updated.
@@ -232,9 +238,12 @@ main(void)
 			sbiputc('?');
 			panic("misaligned data segment");
 		}
-		memset(edata, 0, end - edata);		/* zero bss */
 		vfy = 0;
+		sbiputc('O'); sbiputc('K'); sbiputc('\n');
 	}
+	b = edata;
+	e = end - edata;
+	memset(edata, 0, end - edata);		/* zero bss */
 	machinit();
 	while (i < 64) {
 		sbiputc('c');
@@ -260,6 +269,8 @@ main(void)
 	quotefmtinstall();
 	sbiputc('q');
 	print("hi there\n");
+	print("zerod %p for %d\n", b, e);
+	print("getcallerpc %p\n", from);
 	print("let's try an sbigetc()\n");
 	if (0)for(int i = 0; i < 16; i++) {
 		int c;
