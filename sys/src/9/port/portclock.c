@@ -140,13 +140,17 @@ timerdel(Timer *dt)
 			sched();
 }
 
+enum {
+	ClockSpew = 1,
+};
+
 void
 hzclock(Ureg *ur)
 {
 //	extern void sbihzclock(void);
 //	sbihzclock();
-if (0)	sbiputc('H');
-	if (0)print("Ehzclock\n");
+if (ClockSpew)	sbiputc('H');
+	if (ClockSpew)print("Ehzclock\n");
 	m->ticks++;
 	if(m->proc)
 		m->proc->pc = ur->pc;
@@ -164,7 +168,7 @@ if (0)	sbiputc('H');
 	if(kproftimer != nil)
 		kproftimer(ur->pc);
 
-	if (0)print("active.machs[%d]=%d\n", m->machno , active.machs[m->machno]);
+	if (ClockSpew)print("active.machs[%d]=%d\n", m->machno , active.machs[m->machno]);
 	if(active.machs[m->machno] == 0)
 		return;
 
@@ -182,10 +186,10 @@ if (0)	sbiputc('H');
 			if (0)print("tos was set to %llx\n", tos->clock);
 			segclock(ur->pc);
 		}
-		if (0)print("clal hzsched\n");
+		if (ClockSpew)print("clal hzsched\n");
 		hzsched();	/* in proc.c */
 	}
-	if (0)print("Xhzclock\n");
+	if (ClockSpew)print("Xhzclock\n");
 }
 
 void
@@ -196,15 +200,15 @@ timerintr(Ureg *u, Tval)
 	uvlong when, now;
 	int callhzclock;
 
-	if(0)sbiputc('T');
+	if(ClockSpew)sbiputc('T');
 	intrcount[m->machno]++;
 	callhzclock = 0;
 	tt = &timers[m->machno];
 	now = fastticks(nil);
-	if(0)sbiputc('I');
+	if(ClockSpew)sbiputc('I');
 	ilock(tt);
 	while(t = tt->head){
-		if(0)sbiputc('M');
+		if(ClockSpew)sbiputc('M');
 		/*
 		 * No need to ilock t here: any manipulation of t
 		 * requires tdel(t) and this must be done with a
@@ -214,23 +218,23 @@ timerintr(Ureg *u, Tval)
 		when = t->twhen;
 		//when += 0x40000;
 		if(when > now){
-			if(0)sbiputc('E');
-if (0)			print("timerintr, timerset %#llx\n", when);
+			if(ClockSpew)sbiputc('E');
+if (ClockSpew)			print("timerintr, timerset %#llx\n", when);
 			timerset(when);
 			iunlock(tt);
 			if(callhzclock)
 				hzclock(u);
 			return;
 		}
-		if(0)sbiputc('R');
+		if(ClockSpew)sbiputc('R');
 		tt->head = t->tnext;
 		assert(t->tt == tt);
 		t->tt = nil;
-		if(0)sbiputc('i');
+		if(ClockSpew)sbiputc('i');
 		t->tactive = MACHP(m->machno);
 		fcallcount[m->machno]++;
 		iunlock(tt);
-		if(0)sbiputc('n');
+		if(ClockSpew)sbiputc('n');
 		if(t->tf)
 			(*t->tf)(u, t);
 		else
@@ -240,7 +244,7 @@ if (0)			print("timerintr, timerset %#llx\n", when);
 		if(t->tmode == Tperiodic)
 			tadd(tt, t);
 	}
-	if(0)sbiputc('t');
+	if(ClockSpew)sbiputc('t');
 	iunlock(tt);
 }
 
