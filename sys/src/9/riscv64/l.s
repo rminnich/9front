@@ -21,6 +21,7 @@
 
 */
 // THIS MUST BE FIRST FUNCTION IN THIS FILE
+// DO NOT TOUCH MACH -- it is zero'd in main, first thing.
 TEXT	_start(SB), 1, $-4
 	MOV	$setSB(SB), R3
 	JAL	R1, mmudisable<>(SB)
@@ -33,7 +34,9 @@ TEXT	_start(SB), 1, $-4
 	MOV CSR(SSTATUS), R8
 	OR $0x40000, R8, R8
 	MOV R8, CSR(SSTATUS)
-	
+	JAL	RARG, NN
+NN:
+	MOV R2, RARG
 	JAL	R1, main(SB)
 NDNR:
 	MOV $0x30, R10
