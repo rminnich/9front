@@ -11,7 +11,7 @@
 
 enum {
 	Scaling = 2,
-	Spew = 0,
+	Spew = 1,
 };
 
 int	schedgain = 30;	/* units in seconds */
@@ -58,6 +58,10 @@ static void rebalance(void);
 static void pidinit(void);
 static void pidfree(Proc*);
 
+enum {
+	TrapSpew = 1,
+};
+
 /*
  * Always splhi()'ed.
  */
@@ -66,9 +70,9 @@ schedinit(void)
 {
 	Edf *e;
 
-if (0)	print("schedinit: m is %p\n", m);
+if (TrapSpew)	print("schedinit: m is %p\n", m);
 	setlabel(&m->sched);
-if (0)print("schedinit: up %p pid %d\n", up, up ? up->pid : -1);
+if (TrapSpew)print("schedinit: up %p pid %d\n", up, up ? up->pid : -1);
 	if(up != nil) {
 		if((e = up->edf) != nil && (e->flags & Admitted))
 			edfrecord(up);
@@ -101,7 +105,7 @@ if (Spew)print("schedinit: moribund\n");
 		up = nil;
 	}
 out:
-if (0)print("schedinit: out: sched\n");
+if (TrapSpew)print("schedinit: out: sched\n");
 	sched();
 	panic("schedinit");
 }
