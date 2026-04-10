@@ -23,6 +23,23 @@
 // THIS MUST BE FIRST FUNCTION IN THIS FILE
 // DO NOT TOUCH MACH -- it is zero'd in main, first thing.
 TEXT	_start(SB), 1, $-4
+	JAL R1, SRC
+SRC:
+	ADD $-4, R1, R1
+	MOV R1, R9
+	MOV $KTZERO, R2
+	MOV $0x400000, R4
+	SUB R2, R1, R5
+	BEQ R5, DONECOPY
+LOOP:
+	MOV 0(R1), R3
+	MOV R3, 0(R2)
+	ADD $8, R2, R2
+	ADD $8, R1, R1
+	ADD $-8, R4, R4
+	BNE R4, LOOP
+	
+DONECOPY:
 	MOV	$setSB(SB), R3
 	JAL	R1, mmudisable<>(SB)
 	MOV $MACHADDR(1), R2
@@ -37,7 +54,11 @@ TEXT	_start(SB), 1, $-4
 	JAL	RARG, NN
 NN:
 	MOV R2, RARG
-	JAL	R1, main(SB)
+	MOV $main(SB), R4
+	AND $0xffff, R4, R5
+	MOV $KTZERO, R2
+	ADD R2, R5, R4
+	JAL	R1, 0(R4)
 NDNR:
 	MOV $0x30, R10
 		MOV $1, R17
