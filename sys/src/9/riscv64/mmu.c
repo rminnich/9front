@@ -274,10 +274,9 @@ mmuwalk(uintptr va, int level)
 			if (MMUSpew){
 				if(pte & (0xFFFFULL<<48))
 					iprint("strange pte %#p va %#p, ", pte, va);
-				pte &= ~(0xFFFFULL<<48 | BY2PG-1);
-				pte <<= 2;
 			}
 			pte = (pte >>10)<<12;
+			pte &= ~(0xFFFFULL<<48 | BY2PG-1);
 		} else {
 			pg = up->mmufree;
 			if(pg == nil){
