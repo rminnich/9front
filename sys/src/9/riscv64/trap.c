@@ -13,13 +13,14 @@
 #include "/sys/src/libc/9syscall/sys.h"
 
 enum {
-	Trapdebug	= 0,
+	Trapdebug	= 1,
 	Probedebug	= 1,
 	Intrdebug	= 0,
 	Tryallcpus	= 0,
-	TrapSpew	= 0,
-	TrapOhShit  = 0,
-	TrapSys		= 0,
+	TrapSpew	= 1,
+	TrapOhShit  = 1,
+	TrapSys		= 1,
+	FaultSpew 	= 1,
 
 	Ntimevec = 20,		/* number of time buckets for each intr */
 	Ncauses = Ngintr + Nlintr + Nexc,	/* # of Vctls */
@@ -187,18 +188,18 @@ evenaddr(uintptr addr)
 void
 forkchild(Proc *p, Ureg *ureg)
 {
-	if(0)print("forkchild parent %d kid %d p %p ureg %p stack ? %p\n", up->pid, p->pid, p, ureg, (uintptr) p - TRAPFRAMESIZE);
+	if(1)print("forkchild parent %d kid %d p %p ureg %p stack ? %p\n", up->pid, p->pid, p, ureg, (uintptr) p - TRAPFRAMESIZE);
 	Ureg *cureg;
-	if(0)print("ureg sp %p pc %p\n", ureg->sp, ureg->pc);
+	if(1)print("ureg sp %p pc %p\n", ureg->sp, ureg->pc);
 	p->sched.pc = (uintptr) sysrforkret;
 	p->sched.sp = (uintptr) p - sizeof(Ureg);
-	if(0)print("forkchild: sp %p pc %p\n", p->sched.sp, p->sched.pc);
+	if(1)print("forkchild: sp %p pc %p\n", p->sched.sp, p->sched.pc);
 
 	cureg = (Ureg*) (p->sched.sp);
-	if(0)print("fork child: ureg -> r1 is %p\n", ureg->r1);
-	if(0)print("forkchild: memmove(%p, %p, %d)\n", cureg, ureg, sizeof(Ureg)-16);
+	if(1)print("fork child: ureg -> r1 is %p\n", ureg->r1);
+	if(1)print("forkchild: memmove(%p, %p, %d)\n", cureg, ureg, sizeof(Ureg)-16);
 	memmove(cureg, ureg, sizeof(Ureg));
-	if(0)print("forkchild: sp %p pc %p\n", p->sched.sp, p->sched.pc);
+	if(1)print("forkchild: sp %p pc %p\n", p->sched.sp, p->sched.pc);
 	cureg->arg = 0;
 }
 
@@ -652,7 +653,7 @@ badinst(Ureg *ureg, Cause *cp)
 	if (cp->user)
 		posttrapnote(ureg, cp->cause, "illegal instruction");
 	else
-		panic("illegal instruction at %#p: %#p", ureg->pc, ureg->tval);
+		panic("illegal instruction at %p: %p", ureg->pc, ureg->tval);
 }
 
 static int
@@ -826,7 +827,7 @@ faultriscv64(Ureg* ureg, Cause *cp)
 	// resumed after sysrfork(). Nope. 
 	if (0)	if (iskern(ureg->pc))
 		panic("fault in kernel mode (pc %p)\n", ureg->pc);
-	if (0)print("faultriscv64 pid %d\n", up->pid);
+	if (FaultSpew)print("faultriscv64 pid %d\n", up->pid);
 	if (0)if (up->pid == 5) soft();
 	if(up == nil)
 		panic("fault %#lld with up == nil; pc %#p addr %#p",
