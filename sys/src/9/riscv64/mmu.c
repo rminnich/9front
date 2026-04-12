@@ -124,8 +124,10 @@ print("%p is %p\n", sv39, sv39[0]);
 		print("%p is %p\n", &pGiB[i], pGiB[i]);
 	}
 */
-	for(i = 0; i < 16; i++){
-		sv39[i] = ((0x40000000*i)>>2) | 0xcf;
+	for(unsigned long long i = 0; i < 16; i++){
+		sv39[i] = 0;
+		if ((i < 2) || (i>3))
+			sv39[i] = ((0x40000000ULL*i)>>2) | 0xcfULL;
 		print("sv39:%p is %p\n", &sv39[i], sv39[i]);
 	}
 //while(! block);
