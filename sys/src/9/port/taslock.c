@@ -16,6 +16,10 @@ uintptr maxilockpc;
 uintptr ilockpcs[0x100] = { [0xff] = 1 };
 #endif
 
+enum {
+	LockSpew = 0,
+};
+
 static void
 lockloop(Lock *l, uintptr pc)
 {
@@ -54,7 +58,7 @@ lock(Lock *l)
 #endif
 		return;
 	}
-if (0)	print("lock: locked, key %p\n", l->key);
+if (LockSpew)	print("lock: locked, key %p\n", l->key);
 	if(up)
 		up->nlocks--;
 
@@ -101,7 +105,7 @@ ilock(Lock *l)
 	uintptr pc;
 
 	pc = getcallerpc(&l);
-if (1)	print("ilock %p pc %p key %p\n", l, pc, l->key);
+if (LockSpew)	print("ilock %p pc %p key %p\n", l, pc, l->key);
 
 	x = splhi();
 	if(tas(&l->key) != 0){
@@ -120,7 +124,7 @@ if (1)	print("ilock %p pc %p key %p\n", l, pc, l->key);
 		}
 	}
 acquire:
-	print("acquired\n");
+if (LockSpew)print("acquired\n");
 	m->ilockdepth++;
 	if(up)
 		up->lastilock = l;
