@@ -126,7 +126,7 @@ print("%p is %p\n", sv39, sv39[0]);
 */
 	for(unsigned long long i = 0; i < 16; i++){
 		sv39[i] = 0;
-		if ((i < 2) || (i>3))
+		if ((i < 2) || (i>3) || 1)
 			sv39[i] = ((0x40000000ULL*i)>>2) | 0xcfULL;
 		print("sv39:%p is %p\n", &sv39[i], sv39[i]);
 	}

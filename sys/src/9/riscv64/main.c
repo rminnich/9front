@@ -74,7 +74,7 @@ init0(void)
 
 	print("islo %d, now enable clock\n", islo());
 	block = 1;
-	if (0)while(! block);
+	if (1)while(! block);
 	if(1)clockenable();
 	//print("now to user\n");
 	touser((uintptr)USTKTOP-BY2PG);
@@ -215,7 +215,7 @@ main(uintptr from)
 {
 	void *b;
 	uintptr e;
-	
+	sbiputc('E');	
 	if (! once) {
 		memset((void*)VDRAM, 0, KTZERO-VDRAM);
 	}
