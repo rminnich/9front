@@ -1,8 +1,9 @@
 CONF=qemu
 CONFLIST=qemu
 
-#loadaddr=0x100200000
-loadaddr=0x80200000
+# NOTE: KEEP THIS IN SYNC WITH mem.h VDRAM define
+loadaddr=0x100200000
+#loadaddr=0x80200000
 
 objtype=riscv64
 </$objtype/mkfile
