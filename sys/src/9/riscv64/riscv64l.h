@@ -308,12 +308,19 @@
 	MOVW	R(TMP), (R(UART0)); \
 	FENCE
 
+#define DEBUG
 #ifndef DEBUG
 #define CONSOUT(c)
 #define CONSPUT(c)
 #define	CONSWAIT
 #else					/* DEBUG */
-#define CONSOUT(c) PRINT(c)
+#define CONSPUT(c) MOV c, R10;\
+				MOV $0, R16;\
+				MOV $1, R17;\
+				ECALL
+
+#define CONSOUT(c) CONSPUT(c)
+#endif
 
 #ifdef SIFIVEUART
 #define CONSPUT(c) \
@@ -331,7 +338,8 @@
 	MOVW	$(1ul<<31), R(TMP2); \
 	AND	R(TMP2), R(TMP);	/* notready bit */ \
 	BNE	R(TMP), -4(PC)
-#else					/* SIFIVEUART */
+#endif				/* SIFIVEUART */
+#ifdef I8250UART
 /* i8250 */
 #define CONSPUT(c) \
 	FENCE; \
