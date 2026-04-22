@@ -78,12 +78,7 @@ TEXT strap(SB), 1, $-4
 	MOV	$dummysc(SB), R9
 	SCW(0, 9, 0)
 
-#ifdef TRAPDEBUG
-FUCK
-//	MOV	MCONSUART(R(MACH)), R(UART0)
-//	CONSPUT($'S')
-//	JAL	R0, wfi(SB)		/* JMP only takes local labels */
-#endif
+	CONSPUT($'S')
 
 	MOV	CSR(SSTATUS), R9
 	AND	$Spp, R9
@@ -225,11 +220,8 @@ trapaligned:
 TEXT trapcomm(SB), 1, $-4
 	SPLHI
 	MOV	CSR(SSCRATCH), R(MACH)
-	MOV	MCONSUART(R(MACH)), R(UART0)
 	MOV	$setSB(SB), R3
-	MOVW	$(1ul<<31), R(TMP2)		/* sifive tx notready bit */
 
-	CONSWAIT
 	CONSOUT($'\r')
 	CONSOUT($'\n')
 	CONSOUT($'?')
@@ -250,7 +242,6 @@ isexcept:
 	/* print uintptr EXCPC manually in hex */
 	CONSOUT($'0')
 	CONSOUT($'x')
-	CONSWAIT
 	MOV	$(8*XLEN-4), R21
 nextdig:
 	SRL	R21, R(EXCPC), R(TMP)
