@@ -305,6 +305,8 @@ mmuwalk(uintptr va, int level)
 	}
 if (MMUSpew)print("RETURN &%p[0x%x] = ", table, x);
 if (MMUSpew)print("%p\n", &table[x]);
+uintptr *ppte = &table[x];
+if (MMUSpew)print("userppte %p -> ppte %p contains %p phys %p v %p\n", va, ppte, *ppte, ptephys(*ppte), kmapaddr(ptephys(*ppte)));
 	return &table[x];
 }
 
