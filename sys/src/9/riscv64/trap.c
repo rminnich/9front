@@ -1100,8 +1100,8 @@ trap(Ureg* ureg)
 	uint type;
 	Cause why;
 	Traphandler handler;
-	if (TrapOhShit) print("trap ureg %p pc %p up %p up->pid %d\n", ureg, up, ureg->pc, up ? up->pid : -1);
-if (0)sbiputc('T');
+	if (TrapOhShit) print("trap ureg %p pc %p up %p up->pid %d\n", ureg, up, ureg ? ureg->pc : 0, up ? up->pid : -1);
+if (1)sbiputc('T');
 	if (Trapdebug) {
 		if (ureg == nil)
 			panic("trap with nil ureg");
