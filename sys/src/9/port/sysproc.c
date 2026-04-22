@@ -411,7 +411,9 @@ sysexec(va_list list)
 	if (ExecSpew)print("tc before tos %p %d memset %p, &tc is %p\n", tos, sizeof(Tos) ,tc, &tc);
 	// if(0) gets us farther, which makes no fucking sense at all.
 	if (ExecSpew) print("tos pte is %p\n", userpte(tos));
-	if (0)*(int*)tos = 1;
+	if (fault((uvlong)tos, 0, 0) < 0) print("fault %p fails\n", tos);
+	if (0)*(char*)tos = 1;
+	if (ExecSpew) print("tos pte is %p\n", userpte(tos));
 	memset(tos, 0, sizeof(Tos));
 	if (ExecSpew)print("tc bbefore set tos since tos is %p is %p\n", tos, tc);
 	tos->cyclefreq = m->cyclefreq;
@@ -751,7 +753,7 @@ sysexec(va_list list)
 
 	tos = (Tos*)(USTKTOP - sizeof(Tos));
 	argv = (char**)(USTKTOP - ssize);
-
+if (fault((uvlong)tos, 0, 0) < 0) print("fault %p fails\n", tos);
 	return execregs(entry, argc, argv, tos);
 }
 
