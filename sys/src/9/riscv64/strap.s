@@ -83,6 +83,7 @@ TEXT strap(SB), 1, $-4
 	MOV	CSR(SSTATUS), R9
 	AND	$Spp, R9
 	BEQ	R9, fromuser			/* prev not super */
+	CONSPUT($'K')
 
 	/*
 	 * trapped from kernel mode: R2, SB, MACH, and USER were all okay,
@@ -113,6 +114,8 @@ TEXT strap(SB), 1, $-4
 	 * old MACH value is in CSR(SSCRATCH).  R2 is saved in regsave.
 	 */
 fromuser:
+	CONSPUT($'U')
+
 	MOV	$setSB(SB), R3
 
 	MOV	$recutrap(SB), R9
@@ -245,7 +248,7 @@ isexcept:
 	MOV	$(8*XLEN-4), R21
 nextdig:
 	SRL	R21, R(EXCPC), R(TMP)
-	//AND	$MASK(4), R(TMP)
+	AND	$MASK(4), R(TMP)
 	ADD	$'0', R(TMP)
 	MOV	$'9', R22
 	BGE	R(TMP), R22, decimal		/* '9' >= R(TMP)? */
