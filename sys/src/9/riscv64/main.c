@@ -212,6 +212,13 @@ int once = 0;
 void
 main(void)
 {
+	void *b;
+	uintptr e;
+
+	if(!once){
+		memset((void*)VDRAM, 0, KTZERO-VDRAM);
+	}
+
 	if (once) panic("main entered twice");
 	once++;
 	while(i == 0); // BUG: does not reload i
@@ -232,9 +239,11 @@ main(void)
 			sbiputc('?');
 			panic("misaligned data segment");
 		}
-		memset(edata, 0, end - edata);		/* zero bss */
 		vfy = 0;
 	}
+	b = edata;
+	e = end - edata;
+	memset(edata, 0, end - edata);		/* zero bss */
 	machinit();
 	while (i < 64) {
 		sbiputc('c');
