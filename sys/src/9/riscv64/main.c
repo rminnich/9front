@@ -77,6 +77,7 @@ init0(void)
 	if (0)while(! block);
 	if(1)clockenable();
 	//print("now to user\n");
+	print("SP will be USTKTOP-BY2PG %p\n", (uintptr)USTKTOP-BY2PG);
 	touser((uintptr)USTKTOP-BY2PG);
 }
 
@@ -216,7 +217,7 @@ main(void)
 	uintptr e;
 
 	if(!once){
-		memset((void*)VDRAM, 0, KTZERO-VDRAM);
+		memset(MACHP(0), 0, KTZERO-(uintptr)MACHP(0));
 	}
 
 	if (once) panic("main entered twice");
