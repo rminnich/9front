@@ -47,15 +47,19 @@
 
 /* always prints */
 #define PRINT(c) \
-	MOV	c, R(TMP); \
-	MOVW	R(TMP), (R(UART0)); \
-	FENCE
+	CONSPUT(c)
 
+#define DEBUG
 #ifndef DEBUG
 #define CONSOUT(c)
 #define CONSPUT(c)
 #define	CONSWAIT
 #else					/* DEBUG */
+#define CONSOUT(c) PRINT(c)
+#define CONSPUT(c) MOV c, R10;\
+				MOV $0, R16;\
+				MOV $1, R17;\
+				ECALL
 #define CONSOUT(c) PRINT(c)
 
 #ifdef SIFIVEUART
