@@ -326,21 +326,22 @@ sysexec(va_list list)
 	Tos *tos;
 	Chan *tc;
 	Fgrp *f;
+	enum {ExecSpew = 0,};
 
-	if (0)print("sysexec: here we are\n");
+	if (ExecSpew)print("sysexec: here we are\n");
 	file = va_arg(list, char*);
-	if (0)print("file is %p\n", file);
+	if (ExecSpew)print("file is %p\n", file);
 	validaddr((uintptr)file, 1, 0);
-	if (0)print("file is %s\n", file);
+	if (ExecSpew)print("file is %s\n", file);
 	argp = va_arg(list, char**);
-	if (0)print("argp is %p\n", argp);
+	if (ExecSpew)print("argp is %p\n", argp);
 	evenaddr((uintptr)argp);
 	validaddr((uintptr)argp, 2*BY2WD, 0);
-	if (0)print("it is valid\n");
+	if (ExecSpew)print("it is valid\n");
 	if(*argp == nil)
 		error(Ebadarg);
 
-	if (0)print("file is %s\n", file);
+	if (ExecSpew)print("file is %s\n", file);
 	if(waserror()){
 		/* Disaster after commit */
 		if(up->seg[SSEG] == nil)
@@ -362,10 +363,10 @@ sysexec(va_list list)
 		nexterror();
 	}
 
-	if (0)print("after validnamedup %s\n", file);
+	if (ExecSpew)print("after validnamedup %s\n", file);
 	tc = namec(file, Aopen, OEXEC, 0);
 
-	if (0)print("tc is %p\n", tc);
+	if (ExecSpew)print("tc is %p\n", tc);
 	/* Last path element becomes up->text (and argv[0] for script) */
 	elem = nil;
 	kstrdup(&elem, up->genbuf);
@@ -411,7 +412,7 @@ sysexec(va_list list)
 		int i;
 		n = devtab[tc->type]->read(tc, u.buf, sizeof(u.buf), 0);
 		if(n >= sizeof(Exec)) {
-			if (0)print("magic in and out: %#lx %#lx want %#lx\n", (ushort)magic, (ushort)beswal(u.ehdr.magic), AOUT_MAGIC);
+			if (ExecSpew)print("magic in and out: %#lx %#lx want %#lx\n", (ushort)magic, (ushort)beswal(u.ehdr.magic), AOUT_MAGIC);
 			magic = beswal(u.ehdr.magic);
 			if(magic == AOUT_MAGIC)
 				break; /* for binary */
@@ -420,7 +421,7 @@ sysexec(va_list list)
 		/* Process #! /bin/sh args ... */
 		if(n <= 2 || u.buf[0] != '#' || u.buf[1] != '!'
 		|| (a = memchr(u.buf+2, '\n', n-2)) == nil){
-			if (0)print("bad exec: first two bytes are %#x %#x, need #! or %#x\n", u.buf[0], u.buf[1], beswal(u.ehdr.magic));
+			if (ExecSpew)print("bad exec: first two bytes are %#x %#x, need #! or %#x\n", u.buf[0], u.buf[1], beswal(u.ehdr.magic));
 			error(Ebadexec);
 		}
 		*a = '\0';
@@ -461,7 +462,7 @@ sysexec(va_list list)
 		}
 	}
 
-	if (0)print("process a.out ...\n");
+	if (ExecSpew)print("process a.out ...\n");
 	/* Process a.out(6) header */
 	if(magic & HDR_MAGIC) {
 		if(n < sizeof(u.ehdr))
@@ -472,9 +473,9 @@ sysexec(va_list list)
 		entry = beswal(u.ehdr.entry);
 		text = UTZERO+sizeof(Exec);
 	}
-	if (0)print("entry %p text %p\n", entry, text);
+	if (ExecSpew)print("entry %p text %p\n", entry, text);
 	if(entry < text) {
-		if (0)print("sysexec: entry %p < text %p\n", entry, text);
+		if (ExecSpew)print("sysexec: entry %p < text %p\n", entry, text);
 		//entry = text;
 		error(Ebadexec);
 	}
@@ -558,7 +559,7 @@ sysexec(va_list list)
 	 */
 	argv = (char**)(tstk - ssize);
 	charp = (char*)tstk - nbytes;
-	if (0)print("argv %p charp %p\n", argv, charp);
+	if (ExecSpew)print("argv %p charp %p\n", argv, charp);
 
 	i = 0;
 	if(indir)	/* move interpreter args down before user args */
@@ -593,7 +594,7 @@ sysexec(va_list list)
 		free(args);
 		nexterror();
 	}
-	if (0)print("memmoeve %p, %p, %d\n", args, a, nargs);
+	if (ExecSpew)print("memmoeve %p, %p, %d\n", args, a, nargs);
 	memmove(args, a, nargs);
 	if(nargs>0 && args[nargs-1]!='\0'){
 		/* make sure last arg is NUL-terminated */
@@ -1490,13 +1491,16 @@ dosyscall(ulong scallnr, Sargs *args, uintptr *retp)
 	s = spllo();
 
 	if(!waserror()){
+		if (Spew)print("args %p, check, wait for args are ok print \n", args);
 		evenaddr((uintptr)args);
 		validaddr((uintptr)args, sizeof(Sargs), 0);
-
+		if (Spew)print("args are ok\n");
 		up->s = *args;
 		up->scallnr = scallnr;
-if (Spew) {syscallfmt(scallnr, userpc(), (va_list)up->s.args);
-print("dosyscall: %s\n", up->syscalltrace);
+		
+if (Spew) {print("call syscallfmt, look for ok message\n");
+syscallfmt(scallnr, userpc(), (va_list)up->s.args);
+print("OK: dosyscall: %s\n", up->syscalltrace);
 }
 		if(0) { // || up->procctl == Proc_tracesyscall){
 			syscallfmt(scallnr, userpc(), (va_list)up->s.args);
@@ -1526,7 +1530,7 @@ print("dosyscall: %s\n", up->syscalltrace);
 		up->syserrstr = up->errstr;
 		up->errstr = e;
 		ret = -1;
-		print("syscall failed: %s\n", up->errstr);
+		if (Spew)print("syscall failed: %s\n", up->errstr);
 	}
 	if(up->nerrlab){
 		int i;
@@ -1538,7 +1542,7 @@ print("dosyscall: %s\n", up->syscalltrace);
 	}
 	*retp = ret;
 if (Spew) {sysretfmt(scallnr, (va_list)up->s.args, ret, startns, stopns);
-print("syscallret:%s\n", up->syscalltrace);}
+print("syscallret:%s", up->syscalltrace);}
 	if(0) { // || up->procctl == Proc_tracesyscall){
 		todget(nil, &stopns);
 		sysretfmt(scallnr, (va_list)up->s.args, ret, startns, stopns);
