@@ -22,7 +22,7 @@ enum {
 	Tryallcpus	= 0,
 	TrapSpew	= 0,
 	TrapOhShit  = 0,
-	TrapSys		= 1,
+	TrapSys		= 0,
 
 	Ntimevec = 20,		/* number of time buckets for each intr */
 	Ncauses = Ngintr + Nlintr + Nexc,	/* # of Vctls */
