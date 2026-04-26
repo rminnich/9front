@@ -22,7 +22,7 @@ enum {
 	Tryallcpus	= 0,
 	TrapSpew	= 0,
 	TrapOhShit  = 0,
-	TrapSys		= 0,
+	TrapSys		= 1,
 
 	Ntimevec = 20,		/* number of time buckets for each intr */
 	Ncauses = Ngintr + Nlintr + Nexc,	/* # of Vctls */
@@ -298,7 +298,14 @@ trapsyscall(Ureg *ureg, Cause *)
 	uintptr pc;
 
 	int i;
-if (0)	for(i = 0; i < 32; i++) print("%d:0x%llx\n", i, ureg->regs[i]);
+	/* This spew is very handy, it helped find the memory poising
+	 * issue, by comparing qemu output to bpi-f3 output. */
+if (TrapSys)	{
+	for(i = 0; i < 32; i++) print("%d:0x%llx\n", i, ureg->regs[i]);
+	print("sp is %p\n", ureg->sp);
+	for(i = 0; i < MAXSYSARG; i++)
+		print("%d:%p\n", i, ((uintptr *)ureg->sp)[i+1]);
+}
 //	m->turnedfpoff = 0;
 
 	/* syscall may change ureg->pc, so save a copy. */
@@ -308,7 +315,7 @@ if (0)	for(i = 0; i < 32; i++) print("%d:0x%llx\n", i, ureg->regs[i]);
 	scallnr = ureg->arg;
 	/* on riscv64, ureg->ret is ureg->arg, so can't zero ureg->ret here. */
 	/* Last syscall argument is location of return value in frame. */
-	if (TrapSys) print("dosyscall(%d, %p, %p val %p\n", scallnr, (Sargs*)(ureg->sp+BY2WD), &ureg->arg, ureg->arg);
+	if (TrapSys) print("%p:dosyscall(%d, %p, %p val %p\n", pc, scallnr, (Sargs*)(ureg->sp+BY2WD), &ureg->arg, ureg->arg);
 	dosyscall(scallnr, (Sargs*)(ureg->sp+BY2WD), &ureg->arg);
 
 	/*
@@ -321,7 +328,7 @@ if (0)	for(i = 0; i < 32; i++) print("%d:0x%llx\n", i, ureg->regs[i]);
 	else if (Trapdebug && scallnr != EXEC)
 		iprint("syscall %d changed return ureg->pc %#p (old pc %#p)\n",
 			scallnr, ureg->pc, pc);
-	if (TrapSys) print("SYSCALL return: up->pid %d scallnr %d RFORK %d\n", up->pid, scallnr, RFORK);
+	if (TrapSys) print("SYSCALL return: up->pid %d scallnr %d\n\n", up->pid, scallnr);
 	kexit(ureg);
 
 }
