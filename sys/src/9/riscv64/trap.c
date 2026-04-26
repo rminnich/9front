@@ -80,7 +80,7 @@ procfork(Proc *p)
 void
 procsetup(Proc *p)
 {
-	print("procsetup %p\n", p);
+	print("TODO procsetup %p\n", p);
 //	fpuprocsetup(p);
 }
 
@@ -134,8 +134,6 @@ callwithureg(void (*f) (Ureg *))
 void
 kprocchild(Proc *p, void (*entry)(void))
 {
-	print("kprocchild %p %p\n", p, entry);
-//	panic("kprocchild");
 	p->sched.pc = (uintptr) entry;
 	p->sched.sp = (uintptr) p - 16;
 	*(void**)p->sched.sp = kprocchild;	/* fake */
@@ -178,7 +176,7 @@ execregs(uintptr entry, int argc, char *argv[], Tos *tos)
 	uintptr *sp = (void*)argv;
 	Ureg *ureg;
 
-	print("execregs %p %d %p %p\n", entry, argc, argv, tos);
+	if (TrapSys)print("execregs %p %d %p %p\n", entry, argc, argv, tos);
 	*--sp = argc;
 
 	ureg = up->dbgreg;
