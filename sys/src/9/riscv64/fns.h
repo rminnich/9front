@@ -248,3 +248,4 @@ void wrstimecmp(u64int);
 u64int rdstimecmp(void);
 
 void soft(void);
+int clz(ulong);

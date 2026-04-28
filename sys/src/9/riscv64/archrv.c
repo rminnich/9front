@@ -1,6 +1,6 @@
 /*
  * risc-v rv64gc dependencies: clint, clock, ipis, harts, l2/3 cache, idling,
- *	delays, clz
+ *	delays
  */
 #include "u.h"
 #include "../port/lib.h"
@@ -90,11 +90,7 @@ char *hartstates[] = {
 
 extern int nrdy;			/* from proc.c */
 
-typedef ulong Clzuint;
-int	portclz(Clzuint n);
-
 uvlong pagingmode = PAGINGMODE;
-int (*archclz)(Clzuint) = portclz;
 
 static Hart harts[HARTMAX];
 
@@ -1107,11 +1103,9 @@ cpuidprint(void)
 		if (sys->cpucap & Capvec)
 			print("V");
 	}
-	if (haveinstr(clzzbb, 0)) {
-		print("_Zbb");
-		archclz = clzzbb;
-		sys->cpucap |= Capclz;
-	}
+
+	sys->cpucap |= Capclz;
+
 	if (soc.havecbo)
 		print("_Zicbom");
 //		sys->cpucap |= Capcbo;
@@ -1255,40 +1249,3 @@ millidelay(int millisecs)
 #endif
 
 
-/* the Zbb extension provides a CLZ instruction */
-int
-portclz(Clzuint n)			/* count leading zeroes */
-{
-	USED(n);
-	int cnt = 0;
-	panic("portclz");
-#ifdef NOT
-	/* (u)vlong makes jc generate better code than (u)int */
-	uvlong cnt, hibits;
-	Clzuint mask;
-
-	if (n == 0)
-		return Clzbits;
-	cnt = 0;
-	mask = VMASK(Clzbits/2) << (Clzbits/2);
-	/* this will take at most log2(Clzbits) iterations */
-	for (hibits = Clzbits/2; hibits > 0; ) {
-		if ((n & mask) == 0) {
-			/* highest bits are zero; count and toss them */
-			cnt += hibits;
-			n <<= hibits;
-		}
-		/* halve mask width for next iteration */
-		hibits /= 2;
-		mask <<= hibits;
-	}
-#endif
-	return cnt;
-}
-#ifdef MEMEME
-int
-clz(Clzuint n)
-{
-	return (*archclz)(n);
-}
-#endif
