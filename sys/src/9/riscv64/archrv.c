@@ -347,11 +347,29 @@ cachedwbinvse(void *vaddr, int len)
 }
 
 void
-cachedinvse()
+cachedinvse(void *vaddr, int len)
 {
+	uintptr addr, last;
+	Mpl pl;
+
 	coherence();
 	print("skip all this cache inval in cachdinvse\n");
 	return;
+#ifdef xxx
+	if (!dmaincoherent || !ISCACHED(vaddr))
+		return;
+	if (!soc.havecbo)
+		return;
+#endif
+
+	pl = splhi();
+	addr = (uintptr)(iskern(vaddr)? vaddr: KADDR((uintptr)vaddr));
+	last = (addr + len + CACHELINESZ-1) & ~((uintptr)CACHELINESZ-1);
+	addr &= ~((uintptr)CACHELINESZ-1);	/* start of first cache line */
+	for (; addr < last; addr += CACHELINESZ)
+		cboinval((void *)addr);
+	coherence();
+	splx(pl);
 }
 
 int
@@ -520,7 +538,7 @@ calibrate(void)
 
 	/* compute constants for use by timerset & idle code */
 	if (timebase < MHZ) {
-		print("timebase %llud is < MHZ %d, just set it to 2*MHZ\n", timebase, MHZ);
+		print("timebase %d is < MHZ %llud, just set it to 2*MHZ\n", timebase, MHZ);
 		panic("fix your timebase");
 	}
 	sys->clintsperhz = timebase / HZ;	/* clint ticks per HZ */
@@ -1242,7 +1260,30 @@ int
 portclz(Clzuint n)			/* count leading zeroes */
 {
 	USED(n);
+	int cnt = 0;
 	panic("portclz");
+#ifdef NOT
+	/* (u)vlong makes jc generate better code than (u)int */
+	uvlong cnt, hibits;
+	Clzuint mask;
+
+	if (n == 0)
+		return Clzbits;
+	cnt = 0;
+	mask = VMASK(Clzbits/2) << (Clzbits/2);
+	/* this will take at most log2(Clzbits) iterations */
+	for (hibits = Clzbits/2; hibits > 0; ) {
+		if ((n & mask) == 0) {
+			/* highest bits are zero; count and toss them */
+			cnt += hibits;
+			n <<= hibits;
+		}
+		/* halve mask width for next iteration */
+		hibits /= 2;
+		mask <<= hibits;
+	}
+#endif
+	return cnt;
 }
 #ifdef MEMEME
 int
