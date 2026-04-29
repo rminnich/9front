@@ -72,6 +72,7 @@ void
 procfork(Proc *p)
 {
 //	print("procfork %p\n", p);
+	USED(p);
 	print("fix fpuprocfork\n");
 //	fpuprocfork(p);
 //	p->tpidr = up->tpidr;
@@ -97,6 +98,7 @@ if (0)	print("procsave what is it for? %p\n", p);
 void
 procrestore(Proc *p)
 {
+	USED(p);
 if (0)	print("procresotre what is it for %p\n", p);
 //	fpuprocrestore(p);
 }
@@ -155,7 +157,7 @@ evenaddr(uintptr addr)
 void
 forkchild(Proc *p, Ureg *ureg)
 {
-	if(0)print("forkchild parent %d kid %d p %p ureg %p stack ? %p\n", up->pid, p->pid, p, ureg, (uintptr) p - TRAPFRAMESIZE);
+	if(0)print("forkchild parent %lud kid %lud p %p ureg %p stack ? %p\n", up->pid, p->pid, p, ureg, (uintptr) p - TRAPFRAMESIZE);
 	Ureg *cureg;
 	if(0)print("ureg sp %p pc %p\n", ureg->sp, ureg->pc);
 	p->sched.pc = (uintptr) sysrforkret;
@@ -241,6 +243,7 @@ trapdbg(Ureg *ureg, Cause *cp, int entry)
 	int type;
 
 	type = cp->type;
+	USED(type);
 	/* if we print uart interrupts, we'll recurse forever. */
 //	if (type == Globalintr)
 //		return;
@@ -255,7 +258,7 @@ trapdbg(Ureg *ureg, Cause *cp, int entry)
 		if (cp->cause == Envcalluser) {
 			iprint(" pid %ld", up->pid);
 			if (entry)
-				iprint(" %ld", ureg->arg);
+				iprint(" %llud", ureg->arg);
 			else
 				iprint(" return %#llux", ureg->arg);
 		}
@@ -326,7 +329,7 @@ if (TrapSys)	{
 	else if (Trapdebug && scallnr != EXEC)
 		iprint("syscall %d changed return ureg->pc %#p (old pc %#p)\n",
 			scallnr, ureg->pc, pc);
-	if (TrapSys) print("SYSCALL return: up->pid %d scallnr %d\n\n", up->pid, scallnr);
+	if (TrapSys) print("SYSCALL return: up->pid %lud scallnr %d\n\n", up->pid, scallnr);
 	kexit(ureg);
 
 }
@@ -538,6 +541,7 @@ badpagefault(Ureg *ureg, uintptr addr, int read, int insyscall)
 static void
 faultriscv64(Ureg* ureg, Cause *cp)
 {
+	USED(cp);
 	uintptr addr;
 	int read, insyscall;
 	extern int block;
@@ -553,7 +557,7 @@ faultriscv64(Ureg* ureg, Cause *cp)
 	// resumed after sysrfork(). Nope. 
 	if (0)	if (iskern(ureg->pc))
 		panic("fault in kernel mode (pc %p)\n", ureg->pc);
-	if (0)print("faultriscv64 pid %d\n", up->pid);
+	if (0)print("faultriscv64 pid %lud\n", up->pid);
 	if (0)if (up->pid == 5) soft();
 	if(up == nil)
 		panic("fault %#lld with up == nil; pc %#p addr %#p",
@@ -669,7 +673,7 @@ traplocalintr(Ureg *ureg, Cause *cp)
 	uint cause;
 if (0)sbiputc('-');
 
-	if (TrapSpew) print("traplocalintr ureg %p cause %p\n", ureg, cause);
+	if (TrapSpew) print("traplocalintr ureg %p cause %ud\n", ureg, cause);
 	m->intr++;			/* okay here; only tmr and sw intrs */
 	m->perf.intrts = perfticks();
 	cause = cp->cause;
@@ -730,11 +734,11 @@ if (0)sbiputc('-');
 	// by advancing the timer. Somehow that's not getting done correctly elsewhere.
 	if (1 || (clrsipbit(1<<cp->cause) & (1<<cause)) != 0) {
 		uvlong next = rdtime();
-		if (0)print("clrsipbit(%llx): did not clear bit\n", 1<<cp->cause);
+		if (0)print("clrsipbit(%x): did not clear bit\n", 1<<cp->cause);
 		if (0)print("rdtsc %p and %p\n", next, rdtsc());
 		wrstimecmp(next + 0x100000);
 		if (0)panic("set timer");
-		if (0)print("clrsipbit is now %llx\n", clrsipbit(1<<cp->cause));
+		if (0)print("clrsipbit is now %lux\n", clrsipbit(1<<cp->cause));
 	}
 	if (TrapSpew) print("IMPLEMENT vecacct(vctl[cp->vno]);\n");
 	if (TrapSpew) print("IMPLEMENENT intrtime(m, cp->vno);\n");
@@ -826,7 +830,7 @@ trap(Ureg* ureg)
 	uint type;
 	Cause why;
 	Traphandler handler;
-	if (TrapOhShit) print("trap ureg %p pc %p up %p up->pid %d\n", ureg, up, ureg->pc, up ? up->pid : -1);
+	if (TrapOhShit) print("trap ureg %p pc %p up %p up->pid %lud\n", ureg, up, ureg->pc, up ? up->pid : -1);
 if (0)sbiputc('T');
 	if (Trapdebug) {
 		if (ureg == nil)
@@ -883,7 +887,7 @@ if (0)sbiputc('T');
 	if (0)if (Trapdebug)
 		trapdbg(ureg, &why, 0);
 	if (TrapSpew) print("all done trap(), ur is %p, pc %p\n", ureg, ureg->pc);
-	if (0) print("time %p cmp %p, SIP %#lx\n", rdtime(), rdstimecmp(), getsip());
+	if (0) print("time %p cmp %p, SIP %llud\n", rdtime(), rdstimecmp(), getsip());
 soft();
 }
 
@@ -897,7 +901,7 @@ dumpgpr(Ureg* ureg)
 	int i;
 
 	if(up != nil)
-		iprint("cpu%d: registers for %s %d\n",
+		iprint("cpu%d: registers for %s %lud\n",
 			m->machno, up->text, up->pid);
 	else
 		iprint("cpu%d: registers for kernel\n", m->machno);
