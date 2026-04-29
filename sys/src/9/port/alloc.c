@@ -149,6 +149,7 @@ if (Spew)print("punlock\n");
 void
 poolsummary(Pool *p)
 {
+USED(p);
 if (Spew)print("%s max %llud cur %llud free %llud alloc %llud\n", p->name,
 		(uvlong)p->maxsize, (uvlong)p->cursize,
 		(uvlong)p->curfree, (uvlong)p->curalloc);
@@ -200,7 +201,7 @@ void*
 smalloc(ulong size)
 {
 	void *v;
-if (Spew)print("SMALLOC %d\n", size);
+if (Spew)print("SMALLOC %lud\n", size);
 	if (Spew)poolcheck(mainmem);
 	while((v = poolalloc(mainmem, size+Npadlong*sizeof(ulong))) == nil){
 		if(!waserror()){
@@ -222,7 +223,7 @@ malloc(ulong size)
 {
 	void *v;
 	extern int debugmemset;
-if (Spew)print("MALLOC %d\n", size);
+if (Spew)print("MALLOC %lud\n", size);
 	v = poolalloc(mainmem, size+Npadlong*sizeof(ulong));
 if (Spew)poolcheck(mainmem);
 	if(v == nil)
@@ -232,7 +233,7 @@ if (Spew)poolcheck(mainmem);
 		setmalloctag(v, getcallerpc(&size));
 		setrealloctag(v, 0);
 	}
-	if (Spew)print("memset @ %p for %d bytes\n", v, size);
+	if (Spew)print("memset @ %p for %lud bytes\n", v, size);
 	if (Spew) while(debugmemset);
 	memset(v, 0, size);
 	if (1) {
@@ -294,7 +295,7 @@ void*
 realloc(void *v, ulong size)
 {
 	void *nv;
-if (Spew)print("realloc %p %u\n", v, size);
+if (Spew)print("realloc %p %lud\n", v, size);
 
 	if(v != nil)
 		v = (ulong*)v-Npadlong;
