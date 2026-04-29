@@ -26,7 +26,7 @@ isaconfig(char *, int, ISAConf *)
 void
 init0(void)
 {
-	char buf[2*KNAMELEN], **sp, **usp;
+	char buf[2*KNAMELEN], **sp;
 	Page *p;
 
 	print("chandevinit ...\n");
@@ -213,9 +213,6 @@ int once = 0;
 void
 main(void)
 {
-	void *b;
-	uintptr e;
-
 	if(!once){
 		memset(MACHP(0), 0, KTZERO-(uintptr)MACHP(0));
 	}
@@ -242,8 +239,6 @@ main(void)
 		}
 		vfy = 0;
 	}
-	b = edata;
-	e = end - edata;
 	memset(edata, 0, end - edata);		/* zero bss */
 	machinit();
 	while (i < 64) {
@@ -300,7 +295,6 @@ main(void)
 #endif
 	clockinit(); print("DONE 	clockinit();\n"); 
 	timebase = 10*Mhz;
-	timebase * 100; // XXX XXX XXX
 	calibrate(); print("DONE calibrate\n");
 	clocksanity(); print("DONE clocksanity\n");
 	cpuidprint(); print("DONE 	cpuidprint();\n"); 
