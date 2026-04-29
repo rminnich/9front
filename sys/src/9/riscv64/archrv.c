@@ -534,7 +534,7 @@ calibrate(void)
 
 	/* compute constants for use by timerset & idle code */
 	if (timebase < MHZ) {
-		print("timebase %d is < MHZ %d, just set it to 2*MHZ\n", timebase, MHZ);
+		print("timebase %llud is < MHZ %d, just set it to 2*MHZ\n", timebase, MHZ);
 		panic("fix your timebase");
 	}
 	sys->clintsperhz = timebase / HZ;	/* clint ticks per HZ */
