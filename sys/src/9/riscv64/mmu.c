@@ -402,7 +402,7 @@ putmmu(uintptr va, uintptr pa, Page *pg)
 	if (pteattr & PTEWRITE)
 		pteattr |= PTEDIRTY | PTEREAD;
 
-if (Spew)print("pid %d putmmu(%p, %p, %p)\n", up ? up->pid : 0, va, pa, pg);
+if (Spew)print("pid %lud putmmu(%p, %p, %p)\n", up ? up->pid : 0, va, pa, pg);
 	s = splhi();
 	while((pte = mmuwalk(va, 0)) == nil){
 		spllo();
