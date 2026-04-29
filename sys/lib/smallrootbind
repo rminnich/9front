@@ -1,0 +1,17 @@
+bind `{pwd} /n/src9
+
+# The only thing we need to bind is jl
+# and we want to be fairly sure we're not modifying lots of stuff and not knowing it.
+for(i in jl nm size){bind  /n/src9/$cputype/bin/$i /bin/$i}
+
+# no obvious need for this. bind -a /n/src9/rc/bin /bin
+# or this. bind /lib/ndb /n/src9/lib/ndb
+# we want to bind $objtype in a way that we don't trample on the root file system. 
+# The way to do this is take a directory which is mode 555, then bind it in front with
+# -c. icky.
+mkdir -p /tmp/nowrite
+chmod 555 /tmp/nowrite
+bind -bc /tmp/nowrite /$cputype/bin
+bind -bc /tmp/nowrite /$cputype/lib
+
+for(i in riscv64 rc acme mail sys/src/9 lib cron){bind -c /n/src9/$i /$i}
