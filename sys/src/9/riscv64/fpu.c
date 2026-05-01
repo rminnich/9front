@@ -7,10 +7,30 @@
 #include "ureg.h"
 #include "../riscv64/sysreg.h"
 
-void fpoff(void)
-{
-	panic("fpoff");
-}
+/* from 9k */
+enum {						/* FCSR */
+	I		= FPAINEX,
+	D		= FPAINVAL,		/* Denormalized-Operand */
+	Z		= FPAZDIV,
+	O		= FPAOVFL,		/* Overflow */
+	U		= FPAUNFL,		/* Underflow */
+};
+
+enum {						/* PFPU.state */
+	Init		= 0,			/* The FPU has not been used */
+	Busy		= 1,			/* The FPU is being used */
+	Idle		= 2,			/* The FPU has been used */
+
+	Hold		= 1<<2,			/* Handling an FPU note */
+};
+
+static char *fpstnames[] = {
+	"Init", "Busy", "Idle",
+};
+
+/* initial contents of high fp regs.  compiler assumes such initialization. */
+double fpzero = 0, fphalf = 0.5, fpone = 1, fptwo = 2;
+/* thank you 9k! */
 
 FPsave*
 notefpsave(Proc *p)

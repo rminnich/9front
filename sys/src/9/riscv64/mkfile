@@ -51,6 +51,7 @@ OBJ=\
 	mem.$O\
 	trap.$O\
 	clock.$O\
+	fp.$O\
 	fpu.$O\
 	sbi.$O\
 	sbicall.$O\
