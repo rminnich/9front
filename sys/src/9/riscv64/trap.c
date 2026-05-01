@@ -188,9 +188,8 @@ execregs(uintptr entry, int argc, char *argv[], Tos *tos)
 	return (uintptr)tos;
 }
 
-static void panictrap(Ureg *ureg)
+static void panictrap(Ureg *)
 {
-	USED(ureg);
 	sbiputc('&');
 	print("trap");
 	panic("trap");
@@ -539,9 +538,8 @@ badpagefault(Ureg *ureg, uintptr addr, int read, int insyscall)
  *  Call common fault handler.
  */
 static void
-faultriscv64(Ureg* ureg, Cause *cp)
+faultriscv64(Ureg* ureg, Cause *)
 {
-	USED(cp);
 	uintptr addr;
 	int read, insyscall;
 	extern int block;
@@ -753,7 +751,8 @@ if (0)sbiputc('-');
 int
 intr(Ureg* ureg, Cause *cp)
 {
-	USED(ureg); USED(cp); panic("implement intr");
+	USED(ureg); USED(cp); 
+	panic("implement intr");
 #ifdef x
 	m->intr++;
 	int id, ctxt, vno, trips;
