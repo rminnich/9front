@@ -124,7 +124,7 @@ randomread(void *p, ulong n)
 
 	/* prevent state leakage */
 	memset(&c, 0, sizeof(c));
-	print("randomread returns %d bytes\n", n);
+	print("randomread returns %lud bytes\n", n);
 
 	return n;
 }
