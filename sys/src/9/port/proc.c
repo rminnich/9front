@@ -68,7 +68,7 @@ schedinit(void)
 
 if (0)	print("schedinit: m is %p\n", m);
 	setlabel(&m->sched);
-if (0)print("schedinit: up %p pid %d\n", up, up ? up->pid : -1);
+if (0)print("schedinit: up %p pid %lud\n", up, up ? up->pid : -1);
 	if(up != nil) {
 		if((e = up->edf) != nil && (e->flags & Admitted))
 			edfrecord(up);
@@ -160,14 +160,14 @@ procswitch(void)
 	up->pcycles += t;
 
 	procsave(up);
-if (Spew)print("procswitch: p %p, pid %d, sp %p, pc %p\n", up, up->pid, up->sched.sp, up->sched.pc);
+if (Spew)print("procswitch: p %p, pid %lud, sp %p, pc %p\n", up, up->pid, up->sched.sp, up->sched.pc);
 	if(!setlabel(&up->sched)) {
 if (Spew)print("procswitch: heading out to gotolabel after setlabel; m sp %p s pc %p\n", m->sched.sp, m->sched.pc);
 		gotolabel(&m->sched);
 if (Spew)print("procswitch: back from gotolabel\n");
 	}
 
-if (Spew)print("back to kernel from %d\n", up->pid);
+if (Spew)print("back to kernel from %lud\n", up->pid);
 	procrestore(up);
 
 	cycles(&t);
@@ -186,7 +186,7 @@ sched(void)
 			m->ilockdepth,
 			up != nil ? up->lastilock: nil,
 			(up != nil && up->lastilock != nil) ? up->lastilock->pc: 0);
-if (Spew)print("sched: up is %p pid %d\n", up, up ? up->pid : 0);
+if (Spew)print("sched: up is %p pid %lud\n", up, up ? up->pid : 0);
 	if(up != nil) {
 		/*
 		 * Delay the sched until the process gives up the locks
@@ -211,16 +211,16 @@ if (Spew)print("sched: up is %p pid %d\n", up, up ? up->pid : 0);
 		}
 		s = splhi();
  		up->delaysched = 0;
-if (Spew)print("sched: call procswitch pid %d\n", up->pid);
+if (Spew)print("sched: call procswitch pid %lud\n", up->pid);
 if (Spew) for(int i = 0; i < 32; i++) print("%p: %p\n", &((u64int*)up->sched.sp)[i], ((u64int*)up->sched.sp)[i]);
 		procswitch();
-if (Spew)print("sched: back from procswitch %d\n", up->pid);
+if (Spew)print("sched: back from procswitch %lud\n", up->pid);
 		splx(s);
 		return;
 	}
-if (Spew)if (up)print("proc %d calls runproc\n", up->pid);
+if (Spew)if (up)print("proc %lud calls runproc\n", up->pid);
 	up = runproc();
-if (Spew)if (up)print("proc %p(%d) returns from runproc sp %p pc %p\n", up, up->pid, up->sched.sp, up->sched.pc);
+if (Spew)if (up)print("proc %p(%lud) returns from runproc sp %p pc %p\n", up, up->pid, up->sched.sp, up->sched.pc);
 
 	if(up != m->readied)
 		m->schedticks = m->ticks + HZ/10;
@@ -230,7 +230,7 @@ if (Spew)if (up)print("proc %p(%d) returns from runproc sp %p pc %p\n", up, up->
 	up->affinity = m->machno;
 	up->state = Running;
 	mmuswitch(up);
-if (Spew)print("gotolabel: pid %d sp %p, pc %p\n", up->pid, up->sched.sp, up->sched.pc, up->dbgreg ? up->dbgreg->r1 : 0);
+if (Spew)print("gotolabel: pid %lud sp %p, pc %p, dbreg %llud\n", up->pid, up->sched.sp, up->sched.pc, up->dbgreg ? up->dbgreg->r1 : 0);
 	extern int block;
 	block = up->pid != 1;
 if (0)print("block? %d\n", up->pid == 1 && ! block);
@@ -1284,7 +1284,7 @@ pexit(char *exitstr, int freemem)
 	Segment *s;
 	int i;
 
-	if (0)print("pexit:%d\n", up->pid);
+	if (0)print("pexit:%lud\n", up->pid);
 
 	up->alarm = 0;
 	timerdel(up);
@@ -1669,7 +1669,7 @@ kproc(char *name, void (*func)(void *), void *arg)
 
 	procpriority(p, PriKproc, 0);
 
-if (Spew)	print("kproc: %s p %p, pid %d\n", name, p, p->pid);
+if (Spew)	print("kproc: %s p %p, pid %lud\n", name, p, p->pid);
 
 	ready(p);
 }
@@ -2099,7 +2099,7 @@ pidalloc(Proc *p)
 	} else
 		pidadd(p->noteid);
 
-	if (0)print("PID pid added %d\n", i->pid);
+	if (0)print("PID pid added %ld\n", i->pid);
 	return p->pid = i->pid;
 }
 
