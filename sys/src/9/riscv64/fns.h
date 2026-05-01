@@ -99,6 +99,22 @@ extern FPsave* fpukenter(Ureg*);
 extern void fpukexit(Ureg*, FPsave*);
 extern void mathtrap(Ureg*);
 
+/* fpu from 9k */
+void	fpconstset(void);
+void	fpoff(void);
+void	fpon(void);
+int	fpudevprocio(Proc*, void*, long, uintptr, int);
+void	_fpuinit(void);
+void	fpuinit(void);
+void	fptrap(Ureg *, void *);
+void	fpuprocrestore(Proc*);
+void	fpuprocsave(Proc*);
+void	fpurestore(uchar *);
+void	fpusave(uchar *);
+void	fpusysprocsetup(Proc*);
+void	fpusysrforkchild(Proc*, Proc*);
+void	fpusysrfork(Ureg*);
+
 /* trap */
 extern void trapinit(void);
 extern int userureg(Ureg*);
