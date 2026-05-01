@@ -182,7 +182,7 @@ sysrfork(va_list list)
 	p->pcycles = -p->kentry;
 
 	pid = pidalloc(p);
-	if (Spew)print("sysrfork: allocated pid up %p pid %d\n", p, pid);
+	if (Spew)print("sysrfork: allocated pid up %p pid %lud\n", p, pid);
 
 	qunlock(&p->debug);
 	qunlock(&up->debug);
@@ -277,11 +277,11 @@ sysrfork(va_list list)
 	if(up->wired)
 		procwired(p, up->affinity);
 
-	if (Spew)print("up %p %d up->sched.sp %p @ dbgreg %p pc is %p\n", up, up->pid, up->sched.sp, up->dbgreg, up->dbgreg->pc);
+	if (Spew)print("up %p %lud up->sched.sp %p @ dbgreg %p pc is %p\n", up, up->pid, up->sched.sp, up->dbgreg, up->dbgreg->pc);
 	ready(p);
-	if (Spew)print("sysrfork: %d call sched\n", up->pid);
+	if (Spew)print("sysrfork: %lud call sched\n", up->pid);
 	sched();
-	if (Spew)print("sysrfork: pid %d returns from sched\n", up->pid);
+	if (Spew)print("sysrfork: pid %lud returns from sched\n", up->pid);
 	return pid;
 }
 
@@ -412,7 +412,7 @@ sysexec(va_list list)
 		int i;
 		n = devtab[tc->type]->read(tc, u.buf, sizeof(u.buf), 0);
 		if(n >= sizeof(Exec)) {
-			if (ExecSpew)print("magic in and out: %#lx %#lx want %#lx\n", (ushort)magic, (ushort)beswal(u.ehdr.magic), AOUT_MAGIC);
+			if (ExecSpew)print("magic in and out: %ud %ud want %d\n", (ushort)magic, (ushort)beswal(u.ehdr.magic), AOUT_MAGIC);
 			magic = beswal(u.ehdr.magic);
 			if(magic == AOUT_MAGIC)
 				break; /* for binary */
@@ -421,7 +421,7 @@ sysexec(va_list list)
 		/* Process #! /bin/sh args ... */
 		if(n <= 2 || u.buf[0] != '#' || u.buf[1] != '!'
 		|| (a = memchr(u.buf+2, '\n', n-2)) == nil){
-			if (ExecSpew)print("bad exec: first two bytes are %#x %#x, need #! or %#x\n", u.buf[0], u.buf[1], beswal(u.ehdr.magic));
+			if (ExecSpew)print("bad exec: first two bytes are %#x %#x, need #! or %lud\n", u.buf[0], u.buf[1], beswal(u.ehdr.magic));
 			error(Ebadexec);
 		}
 		*a = '\0';
