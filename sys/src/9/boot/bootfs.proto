@@ -10,6 +10,7 @@ $objtype
 		cat
 		cfs
 		chmod
+		date
 		dd
 		echo
 		grep
@@ -32,6 +33,7 @@ $objtype
 		srv
 		test
 		tlsclient
+		units
 		unmount
 		xd
 rc
@@ -50,3 +52,5 @@ sys
 			+
 lib
 	firmware
+	units
+
