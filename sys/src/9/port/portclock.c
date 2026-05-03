@@ -179,7 +179,7 @@ if (0)	sbiputc('H');
 			/* user profiling clock */
 			Tos *tos = (Tos*)(USTKTOP-sizeof(Tos));
 			tos->clock += TK2MS(1);
-			if (0)print("tos was set to %llx\n", tos->clock);
+			if (0)print("tos was set to %lud\n", tos->clock);
 			segclock(ur->pc);
 		}
 		if (0)print("clal hzsched\n");

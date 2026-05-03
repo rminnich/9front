@@ -254,7 +254,7 @@ fixfault(Segment *s, uintptr addr, int read)
 #endif
 
 	qunlock(s);
-	if (0)print("fixfault: pid %d, call putmmu(%p, %p, %p)\n", up->pid, addr, mmuphys, pg);
+	if (0)print("fixfault: pid %lud, call putmmu(%p, %p, %p)\n", up->pid, addr, mmuphys, pg);
 	putmmu(addr, mmuphys, *pg);
 
 	if (up->pid == 5) soft();
