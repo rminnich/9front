@@ -32,6 +32,23 @@ static char *fpstnames[] = {
 double fpzero = 0, fphalf = 0.5, fpone = 1, fptwo = 2;
 /* thank you 9k! */
 
+static FPalloc*
+fpalloc(FPalloc *link)
+{
+	FPalloc *a;
+
+	while((a = mallocalign(sizeof(FPalloc), 16, 0, 0)) == nil){
+		int x = spllo();
+		if(up != nil && !waserror()){
+			resrcwait("no memory for FPalloc");
+			poperror();
+		}
+		splx(x);
+	}
+	a->link = link;
+	return a;
+}
+
 static void 
 fpfree(FPalloc*a)
 {
@@ -67,9 +84,6 @@ fpinit(void)
 FPsave*
 notefpsave(Proc *p)
 {
-	print("notefpsave %p\n", p);
-	panic("notefpsave");
-#ifdef XXX
 	if(p->fpsave == nil)
 		return nil;
 	if(p->fpstate == (FPinactive|FPnotify)){
@@ -79,7 +93,6 @@ notefpsave(Proc *p)
 	}
 	return p->fpsave->link;
 	return nil;
-#endif
 }
 
 void
@@ -142,9 +155,6 @@ fpunotify(Proc *p)
 void
 fpunoted(Proc *p)
 {
-	print("fpunoted %p\n", p);
-	panic("fpnoted");
-/*
 	FPalloc *o;
 
 	if(p->fpstate & FPnotify) {
@@ -156,15 +166,11 @@ fpunoted(Proc *p)
 	} else {
 		p->fpstate = FPinit;
 	}
-*/
 }
 
 void
 mathtrap(Ureg *ureg)
 {
-	print("mathtrap %p\n", ureg);
-	panic("mathtrap");
-#ifdef XXX
 	if(!userureg(ureg)){
 		if(up == nil){
 			switch(m->fpstate){
@@ -233,8 +239,8 @@ mathtrap(Ureg *ureg)
 		postnote(up, 1, "sys: floating point error", NDebug);
 		break;
 	}
-#endif
 }
+
 void fpukexit(Ureg*, FPsave*)
 {
 	print("not doing anything for fpukexit yet\n");
