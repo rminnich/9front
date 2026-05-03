@@ -32,6 +32,38 @@ static char *fpstnames[] = {
 double fpzero = 0, fphalf = 0.5, fpone = 1, fptwo = 2;
 /* thank you 9k! */
 
+static void 
+fpfree(FPalloc*a)
+{
+	free(a);
+}
+
+static FPsave fpsave0;
+
+static void
+fpsave(FPsave *p)
+{
+	//p->control = getfcr();
+	//p->status = getfsr();
+	fpsaveregs(p->regs);
+	fpoff();
+}
+
+static void
+fprestore(FPsave *p)
+{
+	fpon();
+	//setfcr(p->control);
+	//setfsr(p->status);
+	fploadregs(p->regs);
+}
+
+static void
+fpinit(void)
+{
+	fprestore(&fpsave0);
+}
+
 FPsave*
 notefpsave(Proc *p)
 {
@@ -53,9 +85,6 @@ notefpsave(Proc *p)
 void
 fpuprocsave(Proc *p)
 {
-	print("fpuprocsave %p\n", p);
-	panic("fpuprocsave");
-#ifdef XXX
 	if(p->state == Moribund){
 		FPalloc *a;
 
@@ -83,15 +112,7 @@ fpuprocsave(Proc *p)
 		return;
 	fpsave(p->fpsave);
 	p->fpstate = FPinactive;
-#endif
 }
-
-void fpfree(FPsave	*)
-{
-	panic("fpfree");
-}
-
-
 
 void
 fpuprocrestore(Proc*)

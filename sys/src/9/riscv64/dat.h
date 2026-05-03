@@ -22,6 +22,7 @@ enum {
 typedef struct Clint Clint;
 typedef struct Conf	Conf;
 typedef struct Confmem	Confmem;
+typedef struct FPalloc	FPalloc;
 typedef struct FPsave	FPsave;
 typedef struct PFPU	PFPU;
 typedef struct ISAConf	ISAConf;
@@ -84,14 +85,21 @@ struct FPsave
 	ulong	status;
 };
 
+struct FPalloc
+{
+	FPsave;
+
+	FPalloc	*link;	/* when context nests */
+};
+
 #define KFPSTATE
 
 struct PFPU
 {
 	int	fpstate;
 	int	kfpstate;
-	FPsave	*fpsave;
-	FPsave	*kfpsave;
+	FPalloc	*fpsave;
+	FPalloc	*kfpsave;
 };
 
 enum
@@ -222,7 +230,7 @@ struct Mach
 	PMach;
 
 	int	fpstate;
-	FPsave	*fpsave;
+	FPalloc	*fpsave;
 
 	int	cputype;
 	ulong	delayloop;

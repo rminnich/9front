@@ -41,7 +41,7 @@ TEXT setfcsr(SB), $-4
 	MOV	R(ARG), CSR(FCSR)
 	RET
 
-TEXT fpusave(SB), $-4
+TEXT fpsaveregs(SB), $-4
 	FENCE_RW				/* sifive u74 erratum cip-930 */
 	MOV	CSR(SSTATUS), R9
 	MOV	$Fsst, R11
@@ -91,7 +91,7 @@ ondone:
 	RET
 
 /* fpu is assumed at entry to be off, thus clean */
-TEXT fpurestore(SB), $-4
+TEXT fploadregs(SB), $-4
 	MOV	CSR(SSTATUS), R10
 	MOV	$~Fsst, R9
 	AND	R9, R10
