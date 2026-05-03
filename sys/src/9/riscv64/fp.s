@@ -112,3 +112,20 @@ TEXT fploadregs(SB), $-4
 	MOV	R10, CSR(SSTATUS)
 	FENCE_RW
 	RET
+
+TEXT frflags(SB), $-4
+	WORD	$0x00102473 // frflags RARG
+	RET
+
+TEXT fsflags(SB), $-4
+	WORD	$0x00141473 // fsflags RARG
+	RET
+
+TEXT frrm(SB), $-4
+	WORD	$0x00202473 // frrm RARG
+	RET
+
+TEXT fsrm(SB), $-4
+	WORD	$0x00241473 // fsrm RARG
+	RET
+

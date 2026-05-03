@@ -7,6 +7,12 @@
 #include "ureg.h"
 #include "../riscv64/sysreg.h"
 
+/* l.s, for now */
+extern ulong frrm(void);
+extern void fsrm(ulong fcr);
+extern ulong frflags(void);
+extern void fsflags(ulong fsr);
+
 /* from 9k */
 enum {						/* FCSR */
 	I		= FPAINEX,
@@ -60,8 +66,8 @@ static FPsave fpsave0;
 static void
 fpsave(FPsave *p)
 {
-	//p->control = getfcr();
-	//p->status = getfsr();
+	p->control = frrm();
+	p->status = frflags();
 	fpsaveregs(p->regs);
 	fpoff();
 }
@@ -70,8 +76,8 @@ static void
 fprestore(FPsave *p)
 {
 	fpon();
-	//setfcr(p->control);
-	//setfsr(p->status);
+	fsrm(p->control);
+	fsflags(p->status);
 	fploadregs(p->regs);
 }
 
@@ -241,7 +247,40 @@ mathtrap(Ureg *ureg)
 	}
 }
 
-void fpukexit(Ureg*, FPsave*)
+void fpukexit(Ureg*ureg, FPsave*)
 {
-	print("not doing anything for fpukexit yet\n");
+	FPalloc *a;
+
+	if(up == nil){
+		switch(m->fpstate){
+		case FPactive:
+			fpoff();
+			/* wet floor */
+		case FPinactive:
+			a = m->fpsave;
+			m->fpsave = a->link;
+			fpfree(a);
+		}
+		m->fpstate = m->fpsave != nil? FPinactive: FPinit;
+		return;
+	}
+
+	if(up->fpstate == FPprotected){
+		if(userureg(ureg)){
+			up->fpstate = FPactive;
+			fpon();
+		}
+		return;
+	}
+
+	switch(up->kfpstate){
+	case FPactive:
+		fpoff();
+		/* wet floor */
+	case FPinactive:
+		a = up->kfpsave;
+		up->kfpsave = a->link;
+		fpfree(a);
+	}
+	up->kfpstate = up->kfpsave != nil? FPinactive: FPinit;
 }
