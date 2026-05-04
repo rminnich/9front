@@ -215,7 +215,7 @@ _ready:
  * used to start process 1 (init).
  */
 TEXT touser(SB), 1, $-4
-	JAL R1, _fpuinit(SB)
+	//JAL R1, _fpuinit(SB)
 	FENCE
 	FENCE_I
 	CSRRW	CSR(SSCRATCH), R(MACH), R(MACH) /* restore R7, reload saved m */

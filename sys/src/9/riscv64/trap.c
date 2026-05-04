@@ -421,6 +421,41 @@ badinst(Ureg *ureg, Cause *cp)
 		panic("illegal instruction at %#p: %#p", ureg->pc, ureg->tval);
 }
 
+/* isfpinst from 9k */
+static int
+isfpinst(uintptr pc, Ureg *ureg)
+{
+	int n, csr;
+	ulong inst;
+
+	inst = *(ushort *)pc;		/* instrs are little-endian */
+	if (ISCOMPRESSED(inst)) {
+		n = (inst >> 13) & MASK(3);
+		if  ((inst & 1) == 0 && (n == 1 || n == 5))
+			return 1;	/* fp load/store double */
+	} else {
+		/* is it a regular instruction (possibly not 4-byte aligned)? */
+		inst = UNCOMPINST(pc);
+		if (inst != ureg->tval)
+			iprint("illinst: inst %#lux tval %#llux\n",
+				inst, ureg->tval);
+		switch (BASEOP(inst) >> COMPBITS) {
+		case 001:		/* load fp */
+		case 011:		/* store fp */
+		case 024:		/* fp op */
+			return 1;
+		case SYSTEM>>COMPBITS:
+			/* check for fp csr instrs */
+			if (((inst >> 12) & MASK(2)) != 0) {
+				csr = inst >> 20;
+				if (csr >= FFLAGS && csr <= FCSR)
+					return 1;
+			}
+			break;
+		}
+	}
+	return 0;
+}
 /*
  * Illinst could be from legitimate user fp use while fpu is off.
  * Bad CSR accesses will be noted and ignored.
@@ -444,16 +479,15 @@ trapillinst(Ureg *ureg, Cause *cp)
 		return;
 	}
 
-	print("IMPLEMENT ISFPINST\n");
-#ifdef XXX
 	if (isfpinst(pc, ureg)) {
+		panic("FPU trapillinst");
 		if (!cp->user)
 			panic("kernel fpu use at %#p: %#p", pc, ureg->tval);
 	//	fptrap(ureg, 0);
-		vecacct(vctl[cp->vno]);
+	//	vecacct(vctl[cp->vno]);
 		return;			/* re-execute FP but with FPU on */
 	}
-#endif
+
 	/*
 	 * if we support vector extension, we'll need to cope with the
 	 * vector instructions and vector processor here, analogously to fp.
