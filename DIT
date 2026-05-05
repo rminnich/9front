@@ -1,0 +1,18 @@
+echo minimal
+echo and all bins and libs dirty up /amd64/{lib,bin} but I do not care
+
+bind  /usr/glenda/riscv/sys/include /sys/include 
+bind  /usr/glenda/riscv/riscv64 /riscv64 
+bind  /usr/glenda/riscv/sys/src/libmach /sys/src/libmach 
+bind -a /usr/glenda/riscv/sys/src/libmach /sys/src/libmach 
+bind  /usr/glenda/riscv/sys/src/mkfile.proto /sys/src/mkfile.proto 
+bind  /usr/glenda/riscv/sys/src/cmd/jc /sys/src/cmd/jc 
+bind  /usr/glenda/riscv/sys/src/cmd/ja /sys/src/cmd/ja 
+bind  /usr/glenda/riscv/sys/src/cmd/jl /sys/src/cmd/jl 
+bind -bc /usr/glenda/riscv/sys/src/cmd/jl /sys/src/cmd/jl 
+bind  /usr/glenda/riscv/sys/src/libc/riscv64 /sys/src/libc/riscv64 
+bind  /usr/glenda/riscv/sys/src/libmp/riscv64 /sys/src/libmp/riscv64 
+bind  /usr/glenda/riscv/sys/src/libsec/riscv64 /sys/src/libsec/riscv64 
+bind -a /usr/glenda/riscv/sys/src/libthread /sys/src/libthread 
+bind  /sys/src/libthread /sys/src/libthread 
+bind -c /usr/glenda/riscv/sys/src/9/riscv64 /sys/src/9/riscv64 
