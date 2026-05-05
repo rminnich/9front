@@ -397,7 +397,7 @@ putmmu(uintptr va, uintptr pa, Page *pg)
 {
 	uintptr *pte, old;
 	int s;
-	uintptr pteattr = PTE2ATTR(pa) | PTEUSER | PTEACCESSED; // hack.
+	uintptr pteattr = PTE2ATTR(pa) | PTEUSERREAD | PTEACCESSED; // hack.
 
 	if (pteattr & PTEWRITE)
 		pteattr |= PTEDIRTY | PTEREAD;
@@ -429,7 +429,7 @@ if (Spew)print("pid %lud putmmu(%p, %p, %p)\n", up ? up->pid : 0, va, pa, pg);
 	wsatp(rsatp());
 	if (up->pid == 5) soft();
 	splx(s);
-	if (0)print("putmmu done\n");
+	if (Spew)print("putmmu done\n");
 }
 
 static void
