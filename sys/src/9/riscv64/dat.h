@@ -61,16 +61,6 @@ typedef struct Mallocs Mallocs;
 // as a friend from BL once said: give it a fucking rest
 #define AOUT_MAGIC (0x8e17)
 
-struct Lock
-{
-	ulong	key;
-	u32int	sr;
-	uintptr	pc;
-	Proc*	p;
-	Mach*	m;
-	int	isilock;
-};
-
 struct Label
 {
 	uintptr	sp;
