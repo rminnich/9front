@@ -1,17 +1,33 @@
 bind `{pwd} /n/src9
 
-# The only thing we need to bind is jl
-# and we want to be fairly sure we're not modifying lots of stuff and not knowing it.
-for(i in jl nm size){bind  /n/src9/$cputype/bin/$i /bin/$i}
+bind /n/src9/sys/include/a.out.h /sys/include/a.out.h
+bind /n/src9/sys/include/mach.h /sys/include/mach.h
+#bind /n/src9/sys/src/libmach/executable.c /sys/src/libmach/executable.c
+#bind /n/src9/sys/src/libmach/setmach.c /sys/src/libmach/setmach.c
+#bind /n/src9/sys/src/libmach/obj.c /sys/src/libmach/obj.c
+#bind /n/src9/sys/src/libmach/mkfile /sys/src/libmach/mkfile
+#bind /n/src9/sys/src/mkfile.proto /sys/src/mkfile.proto
+bind /n/src9/sys/libmach /sys/src/libmach
 
-# no obvious need for this. bind -a /n/src9/rc/bin /bin
-# or this. bind /lib/ndb /n/src9/lib/ndb
-# we want to bind $objtype in a way that we don't trample on the root file system. 
-# The way to do this is take a directory which is mode 555, then bind it in front with
-# -c. icky.
-mkdir -p /tmp/nowrite
-chmod 555 /tmp/nowrite
-bind -bc /tmp/nowrite /$cputype/bin
-bind -bc /tmp/nowrite /$cputype/lib
+# this bind is for the files that don't exist in /sys/src/libmach, but we're trying to avoid
+# these directory binds
+#bind -ac /n/src9/sys/src/libmach /sys/src/libmach
 
-for(i in riscv64 rc acme mail sys/src/9 lib cron){bind -c /n/src9/$i /$i}
+bind -bc /n/src9/amd64/bin /amd64/bin
+bind -bc /n/src9/amd64/lib /amd64/lib
+bind -bc /n/src9/riscv64 /riscv64
+
+bind -c /n/src9/sys/src/cmd/jc /sys/src/cmd/jc
+bind -c /n/src9/sys/src/cmd/ja /sys/src/cmd/ja
+bind -c /n/src9/sys/src/cmd/jl /sys/src/cmd/jl
+
+for(i in ja jc jl nm size ar){touch /n/src9/$cputype/bin/$i}
+touch /n/src9/$cputype/lib/libmach.a
+
+cd /sys/src/libmach
+mk install
+
+
+
+
+# for(i in riscv64 rc acme mail sys/src/9 lib cron){bind -c /n/src9/$i /$i}
