@@ -75,7 +75,7 @@ init0(void)
 	print("islo %d, now enable clock\n", islo());
 	block = 1;
 	if (0)while(! block);
-	if(1)clockenable();
+	if(0)clockenable();
 	//print("now to user\n");
 	print("SP will be USTKTOP-BY2PG %p\n", (uintptr)USTKTOP-BY2PG);
 	touser((uintptr)USTKTOP-BY2PG);
