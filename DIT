@@ -16,3 +16,4 @@ bind  /usr/glenda/riscv/sys/src/libsec/riscv64 /sys/src/libsec/riscv64
 bind -a /usr/glenda/riscv/sys/src/libthread /sys/src/libthread 
 bind  /sys/src/libthread /sys/src/libthread 
 bind -c /usr/glenda/riscv/sys/src/9/riscv64 /sys/src/9/riscv64 
+bind  sys/lib/acid  /sys/lib/acid
