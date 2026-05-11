@@ -427,7 +427,11 @@ cpuinit(int cpu)
 	m->plicctxt = mach2context(m);	/* base context without priv mode */
 	clockoff();
 	/* start the entropy */
-	for(int i = 0; i < 1000; i++) {
+	// Run this loop at least once. I have no idea why, but it has
+	// to run once, presumably to take the trap, which must initialize
+	// something. Weird. But if don't run this loop, it hangs in
+	// interrupt handling in later boot, when it goes touser(). Shit.
+	for(int i = 0; i < 1; i++) {
 		u64int s = rseed();
 		switch(s&3) {
 			case 0:
