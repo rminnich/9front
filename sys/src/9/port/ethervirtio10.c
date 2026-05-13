@@ -394,6 +394,15 @@ interrupt(Ureg*, void* arg)
 	}
 }
 
+static Ether *e;
+
+static void
+poll()
+{
+	if (e != nil)
+		interrupt(nil, e);
+}
+
 static void
 attach(Ether* edev)
 {
@@ -425,6 +434,8 @@ attach(Ether* edev)
 	kproc(name, rxproc, edev);
 	snprint(name, sizeof name, "#l%dtx", edev->ctlrno);
 	kproc(name, txproc, edev);
+	e = edev;
+	addclock0link(poll, 100);
 }
 
 static char*
