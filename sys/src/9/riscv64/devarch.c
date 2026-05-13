@@ -19,6 +19,7 @@ enum {
 };
 
 typedef long Rdwrfn(Chan*, void*, long, vlong);
+static void archinit(void);
 
 static Rdwrfn *readfn[Qmax];
 static Rdwrfn *writefn[Qmax];
@@ -138,7 +139,7 @@ Dev archdevtab = {
 	"arch",
 
 	devreset,
-	devinit,
+	archinit,
 	devshutdown,
 	archattach,
 	archwalk,
