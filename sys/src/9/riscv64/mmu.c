@@ -208,26 +208,14 @@ mmukmap(uintptr va, uintptr pa, usize size)
 void*
 vmap(uvlong pa, vlong size)
 {
-	USED(pa);
-	USED(size);
-#ifdef xxx
-	static uintptr base = VMAP;
-	uvlong pe = pa + size;
-	uintptr va;
-
-	va = base;
-	base += PGROUND(pe) - (pa & -BY2PG);
-	
-	return (void*)mmukmap(va | PTEDEVICE, pa, size);
-#endif
-	panic("vmap");
-	return nil;
+	print("vmap called for pa %p, size %ld: ignoring in identity map\n", pa, size);
+	return (void *)pa;
 }
 
 void
-vunmap(void *, vlong)
+vunmap(void *v, vlong size)
 {
-	panic("vunmap");
+	print("vunmap called for %p/%ld: ignoring\n", v, size);
 }
 
 // That macro hackery is just too much for me to look at, and kenc should
