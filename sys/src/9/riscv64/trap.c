@@ -984,3 +984,8 @@ mach2context(Mach *)
 	ctxtoff = 0;
 	return ctxtoff;
 }
+
+void intrenable(int, void (*)(Ureg *, void *), void *, int, char *)
+{
+	print("TODO:intrenable\n");
+}
