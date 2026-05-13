@@ -19,7 +19,7 @@ dev
 	uart
 #	usb
 #	rtc
-#	pci	pci
+	pci	pci
 	sd
 
 link
