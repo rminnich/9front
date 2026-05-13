@@ -172,6 +172,6 @@ pcicfginit(void)
 void
 pciqemulink(void)
 {
-	ecam = (void *)ECAMBASE; //vmap(ECAMBASE, ECAMSIZE);
+	ecam = vmap(ECAMBASE, ECAMSIZE);
 	pcicfginit();
 }
