@@ -276,13 +276,11 @@ main(void)
 	}
 //	bootargsinit();
 	meminit();
-	check();
 	print("meminit done\n");
 	confinit();
 	print("confinit done\n");
 	xinit();
 	print("xinit done\n");
-	check();
 	xsummary();
 	printinit();
 	print("\nPlan 9\n");
@@ -298,22 +296,14 @@ main(void)
 	calibrate(); print("DONE calibrate\n");
 	clocksanity(); print("DONE clocksanity\n");
 	cpuidprint(); print("DONE 	cpuidprint();\n"); 
-	check();
 	timersinit(); print("DONE 	timersinit();\n");
-	check(); 
 	xsummary();
 	pageinit(); print("DONE 	pageinit();\n"); 
-	check();
 	procinit0(); print("DONE 	procinit0();\n"); 
-	check();
 	initseg(); print("DONE 	initseg();\n"); 
-	check();
 	links(); print("DONE 	links();\n"); 
-	check();
 	chandevreset(); print("DONE 	chandevreset();\n"); 
-	check();
 	userinit(); print("DONE 	userinit();\n"); 
-	check();
 	mpinit(); print("DONE 	mpinit();\n"); 
 	u64int tm = rdtime();
 	print("tm is %#llx\n", tm);
