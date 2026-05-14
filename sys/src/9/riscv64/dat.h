@@ -155,15 +155,6 @@ struct Clint {
 	 * also, mtime is missing and one has to instead read CSR(TIMELO).
 	 */
 	uvlong	mtime;
-
-#ifdef C910
-	/* S mode clint extension */
-	/* aclint sswi */
-	ulong	ssip[1024];		/* 4K long says the manual */
-	uvlong	stimecmp[4095];		/* < mtime generates clock intr. */
-#define mtimecmp	stimecmp	/* also renames Mach->mtimecmp */
-#define msip		ssip
-#endif
 };
 
 /*
@@ -241,6 +232,7 @@ struct Mach
 	uchar	clockintrsok;	/* flag: safe to call timerintr */
 	int	clockintrdepth;
 	int machmode;
+	uint cpumhz;
 	/* current value of this hart's clint->mtimecmp, in case unreadable */
 	uvlong	timecmp;
 
