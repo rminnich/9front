@@ -24,9 +24,12 @@ bind -qa '#a' /net
 # usually better than 1970
 cat '#r/rtc' >/dev/time >[2]/dev/null
 
-/riscv64/bin/echo HI HI
+/riscv64/bin/echo HI HI top of script before reprase
 /riscv64/bin/rc -i
 
+net/cs&
+echo ip/ipconfig ether /net/ether0 10.0.2.15 255.255.255.0
+/riscv64/bin/echo SHIT SHOULD BE BOUND GIVE IT A LOOK
 echo reparse variables
 # reparse variables
 for(i in `{ls -Qp /env}){
@@ -38,7 +41,7 @@ for(i in `{ls -Qp /env}){
 	}
 }
 
-/riscv64/bin/echo HI HI
+/riscv64/bin/echo HI HI afgter reparse
 /riscv64/bin/rc -i
 
 fn sigint {
@@ -77,11 +80,13 @@ mt=()
 
 echo main baby
 rc -i
+echo time to enter main
 
 fn main{
 	mp=()
-	/bin/echo "HI HI HI HI HI HIHI HI"
+	/bin/echo "HI HI HI HI HI HIHI HI in main start that rc"
 	/riscv64/bin/rc -i
+	/bin/echo "ALL DONE THE SHELL NOW FOR root is from"
 	while(~ $#mp 0){
 		if(! ~ $#bootloop 0){
 			nobootprompt=$bootloop
