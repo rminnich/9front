@@ -385,7 +385,7 @@ putmmu(uintptr va, uintptr pa, Page *pg)
 {
 	uintptr *pte, old;
 	int s;
-	uintptr pteattr = PTE2ATTR(pa) | PTEUSER | PTEACCESSED; // hack.
+	uintptr pteattr = PTE2ATTR(pa) | PTEUSER | PTEACCESSED | PTEEXEC; // hack.
 
 	if (pteattr & PTEWRITE)
 		pteattr |= PTEDIRTY | PTEREAD;

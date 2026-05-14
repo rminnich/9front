@@ -219,6 +219,17 @@ TEXT touser(SB), 1, $-4
 	FENCE
 	FENCE_I
 	CSRRW	CSR(SSCRATCH), R(MACH), R(MACH) /* restore R7, reload saved m */
+	/*
+	 * Drop sstatus.SPP to 0 so SRET returns to user mode (not supervisor),
+	 * and set SPIE so SIE = 1 after SRET (user can be preempted by clock).
+	 * Read-modify-write the whole register — same idiom as _start uses
+	 * for setting SUM.
+	 */
+	MOV	CSR(SSTATUS), R9
+	MOV	$~0x100, R10		/* ~Spp */
+	AND	R10, R9, R9		/* clear SPP */
+	OR	$0x20, R9, R9		/* set SPIE */
+	MOV	R9, CSR(SSTATUS)
 	MOV	$(UTZERO+0x28), R12	/* skip unextended exec hdr of init */
 	MOV	R12, CSR(SEPC)		/* new pc */
 	MOV	RARG, R2		/* new sp */
