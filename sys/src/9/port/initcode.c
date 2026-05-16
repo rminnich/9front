@@ -7,7 +7,7 @@
 #include <u.h>
 #include <libc.h>
 
-char cons[] = "/dev/eia0";
+char cons[] = "/dev/eia0"; // "/dev/cons";
 char boot[] = "/boot/boot";
 char dev[] = "/dev";
 char c[] = "#c";
