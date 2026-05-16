@@ -33,13 +33,22 @@ init0(void)
 	chandevinit();
 
 	if(!waserror()){
-		snprint(buf, sizeof(buf), "%s %s", "ARM64", conffile);
+		snprint(buf, sizeof(buf), "%s %s", "RISCV64", conffile);
 		ksetenv("terminal", buf, 0);
 		ksetenv("cputype", "riscv64", 0);
 		if(cpuserver)
 			ksetenv("service", "cpu", 0);
 		else
 			ksetenv("service", "terminal", 0);
+
+		ksetenv("nobootprompt", "tcp", 0);
+		ksetenv("ether0", "type=auto", 0);
+		ksetenv("ip", "dhcp", 0);
+		ksetenv("fs", "10.0.2.2", 0);
+		ksetenv("auth", "10.0.2.2", 0);
+		ksetenv("bootargs", "tcp!-amf 10.0.2.2", 0);
+		ksetenv("user", "glenda", 0);
+
 		print("setconfenv\n");
 		setconfenv();
 		print("DONE ...\n");
