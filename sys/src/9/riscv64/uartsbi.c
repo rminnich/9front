@@ -18,10 +18,13 @@ extern PhysUart sbiphysuart;
 
 static Uart sbiuart = {
 	.regs	= nil,
-	.name	= "uart0",
+	.name	= "eia0",
 	.freq	= 24*Mhz,
 	.baud	= 115200,
 	.phys	= &sbiphysuart,
+	.special = 0,
+	.console = 1,
+	.next = nil,
 };
 
 static Uart*
