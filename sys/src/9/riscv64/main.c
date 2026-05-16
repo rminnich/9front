@@ -41,13 +41,29 @@ init0(void)
 		else
 			ksetenv("service", "terminal", 0);
 
-		ksetenv("nobootprompt", "tcp", 0);
-		ksetenv("ether0", "type=auto", 0);
-		ksetenv("ip", "dhcp", 0);
-		ksetenv("fs", "10.0.2.2", 0);
-		ksetenv("auth", "10.0.2.2", 0);
-		ksetenv("bootargs", "tcp!-amf 10.0.2.2", 0);
-		ksetenv("user", "glenda", 0);
+		// Should these be #ec (1) or just #e (0)? no idea. this confuses me at the
+		// best of times. But here is my laptop:
+/*
+'#ec/*acpi'
+'#ec/*bootscreen'
+'#ec/*e820'
+'#ec/bootargs'
+'#ec/bootfile'
+'#ec/ether1'
+'#ec/monitor'
+'#ec/mouseport'
+'#ec/nvram'
+'#ec/secstore'
+'#ec/tiltscreen'
+'#ec/vgasize'
+*/
+		ksetenv("nobootprompt", "tcp", 1);
+		ksetenv("ether0", "type=auto", 1);
+		ksetenv("ip", "dhcp", 1);
+		ksetenv("fs", "10.0.2.2", 1);
+		ksetenv("auth", "10.0.2.2", 1);
+		ksetenv("bootargs", "ether /net/ether0", 1);
+		ksetenv("user", "glenda", 1);
 
 		print("setconfenv\n");
 		setconfenv();
