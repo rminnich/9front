@@ -91,12 +91,10 @@ pciinterrupt(Ureg *ureg, void *)
 static void
 pciintrinit(void)
 {
-	/*
 	intrenable(IRQpci1, pciinterrupt, nil, BUSUNKNOWN, "pci");
 	intrenable(IRQpci2, pciinterrupt, nil, BUSUNKNOWN, "pci");
 	intrenable(IRQpci3, pciinterrupt, nil, BUSUNKNOWN, "pci");
 	intrenable(IRQpci4, pciinterrupt, nil, BUSUNKNOWN, "pci");
-	*/
 }
 
 void

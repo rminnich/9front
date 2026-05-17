@@ -49,6 +49,7 @@ OBJ=\
 	main.$O\
 	mmu.$O\
 	mem.$O\
+	plic.$O\
 	trap.$O\
 	clock.$O\
 	fp.$O\
