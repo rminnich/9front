@@ -287,11 +287,11 @@ main(void)
 	print("\nPlan %d\n", 9);
 	print("conf.mem[0].base %p, conf.mem[0].limit %p, conf.mem[0].npage %lud\n", conf.mem[0].base, conf.mem[0].limit, conf.mem[0].npage);
 #ifdef xxx
-	trapinit(); print("DONE 	trapinit();\n"); 
-	fpuinit(); print("DONE 	fpuinit();\n"); 
-	intrinit(); print("DONE 	intrinit();\n"); 
+	trapinit(); print("DONE 	trapinit();\n");
+	fpuinit(); print("DONE 	fpuinit();\n");
 #endif
-	clockinit(); print("DONE 	clockinit();\n"); 
+	intrinit(); print("DONE 	intrinit();\n");
+	clockinit(); print("DONE 	clockinit();\n");
 	timebase = 10*Mhz;
 	calibrate(); print("DONE calibrate\n");
 	clocksanity(); print("DONE clocksanity\n");

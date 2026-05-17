@@ -1,3 +1,10 @@
+enum {
+	IRQpci1		= 32,
+	IRQpci2		= 33,
+	IRQpci3		= 34,
+	IRQpci4		= 35,
+};
+
 #define BUSUNKNOWN (-1)
 #define PCIWINDOW	0
 #define	PCIWADDR(x)	(PADDR(x)+PCIWINDOW)

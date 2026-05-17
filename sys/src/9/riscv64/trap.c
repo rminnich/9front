@@ -783,64 +783,10 @@ if (0)sbiputc('-');
  * these are never clock interrupts, so returns 0 (not a clockintr).
  */
 int
-intr(Ureg* ureg, Cause *cp)
+intr(Ureg *ureg, Cause *cp)
 {
-	USED(ureg); USED(cp); 
-	panic("implement intr");
-#ifdef x
-	m->intr++;
-	int id, ctxt, vno, trips;
-	Vctl *vec;
-
-	if (++m->intrdepth > 1)
-		iprint("cpu%d: nested intrs at depth %d\n", m->machno,
-			m->intrdepth);
-	ctxt = m->plicctxt + Super;
-	if (Intrdebug && !soc.poll)
-		iprint("intr: checking plic for ctxt %d\n", ctxt);
-	trips = 100;
-	while (soc.plic && (id = plicclaim(ctxt)) != 0) {
-		m->perf.intrts = perfticks();
-		/* id is actual cause, global irq.  map to a vector. */
-		/* cp->vno = */ vno = vctlidx(id, Globalintr);
-		if (vno < 0)
-			panic("intr: intr id %d out of range", id);
-
-		if (Intrdebug)
-			iprint("intr: plic id %d vector %d\n", id, vno);
-		vec = vctl[vno];
-		if (vec == nil) {		/* maybe it's spurious? */
-			plicdisable(vno);
-			iprint("intr: no vector set up for intr id %d\n", id);
-		} else
-			callintrsvc(ureg, vec);
-		pliccompl(id, ctxt);
-		intrtime(m, vno);
-
-		if (--trips <= 0) {
-			plicoff();
-			soc.plic = 0;		/* poll in future */
-			iprint("intr: stuck in plicclaim loop, id %d, polling\n",
-				id);
-		}
-	}
-	if (!soc.plic)
-		poll(ureg, cp);			/* mainly for tinyemu */
-	/* having no work is not unusual */
-	if (Intrdebug && !soc.poll)
-		iprint("intr: done\n");
-	m->intrdepth--;
-
-	/* in case the cpus all raced into wfi, always wake */
-	if(up)
-		preempted();
-	/*
-	 * procs waiting for this interrupt could be on
-	 * any cpu, so wake any idling cpus.
-	 */
-	idlewake();
-#endif
-	return 0;
+	USED(cp);
+	return irq(ureg);
 }
 
 static Traphandler traphandlers[Nfaulttypes] = {
@@ -985,7 +931,3 @@ mach2context(Mach *)
 	return ctxtoff;
 }
 
-void intrenable(int, void (*)(Ureg *, void *), void *, int, char *)
-{
-	print("TODO:intrenable\n");
-}
