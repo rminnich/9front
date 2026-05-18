@@ -64,6 +64,7 @@ init0(void)
 		ksetenv("auth", "10.0.2.2", 1);
 		ksetenv("bootargs", "ether /net/ether0", 1);
 		ksetenv("user", "glenda", 1);
+		ksetenv("service", "cpu", 1);
 
 		print("setconfenv\n");
 		setconfenv();
