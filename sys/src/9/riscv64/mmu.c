@@ -100,86 +100,23 @@ l1map(uintptr va, uintptr pa, uintptr pe, uintptr attr)
 u64int *sv57, *sv48, *sv39, *pGiB;
 u64int mmumode;
 
-int block = 1;
-
 void
 kmapram(uintptr base, uintptr limit)
 {
 	u64int i;
 	USED(base);
 	USED(limit);
-//	while(! block)
-//	if (0) if ((base > 0) || (limit > 4 * GiB))
-//		return;
 	sv57[0] = ((((u64int)sv48)>>2)) | 1;
 	if (Spew)print("%p is %p\n", sv57, sv57[0]);
 	sv48[0] = ((((u64int)sv39)>>2)) | 1;
-/*
-print("%p is %p\n", sv48, sv48[0]);
-	sv39[0] = ((((u64int)pGiB)>>2)) | 0x1;
-print("%p is %p\n", sv39, sv39[0]);
-
-	for(i = 0; i < 8; i++){
-		pGiB[i] = (i<<10) | 0xf;
-		print("%p is %p\n", &pGiB[i], pGiB[i]);
-	}
-*/
+	/* TODO: handle more complex memory topologies. */
 	for(i = 0; i < 6; i++){
-		if (i == 2) continue;
-		if (i == 3) continue;
 		sv39[i] = ((0x40000000*i)>>2) | 0xcf;
 		print("sv39:%p is %p\n", &sv39[i], sv39[i]);
 	}
-//while(! block);
-wsatp(((uintptr)sv39>>12)|(8ULL<<60));
-	if (0){
-	// Probe.
-	mmumode = 8ULL<<60;
-	if (! mmumode) {
-	wsatp((10ULL)<<60 | 0xf);
-	if (rsatp() == (10ULL)<<60)mmumode = 10ULL<<60;
-	}
-	if (! mmumode) {
-	wsatp((9ULL)<<60 | 0xf);
-	if (rsatp() == (9ULL)<<60)mmumode = 9ULL<<60;
-	}
-	if (! mmumode) {
-	wsatp((8ULL)<<60 | 0xf);
-	if (rsatp() == (8ULL)<<60)mmumode = 8ULL<<60;
-	}
-	//print("rsatp %llx\n", rsatp());
-	if (0)while (! block);
-	switch(mmumode>>60) {
-		case 10: 
-				wsatp(((uintptr)sv57>>12)|mmumode);
-				break;
-		case 9:
-				wsatp(((uintptr)sv48>>12)|mmumode);
-				break;
-		case 8:
-				wsatp(((uintptr)sv39>>12)|mmumode);
-				break;
-		default:
-			sbiputc('!');
-			panic("rsatp is fucked");
-			break;
-	}
-	return;
-#ifdef xxx
-	if(base < (uintptr)-KZERO && limit > (uintptr)-KZERO){
-		kmapram(base, (uintptr)-KZERO);
-		kmapram((uintptr)-KZERO, limit);
-		return;
-	}
-	if(base < INITMAP)
-		base = INITMAP;
-	if(base >= limit || limit <= INITMAP)
-		return;
 
-	l1map((uintptr)kmapaddr(base), base, limit,
-		PTEWRITE | PTEREAD);
-#endif
-	}
+	wsatp(((uintptr)sv39>>12)|(8ULL<<60));
+
 }
 
 uintptr
@@ -208,18 +145,16 @@ mmukmap(uintptr va, uintptr pa, usize size)
 void*
 vmap(uvlong pa, vlong size)
 {
-	print("vmap called for pa %p, size %ld: ignoring in identity map\n", pa, size);
 	return (void *)pa;
 }
 
 void
-vunmap(void *v, vlong size)
+vunmap(void *, vlong)
 {
-	print("vunmap called for %p/%ld: ignoring\n", v, size);
 }
 
-// That macro hackery is just too much for me to look at, and kenc should
-// inline this function anyway.
+/* That macro hackery is just too much for me to look at, and kenc should
+ * inline this function anyway. (it does not, but it could) */
 static u64int vpn(uintptr va, int level)
 {
 	int shift = 12 + 9*level;
@@ -441,7 +376,6 @@ mmuswitch(Proc *p)
 {
 	uintptr va;
 	Page *t;
-	extern int block;
 if (0)	print("SWITCH MMUTOP IS %p, @ 100 is %p\n", m->mmutop, m->mmutop[0x100]);
 	for(va = UZERO; va < USTKTOP; va += PGLSZ(PTLEVELS-1))
 		m->mmutop[PTLX(va, PTLEVELS-1)] = 0;
@@ -474,8 +408,6 @@ if (0)		print("Set mmutop[%llxx] to %llx\n", PTLX(va, PTLEVELS-1), pte );
 		m->mmutop[PTLX(va, PTLEVELS-1)] = pte;
 	}
 	wsatp(((uintptr)m->mmutop>>12)|(8ULL<<60));
-	if (0)print("MMUSWTICH: wrote satp: block\n");
-	if (0)while (! block);
 }
 
 void

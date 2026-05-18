@@ -50,7 +50,6 @@ meminit(void)
 	char *p;
 	uintptr l = VDRAM + 2ULL * GiB;
 	extern u64int *sv57, *sv48, *sv39, *pGiB;
-	extern int block;
 	extern uintptr klimit;
 
 	if(p = getconf("*maxmem"))
@@ -81,7 +80,6 @@ meminit(void)
 	pGiB = (void *)PGROUND((uintptr)sv39 + 1);
 	print("%p %p %p %p\n", sv57, sv48, sv39, pGiB);
 	memset(sv57, 0, 16384);
-	block = 0;
 	kmapram(conf.mem[0].base, l);
 
 	conf.mem[0].npage = (conf.mem[0].limit - conf.mem[0].base)/BY2PG;

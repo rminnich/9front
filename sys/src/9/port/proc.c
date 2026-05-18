@@ -231,10 +231,6 @@ if (Spew)if (up)print("proc %p(%lud) returns from runproc sp %p pc %p\n", up, up
 	up->state = Running;
 	mmuswitch(up);
 if (Spew)print("gotolabel: pid %lud sp %p, pc %p, dbreg %llud\n", up->pid, up->sched.sp, up->sched.pc, up->dbgreg ? up->dbgreg->r1 : 0);
-	extern int block;
-	block = up->pid != 1;
-if (0)print("block? %d\n", up->pid == 1 && ! block);
-	if (0)while(up->pid == 1 && ! block && up->dbgreg ? up->dbgreg->r1 > UZERO : 0);
 	if (Spew)print("gotolabe; sp %p pc %p\n", up->sched.sp, up->sched.pc);
 if (Spew) for(int i = 0; i < 32; i++) print("%p: %p\n", &((u64int*)up->sched.sp)[i], ((u64int*)up->sched.sp)[i]);
 	gotolabel(&up->sched);
@@ -1601,8 +1597,6 @@ procflushothers(void)
 static void
 linkproc(void)
 {
-	extern int block;
-	block = 0;
 	spllo();
 	(*up->kpfun)(up->kparg);
 	pexit("kproc exiting", 0);

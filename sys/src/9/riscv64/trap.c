@@ -71,18 +71,13 @@ dbgpc(Proc *)
 void
 procfork(Proc *p)
 {
-//	print("procfork %p\n", p);
-	USED(p);
-	print("fix fpuprocfork\n");
-//	fpuprocfork(p);
-//	p->tpidr = up->tpidr;
+	fpuprocfork(p);
 }
 
 void
 procsetup(Proc *p)
 {
-	print("TODO procsetup %p\n", p);
-//	fpuprocsetup(p);
+	fpuprocsetup(p);
 }
 
 void
@@ -469,6 +464,7 @@ trapillinst(Ureg *ureg, Cause *cp)
 	ulong inst;
 	uintptr pc;
 
+	if (TrapSpew)print("trapillinst\n");
 	/* if non-zero, ureg->tval will be the trapping instruction */
 	pc = ureg->pc;
 	if (pc & 1) {
@@ -480,11 +476,7 @@ trapillinst(Ureg *ureg, Cause *cp)
 	}
 
 	if (isfpinst(pc, ureg)) {
-		panic("FPU trapillinst");
-		if (!cp->user)
-			panic("kernel fpu use at %#p: %#p", pc, ureg->tval);
-	//	fptrap(ureg, 0);
-	//	vecacct(vctl[cp->vno]);
+		mathtrap(ureg);
 		return;			/* re-execute FP but with FPU on */
 	}
 
@@ -727,9 +719,6 @@ if (0)sbiputc('-');
 		--m->clockintrdepth;
 		clockenable();
 		clockintr = 1;
-		extern int block;
-		block = 1;
-		while(! block);
 		break;
 	case Supswintr:
 		/*
@@ -897,7 +886,9 @@ if (0)sbiputc('T');
 		clockintr = (*handler)(ureg, &why);
 		if (TrapSpew) print("back from handler\n");
 		splhi();		/* minimise harm if handler went low */
-	//	fpsts2ureg(ureg); /* propagate Fsst changes back to user mode */
+		/* I just notice this, and that I commented it out. Oops. */
+		if (up)
+			fpsts2ureg(ureg); /* propagate Fsst changes back to user mode */
 
 		/*
 		 * delaysched set (because we held a lock or because our

@@ -74,20 +74,10 @@ TEXT fpoff(SB), 1, $-4
 noop:
 	RET
 
-TEXT fpon(SB), 1, $-4
+TEXT isfpon(SB), 1, $-4
 	MOV	CSR(SSTATUS), R9
 	MOV	$Fsst, R11
 	AND	R9, R11
-	MOV	$(Off<<Fsshft), R12
-	BNE	R11, R12, ondone	/* on, so nothing to do */
-
-	MOV	$~Fsst, R11
-	AND	R9, R11
-	MOV	$(Dirty<<Fsshft), R9	/* don't know, Dirty is safe */
-	OR	R9, R11
-	MOV	R11, CSR(SSTATUS)	/* enable FPU */
-	FENCE_RW
-ondone:
 	RET
 
 /* fpu is assumed at entry to be off, thus clean */
@@ -112,20 +102,3 @@ TEXT fploadregs(SB), $-4
 	MOV	R10, CSR(SSTATUS)
 	FENCE_RW
 	RET
-
-TEXT frflags(SB), $-4
-	WORD	$0x00102473 // frflags RARG
-	RET
-
-TEXT fsflags(SB), $-4
-	WORD	$0x00141473 // fsflags RARG
-	RET
-
-TEXT frrm(SB), $-4
-	WORD	$0x00202473 // frrm RARG
-	RET
-
-TEXT fsrm(SB), $-4
-	WORD	$0x00241473 // fsrm RARG
-	RET
-

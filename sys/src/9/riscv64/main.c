@@ -64,6 +64,7 @@ init0(void)
 		ksetenv("auth", "10.0.2.2", 1);
 		ksetenv("bootargs", "ether /net/ether0", 1);
 		ksetenv("user", "glenda", 1);
+		ksetenv("service", "cpu", 1);
 
 		print("setconfenv\n");
 		setconfenv();
@@ -78,7 +79,6 @@ init0(void)
 	segpage(up->seg[SSEG], p);
 	sp = (char**)(p->pa + BY2PG - sizeof(Tos) - 8 - sizeof(sp[0])*4);
 	print("sp is %p for usp %p\n", sp, sp);
-	extern int block;
 	sp[3] = sp[2] = sp[1] = nil;
 	strcpy(sp[1] = (char*)&sp[4], "boot");
 	sp[0] = (void*)&sp[1];
@@ -98,10 +98,10 @@ init0(void)
 	print("touser baby MACH m is %p mmuto p%p\n", m, m->mmutop);
 
 	print("islo %d, now enable clock\n", islo());
-	block = 1;
-	if (0)while(! block);
 	if(1)clockenable();
 	//print("now to user\n");
+	// I am not sure this should be here ...
+	fpoff();
 	print("SP will be USTKTOP-BY2PG %p\n", (uintptr)USTKTOP-BY2PG);
 	touser((uintptr)USTKTOP-BY2PG);
 }
