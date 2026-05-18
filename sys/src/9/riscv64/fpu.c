@@ -23,15 +23,11 @@ enum {						/* FCSR */
 };
 
 enum {						/* PFPU.state */
-	Init		= 0,			/* The FPU has not been used */
-	Busy		= 1,			/* The FPU is being used */
-	Idle		= 2,			/* The FPU has been used */
-
 	Hold		= 1<<2,			/* Handling an FPU note */
 };
 
 static char *fpstnames[] = {
-	"Init", "Busy", "Idle",
+	"Init", "Inactive", "Clean", "Dirty",
 };
 
 /* initial contents of high fp regs.  compiler assumes such initialization. */
@@ -92,13 +88,12 @@ notefpsave(Proc *p)
 {
 	if(p->fpsave == nil)
 		return nil;
-	if(p->fpstate == (FPinactive|FPnotify)){
+	if(p->fpstate == (FPidle|FPnotify)){
 		p->fpsave = fpalloc(p->fpsave);
 		memmove(p->fpsave, p->fpsave->link, sizeof(FPsave));
-		p->fpstate = FPinactive;
+		p->fpstate = FPidle;
 	}
 	return p->fpsave->link;
-	return nil;
 }
 
 void
@@ -107,7 +102,7 @@ fpuprocsave(Proc *p)
 	if(p->state == Moribund){
 		FPalloc *a;
 
-		if(p->fpstate == FPactive || p->kfpstate == FPactive)
+		if(p->fpstate > FPinit || p->kfpstate > FPinit)
 			fpoff();
 		p->fpstate = p->kfpstate = FPinit;
 		while((a = p->fpsave) != nil) {
@@ -120,17 +115,17 @@ fpuprocsave(Proc *p)
 		}
 		return;
 	}
-	if(p->kfpstate == FPactive){
+	if(p->kfpstate > FPinit){
 		fpsave(p->kfpsave);
-		p->kfpstate = FPinactive;
+		p->kfpstate = FPidle;
 		return;
 	}
-	if(p->fpstate == FPprotected)
+	if(p->fpstate > FPinit)
 		fpon();
-	else if(p->fpstate != FPactive)
+	else
 		return;
 	fpsave(p->fpsave);
-	p->fpstate = FPinactive;
+	p->fpstate = FPidle;
 }
 
 void
@@ -141,10 +136,11 @@ fpuprocrestore(Proc*)
 	 * we can discard its fp state.
 	 */
 	switch(m->fpstate){
-	case FPactive:
-		fpoff();
+	case FPclean:
+	case FPdirty:
+	case FPidle:
 		/* wet floor */
-	case FPinactive:
+		fpoff();
 		fpfree(m->fpsave);
 		m->fpsave = nil;
 		m->fpstate = FPinit;
@@ -168,7 +164,7 @@ fpunoted(Proc *p)
 	} else if((o = p->fpsave->link) != nil) {
 		fpfree(p->fpsave);
 		p->fpsave = o;
-		p->fpstate = FPinactive;
+		p->fpstate = FPidle;
 	} else {
 		p->fpstate = FPinit;
 	}
@@ -182,34 +178,35 @@ mathtrap(Ureg *ureg)
 			switch(m->fpstate){
 			case FPinit:
 				m->fpsave = fpalloc(m->fpsave);
-				m->fpstate = FPactive;
+				m->fpstate = FPidle;
 				fpinit();
 				break;
-			case FPinactive:
+			case FPidle:
+			/* do we need the other cases here? */
 				fprestore(m->fpsave);
-				m->fpstate = FPactive;
+				m->fpstate = FPidle;
 				break;
 			default:
-				panic("floating point error in irq");
+				panic("floating point error in irq for FP state %d", m->fpstate);
 			}
 			return;
 		}
 
-		if(up->fpstate == FPprotected){
+		if(up->fpstate > FPclean){
 			fpon();
 			fpsave(up->fpsave);
-			up->fpstate = FPinactive;
+			up->fpstate = FPidle;
 		}
 
 		switch(up->kfpstate){
 		case FPinit:
 			up->kfpsave = fpalloc(up->kfpsave);
-			up->kfpstate = FPactive;
+			up->kfpstate = FPidle;
 			fpinit();
 			break;
-		case FPinactive:
+		case FPidle:
 			fprestore(up->kfpsave);
-			up->kfpstate = FPactive;
+			up->kfpstate = FPidle;
 			break;
 		default:
 			panic("floating point error in trap");
@@ -223,25 +220,23 @@ mathtrap(Ureg *ureg)
 	case FPinit:
 		if(up->fpsave == nil)
 			up->fpsave = fpalloc(nil);
-		up->fpstate = FPactive;
+		up->fpstate = FPidle;
 		fpinit();
 		break;
-	case FPinactive|FPnotify:
+	case FPidle|FPnotify:
 		spllo();
 		qlock(&up->debug);
 		notefpsave(up);
 		qunlock(&up->debug);
 		splhi();
 		/* wet floor */
-	case FPinactive:
+	case FPidle:
 		fprestore(up->fpsave);
-		up->fpstate = FPactive;
+		up->fpstate = FPidle;
 		break;
-	case FPprotected:
-		up->fpstate = FPactive;
-		fpon();
-		break;
-	case FPactive:
+	/* this seems the wrong thing, but I don't know what I'm doing. */
+	case FPclean:
+	case FPdirty:
 		postnote(up, 1, "sys: floating point error", NDebug);
 		break;
 	}
@@ -251,36 +246,42 @@ void fpukexit(Ureg*ureg, FPsave*)
 {
 	FPalloc *a;
 
+	/* if there is no process, just turn the FPU off. */
 	if(up == nil){
+		/* if it was used by the kernel, save state */
 		switch(m->fpstate){
-		case FPactive:
-			fpoff();
+		case FPclean:
+		case FPdirty:
+		case FPidle:
 			/* wet floor */
-		case FPinactive:
+			fpoff();
 			a = m->fpsave;
 			m->fpsave = a->link;
 			fpfree(a);
 		}
-		m->fpstate = m->fpsave != nil? FPinactive: FPinit;
+		m->fpstate = m->fpsave != nil? FPidle: FPinit;
 		return;
 	}
 
-	if(up->fpstate == FPprotected){
+	/* this is a very conservative decision. At the same time, we're turning it on,
+	 * so it is inactive (but will be restored). */
+	if(up->fpstate > FPinit){
 		if(userureg(ureg)){
-			up->fpstate = FPactive;
+			up->fpstate = FPidle;
 			fpon();
 		}
 		return;
 	}
 
 	switch(up->kfpstate){
-	case FPactive:
+		case FPclean:
+		case FPdirty:
 		fpoff();
 		/* wet floor */
-	case FPinactive:
+	case FPidle:
 		a = up->kfpsave;
 		up->kfpsave = a->link;
 		fpfree(a);
 	}
-	up->kfpstate = up->kfpsave != nil? FPinactive: FPinit;
+	up->kfpstate = up->kfpsave != nil? FPidle: FPinit;
 }

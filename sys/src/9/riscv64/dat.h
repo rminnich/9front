@@ -104,10 +104,20 @@ struct PFPU
 
 enum
 {
+	/* these names are known to port/. They're not quite right 
+	 * for RISC-V but we have to use them. */
+	/* In this state, FP use will cause a trap. */
 	FPinit,
-	FPactive,
-	FPinactive,
-	FPprotected,
+	/* In this state, the FP is on but has not been used */
+	FPidle,
+	/* In this state, the FP is on but "clean". It is not completely
+	 * clear why this state was needed, but it is in the spec. */
+	FPclean,
+	/* In this state, the FP has been changed in some way and
+	 * must be saved off before it can be used by kernel, note handler,
+	 * or other process. */
+	FPdirty,
+	FPinactive = FPidle,
 
 	/* bits or'd with the state */
 	FPnotify = 0x100,
