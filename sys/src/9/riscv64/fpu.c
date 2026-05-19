@@ -88,6 +88,7 @@ static void
 fprestore(FPsave *p)
 {
 	print("fprestore\n");
+	fpon();
 	fsrm(p->control);
 	fsflags(p->status);
 	fploadregs(p->regs);
@@ -217,6 +218,7 @@ mathtrap(Ureg *ureg)
 {
 	print("mathtrap\n");
 	if(!userureg(ureg)){
+		print("kernel mode\n");
 		if(up == nil){
 			switch(m->fpstate){
 			case FPinit:
@@ -234,8 +236,9 @@ mathtrap(Ureg *ureg)
 			}
 			return;
 		}
-
+		print("fpstate %d\n", up->fpstate);
 		if(up->fpstate > FPclean){
+			print("fp dirty. save it and mark it on\n");
 			procfpon(up);
 			fpsave(up->fpsave);
 			up->fpstate = FPidle;
@@ -257,6 +260,7 @@ mathtrap(Ureg *ureg)
 		return;
 	}
 
+	print("user trap: up -> fpstate %d\n", up->fpstate);
 	switch(up->fpstate){
 	case FPinit|FPnotify:
 		/* wet floor */
@@ -265,6 +269,7 @@ mathtrap(Ureg *ureg)
 		if(up->fpsave == nil)
 			up->fpsave = fpalloc(nil);
 		up->fpstate = FPidle;
+		procfpon(up);
 		fpinit();
 		break;
 	case FPidle|FPnotify:
