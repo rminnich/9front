@@ -71,11 +71,8 @@ dbgpc(Proc *)
 void
 procfork(Proc *p)
 {
-//	print("procfork %p\n", p);
-	USED(p);
-	print("fix fpuprocfork\n");
-//	fpuprocfork(p);
-//	p->tpidr = up->tpidr;
+	print("fixed fpuprocfork\n");
+	fpuprocfork(p);
 }
 
 void
@@ -469,6 +466,7 @@ trapillinst(Ureg *ureg, Cause *cp)
 	ulong inst;
 	uintptr pc;
 
+	print("trapillinst\n");
 	/* if non-zero, ureg->tval will be the trapping instruction */
 	pc = ureg->pc;
 	if (pc & 1) {
@@ -480,11 +478,7 @@ trapillinst(Ureg *ureg, Cause *cp)
 	}
 
 	if (isfpinst(pc, ureg)) {
-		panic("FPU trapillinst");
-		if (!cp->user)
-			panic("kernel fpu use at %#p: %#p", pc, ureg->tval);
-	//	fptrap(ureg, 0);
-	//	vecacct(vctl[cp->vno]);
+		mathtrap(ureg);
 		return;			/* re-execute FP but with FPU on */
 	}
 

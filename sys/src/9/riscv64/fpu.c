@@ -6,6 +6,7 @@
 
 #include "ureg.h"
 #include "../riscv64/sysreg.h"
+#include "riscv64.h"
 
 /* l.s, for now */
 extern ulong frrm(void);
@@ -59,9 +60,24 @@ fpfree(FPalloc*a)
 
 static FPsave fpsave0;
 
+/* These two functions arrange for FPU to be in the proper state
+ * when we exit the kernel. */
+static void
+procfpon(Proc *p)
+{
+	p->dbgreg->status |= Fsst;
+}
+
+static void
+procfpoff(Proc *p)
+{
+	p->dbgreg->status &= ~Fsst;
+}
+
 static void
 fpsave(FPsave *p)
 {
+	print("fpsave\n");
 	p->control = frrm();
 	p->status = frflags();
 	fpsaveregs(p->regs);
@@ -71,7 +87,7 @@ fpsave(FPsave *p)
 static void
 fprestore(FPsave *p)
 {
-	fpon();
+	print("fprestore\n");
 	fsrm(p->control);
 	fsflags(p->status);
 	fploadregs(p->regs);
@@ -80,6 +96,7 @@ fprestore(FPsave *p)
 static void
 fpinit(void)
 {
+	print("fpinit\n");
 	fprestore(&fpsave0);
 }
 
@@ -99,6 +116,7 @@ notefpsave(Proc *p)
 void
 fpuprocsave(Proc *p)
 {
+	print("fpuprocsave\n");
 	if(p->state == Moribund){
 		FPalloc *a;
 
@@ -121,7 +139,7 @@ fpuprocsave(Proc *p)
 		return;
 	}
 	if(p->fpstate > FPinit)
-		fpon();
+		procfpon(p);
 	else
 		return;
 	fpsave(p->fpsave);
@@ -129,8 +147,9 @@ fpuprocsave(Proc *p)
 }
 
 void
-fpuprocrestore(Proc*)
+fpuprocrestore(Proc*p)
 {
+	print("fpuprocrestore\n");
 	/*
 	 * when the scheduler switches,
 	 * we can discard its fp state.
@@ -141,10 +160,33 @@ fpuprocrestore(Proc*)
 	case FPidle:
 		/* wet floor */
 		fpoff();
+		procfpoff(p);
 		fpfree(m->fpsave);
 		m->fpsave = nil;
 		m->fpstate = FPinit;
 	}
+}
+
+void
+fpuprocfork(Proc *p)
+{
+	int s;
+
+	s = splhi();
+	switch(up->fpstate & ~FPnotify){
+	case FPclean:
+	case FPdirty:
+		procfpon(p);
+		fpsave(up->fpsave);
+		up->fpstate = FPidle;
+		/* wet floor */
+	case FPinactive:
+		if(p->fpsave == nil)
+			p->fpsave = fpalloc(nil);
+		memmove(p->fpsave, up->fpsave, sizeof(FPsave));
+		p->fpstate = FPinactive;
+	}
+	splx(s);
 }
 
 void
@@ -173,6 +215,7 @@ fpunoted(Proc *p)
 void
 mathtrap(Ureg *ureg)
 {
+	print("mathtrap\n");
 	if(!userureg(ureg)){
 		if(up == nil){
 			switch(m->fpstate){
@@ -193,7 +236,7 @@ mathtrap(Ureg *ureg)
 		}
 
 		if(up->fpstate > FPclean){
-			fpon();
+			procfpon(up);
 			fpsave(up->fpsave);
 			up->fpstate = FPidle;
 		}
@@ -218,12 +261,14 @@ mathtrap(Ureg *ureg)
 	case FPinit|FPnotify:
 		/* wet floor */
 	case FPinit:
+		print("init: turn it on\n");
 		if(up->fpsave == nil)
 			up->fpsave = fpalloc(nil);
 		up->fpstate = FPidle;
 		fpinit();
 		break;
 	case FPidle|FPnotify:
+		print("idle | notify\n");
 		spllo();
 		qlock(&up->debug);
 		notefpsave(up);
@@ -231,20 +276,25 @@ mathtrap(Ureg *ureg)
 		splhi();
 		/* wet floor */
 	case FPidle:
+		print("idle\n");
 		fprestore(up->fpsave);
 		up->fpstate = FPidle;
+		procfpon(up);
 		break;
 	/* this seems the wrong thing, but I don't know what I'm doing. */
 	case FPclean:
 	case FPdirty:
+		print("clean | dirty\n");
 		postnote(up, 1, "sys: floating point error", NDebug);
 		break;
 	}
+	print("isfpon: %s\n", up->dbgreg->status & Fsst ? "yes" : "no");
 }
 
 void fpukexit(Ureg*ureg, FPsave*)
 {
 	FPalloc *a;
+	print("fpukexit\n");
 
 	/* if there is no process, just turn the FPU off. */
 	if(up == nil){
@@ -268,7 +318,7 @@ void fpukexit(Ureg*ureg, FPsave*)
 	if(up->fpstate > FPinit){
 		if(userureg(ureg)){
 			up->fpstate = FPidle;
-			fpon();
+			procfpon(up);
 		}
 		return;
 	}

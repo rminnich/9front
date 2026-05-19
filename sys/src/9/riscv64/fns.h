@@ -16,6 +16,7 @@ extern void noteret(void);
 extern void returnto(void*);
 extern void fpon(void);
 extern void fpoff(void);
+extern int isfpon(void);
 extern void fpsaveregs(void*);
 extern void fploadregs(void*);
 extern void hvccall(Ureg*);

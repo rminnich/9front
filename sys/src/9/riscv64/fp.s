@@ -74,6 +74,12 @@ TEXT fpoff(SB), 1, $-4
 noop:
 	RET
 
+TEXT isfpon(SB), 1, $-4
+	MOV	CSR(SSTATUS), R9
+	MOV	$Fsst, R11
+	AND	R9, R11
+	RET
+
 TEXT fpon(SB), 1, $-4
 	MOV	CSR(SSTATUS), R9
 	MOV	$Fsst, R11
