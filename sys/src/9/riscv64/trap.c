@@ -891,6 +891,7 @@ if (0)sbiputc('T');
 		clockintr = (*handler)(ureg, &why);
 		if (TrapSpew) print("back from handler\n");
 		splhi();		/* minimise harm if handler went low */
+		/* I just notice this, and that I commented it out. Oops. */
 	//	fpsts2ureg(ureg); /* propagate Fsst changes back to user mode */
 
 		/*

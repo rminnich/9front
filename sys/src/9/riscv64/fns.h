@@ -14,6 +14,7 @@ extern void touser(uintptr sp);
 extern void sysrforkret(void);
 extern void noteret(void);
 extern void returnto(void*);
+extern void fpconstset(void);
 extern void fpon(void);
 extern void fpoff(void);
 extern int isfpon(void);
@@ -215,6 +216,7 @@ void	cboflush(void *);
 // more good 9k stuff: m mode bits. 
 // Let's keep them until we're sure we don't want them.
 ulong	getfcsr(void);
+ulong	setfcsr(uintptr);
 uintptr	getmie(void);
 uintptr	getmip(void);
 uintptr	getmsts(void);

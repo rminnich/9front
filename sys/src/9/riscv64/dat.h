@@ -81,8 +81,7 @@ struct FPsave
 {
 	uvlong	regs[32][2];
 
-	ulong	control;
-	ulong	status;
+	ulong	fcsr;
 };
 
 struct FPalloc

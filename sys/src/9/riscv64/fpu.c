@@ -8,12 +8,6 @@
 #include "../riscv64/sysreg.h"
 #include "riscv64.h"
 
-/* l.s, for now */
-extern ulong frrm(void);
-extern void fsrm(ulong fcr);
-extern ulong frflags(void);
-extern void fsflags(ulong fsr);
-
 /* from 9k */
 enum {						/* FCSR */
 	I		= FPAINEX,
@@ -31,10 +25,29 @@ static char *fpstnames[] = {
 	"Init", "Inactive", "Clean", "Dirty",
 };
 
+/* The rules:
+ * 9front kernels allow kernel and note handler use of FPU.
+ * Exceptions can nest, requiring a stack of saved FPU register values.
+ ** This stack is implemented via a linked list.
+ * CPU takes a trap on ANY access to FPU. 
+ ** All setting is done at SPLHI in assembly. No code in this file should touch the FP registers.
+ * Registers F28-F31 hold constants.
+ * FPU registers should never be used in this file.
+ * FPU is enabled by 2 bits in SSTATUS. If those bits are 0, the FPU can be used. 
+ * SSTATUS in the ureg is a saved copy of SSTATUS
+ ** Weirdly, the FPU bits are not cleared to 0 when strap occurs.
+ ** Will we need to do this?
+ * The FPU status is restored when we leave the kernel to user mode.
+ * Or when we leave this trap to go back to kernel. 
+ */
+
 /* initial contents of high fp regs.  compiler assumes such initialization. */
+/* See: fpconstset: 28, 29, 30, and 31 are set to these values */
 double fpzero = 0, fphalf = 0.5, fpone = 1, fptwo = 2;
 /* thank you 9k! */
 
+/* FPalloc allocates an FPsave structure and sets its link to the passed in FPalloc *.
+ * This linked list basically forms a stack. */
 static FPalloc*
 fpalloc(FPalloc *link)
 {
@@ -48,6 +61,7 @@ fpalloc(FPalloc *link)
 		}
 		splx(x);
 	}
+	memset(a, 0, sizeof(*a));
 	a->link = link;
 	return a;
 }
@@ -60,28 +74,12 @@ fpfree(FPalloc*a)
 
 static FPsave fpsave0;
 
-/* These two functions arrange for FPU to be in the proper state
- * when we exit the kernel. */
-static void
-procfpon(Proc *p)
-{
-	p->dbgreg->status |= Fsst;
-}
-
-static void
-procfpoff(Proc *p)
-{
-	p->dbgreg->status &= ~Fsst;
-}
-
 static void
 fpsave(FPsave *p)
 {
 	print("fpsave\n");
-	p->control = frrm();
-	p->status = frflags();
-	fpsaveregs(p->regs);
-	fpoff();
+	p->fcsr = getfcsr();
+	fpsaveregs(p->regs); // fpsaveregs disables the FPU
 }
 
 static void
@@ -89,18 +87,23 @@ fprestore(FPsave *p)
 {
 	print("fprestore\n");
 	fpon();
-	fsrm(p->control);
-	fsflags(p->status);
-	fploadregs(p->regs);
+	setfcsr(p->fcsr);
+	fploadregs(p->regs); // fploadregs enables the FPU
 }
 
+/* fpinit loads the registers from fpsave0. 
+ * Critically, the constant registers will be set. 
+ * This used to load from fpsave0, but that does not
+ * have f28-31 set, which in actual use did not end well.
+ */
 static void
 fpinit(void)
 {
 	print("fpinit\n");
-	fprestore(&fpsave0);
+	_fpuinit();
 }
 
+/* notefpsave saves processor FPU state if the process has been using the FPU. */
 FPsave*
 notefpsave(Proc *p)
 {
@@ -118,6 +121,7 @@ void
 fpuprocsave(Proc *p)
 {
 	print("fpuprocsave\n");
+	// Process dead? nothing do to. 
 	if(p->state == Moribund){
 		FPalloc *a;
 
@@ -134,21 +138,22 @@ fpuprocsave(Proc *p)
 		}
 		return;
 	}
+	// kfpstate is kernel fp state? Kernel using FPU I guess? or ...
 	if(p->kfpstate > FPinit){
 		fpsave(p->kfpsave);
 		p->kfpstate = FPidle;
 		return;
 	}
-	if(p->fpstate > FPinit)
-		procfpon(p);
-	else
+
+	if(p->fpstate == FPinit)
 		return;
 	fpsave(p->fpsave);
 	p->fpstate = FPidle;
 }
 
+/* from here on down, ron is uncertain. */
 void
-fpuprocrestore(Proc*p)
+fpuprocrestore(Proc*)
 {
 	print("fpuprocrestore\n");
 	/*
@@ -161,7 +166,6 @@ fpuprocrestore(Proc*p)
 	case FPidle:
 		/* wet floor */
 		fpoff();
-		procfpoff(p);
 		fpfree(m->fpsave);
 		m->fpsave = nil;
 		m->fpstate = FPinit;
@@ -177,15 +181,16 @@ fpuprocfork(Proc *p)
 	switch(up->fpstate & ~FPnotify){
 	case FPclean:
 	case FPdirty:
-		procfpon(p);
 		fpsave(up->fpsave);
 		up->fpstate = FPidle;
 		/* wet floor */
-	case FPinactive:
 		if(p->fpsave == nil)
 			p->fpsave = fpalloc(nil);
 		memmove(p->fpsave, up->fpsave, sizeof(FPsave));
+		break;
+	case FPinactive:
 		p->fpstate = FPinactive;
+		break;
 	}
 	splx(s);
 }
@@ -213,14 +218,28 @@ fpunoted(Proc *p)
 	}
 }
 
+/*
+ * You get here out of the illegal instruction handler, when FPU is turned off.
+ * Your task is to figure out what mode the trap occured in, if the FPU was in use before it was turned
+ * off, and how to construct a return from as you exit the trap handler back to kernel, note handler, or
+ * process. During trap entry, FPU is turned off, but its state as of the trap is preserved.
+ */
 void
 mathtrap(Ureg *ureg)
 {
-	print("mathtrap\n");
+	print("mathtrap %p\n", ureg->pc);
+	/* we were not in user mode. So, the kernel decided to use the FPU,
+	 * and if there is state to be preserved, here is where we do it. 
+	 * We will set up the FPU here and just return. */
+
+	/* no user stuff going on. Ron is unsure about this code. */
 	if(!userureg(ureg)){
 		print("kernel mode\n");
+		/* there was no process active. So we need only worry about the kernel FP state. */
 		if(up == nil){
+			/* This step pushes a new fpsave onto the stack. */
 			switch(m->fpstate){
+			/* It was not used. Set up an FPsave and it will be popped on the way out of the trap handler */
 			case FPinit:
 				m->fpsave = fpalloc(m->fpsave);
 				m->fpstate = FPidle;
@@ -239,7 +258,6 @@ mathtrap(Ureg *ureg)
 		print("fpstate %d\n", up->fpstate);
 		if(up->fpstate > FPclean){
 			print("fp dirty. save it and mark it on\n");
-			procfpon(up);
 			fpsave(up->fpsave);
 			up->fpstate = FPidle;
 		}
@@ -269,7 +287,6 @@ mathtrap(Ureg *ureg)
 		if(up->fpsave == nil)
 			up->fpsave = fpalloc(nil);
 		up->fpstate = FPidle;
-		procfpon(up);
 		fpinit();
 		break;
 	case FPidle|FPnotify:
@@ -284,7 +301,6 @@ mathtrap(Ureg *ureg)
 		print("idle\n");
 		fprestore(up->fpsave);
 		up->fpstate = FPidle;
-		procfpon(up);
 		break;
 	/* this seems the wrong thing, but I don't know what I'm doing. */
 	case FPclean:
@@ -323,7 +339,6 @@ void fpukexit(Ureg*ureg, FPsave*)
 	if(up->fpstate > FPinit){
 		if(userureg(ureg)){
 			up->fpstate = FPidle;
-			procfpon(up);
 		}
 		return;
 	}
