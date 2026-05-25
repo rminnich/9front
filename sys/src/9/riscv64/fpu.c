@@ -19,6 +19,7 @@ enum {						/* FCSR */
 
 enum {						/* PFPU.state */
 	Hold		= 1<<2,			/* Handling an FPU note */
+	TrapSpew		= 0,
 };
 
 static char *fpstnames[] = {
@@ -77,7 +78,7 @@ static FPsave fpsave0;
 static void
 fpsave(FPsave *p)
 {
-	print("fpsave\n");
+	if (TrapSpew)print("fpsave\n");
 	p->fcsr = getfcsr();
 	fpsaveregs(p->regs); // fpsaveregs disables the FPU
 }
@@ -85,7 +86,7 @@ fpsave(FPsave *p)
 static void
 fprestore(FPsave *p)
 {
-	print("fprestore\n");
+	if (TrapSpew)print("fprestore\n");
 	setfcsr(p->fcsr);
 	fploadregs(p->regs); // fploadregs enables the FPU
 }
@@ -98,7 +99,7 @@ fprestore(FPsave *p)
 static void
 fpinit(void)
 {
-	print("fpinit\n");
+	if (TrapSpew)print("fpinit\n");
 	_fpuinit();
 }
 
@@ -119,7 +120,7 @@ notefpsave(Proc *p)
 void
 fpuprocsave(Proc *p)
 {
-	print("fpuprocsave\n");
+	if (TrapSpew)print("fpuprocsave\n");
 	// Process dead? nothing do to. 
 	if(p->state == Moribund){
 		FPalloc *a;
@@ -154,7 +155,7 @@ fpuprocsave(Proc *p)
 void
 fpuprocrestore(Proc*)
 {
-	print("fpuprocrestore\n");
+	if (TrapSpew)print("fpuprocrestore\n");
 	/*
 	 * when the scheduler switches,
 	 * we can discard its fp state.
@@ -226,14 +227,14 @@ fpunoted(Proc *p)
 void
 mathtrap(Ureg *ureg)
 {
-	print("mathtrap %p\n", ureg->pc);
+	if (TrapSpew)print("mathtrap %p\n", ureg->pc);
 	/* we were not in user mode. So, the kernel decided to use the FPU,
 	 * and if there is state to be preserved, here is where we do it. 
 	 * We will set up the FPU here and just return. */
 
 	/* no user stuff going on. Ron is unsure about this code. */
 	if(!userureg(ureg)){
-		print("kernel mode\n");
+		if (TrapSpew)print("kernel mode\n");
 		/* there was no process active. So we need only worry about the kernel FP state. */
 		if(up == nil){
 			/* This step pushes a new fpsave onto the stack. */
@@ -254,9 +255,9 @@ mathtrap(Ureg *ureg)
 			}
 			return;
 		}
-		print("fpstate %d\n", up->fpstate);
+		if (TrapSpew)print("fpstate %d\n", up->fpstate);
 		if(up->fpstate > FPclean){
-			print("fp dirty. save it and mark it on\n");
+			if (TrapSpew)print("fp dirty. save it and mark it on\n");
 			fpsave(up->fpsave);
 			up->fpstate = FPidle;
 		}
@@ -277,19 +278,19 @@ mathtrap(Ureg *ureg)
 		return;
 	}
 
-	print("user trap: up -> fpstate %d\n", up->fpstate);
+	if (TrapSpew)print("user trap: up -> fpstate %d\n", up->fpstate);
 	switch(up->fpstate){
 	case FPinit|FPnotify:
 		/* wet floor */
 	case FPinit:
-		print("init: turn it on\n");
+		if (TrapSpew)print("init: turn it on\n");
 		if(up->fpsave == nil)
 			up->fpsave = fpalloc(nil);
 		up->fpstate = FPidle;
 		fpinit();
 		break;
 	case FPidle|FPnotify:
-		print("idle | notify\n");
+		if (TrapSpew)print("idle | notify\n");
 		spllo();
 		qlock(&up->debug);
 		notefpsave(up);
@@ -297,18 +298,18 @@ mathtrap(Ureg *ureg)
 		splhi();
 		/* wet floor */
 	case FPidle:
-		print("idle\n");
+		if (TrapSpew)print("idle\n");
 		fprestore(up->fpsave);
 		up->fpstate = FPidle;
 		break;
 	/* this seems the wrong thing, but I don't know what I'm doing. */
 	case FPclean:
 	case FPdirty:
-		print("clean | dirty\n");
+		if (TrapSpew)print("clean | dirty\n");
 		postnote(up, 1, "sys: floating point error", NDebug);
 		break;
 	}
-	print("isfpon: %s\n", up->dbgreg->status & Fsst ? "yes" : "no");
+	if (TrapSpew)print("isfpon: %s\n", up->dbgreg->status & Fsst ? "yes" : "no");
 }
 
 void
@@ -321,7 +322,7 @@ void
 void fpukexit(Ureg*ureg, FPsave*)
 {
 	FPalloc *a;
-	print("fpukexit\n");
+	if (TrapSpew)print("fpukexit\n");
 
 	/* if there is no process, just turn the FPU off. */
 	if(up == nil){
