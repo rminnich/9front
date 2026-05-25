@@ -103,7 +103,7 @@ init0(void)
 	if (0)while(! block);
 	if(1)clockenable();
 	//print("now to user\n");
-	fpconstset();
+	// I am not sure this should be here ...
 	fpoff();
 	print("SP will be USTKTOP-BY2PG %p\n", (uintptr)USTKTOP-BY2PG);
 	touser((uintptr)USTKTOP-BY2PG);
