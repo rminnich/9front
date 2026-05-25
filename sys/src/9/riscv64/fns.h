@@ -20,6 +20,8 @@ extern void fpoff(void);
 extern int isfpon(void);
 extern void fpsaveregs(void*);
 extern void fploadregs(void*);
+void fpsts2ureg(Ureg*ureg);
+
 extern void hvccall(Ureg*);
 
 extern void setttbr(uintptr pa);

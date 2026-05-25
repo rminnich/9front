@@ -80,22 +80,6 @@ TEXT isfpon(SB), 1, $-4
 	AND	R9, R11
 	RET
 
-TEXT fpon(SB), 1, $-4
-	MOV	CSR(SSTATUS), R9
-	MOV	$Fsst, R11
-	AND	R9, R11
-	MOV	$(Off<<Fsshft), R12
-	BNE	R11, R12, ondone	/* on, so nothing to do */
-
-	MOV	$~Fsst, R11
-	AND	R9, R11
-	MOV	$(Dirty<<Fsshft), R9	/* don't know, Dirty is safe */
-	OR	R9, R11
-	MOV	R11, CSR(SSTATUS)	/* enable FPU */
-	FENCE_RW
-ondone:
-	RET
-
 /* fpu is assumed at entry to be off, thus clean */
 TEXT fploadregs(SB), $-4
 	MOV	CSR(SSTATUS), R10

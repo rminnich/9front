@@ -86,7 +86,6 @@ static void
 fprestore(FPsave *p)
 {
 	print("fprestore\n");
-	fpon();
 	setfcsr(p->fcsr);
 	fploadregs(p->regs); // fploadregs enables the FPU
 }
@@ -312,6 +311,13 @@ mathtrap(Ureg *ureg)
 	print("isfpon: %s\n", up->dbgreg->status & Fsst ? "yes" : "no");
 }
 
+void
+fpsts2ureg(Ureg*ureg)
+{
+		ureg->status |= up->fpstate<<Fsshft;
+}
+
+void 
 void fpukexit(Ureg*ureg, FPsave*)
 {
 	FPalloc *a;

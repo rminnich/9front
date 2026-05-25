@@ -892,7 +892,8 @@ if (0)sbiputc('T');
 		if (TrapSpew) print("back from handler\n");
 		splhi();		/* minimise harm if handler went low */
 		/* I just notice this, and that I commented it out. Oops. */
-	//	fpsts2ureg(ureg); /* propagate Fsst changes back to user mode */
+		if (up)
+			fpsts2ureg(ureg); /* propagate Fsst changes back to user mode */
 
 		/*
 		 * delaysched set (because we held a lock or because our
