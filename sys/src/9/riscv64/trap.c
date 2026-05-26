@@ -466,7 +466,7 @@ trapillinst(Ureg *ureg, Cause *cp)
 	ulong inst;
 	uintptr pc;
 
-	print("trapillinst\n");
+	if (TrapSpew)print("trapillinst\n");
 	/* if non-zero, ureg->tval will be the trapping instruction */
 	pc = ureg->pc;
 	if (pc & 1) {

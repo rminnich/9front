@@ -315,6 +315,7 @@ mathtrap(Ureg *ureg)
 void
 fpsts2ureg(Ureg*ureg)
 {
+		ureg->status &= ~Fsst;
 		ureg->status |= up->fpstate<<Fsshft;
 }
 
