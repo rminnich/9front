@@ -23,6 +23,7 @@ enum {
 	TrapSpew	= 0,
 	TrapOhShit  = 0,
 	TrapSys		= 0,
+	ProbeDebug	= 1,
 
 	Ntimevec = 20,		/* number of time buckets for each intr */
 	Ncauses = Ngintr + Nlintr + Nexc,	/* # of Vctls */
@@ -397,14 +398,64 @@ whatcause(Cause *cp, Ureg *ureg)
 	return type;
 }
 
+/*
+ * returns contents of *addr, in *val.
+ * will atttempt to write *addr if wr is true.
+ * even if the memory exists, it must be mapped before calling this.
+ * may only work in machine mode if sbi intercepts access traps.
+ */
+void
+probeuvlong(uvlong *addr, uvlong *val, int wr)
+{
+	uvlong old;
+	Mpl pl;
+
+	pl = splhi();
+	if (Probedebug) {
+		iprint("probing %#p...", addr);
+		delay(100);
+	}
+	m->probing = 1;		/* set probebad on any exception */
+	m->probebad = 0;
+	old = 0x01020304;
+	USED(old);
+	coherence();
+
+	old = *addr;
+	if (wr)
+		*addr = *val;	/* rewrite word, in hopes of doing no harm */
+	else
+		*val = old;
+	coherence();		/* should fault by now if addr is bad */
+
+	m->probing = 0;
+	if (Probedebug) {
+		iprint(m->probebad? "missing\n": "present\n");
+		delay(100);
+	}
+	splx(pl);
+	if (m->probebad) {
+		m->probebad = 0;
+		error("probing:bad address");
+	}
+}
+
 static void
 trapaccess(Ureg *ureg, Cause *cp)
 {
-	if (cp->user)
+	if (cp->user) {
 		posttrapnote(ureg, cp->cause, "illegal access");
-	else
-		panic("trap: illegal access to %#p at %#p", ureg->tval,
-			ureg->pc);
+		return;
+	}
+	if (! m->probing) {
+		panic("trap: illegal access to %#p at %#p", ureg->tval, ureg->pc);
+	}
+	advancepc(ureg);
+	m->probing = 0;
+	m->probebad = 1;
+	m->probeaddr = ureg->tval;
+	m->probepc = ureg->pc;
+	print("probe: illegal access to %#p at %#p", ureg->tval, ureg->pc);
 }
 
 static void
@@ -658,20 +709,7 @@ trapriscv64(Ureg *ureg, Cause *cp)
 	uint cause;
 	Exchandler handler;
 	if (TrapSpew) print("trapriscv64 ur %p cp %p\n", ureg, cp);
-#ifdef xxx
-	if (cp->user)
-		m->turnedfpoff = 0;
-	else if (m->probing) {
-		m->probebad = 1;
-		m->probing = 0;
-		coherence();
-		if (0)
-			iprint("probe trapped\n");
-		/* have to advance PC on risc-v to skip faulting instruction. */
-		advancepc(ureg);
-		return 0;			/* not a clock interrupt */
-	}
-#endif
+
 if (0)sbiputc('.');
 	cause = cp->cause;
 	if (cause >= nelem(exchandlers))

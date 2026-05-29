@@ -270,3 +270,5 @@ u64int rdstimecmp(void);
 
 void soft(void);
 int clz(ulong);
+
+void probeuvlong(uvlong *addr, uvlong *var, int wr);

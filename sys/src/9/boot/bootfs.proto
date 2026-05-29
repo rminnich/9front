@@ -4,13 +4,16 @@ $objtype
 		auth
 			secstore
 		aux
+			getflags
 			kbdfs
+			usage
 			wpa
 		bind
 		cat
 		cfs
 		chmod
 		date
+		dc
 		dd
 		echo
 		grep
@@ -29,9 +32,12 @@ $objtype
 		rc
 		rm
 		sed
+		seq
 		sleep
 		srv
+		stats
 		test
+		tfloat
 		tlsclient
 		units
 		unmount
@@ -43,7 +49,11 @@ rc
 		net.rc 555 sys sys ../boot/net.rc
 	bin
 		ethermultilink
+		getflags
+		pci
+		rimport
 		srvtls
+		usage
 		bootrc 555 sys sys ../boot/bootrc
 tmp
 sys
@@ -52,5 +62,6 @@ sys
 			+
 lib
 	firmware
+	pci
 	units
 

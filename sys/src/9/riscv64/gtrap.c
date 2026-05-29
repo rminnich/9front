@@ -1248,20 +1248,20 @@ trapriscv64(Ureg *ureg, Cause *cp)
 	uint cause;
 	Exchandler handler;
 
-#ifdef xxx
-	if (cp->user)
+	if (cp->user) {
 		m->turnedfpoff = 0;
-	else if (m->probing) {
+	}
+
+	if (m->probing) {
 		m->probebad = 1;
 		m->probing = 0;
 		coherence();
-		if (0)
+		if (1)
 			iprint("probe trapped\n");
 		/* have to advance PC on risc-v to skip faulting instruction. */
 		advancepc(ureg);
 		return 0;			/* not a clock interrupt */
 	}
-#endif
 
 	cause = cp->cause;
 	if (cause >= nelem(exchandlers))

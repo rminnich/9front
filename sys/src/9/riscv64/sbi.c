@@ -120,8 +120,8 @@ _sbisettimer(uvlong tm)
 {
 	USED(tm);
 	panic("sbisettimer");
-	print("sbisettimer %#llx\n", tm);
-	sbicall(0, 0, tm, nil, nil);
+	/*print("sbisettimer %#llx\n", tm);
+	sbicall(0, 0, tm, nil, nil);*/
 }
 
 void

@@ -117,7 +117,6 @@ archread(Chan *c, void *a, long n, vlong offset)
 		if(c->qid.path < narchdir && (fn = readfn[c->qid.path]))
 			return fn(c, a, n, offset);
 		error(Eperm);
-		panic("archread notreached");
 	}
 }
 
@@ -174,8 +173,7 @@ cputyperead(Chan*, void *a, long n, vlong off)
 	char str[100];
 	extern int (*archclz)(Clzuint);
 
-	snprint(str, sizeof str, "%s %ud\next %s\nidle %s %ssending IPIs over %lld ns\n",
-		cputype, m->cpumhz,
+	snprint(str, sizeof str, "%s %ud\next %s\nidle %s %ssending IPIs over %lld ns\n", cputype, m->cpumhz,
 		"wfi", soc.idlewake? "": "not ", "hi",  0); // /*sys->nsthresh*/);
 	return readstr(off, a, n, str);
 }
@@ -224,10 +222,42 @@ sbiinit(void)
 	}
 }
 
+static long
+mmoderw(int isr, void *a, long n, vlong off)
+{
+	uvlong *addr = (uvlong *)off;
+	uvlong val;
+
+	if(off < 0 || n < 0)
+		error("bad offset/count");
+	n = sizeof(val);
+	if(isr){
+		probeuvlong(addr, &val, 0);
+		memmove(a, &val, n);
+	}else{
+		memmove(&val, a, n);
+		probeuvlong(addr, &val, 1);
+	}
+	return n;
+}
+
+static long
+mmoderead(Chan*, void *a, long n, vlong off)
+{
+	return mmoderw(1, a, n, off);
+}
+
+static long
+mmodewrite(Chan*, void *a, long n, vlong off)
+{
+	return mmoderw(0, a, n, off);
+}
+
 void
 archinit(void)
 {
 	addarchfile("cputype", 0444, cputyperead, nil);
+	addarchfile("mmode", 0660, mmoderead, mmodewrite);
 	sbiinit();
 }
 

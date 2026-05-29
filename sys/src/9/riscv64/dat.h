@@ -222,6 +222,8 @@ struct Mach
 	uchar	bootmachmode;	/* 144 flag: machine mode at boot time */
 	uchar	probing;	/* 145 flag: probing an address */
 	uchar	probebad;	/* 146 flag: probe failed: bad address */
+	uintptr probeaddr;
+	uintptr probepc;
 
 	/* end of offsets known to asm */
 
