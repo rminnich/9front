@@ -10,6 +10,7 @@ OFILES=\
 	access.$O\
 	machdata.$O\
 	setmach.$O\
+	j.$O\
 	t.$O\
 	v.$O\
 	k.$O\
@@ -22,6 +23,7 @@ OFILES=\
 	7.$O\
 	8.$O\
 	9.$O\
+	jdb.$O\
 	tdb.$O\
 	vdb.$O\
 	kdb.$O\
@@ -31,6 +33,7 @@ OFILES=\
 	5db.$O\
 	7db.$O\
 	8db.$O\
+	jobj.$O\
 	vobj.$O\
 	kobj.$O\
 	uobj.$O\
@@ -57,6 +60,7 @@ CFLAGS=$CFLAGS -I/sys/src/cmd
 kobj.$O: /sys/src/cmd/kc/k.out.h
 qobj.$O: /sys/src/cmd/qc/q.out.h
 vobj.$O: /sys/src/cmd/vc/v.out.h
+jobj.$O: /sys/src/cmd/jc/j.out.h
 
 # 9obj.$O: /sys/src/cmd/9c/9.out.h
 # uobj.$O: uc/u.out.h

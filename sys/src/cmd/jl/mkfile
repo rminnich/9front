@@ -1,0 +1,29 @@
+</$objtype/mkfile
+
+TARG=jl
+
+OFILES=\
+	asm.$O\
+	compress.$O\
+	list.$O\
+	noop.$O\
+	obj.$O\
+	optab.$O\
+	pass.$O\
+	span.$O\
+	enam.$O\
+	compat.$O\
+
+HFILES=\
+	l.h\
+	../jc/j.out.h\
+
+BIN=/$objtype/bin
+CFLAGS=$CFLAGS -. -I.
+</sys/src/cmd/mkone
+
+../jc/enam.c: ../jc/j.out.h
+	@ { cd ../jc; mk enam.c }
+
+enam.$O:	../jc/enam.c
+	$CC $CFLAGS ../jc/enam.c

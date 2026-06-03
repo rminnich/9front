@@ -1,0 +1,547 @@
+    f3 00                                e_machine
+0x14    01 00 00 00                          e_version
+0x18    00 00 01 00 00 00 00 00              e_entry
+0x20    40 00 00 00 00 00 00 00              e_phoff
+0x28    00 00 00 00 00 00 00 00              e_shoff
+0x30    00 00 00 00                          e_flags
+0x34    40 00                                e_ehsize
+0x36    38 00                                e_phentsize
+0x38    01 00                                e_phnum
+0x3a    40 00                                e_shentsize
+0x3c    00 00                                e_shnum
+0x3e    00 00                                e_shstrndx
+```
+
+## Field-by-Field Breakdown
+
+### e_ident (16 bytes) - ELF Identification
+
+**Offset 0x00-0x03: Magic Number**
+- `7f # RISC-V 64-bit ELF Header Breakdown
+
+## Complete Header (64 bytes)
+
+```
+Offset  Hex Values                           Field Name
+------  -----------------------------------  ---------------------------
+0x00    7f 45 4c 46                          e_ident[EI_MAG0-3] (Magic)
+0x04    02                                   e_ident[EI_CLASS] (Class)
+0x05    01                                   e_ident[EI_DATA] (Endianness)
+0x06    01                                   e_ident[EI_VERSION] (Version)
+0x07    00                                   e_ident[EI_OSABI] (OS/ABI)
+0x08    00                                   e_ident[EI_ABIVERSION]
+0x09    00 00 00 00 00 00 00                 e_ident[EI_PAD] (Padding)
+0x10    02 00                                e_type
+0x1245 4c 46` = `\x7fELF`
+- Identifies file as ELF format
+
+**Offset 0x04: EI_CLASS**
+- `02` = ELFCLASS64 (64-bit objects)
+- `01` would be ELFCLASS32 (32-bit)
+
+**Offset 0x05: EI_DATA**
+- `01` = ELFDATA2LSB (little-endian)
+- `02` would be ELFDATA2MSB (big-endian)
+
+**Offset 0x06: EI_VERSION**
+- `01` = EV_CURRENT (current version)
+
+**Offset 0x07: EI_OSABI**
+- `00` = ELFOSABI_NONE (System V / generic)
+- Other values: `03` (Linux), `09` (FreeBSD), etc.
+
+**Offset 0x08: EI_ABIVERSION**
+- `00` = ABI version (usually 0)
+
+**Offset 0x09-0x0F: EI_PAD**
+- `00 00 00 00 00 00 00` = Reserved padding bytes
+
+---
+
+### e_type (2 bytes) - Object File Type
+
+**Offset 0x10-0x11**
+- `02 00` = ET_EXEC (executable file)
+- Other values:
+  - `01 00` = ET_REL (relocatable)
+  - `03 00` = ET_DYN (shared object)
+  - `04 00` = ET_CORE (core dump)
+
+---
+
+### e_machine (2 bytes) - Machine Architecture
+
+**Offset 0x12-0x13**
+- `f3 00` = EM_RISCV (243 decimal, RISC-V architecture)
+- Other common values:
+  - `3e 00` = EM_X86_64 (AMD x86-64)
+  - `b7 00` = EM_AARCH64 (ARM 64-bit)
+
+---
+
+### e_version (4 bytes) - Object File Version
+
+**Offset 0x14-0x17**
+- `01 00 00 00` = EV_CURRENT (1)
+
+---
+
+### e_entry (8 bytes) - Entry Point Address
+
+**Offset 0x18-0x1F**
+- `00 00 01 00 00 00 00 00` = 0x0000000000010000
+- Virtual memory address where program execution begins
+- 0 for non-executable files
+
+---
+
+### e_phoff (8 bytes) - Program Header Table Offset
+
+**Offset 0x20-0x27**
+- `40 00 00 00 00 00 00 00` = 0x0000000000000040 (64 bytes)
+- File offset to program header table
+- 0 if no program headers exist
+
+---
+
+### e_shoff (8 bytes) - Section Header Table Offset
+
+**Offset 0x28-0x2F**
+- `00 00 00 00 00 00 00 00` = 0x0000000000000000
+- File offset to section header table
+- 0 if no section headers exist (typical for stripped executables)
+
+---
+
+### e_flags (4 bytes) - Processor-Specific Flags
+
+**Offset 0x30-0x33**
+- `00 00 00 00` = No flags set
+- RISC-V specific flags include:
+  - `0x0001` = EF_RISCV_RVC (compressed instructions)
+  - `0x0002` = EF_RISCV_FLOAT_ABI_SOFT
+  - `0x0004` = EF_RISCV_FLOAT_ABI_DOUBLE
+  - Bits for RISC-V ISA extensions
+
+---
+
+### e_ehsize (2 bytes) - ELF Header Size
+
+**Offset 0x34-0x35**
+- `40 00` = 64 bytes
+- Size of this ELF header (always 64 for 64-bit ELF)
+
+---
+
+### e_phentsize (2 bytes) - Program Header Entry Size
+
+**Offset 0x36-0x37**
+- `38 00` = 56 bytes
+- Size of one program header table entry
+
+---
+
+### e_phnum (2 bytes) - Program Header Entry Count
+
+**Offset 0x38-0x39**
+- `01 00` = 1 entry
+- Number of entries in program header table
+
+---
+
+### e_shentsize (2 bytes) - Section Header Entry Size
+
+**Offset 0x3A-0x3B**
+- `40 00` = 64 bytes
+- Size of one section header table entry
+
+---
+
+### e_shnum (2 bytes) - Section Header Entry Count
+
+**Offset 0x3C-0x3D**
+- `00 00` = 0 entries
+- Number of entries in section header table
+
+---
+
+### e_shstrndx (2 bytes) - Section Name String Table Index
+
+**Offset 0x3E-0x3F**
+- `00 00` = 0 (no string table)
+- Index of section header table entry containing section name strings
+
+---
+
+## Key RISC-V Specifics
+
+1. **Machine Type**: `0xf3` (243) uniquely identifies RISC-V
+2. **64-bit Format**: Uses 8-byte addresses and offsets
+3. **Endianness**: Typically little-endian (`0x01`)
+4. **Flags Field**: Can indicate ISA extensions (RVC, floating-point ABI, etc.)
+
+## Useful Commands
+
+```bash
+# View ELF header
+readelf -h <file>
+
+# Hexdump of header
+hexdump -C <file> | head -n 4
+
+# Check architecture
+file <file>
+```
+
+# RISC-V 64-bit ELF Header Breakdown
+
+## Complete Header (64 bytes)
+
+```
+Offset  Hex Values                           Field Name
+------  -----------------------------------  ---------------------------
+0x00    7f 45 4c 46                          e_ident[EI_MAG0-3] (Magic)
+0x04    02                                   e_ident[EI_CLASS] (Class)
+0x05    01                                   e_ident[EI_DATA] (Endianness)
+0x06    01                                   e_ident[EI_VERSION] (Version)
+0x07    00                                   e_ident[EI_OSABI] (OS/ABI)
+0x08    00                                   e_ident[EI_ABIVERSION]
+0x09    00 00 00 00 00 00 00                 e_ident[EI_PAD] (Padding)
+0x10    02 00                                e_type
+0x12    f3 00                                e_machine
+0x14    01 00 00 00                          e_version
+0x18    00 00 01 00 00 00 00 00              e_entry
+0x20    40 00 00 00 00 00 00 00              e_phoff
+0x28    00 00 00 00 00 00 00 00              e_shoff
+0x30    00 00 00 00                          e_flags
+0x34    40 00                                e_ehsize
+0x36    38 00                                e_phentsize
+0x38    01 00                                e_phnum
+0x3a    40 00                                e_shentsize
+0x3c    00 00                                e_shnum
+0x3e    00 00                                e_shstrndx
+```
+
+## Field-by-Field Breakdown
+
+### e_ident (16 bytes) - ELF Identification
+
+**Offset 0x00-0x03: Magic Number**
+- `7f 45 4c 46` = `\x7fELF`
+- Identifies file as ELF format
+
+**Offset 0x04: EI_CLASS**
+- `02` = ELFCLASS64 (64-bit objects)
+- `01` would be ELFCLASS32 (32-bit)
+
+**Offset 0x05: EI_DATA**
+- `01` = ELFDATA2LSB (little-endian)
+- `02` would be ELFDATA2MSB (big-endian)
+
+**Offset 0x06: EI_VERSION**
+- `01` = EV_CURRENT (current version)
+
+**Offset 0x07: EI_OSABI**
+- `00` = ELFOSABI_NONE (System V / generic)
+- Other values: `03` (Linux), `09` (FreeBSD), etc.
+
+**Offset 0x08: EI_ABIVERSION**
+- `00` = ABI version (usually 0)
+
+**Offset 0x09-0x0F: EI_PAD**
+- `00 00 00 00 00 00 00` = Reserved padding bytes
+
+---
+
+### e_type (2 bytes) - Object File Type
+
+**Offset 0x10-0x11**
+- `02 00` = ET_EXEC (executable file)
+- Other values:
+  - `01 00` = ET_REL (relocatable)
+  - `03 00` = ET_DYN (shared object)
+  - `04 00` = ET_CORE (core dump)
+
+---
+
+### e_machine (2 bytes) - Machine Architecture
+
+**Offset 0x12-0x13**
+- `f3 00` = EM_RISCV (243 decimal, RISC-V architecture)
+- Other common values:
+  - `3e 00` = EM_X86_64 (AMD x86-64)
+  - `b7 00` = EM_AARCH64 (ARM 64-bit)
+
+---
+
+### e_version (4 bytes) - Object File Version
+
+**Offset 0x14-0x17**
+- `01 00 00 00` = EV_CURRENT (1)
+
+---
+
+### e_entry (8 bytes) - Entry Point Address
+
+**Offset 0x18-0x1F**
+- `00 00 01 00 00 00 00 00` = 0x0000000000010000
+- Virtual memory address where program execution begins
+- 0 for non-executable files
+
+---
+
+### e_phoff (8 bytes) - Program Header Table Offset
+
+**Offset 0x20-0x27**
+- `40 00 00 00 00 00 00 00` = 0x0000000000000040 (64 bytes)
+- File offset to program header table
+- 0 if no program headers exist
+
+---
+
+### e_shoff (8 bytes) - Section Header Table Offset
+
+**Offset 0x28-0x2F**
+- `00 00 00 00 00 00 00 00` = 0x0000000000000000
+- File offset to section header table
+- 0 if no section headers exist (typical for stripped executables)
+
+---
+
+### e_flags (4 bytes) - Processor-Specific Flags
+
+**Offset 0x30-0x33**
+- `00 00 00 00` = No flags set
+- RISC-V specific flags include:
+  - `0x0001` = EF_RISCV_RVC (compressed instructions)
+  - `0x0002` = EF_RISCV_FLOAT_ABI_SOFT
+  - `0x0004` = EF_RISCV_FLOAT_ABI_DOUBLE
+  - Bits for RISC-V ISA extensions
+
+---
+
+### e_ehsize (2 bytes) - ELF Header Size
+
+**Offset 0x34-0x35**
+- `40 00` = 64 bytes
+- Size of this ELF header (always 64 for 64-bit ELF)
+
+---
+
+### e_phentsize (2 bytes) - Program Header Entry Size
+
+**Offset 0x36-0x37**
+- `38 00` = 56 bytes
+- Size of one program header table entry
+
+---
+
+### e_phnum (2 bytes) - Program Header Entry Count
+
+**Offset 0x38-0x39**
+- `01 00` = 1 entry
+- Number of entries in program header table
+
+---
+
+### e_shentsize (2 bytes) - Section Header Entry Size
+
+**Offset 0x3A-0x3B**
+- `40 00` = 64 bytes
+- Size of one section header table entry
+
+---
+
+### e_shnum (2 bytes) - Section Header Entry Count
+
+**Offset 0x3C-0x3D**
+- `00 00` = 0 entries
+- Number of entries in section header table
+
+---
+
+### e_shstrndx (2 bytes) - Section Name String Table Index
+
+**Offset 0x3E-0x3F**
+- `00 00` = 0 (no string table)
+- Index of section header table entry containing section name strings
+
+---
+
+## Key RISC-V Specifics
+
+1. **Machine Type**: `0xf3` (243) uniquely identifies RISC-V
+2. **64-bit Format**: Uses 8-byte addresses and offsets
+3. **Endianness**: Typically little-endian (`0x01`)
+4. **Flags Field**: Can indicate ISA extensions (RVC, floating-point ABI, etc.)
+
+---
+
+# RISC-V 64-bit Program Header Breakdown
+
+## Complete Program Header Entry (56 bytes)
+
+```
+Offset  Hex Values                           Field Name
+------  -----------------------------------  ---------------------------
+0x40    01 00 00 00                          p_type
+0x44    05 00 00 00                          p_flags
+0x48    00 00 00 00 00 00 00 00              p_offset
+0x50    00 00 01 00 00 00 00 00              p_vaddr
+0x58    00 00 01 00 00 00 00 00              p_paddr
+0x60    00 10 00 00 00 00 00 00              p_filesz
+0x68    00 10 00 00 00 00 00 00              p_memsz
+0x70    00 10 00 00 00 00 00 00              p_align
+```
+
+## Field-by-Field Breakdown
+
+### p_type (4 bytes) - Segment Type
+
+**Offset 0x40-0x43**
+- `01 00 00 00` = PT_LOAD (1) - Loadable segment
+- Common segment types:
+  - `00 00 00 00` = PT_NULL (unused entry)
+  - `02 00 00 00` = PT_DYNAMIC (dynamic linking info)
+  - `03 00 00 00` = PT_INTERP (interpreter path)
+  - `04 00 00 00` = PT_NOTE (auxiliary info)
+  - `06 00 00 00` = PT_PHDR (program header table)
+  - `07 00 00 00` = PT_TLS (thread-local storage)
+  - `50 e5 74 06` = PT_GNU_STACK (stack permissions)
+  - `51 e5 74 06` = PT_GNU_RELRO (read-only after relocation)
+
+---
+
+### p_flags (4 bytes) - Segment Permissions
+
+**Offset 0x44-0x47**
+- `05 00 00 00` = PF_R | PF_X (Read + Execute)
+- Flag bits:
+  - `0x1` = PF_X (Execute)
+  - `0x2` = PF_W (Write)
+  - `0x4` = PF_R (Read)
+- Common combinations:
+  - `05` = R-X (code segment)
+  - `06` = RW- (data segment)
+  - `07` = RWX (all permissions)
+
+---
+
+### p_offset (8 bytes) - File Offset
+
+**Offset 0x48-0x4F**
+- `00 00 00 00 00 00 00 00` = 0x0000000000000000
+- Byte offset from beginning of file where segment starts
+- Must be aligned according to p_align
+
+---
+
+### p_vaddr (8 bytes) - Virtual Address
+
+**Offset 0x50-0x57**
+- `00 00 01 00 00 00 00 00` = 0x0000000000010000
+- Virtual memory address where segment should be loaded
+- Must be aligned according to p_align
+
+---
+
+### p_paddr (8 bytes) - Physical Address
+
+**Offset 0x58-0x5F**
+- `00 00 01 00 00 00 00 00` = 0x0000000000010000
+- Physical address (relevant for systems without virtual memory)
+- Usually same as p_vaddr or ignored
+
+---
+
+### p_filesz (8 bytes) - Size in File
+
+**Offset 0x60-0x67**
+- `00 10 00 00 00 00 00 00` = 0x0000000000001000 (4096 bytes)
+- Number of bytes in the file image of the segment
+- May be 0 for segments like BSS
+
+---
+
+### p_memsz (8 bytes) - Size in Memory
+
+**Offset 0x68-0x6F**
+- `00 10 00 00 00 00 00 00` = 0x0000000000001000 (4096 bytes)
+- Number of bytes in the memory image of the segment
+- If p_memsz > p_filesz, extra bytes are zeroed (BSS section)
+
+---
+
+### p_align (8 bytes) - Alignment
+
+**Offset 0x70-0x77**
+- `00 10 00 00 00 00 00 00` = 0x0000000000001000 (4096 bytes)
+- Alignment constraint for segment
+- 0 or 1 means no alignment required
+- p_vaddr should equal (p_offset % p_align)
+- Common value: 0x1000 (4KB page size)
+
+---
+
+## Typical RISC-V Program Header Layout
+
+### Example: Simple Executable
+
+```
+Program Header #1 (Code Segment):
+  Type:      PT_LOAD
+  Flags:     R-X (0x5)
+  Offset:    0x0000
+  VirtAddr:  0x10000
+  PhysAddr:  0x10000
+  FileSize:  0x1000
+  MemSize:   0x1000
+  Align:     0x1000
+
+Program Header #2 (Data Segment):
+  Type:      PT_LOAD
+  Flags:     RW- (0x6)
+  Offset:    0x1000
+  VirtAddr:  0x11000
+  PhysAddr:  0x11000
+  FileSize:  0x0800
+  MemSize:   0x1000  (extra 0x800 bytes for BSS)
+  Align:     0x1000
+
+Program Header #3 (GNU_STACK):
+  Type:      PT_GNU_STACK
+  Flags:     RW- (0x6)
+  Offset:    0x0000
+  VirtAddr:  0x00000
+  PhysAddr:  0x00000
+  FileSize:  0x0000
+  MemSize:   0x0000
+  Align:     0x10
+```
+
+## Key Points
+
+1. **Loading**: PT_LOAD segments are mapped into memory by the loader
+2. **Permissions**: p_flags determines page permissions (NX bit, write protection)
+3. **BSS Section**: When p_memsz > p_filesz, extra memory is zero-initialized
+4. **Alignment**: Critical for page-aligned memory mapping (typically 4KB)
+5. **RISC-V Specifics**: Standard program headers, no special RISC-V types
+
+## Useful Commands
+
+```bash
+# View all program headers
+readelf -l <file>
+
+# View ELF header
+readelf -h <file>
+
+# Hexdump of program headers (assuming offset 0x40)
+hexdump -C -s 0x40 -n 56 <file>
+
+# Check architecture
+file <file>
+
+# View segments with permissions
+readelf -W -l <file>
+```
