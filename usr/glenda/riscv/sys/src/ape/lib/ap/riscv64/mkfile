@@ -1,0 +1,31 @@
+APE=/sys/src/ape
+objtype=riscv64
+<$APE/config
+LIB=/$objtype/lib/ape/libap.a
+
+OFILES=\
+	argv0.$O\
+	cycles.$O\
+	getcallerpc.$O\
+	getfcr.$O\
+	lock.$O\
+	main9.$O\
+	main9p.$O\
+#	malloc.$O\
+#	memccpy.$O\
+#	memchr.$O\
+#	memcmp.$O\
+#	memmove.$O\
+	memset.$O\
+	notetramp.$O\
+	_seek.$O\
+	setjmp.$O\
+#	sqrt.$O\
+#	strchr.$O\
+#	strcmp.$O\
+#	strcpy.$O\
+	tas.$O\
+
+</sys/src/cmd/mksyslib
+
+CFLAGS=$CFLAGS -c -D_POSIX_SOURCE -D_PLAN9_SOURCE
