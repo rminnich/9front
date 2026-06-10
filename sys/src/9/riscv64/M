@@ -1,0 +1,6 @@
+#!/bin/rc
+mk clean
+mk
+ssh rminnich@192.168.0.186 dd 'of=9qemu' < 9qemu
+# ssh rminnich@192.168.0.186 dd 'of=9qemu.4G' < 9qemu.4G
+ssh rminnich@192.168.0.186 dd 'of=9qemu.elf' < 9qemu.elf
